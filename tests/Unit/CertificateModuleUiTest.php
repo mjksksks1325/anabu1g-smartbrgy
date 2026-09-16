@@ -1,0 +1,55 @@
+<?php
+
+test('manual certificate modal submits real issuance fields and opens the generated print page', function () {
+    $dashboard = file_get_contents(dirname(__DIR__, 2).'/resources/views/admin/dashboard.blade.php');
+    $adminScript = file_get_contents(dirname(__DIR__, 2).'/public/js/admin.js');
+
+    expect($dashboard)
+        ->toContain('id="manual-certificate-form"')
+        ->toContain('onsubmit="issueManualCertificate(event)"')
+        ->toContain('id="manual-certificate-type"')
+        ->toContain('id="manual-resident-name"')
+        ->toContain('id="manual-certificate-submit"')
+        ->not->toContain("showToast('Certificate issued!','green');closeModal('modal-cert-issue')");
+    expect($adminScript)
+        ->toContain("fetch('/admin/issued-certificates'")
+        ->toContain("window.open('about:blank', '_blank')")
+        ->toContain('printWindow.location.href = data.print_url;');
+});
+
+test('manual QR lookup verifies the issued certificate against the server', function () {
+    $dashboard = file_get_contents(dirname(__DIR__, 2).'/resources/views/admin/dashboard.blade.php');
+    $adminScript = file_get_contents(dirname(__DIR__, 2).'/public/js/admin.js');
+
+    expect($dashboard)
+        ->toContain('Certificate Verification Code')
+        ->toContain('Scan with any phone camera')
+        ->not->toContain('Click to Simulate Scanning a Document QR');
+    expect($adminScript)
+        ->toContain('async function verifyCertCode(code)')
+        ->toContain('fetch(`/verify-certificate/${encodeURIComponent(verificationCode)}`')
+        ->toContain('showRealCertificateVerification(certificate)');
+});
+
+test('issued certificate history supports reprinting and verification after issuance', function () {
+    $dashboard = file_get_contents(dirname(__DIR__, 2).'/resources/views/admin/dashboard.blade.php');
+    $adminScript = file_get_contents(dirname(__DIR__, 2).'/public/js/admin.js');
+
+    expect($dashboard)
+        ->toContain('Issued Certificate History')
+        ->toContain('id="issued-certificates-tbody"');
+    expect($adminScript)
+        ->toContain("fetch('/admin/issued-certificates'")
+        ->toContain("row.querySelector('.issued-reprint')")
+        ->toContain("row.querySelector('.issued-verify')");
+});
+
+test('certificate processing uses the current csrf cookie for authenticated requests', function () {
+    $adminScript = file_get_contents(dirname(__DIR__, 2).'/public/js/admin.js');
+
+    expect($adminScript)
+        ->toContain("readCookie('XSRF-TOKEN')")
+        ->toContain("{ 'X-XSRF-TOKEN': xsrfToken }")
+        ->toContain("credentials: 'same-origin'")
+        ->toContain('...csrfRequestHeaders()');
+});

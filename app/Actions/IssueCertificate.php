@@ -1,0 +1,96 @@
+<?php
+
+namespace App\Actions;
+
+use App\CertificateType;
+use App\Exceptions\CertificateIssuanceException;
+use App\Models\DocumentRequest;
+use App\Models\IssuedCertificate;
+use F9WebLtd\QrCode\Generator;
+use Illuminate\Filesystem\FilesystemManager;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Throwable;
+
+class IssueCertificate
+{
+    public function __construct(
+        private readonly FilesystemManager $filesystem,
+        private readonly Generator $qrCode,
+    ) {}
+
+    /**
+     * @param  array{certificate_type: string, resident_name: string, purpose?: string|null}  $attributes
+     */
+    public function handle(
+        array $attributes,
+        ?DocumentRequest $documentRequest,
+        string $issuedBy,
+        bool $requestMustBeReady = false,
+    ): IssuedCertificate {
+        $qrStoragePath = null;
+
+        try {
+            return DB::transaction(function () use (
+                $attributes,
+                $documentRequest,
+                $issuedBy,
+                $requestMustBeReady,
+                &$qrStoragePath,
+            ): IssuedCertificate {
+                $lockedRequest = $documentRequest === null
+                    ? null
+                    : DocumentRequest::query()->lockForUpdate()->findOrFail($documentRequest->id);
+
+                if ($lockedRequest?->issuedCertificate()->exists()) {
+                    throw CertificateIssuanceException::alreadyIssued();
+                }
+
+                if ($requestMustBeReady && $lockedRequest?->status !== 'ready_for_release') {
+                    throw CertificateIssuanceException::requestNotReady();
+                }
+
+                $certificateType = CertificateType::tryFromLabel($attributes['certificate_type'])
+                    ?? throw CertificateIssuanceException::unsupportedCertificateType();
+                $certificateNumber = 'CERT-'.now()->format('Y').'-'.Str::upper(Str::random(8));
+                $verificationCode = Str::upper(Str::random(16));
+                $verificationUrl = route('certificate.verify', ['code' => $verificationCode]);
+                $qrStoragePath = 'qrcodes/'.$certificateNumber.'.svg';
+                $qrSvg = (string) $this->qrCode
+                    ->format('svg')
+                    ->size(300)
+                    ->generate($verificationUrl);
+
+                if (! $this->filesystem->disk('public')->put($qrStoragePath, $qrSvg)) {
+                    throw CertificateIssuanceException::qrCodeCouldNotBeSaved();
+                }
+
+                $certificate = IssuedCertificate::query()->create([
+                    'document_request_id' => $lockedRequest?->id,
+                    'certificate_number' => $certificateNumber,
+                    'verification_code' => $verificationCode,
+                    'certificate_type' => $certificateType->value,
+                    'resident_name' => $attributes['resident_name'],
+                    'purpose' => $attributes['purpose'] ?? null,
+                    'amount_paid' => $certificateType->fee(),
+                    'issued_at' => now(),
+                    'issued_by' => $issuedBy,
+                    'qr_code_path' => '/storage/'.$qrStoragePath,
+                ]);
+
+                $lockedRequest?->update([
+                    'status' => 'released',
+                    'remarks' => 'Certificate issued successfully.',
+                ]);
+
+                return $certificate;
+            });
+        } catch (Throwable $exception) {
+            if ($qrStoragePath !== null) {
+                $this->filesystem->disk('public')->delete($qrStoragePath);
+            }
+
+            throw $exception;
+        }
+    }
+}
