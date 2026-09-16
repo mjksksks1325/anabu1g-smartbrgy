@@ -15,6 +15,14 @@ test('portal renders email as the required notification field', function () {
         ->assertSee('Email Address');
 });
 
+test('portal assets use https when the request is forwarded through a trusted proxy', function () {
+    $this->withHeader('X-Forwarded-Proto', 'https')
+        ->get('http://public.example.test/portal')
+        ->assertOk()
+        ->assertSee('href="https://public.example.test/css/portal.css"', false)
+        ->assertSee('src="https://public.example.test/images/anabu-logo.jpg"', false);
+});
+
 test('portal requests store the required notification email', function () {
     $response = $this->postJson(route('portal.request.store'), [
         'document_type' => 'Certificate of Residency',
