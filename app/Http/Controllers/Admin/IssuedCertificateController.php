@@ -19,6 +19,7 @@ class IssuedCertificateController extends Controller
     public function index(): JsonResponse
     {
         $certificates = IssuedCertificate::query()
+            ->with('documentRequest')
             ->latest('issued_at')
             ->latest('id')
             ->limit(100)
@@ -29,6 +30,7 @@ class IssuedCertificateController extends Controller
                 'verification_code' => $certificate->verification_code,
                 'certificate_type' => $certificate->certificate_type,
                 'resident_name' => $certificate->resident_name,
+                'source' => $certificate->documentRequest->source ?? 'onsite',
                 'amount_paid' => $certificate->amount_paid,
                 'issued_at' => $certificate->issued_at?->toIso8601String(),
                 'issued_by' => $certificate->issued_by,

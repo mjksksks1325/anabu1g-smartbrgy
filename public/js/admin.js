@@ -1079,6 +1079,7 @@ async function issueManualCertificate(event) {
       body: JSON.stringify({
         certificate_type: document.getElementById('manual-certificate-type')?.value,
         resident_name: document.getElementById('manual-resident-name')?.value.trim(),
+        address: document.getElementById('manual-resident-address')?.value.trim() || null,
         purpose: document.getElementById('manual-certificate-purpose')?.value.trim() || null
       })
     });
@@ -1133,7 +1134,7 @@ async function refreshIssuedCertificates() {
 
     renderIssuedCertificates(await response.json());
   } catch (error) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#EF4444;">Unable to load issued certificates.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#EF4444;">Unable to load issued certificates.</td></tr>';
   }
 }
 
@@ -1144,7 +1145,7 @@ function renderIssuedCertificates(certificates) {
   tbody.innerHTML = '';
 
   if (!Array.isArray(certificates) || certificates.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);">No certificates have been issued yet.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);">No certificates have been issued yet.</td></tr>';
     return;
   }
 
@@ -1155,12 +1156,15 @@ function renderIssuedCertificates(certificates) {
     const fee = Number(certificate.amount_paid) > 0
       ? `PHP ${Number(certificate.amount_paid).toFixed(2)}`
       : 'FREE';
+    const source = String(certificate.source || 'onsite').toLowerCase();
+    const sourceBadgeClass = source === 'online' ? 'badge-purple' : 'badge-gray';
     const row = document.createElement('tr');
 
     row.innerHTML = `
       <td><span style="font-family:var(--font-mono);color:var(--green-500);">${escapeText(certificate.certificate_number)}</span></td>
       <td><strong style="color:var(--text-primary);">${escapeText(certificate.resident_name)}</strong></td>
       <td>${escapeText(certificate.certificate_type)}</td>
+      <td><span class="badge ${sourceBadgeClass}">${escapeText(source.toUpperCase())}</span></td>
       <td>${escapeText(fee)}</td>
       <td>${escapeText(issuedDate)}</td>
       <td>${escapeText(certificate.issued_by || 'Barangay Staff')}</td>
@@ -2956,6 +2960,9 @@ function renderCertKanban(filter = '') {
         !r.hidden
     ).length
   );
+
+  buildCharts();
+  refreshDashboardStats();
 }
 
 function filterCertBoard(val) { renderCertKanban(val.toLowerCase()); }

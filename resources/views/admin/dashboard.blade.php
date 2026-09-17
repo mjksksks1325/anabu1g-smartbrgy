@@ -483,9 +483,9 @@
         </div>
         <div style="overflow-x:auto;">
           <table class="tbl">
-            <thead><tr><th>Certificate No.</th><th>Resident</th><th>Document</th><th>Fee</th><th>Date Issued</th><th>Issued By</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Certificate No.</th><th>Resident</th><th>Document</th><th>Source</th><th>Fee</th><th>Date Issued</th><th>Issued By</th><th>Actions</th></tr></thead>
             <tbody id="issued-certificates-tbody">
-              <tr><td colspan="7" style="text-align:center;color:var(--text-muted);">Loading issued certificates...</td></tr>
+              <tr><td colspan="8" style="text-align:center;color:var(--text-muted);">Loading issued certificates...</td></tr>
             </tbody>
           </table>
         </div>
@@ -1311,6 +1311,7 @@
         </select>
       </div>
       <div class="form-group"><div class="form-label">Full Name ng Resident</div><input class="form-input" id="manual-resident-name" maxlength="255" required placeholder="Type the resident's full name..."/></div>
+      <div class="form-group"><div class="form-label">Address ng Resident</div><input class="form-input" id="manual-resident-address" maxlength="1000" row="2" required placeholder="Type the resident's address..."/></div>
       <div class="form-group"><div class="form-label">Purpose / Reason</div><input class="form-input" id="manual-certificate-purpose" maxlength="500" placeholder="Employment, Loan, Scholarship..."/></div>
       <div class="form-group"><div class="form-label">Payment</div><input class="form-input" id="manual-certificate-fee" value="PHP 50.00" readonly/></div>
       <div style="background:var(--green-dim);border:1px solid var(--border-green);border-radius:var(--radius-sm);padding:10px;font-size:11.5px;color:var(--text-secondary);margin-bottom:14px;">✅ The official fee is set by the server. A unique QR verification code is generated automatically.</div>

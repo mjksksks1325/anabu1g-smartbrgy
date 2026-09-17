@@ -61,6 +61,7 @@ it('lists issued certificates with reprint and verification links', function () 
         ->assertOk()
         ->assertJsonPath('0.certificate_number', 'CERT-2026-HISTORY')
         ->assertJsonPath('0.resident_name', 'Maria Santos')
+        ->assertJsonPath('0.source', 'onsite')
         ->assertJsonPath('0.print_url', route('admin.issued-certificates.print', $certificate))
         ->assertJsonPath('0.verification_url', route('certificate.verify', 'HISTORYVERIFYCODE'));
 });
@@ -99,22 +100,32 @@ it('issues every supported online request with the server fee and a real QR file
         ->remarks->toBe('Certificate issued successfully.');
 })->with('certificate types');
 
-it('uses the server fee for a manual issuance even when the browser sends another amount', function () {
+it('creates and links an onsite request while using the server fee', function () {
     Storage::fake('public');
     $user = User::factory()->create(['name' => 'Barangay Clerk']);
 
     $response = $this->actingAs($user)->postJson(route('admin.issued-certificates.store'), [
         'certificate_type' => CertificateType::BusinessClearance->value,
         'resident_name' => 'Ana Reyes',
+        'address' => 'Anabu I-G, Imus City',
         'purpose' => 'Business permit',
         'amount_paid' => 1,
     ]);
 
     $response->assertOk()->assertJsonPath('success', true);
+
     $certificate = IssuedCertificate::query()->sole();
-    expect((float) $certificate->amount_paid)->toBe(200.0);
-    expect($certificate->document_request_id)->toBeNull();
-    Storage::disk('public')->assertExists(Str::after($certificate->qr_code_path, '/storage/'));
+    $documentRequest = DocumentRequest::query()->sole();
+
+    expect((float) $certificate->amount_paid)->toBe(200.0)
+        ->and($certificate->document_request_id)->toBe($documentRequest->id)
+        ->and($documentRequest->source)->toBe('onsite')
+        ->and($documentRequest->status)->toBe('released')
+        ->and($documentRequest->address)->toBe('Anabu I-G, Imus City');
+
+    Storage::disk('public')->assertExists(
+        Str::after($certificate->qr_code_path, '/storage/')
+    );
 });
 
 it('rejects an unsupported manual certificate type', function () {

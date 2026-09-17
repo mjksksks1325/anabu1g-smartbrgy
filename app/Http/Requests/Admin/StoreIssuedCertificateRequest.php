@@ -27,6 +27,7 @@ class StoreIssuedCertificateRequest extends FormRequest
         return [
             'certificate_type' => ['required', 'string', Rule::in(CertificateType::values())],
             'resident_name' => ['required', 'string', 'max:255'],
+            'address' => ['required', 'string', 'max:1000'],
             'purpose' => ['nullable', 'string', 'max:500'],
         ];
     }
@@ -39,6 +40,7 @@ class StoreIssuedCertificateRequest extends FormRequest
         return [
             'certificate_type' => $this->string('certificate_type')->toString(),
             'resident_name' => $this->string('resident_name')->toString(),
+            'address' => $this->string('address')->toString(),
             'purpose' => $this->filled('purpose')
                 ? $this->string('purpose')->toString()
                 : null,

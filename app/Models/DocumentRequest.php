@@ -9,6 +9,7 @@ class DocumentRequest extends Model
 {
     protected $fillable = [
         'reference_code',
+        'source',
         'document_type',
         'full_name',
         'date_of_birth',

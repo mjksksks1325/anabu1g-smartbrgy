@@ -35,6 +35,7 @@ class DocumentRequestController extends Controller
         $documentRequest = DocumentRequest::create([
             ...Arr::except($validated, ['attachment']),
             'reference_code' => $referenceCode,
+            'source' => 'online',
             'attachment_path' => $attachmentPath ? Storage::url($attachmentPath) : null,
             'status' => 'pending',
         ]);

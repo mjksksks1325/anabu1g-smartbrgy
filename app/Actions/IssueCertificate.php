@@ -20,7 +20,12 @@ class IssueCertificate
     ) {}
 
     /**
-     * @param  array{certificate_type: string, resident_name: string, purpose?: string|null}  $attributes
+     * @param  array{
+     *     certificate_type: string,
+     *     resident_name: string,
+     *     address?: string,
+     *     purpose?: string|null
+     * }  $attributes
      */
     public function handle(
         array $attributes,
@@ -38,20 +43,33 @@ class IssueCertificate
                 $requestMustBeReady,
                 &$qrStoragePath,
             ): IssuedCertificate {
-                $lockedRequest = $documentRequest === null
-                    ? null
-                    : DocumentRequest::query()->lockForUpdate()->findOrFail($documentRequest->id);
+                $certificateType = CertificateType::tryFromLabel($attributes['certificate_type'])
+                    ?? throw CertificateIssuanceException::unsupportedCertificateType();
 
-                if ($lockedRequest?->issuedCertificate()->exists()) {
+                $lockedRequest = $documentRequest === null
+                    ? DocumentRequest::query()->create([
+                        'reference_code' => 'REQ-ONSITE-'.now()->format('Y').'-'.Str::upper(Str::random(8)),
+                        'source' => 'onsite',
+                        'document_type' => $certificateType->value,
+                        'full_name' => $attributes['resident_name'],
+                        'address' => $attributes['address']
+                            ?? throw new \LogicException('Onsite issuance requires a resident address.'),
+                        'purpose' => $attributes['purpose'] ?? null,
+                        'status' => 'ready_for_release',
+                        'remarks' => 'Created from onsite certificate issuance.',
+                    ])
+                    : DocumentRequest::query()
+                        ->lockForUpdate()
+                        ->findOrFail($documentRequest->id);
+
+                if ($lockedRequest->issuedCertificate()->exists()) {
                     throw CertificateIssuanceException::alreadyIssued();
                 }
 
-                if ($requestMustBeReady && $lockedRequest?->status !== 'ready_for_release') {
+                if ($requestMustBeReady && $lockedRequest->status !== 'ready_for_release') {
                     throw CertificateIssuanceException::requestNotReady();
                 }
 
-                $certificateType = CertificateType::tryFromLabel($attributes['certificate_type'])
-                    ?? throw CertificateIssuanceException::unsupportedCertificateType();
                 $certificateNumber = 'CERT-'.now()->format('Y').'-'.Str::upper(Str::random(8));
                 $verificationCode = Str::upper(Str::random(16));
                 $verificationUrl = route('certificate.verify', ['code' => $verificationCode]);
@@ -66,7 +84,7 @@ class IssueCertificate
                 }
 
                 $certificate = IssuedCertificate::query()->create([
-                    'document_request_id' => $lockedRequest?->id,
+                    'document_request_id' => $lockedRequest->id,
                     'certificate_number' => $certificateNumber,
                     'verification_code' => $verificationCode,
                     'certificate_type' => $certificateType->value,
@@ -78,7 +96,7 @@ class IssueCertificate
                     'qr_code_path' => '/storage/'.$qrStoragePath,
                 ]);
 
-                $lockedRequest?->update([
+                $lockedRequest->update([
                     'status' => 'released',
                     'remarks' => 'Certificate issued successfully.',
                 ]);
