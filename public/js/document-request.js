@@ -1,4 +1,46 @@
+let portalSubmitting = false;
+
+async function refreshPortalCsrfToken() {
+    const response = await fetch('/portal/csrf-token', {
+        credentials: 'same-origin',
+        cache: 'no-store',
+        headers: { 'Accept': 'application/json' }
+    });
+
+    if (!response.ok) {
+        throw new Error('Hindi ma-refresh ang secure session. Paki-reload ang page.');
+    }
+
+    const data = await response.json();
+    document.querySelector('meta[name="csrf-token"]')?.setAttribute('content', data.token);
+
+    return data.token;
+}
+
+async function sendPortalDocumentRequest(formData) {
+    const send = token => fetch('/portal/request', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': token
+        },
+        body: formData
+    });
+
+    let response = await send(await refreshPortalCsrfToken());
+
+    if (response.status === 419) {
+        response = await send(await refreshPortalCsrfToken());
+    }
+
+    return response;
+}
+
 async function submitRequest() {
+    if (portalSubmitting) return;
+    if (lastCode) { showScreen('screen-confirm'); return; }
+    if (!validatePortalForm()) return;
     const name = document.getElementById('f-name').value.trim();
     const address = document.getElementById('f-address').value.trim();
     const purpose = document.getElementById('f-purpose').value.trim();
@@ -26,11 +68,10 @@ async function submitRequest() {
         return;
     }
 
-    const finalPurpose =
-        selectedDocId === 'BBC'
-            ? `${purpose} — Negosyo: ${biz}`
-            : purpose;
-
+    const finalPurpose = purpose;
+    portalSubmitting = true;
+    const submitButton = document.getElementById('submit-request-button');
+    if (submitButton) { submitButton.disabled = true; submitButton.textContent = 'Isinusumite...'; }
     setLoading(true);
 
     try {
@@ -48,22 +89,14 @@ async function submitRequest() {
             formData.append('attachment', attachment);
         }
 
-        const response = await fetch('/portal/request', {
-            method: 'POST',
-            headers: {
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': document
-                    .querySelector('meta[name="csrf-token"]')
-                    .getAttribute('content')
-            },
-            body: formData
-        });
+        const response = await sendPortalDocumentRequest(formData);
 
-        const data = await response.json();
+        const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
             console.error(data);
-            toast(data.message || 'May error sa pag-submit.', 'red');
+            const message = data.errors ? Object.values(data.errors).flat()[0] : data.message;
+            toast(message || 'Hindi naisumite ang request. Subukan muli.', 'red');
             return;
         }
 
@@ -75,13 +108,8 @@ async function submitRequest() {
         document.getElementById('conf-code-mini').textContent =
             data.reference_code;
 
-        document.getElementById('conf-summary').innerHTML =
-            `<strong>📋 Buod ng Request:</strong><br>
-            👤 Pangalan: <strong>${name}</strong><br>
-            📄 Dokumento: <strong>${d.label}</strong><br>
-            💰 Bayad: <strong>${d.fee}</strong><br>
-            📍 Address: ${address}<br>
-            🎯 Layunin: ${finalPurpose || 'N/A'}`;
+        portalConfirmation = { name, document: d.label, fee: d.fee, address, purpose: finalPurpose };
+        renderConfirmationSummary(portalConfirmation);
 
         showScreen('screen-confirm');
 
@@ -92,8 +120,10 @@ async function submitRequest() {
 
     } catch (error) {
         console.error(error);
-        toast('Hindi makakonekta sa server.', 'red');
+        toast(error.message || 'Hindi makakonekta sa server.', 'red');
     } finally {
+        portalSubmitting = false;
+        if (submitButton) { submitButton.disabled = false; submitButton.textContent = 'I-submit ang Request'; }
         setLoading(false);
     }
 }

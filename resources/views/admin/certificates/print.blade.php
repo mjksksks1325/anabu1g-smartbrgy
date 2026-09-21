@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>{{ $certificate->certificate_number }}</title>
 
@@ -148,9 +149,11 @@
             }
         }
     </style>
+<link rel="stylesheet" href="{{ asset('css/certificates.css') }}">
 </head>
 
 <body>
+<nav class="certificate-navigation" aria-label="Certificate navigation"><a href="{{ route('admin.dashboard', ['screen' => 'certificates']) }}">Back to certificates</a><span>Barangay Anabu I-G / Print preview</span></nav>
 
 <button class="print-button" onclick="window.print()">
     🖨️ Print Certificate

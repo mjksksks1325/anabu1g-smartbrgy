@@ -13,6 +13,7 @@ class IssuedCertificate extends Model
 {
     protected $fillable = [
         'document_request_id',
+        'resident_id',
         'certificate_number',
         'verification_code',
         'certificate_type',
@@ -30,6 +31,12 @@ class IssuedCertificate extends Model
     public function documentRequest(): BelongsTo
     {
         return $this->belongsTo(DocumentRequest::class);
+    }
+
+    /** @return BelongsTo<Resident, $this> */
+    public function resident(): BelongsTo
+    {
+        return $this->belongsTo(Resident::class);
     }
 
     /**

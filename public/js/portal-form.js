@@ -6,6 +6,7 @@ function selectDoc(id, el) {
     );
 
     el.classList.add('selected');
+    document.querySelectorAll('.cert-btn').forEach(button => button.setAttribute('aria-pressed', String(button === el)));
 
     const d = DOC_TYPES[id];
 
@@ -36,65 +37,48 @@ function proceedFromDoc() {
     showScreen('screen-form');
 }
 
+function validatePortalForm() {
+    const messages = {
+        'f-name': 'Ilagay ang inyong buong pangalan (hanggang 255 character).',
+        'f-address': 'Ilagay ang inyong address sa barangay (hanggang 1000 character).',
+        'f-email': 'Maglagay ng wastong email address.',
+        'f-dob': 'Ilagay ang wastong petsa ng kapanganakan. Hindi ito maaaring nasa hinaharap.',
+        'f-purpose': 'Ilagay ang layunin ng inyong request (hanggang 255 character).',
+        'f-business': 'Ilagay ang pangalan ng negosyo (hanggang 255 character).',
+    };
+    const error = document.getElementById('portal-form-error');
+    error.hidden = true;
+    let firstInvalid = null;
+    for (const [id, message] of Object.entries(messages)) {
+        const field = document.getElementById(id);
+        const required = id !== 'f-business' || selectedDocId === 'BBC';
+        field.required = required;
+        const invalid = required && (!field.value.trim() || !field.checkValidity());
+        field.setAttribute('aria-invalid', String(invalid));
+        if (invalid && !firstInvalid) firstInvalid = { field, message };
+    }
+    if (firstInvalid) {
+        showScreen('screen-form');
+        error.textContent = firstInvalid.message;
+        error.hidden = false;
+        firstInvalid.field.setAttribute('aria-describedby', 'portal-form-error');
+        firstInvalid.field.focus();
+        return false;
+    }
+    return true;
+}
+
 function goToAttachment() {
-    const name = document.getElementById('f-name').value.trim();
-    const address = document.getElementById('f-address').value.trim();
-    const purpose = document.getElementById('f-purpose').value.trim();
-    const biz = document.getElementById('f-business').value.trim();
-    const dob = document.getElementById('f-dob').value;
-    const emailInput = document.getElementById('f-email');
-    const email = emailInput.value.trim();
-
-    if (!name) {
-        toast('Pakiusap ilagay ang inyong pangalan.', 'red');
-        document.getElementById('f-name').focus();
-        return;
-    }
-
-    if (!address) {
-        toast('Pakiusap ilagay ang inyong address.', 'red');
-        document.getElementById('f-address').focus();
-        return;
-    }
-
-    if (!email) {
-        toast('Pakiusap ilagay ang inyong email address.', 'red');
-        emailInput.focus();
-        return;
-    }
-
-    if (!emailInput.checkValidity()) {
-        toast('Maglagay ng wastong email address.', 'red');
-        emailInput.focus();
-        return;
-    }
-
-    if (!dob) {
-        toast('Pakiusap ilagay ang inyong petsa ng kapanganakan.', 'red');
-        document.getElementById('f-dob').focus();
-        return;
-    }
-
-    if (!purpose) {
-        toast('Pakiusap ilagay ang layunin ng request.', 'red');
-        document.getElementById('f-purpose').focus();
-        return;
-    }
-
-    if (selectedDocId === 'BBC' && !biz) {
-        toast('Pakiusap ilagay ang pangalan ng negosyo.', 'red');
-        document.getElementById('f-business').focus();
-        return;
-    }
-
-    showScreen('screen-attachment');
+    if (validatePortalForm()) showScreen('screen-attachment');
 }
 
 function newRequest() {
-    sessionStorage.removeItem(_SK);
+    try { sessionStorage.removeItem(_SK); } catch (_) {}
 
     selectedDocId = null;
     lastCode = '';
+    portalConfirmation = null;
+    document.getElementById('portal-form-error').hidden = true;
 
     document.querySelectorAll('.cert-btn').forEach(b =>
         b.classList.remove('selected')

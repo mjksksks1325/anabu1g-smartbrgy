@@ -6,11 +6,13 @@
     <title>Document Request Details</title>
     <link rel="icon" type="image/jpeg" href="{{ asset('images/anabu-logo.jpg') }}">
     <link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+<link rel="stylesheet" href="{{ asset('css/government.css') }}">
 </head>
 
-<body>
+<body class="light-mode standalone-page">
+@include('partials.civic-header')
 
-<div style="min-height:100vh; padding:28px;">
+<main id="main-content" tabindex="-1" class="civic-main">
 
     {{-- Page Header --}}
     <div class="page-header-row" style="margin-bottom:20px;">
@@ -36,6 +38,11 @@
         </div>
     @endif
 
+    @if ($errors->any())
+        <div class="card" role="alert"><strong>Unable to update request</strong><ul>
+            @foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach
+        </ul></div>
+    @endif
     {{-- Request Details --}}
     <div class="card" style="margin-bottom:18px;">
 
@@ -142,7 +149,7 @@
                 <label class="stat-label">Status</label>
 
                 <select name="status"
-                        class="form-control"
+                        class="form-input"
                         style="width:100%; margin-top:6px;"
                         required>
 
@@ -166,11 +173,6 @@
                         Ready for Release
                     </option>
 
-                    <option value="released"
-                        @selected($documentRequest->status === 'released')>
-                        Released
-                    </option>
-
                     <option value="rejected"
                         @selected($documentRequest->status === 'rejected')>
                         Rejected
@@ -183,12 +185,17 @@
                 <label class="stat-label">Remarks</label>
 
                 <textarea name="remarks"
-                          class="form-control"
+                          class="form-input"
                           rows="4"
                           style="width:100%; margin-top:6px;"
                           placeholder="Add optional staff remarks...">{{ old('remarks', $documentRequest->remarks) }}</textarea>
             </div>
 
+            <div class="form-group">
+                <label for="rejection_reason" class="form-label">Reason for rejection (required when rejecting)</label>
+                <textarea id="rejection_reason" name="rejection_reason" class="form-input" rows="3" maxlength="1000">{{ old('rejection_reason', $documentRequest->rejection_reason) }}</textarea>
+                <p>Provide at least 10 characters explaining the decision.</p>
+            </div>
             <div style="display:flex; justify-content:flex-end; gap:10px;">
 
                 <a href="{{ route('admin.dashboard') }}"
@@ -207,7 +214,7 @@
 
     </div>
 
-</div>
-
+</main>
+@include('partials.civic-footer')
 </body>
 </html>

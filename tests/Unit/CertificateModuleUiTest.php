@@ -8,11 +8,13 @@ test('manual certificate modal submits real issuance fields and opens the genera
         ->toContain('id="manual-certificate-form"')
         ->toContain('onsubmit="issueManualCertificate(event)"')
         ->toContain('id="manual-certificate-type"')
+        ->toContain('id="manual-resident-id"')
         ->toContain('id="manual-resident-name"')
         ->toContain('id="manual-certificate-submit"')
         ->not->toContain("showToast('Certificate issued!','green');closeModal('modal-cert-issue')");
     expect($adminScript)
         ->toContain("fetch('/admin/issued-certificates'")
+        ->toContain("resident_id: Number(document.getElementById('manual-resident-id')?.value) || null")
         ->toContain("window.open('about:blank', '_blank')")
         ->toContain('printWindow.location.href = data.print_url;');
 });

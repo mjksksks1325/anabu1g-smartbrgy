@@ -12,12 +12,14 @@ use App\Models\IssuedCertificate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 class IssuedCertificateController extends Controller
 {
     public function index(): JsonResponse
     {
+        Gate::authorize('viewAny', DocumentRequest::class);
         $certificates = IssuedCertificate::query()
             ->with('documentRequest')
             ->latest('issued_at')
@@ -63,6 +65,7 @@ class IssuedCertificateController extends Controller
         DocumentRequest $documentRequest,
         IssueCertificate $issueCertificate,
     ): JsonResponse|RedirectResponse {
+        Gate::authorize('update', $documentRequest);
         try {
             $certificate = $issueCertificate->handle(
                 attributes: [
@@ -83,6 +86,7 @@ class IssuedCertificateController extends Controller
 
     public function print(IssuedCertificate $issuedCertificate): View
     {
+        Gate::authorize('viewAny', DocumentRequest::class);
         $view = CertificateType::tryFromLabel($issuedCertificate->certificate_type)?->printView()
             ?? 'admin.certificates.print';
 

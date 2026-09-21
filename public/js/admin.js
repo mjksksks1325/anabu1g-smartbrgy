@@ -1,7 +1,5 @@
 'use strict';
 
-console.log('ADMIN JS LOADED');
-
 // ── API Configuration ──
 const API = '';
 
@@ -33,6 +31,7 @@ function csrfRequestHeaders() {
 // SAMPLE DATA — DOB-based (no RFID in resident record, age computed)
 // ═══════════════════════════════════════
 const RESIDENTS = [];
+let RESIDENT_TOTAL = 0;
 
 const BASE_POPULATION = 0;
 const BASE_RESIDENT_SAMPLE_COUNT = RESIDENTS.length;
@@ -49,7 +48,7 @@ const SPECIAL_GROUP_META = {
 };
 
 function totalPopulation() {
-  return BASE_POPULATION + Math.max(0, RESIDENTS.length - BASE_RESIDENT_SAMPLE_COUNT);
+  return BASE_POPULATION + Math.max(0, RESIDENT_TOTAL - BASE_RESIDENT_SAMPLE_COUNT);
 }
 
 function getResidentGroups(r) {
@@ -68,38 +67,46 @@ function setCheckedSpecialGroups(groups = []) {
   });
 }
 
-function refreshDashboardStats() {
-  const reqs = typeof CERT_REQUESTS !== 'undefined' ? CERT_REQUESTS : [];
-  const incs = typeof INCIDENTS !== 'undefined' ? INCIDENTS : [];
-  const logs = typeof LIVE_AUDIT_LOGS !== 'undefined' ? LIVE_AUDIT_LOGS : [];
+async function refreshDashboardStats() {
+  try {
+    const response = await fetch('/admin/dashboard-summary', { credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload?.message || 'Hindi ma-load ang dashboard summary.');
+    const summary = payload.summary || {};
+    const set = (id, value) => { const element = document.getElementById(id); if (element) element.textContent = Number(value || 0).toLocaleString(); };
+    set('dash-stat-residents', summary.active_residents);
+    set('dash-stat-issued', summary.issued_certificates);
+    set('dash-stat-pending', summary.pending_requests);
+    set('dash-stat-incidents', summary.open_incidents);
+    document.getElementById('dash-sub-pending').textContent = summary.pending_requests ? `${summary.pending_requests} request na hindi pa tapos` : 'No pending requests';
+    document.getElementById('dash-sub-incidents').textContent = summary.open_incidents ? `${summary.open_incidents} open incident report` : 'No open incidents';
 
-  const pending = reqs.filter(r => r.status !== 'Completed').length;
-  const incidentCount = incs.length;
+    const activity = payload.recent_activity || [];
+    const previous = new Map(NOTIFICATIONS.map(item => [item.id, item.read]));
+    NOTIFICATIONS.splice(0, NOTIFICATIONS.length, ...activity.map(item => ({
+      id: item.detail + item.occurred_at, title: item.title, detail: item.detail, time: item.time,
+      read: previous.get(item.detail + item.occurred_at) || false, dot: 'var(--blue-400)',
+      screen: item.type === 'incident' ? 'incidents' : 'certificates',
+    })));
+    renderNotifications(); updateNotifBadge();
 
-  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-  set('dash-stat-pending',   pending);
-  set('dash-stat-incidents', incidentCount);
-  set('dash-sub-pending',   pending > 0 ? `${pending} request na hindi pa tapos` : 'No pending requests');
-  set('dash-sub-incidents', incidentCount > 0 ? `${incidentCount} incident${incidentCount !== 1 ? 's' : ''} na naka-file` : 'No incidents filed');
-
-  // Recent Activity
-  const actEl = document.getElementById('dash-recent-activity');
-  if (actEl) {
-    const typeColor = { auth:'var(--green-500)', cert:'#F59E0B', rfid:'var(--blue-400)', record:'#A78BFA', incident:'#FB923C', security:'#EF4444' };
-    const recent = logs.slice(0, 6);
-    if (recent.length === 0) {
-      actEl.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:11px;padding:18px 0;">No recent activity.</div>';
-    } else {
-      actEl.innerHTML = recent.map(l => `
-        <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
-          <span style="font-size:16px;flex-shrink:0;">${l.icon || '📌'}</span>
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:12px;font-weight:600;color:${typeColor[l.type]||'var(--text-primary)'};">${l.action}</div>
-            <div style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${l.detail}</div>
-          </div>
-          <div style="font-size:10px;color:var(--text-muted);flex-shrink:0;">${l.time}</div>
-        </div>`).join('');
+    const activityElement = document.getElementById('dash-recent-activity');
+    if (activityElement) {
+      activityElement.innerHTML = activity.length === 0
+        ? '<div style="text-align:center;color:var(--text-muted);font-size:11px;padding:18px 0;">No recent activity.</div>'
+        : activity.map(item => `
+          <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+            <span style="font-size:16px;flex-shrink:0;">${item.type === 'incident' ? '🚨' : '📋'}</span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:12px;font-weight:600;color:var(--text-primary);">${escapeText(item.title)}</div>
+              <div style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeText(item.detail)}</div>
+            </div>
+            <div style="font-size:10px;color:var(--text-muted);flex-shrink:0;">${escapeText(item.time)}</div>
+          </div>`).join('');
     }
+  } catch (error) {
+    console.error('Dashboard summary failed:', error);
+    showToast(error.message || 'Hindi ma-load ang dashboard.', 'red');
   }
 }
 
@@ -149,6 +156,7 @@ function getAgeGroup(dob) {
 // ═══════════════════════════════════════
 // PUROK_DATA is loaded exclusively from the database via db-connector.js
 const PUROK_DATA = [];
+let DEMOGRAPHIC_SUMMARY = null;
 
 const PUROK_FALLBACK_COLORS = ['var(--green-500)', 'var(--blue-400)', '#F59E0B', '#A78BFA', '#34D399', '#F472B6'];
 
@@ -228,7 +236,71 @@ function openAddPurok() {
 }
 
 async function savePurok() {
-  // Handled entirely by db-connector.js window.savePurok override
+  const name = document.getElementById('purok-label')?.value.trim()
+    || document.getElementById('purok-name')?.value.trim();
+  const color = document.getElementById('purok-color')?.value || '#22C55E';
+
+  if (!name) {
+    showToast('Enter a purok display name.', 'red');
+    return;
+  }
+
+  try {
+    const response = await fetch('/admin/puroks', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', ...csrfRequestHeaders() },
+      body: JSON.stringify({ name, color })
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      const message = payload?.errors ? Object.values(payload.errors).flat()[0] : payload?.message;
+      throw new Error(message || 'Unable to add the purok.');
+    }
+    closeModal('modal-purok');
+    showToast(payload.message, 'green');
+    await loadPuroks();
+  } catch (error) {
+    showToast(error.message, 'red');
+  }
+}
+
+async function loadPuroks() {
+  try {
+    const response = await fetch('/admin/puroks', {
+      credentials: 'same-origin',
+      headers: { 'Accept': 'application/json' }
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload?.message || 'Unable to load demographics.');
+
+    PUROK_DATA.splice(0, PUROK_DATA.length, ...payload.data.map(purok => ({
+      key: purok.name,
+      label: purok.name,
+      color: purok.color,
+      residentsCount: Number(purok.residents_count || 0),
+      seniorCount: Number(purok.senior_count || 0),
+      pwdCount: Number(purok.pwd_count || 0),
+      fourPsCount: Number(purok.four_ps_count || 0)
+    })));
+    DEMOGRAPHIC_SUMMARY = payload.demographics;
+    syncPurokSelects();
+    renderDemographics();
+    renderDashPurokBreakdown();
+    return true;
+  } catch (error) {
+    console.error('Purok loading failed:', error);
+    showToast(error.message || 'Unable to load demographics.', 'red');
+    return false;
+  }
+}
+
+async function refreshDemographics() {
+  const refreshed = await loadPuroks();
+
+  if (refreshed) {
+    showToast('Demographics data refreshed.', 'green');
+  }
 }
 
 loadCustomPuroks();
@@ -264,6 +336,9 @@ const CABINET_DRAWERS = [
 ];
 
 const INCIDENTS = [];
+let incidentCurrentPage = 1;
+let incidentLastPage = 1;
+let incidentSearchTimer = null;
 
 const CERT_REQUESTS = [];
 
@@ -290,7 +365,7 @@ const ELIGIBILITY_RULES = {
 // ═══════════════════════════════════════
 // THEME TOGGLE (Light / Dark Mode)
 // ═══════════════════════════════════════
-let isLightMode = false;
+let isLightMode = true;
 
 function toggleTheme() {
   isLightMode = !isLightMode;
@@ -299,6 +374,7 @@ function toggleTheme() {
   const label = document.getElementById('theme-label');
   if (icon)  icon.textContent  = isLightMode ? '🌙' : '☀️';
   if (label) label.textContent = isLightMode ? 'Dark Mode' : 'Light Mode';
+  try { localStorage.setItem('smartbrgy_theme', isLightMode ? 'light' : 'dark'); } catch (_) {}
   showToast(isLightMode ? '☀️ Light Mode na!' : '🌙 Dark Mode na!', 'green');
 }
 
@@ -318,17 +394,22 @@ let currentUserName   = '';
 // ═══════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════
+function findNavItem(screenId) {
+  return [...document.querySelectorAll('.nav-item')]
+    .find(item => item.getAttribute('onclick')?.includes(`showScreen('${screenId}'`)) || null;
+}
+
 function showScreen(id, el) {
   // Role-based guard
   const screenPermMap = {
     'dashboard': 'Dashboard', 'demographics': 'Records',
-    'records': 'Records', 'certificates': 'Certificates',
+    'records': 'Records', 'voters': 'Records', 'certificates': 'Certificates',
     'request-records': 'Requests', 'incidents': 'Incidents',
     'rfid': 'RFID', 'cabinet': 'Cabinet', 'qr': 'QR',
     'face': 'Face', 'audit': 'Audit', 'users': 'Users', 'settings': 'Settings'
   };
   const needed = screenPermMap[id];
-  const allowed = ACCESS_PERMS[currentUserAccess] || ACCESS_PERMS['Full Access'];
+  const allowed = ACCESS_PERMS[currentUserAccess] || ACCESS_PERMS['View Only'];
   if (needed && !allowed.includes(needed)) {
     showToast(`🚫 Walang access sa "${needed}". Makipag-ugnayan sa Admin.`, 'red');
     return;
@@ -338,25 +419,31 @@ function showScreen(id, el) {
   const screen = document.getElementById('screen-' + id);
   if (screen) screen.classList.add('active');
   if (el) el.classList.add('active');
-  localStorage.setItem('smartbrgy_active_screen', id);
+  try { localStorage.setItem('smartbrgy_active_screen', id); } catch (_) {}
+  if (screen) { screen.setAttribute('tabindex', '-1'); screen.focus({ preventScroll: true }); }
+  document.querySelectorAll('.nav-item').forEach(item => item.setAttribute('aria-current', item === el ? 'page' : 'false'));
   showLoadingBar();
   if (id === 'dashboard') refreshDashboardStats();
   if (id === 'audit') {
     if (typeof reloadAuditLog === 'function') reloadAuditLog();
     else renderAuditLog();
   }
-  if (id === 'request-records') renderRequestRecords(rrCurrentFilter, rrCurrentStatusFilter);
+  if (id === 'users') void reloadUsers();
+  toggleNavigation(false);
+  if (id === 'request-records') void loadRequestRecords(1);
   if (id === 'certificates') {
     renderCertKanban();
     const badge = document.getElementById('cert-nav-badge');
     if (badge) { badge.textContent = '0'; badge.style.display = 'none'; }
   }
-  if (id === 'demographics') renderDemographics();
+  if (id === 'demographics') void loadPuroks();
+  if (id === 'voters') loadVoterRegistry(voterCurrentPage);
+  if (id === 'incidents') void loadIncidents(incidentCurrentPage);
 }
 
 function applyAccessControl(access) {
   currentUserAccess = access || 'Full';
-  const allowed = ACCESS_PERMS[currentUserAccess] || ACCESS_PERMS['Full Access'];
+  const allowed = ACCESS_PERMS[currentUserAccess] || ACCESS_PERMS['View Only'];
   document.querySelectorAll('.nav-item[data-perm]').forEach(item => {
     const perm = item.getAttribute('data-perm');
     if (perm && !allowed.includes(perm)) {
@@ -427,9 +514,7 @@ function initLoginParticles() {
 }
 
 
-const VALID_CREDENTIALS = [
-  { empId: 'EMP-001', username: 'admin', password: 'Admin@1234!', name: 'Admin', role: 'Super Administrator' },
-];
+const VALID_CREDENTIALS = [];
 
 function isStrongPassword(pw) {
   // min 8 chars, at least one uppercase, lowercase, digit, special char
@@ -441,15 +526,7 @@ function isStrongPassword(pw) {
 }
 
 function fillSample() {
-  const e = document.getElementById('login-empid');
-  const u = document.getElementById('login-user');
-  const p = document.getElementById('login-pass');
-
-  if (e) e.value = 'EMP-001';
-  if (u) u.value = 'admin';
-  if (p) p.value = 'Admin@1234!';
-
-  showToast('Sample credentials filled. Click SECURE LOGIN.', 'green');
+  showToast('Use your authorized Laravel staff account.', '');
 }
 
 async function doLoginCreds() {
@@ -482,13 +559,15 @@ function _doLoginSuccess(name, role) {
 
 // Init on page load
 window.addEventListener('DOMContentLoaded', () => {
+  if (window.AUTHENTICATED_USER) return;
+
   startLoginClock();
   startTicker();
   initLoginParticles();
 });
 
 
-function launchApp(name, role) {
+function legacyLaunchApp(name, role) {
   currentUserName = name || 'Staff';
   currentUserRole = role || 'Staff';
   // Map role → access level
@@ -526,9 +605,18 @@ startClock();
 showScreen('dashboard');
 
 }
-function doLogout() {
+async function doLogout() {
   if (!confirm('Mag-logout ka na?')) return;
-  localStorage.removeItem('smartbrgy_active_screen');
+  const response = await fetch('/logout', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Accept': 'application/json', ...csrfRequestHeaders() }
+  });
+  if (response.ok || response.redirected) {
+    localStorage.removeItem('smartbrgy_active_screen');
+    window.location.href = '/login';
+    return;
+  }
   document.getElementById('app').classList.remove('visible');
   const ls = document.getElementById('login-screen');
   ls.style.display = 'flex';
@@ -553,13 +641,15 @@ function doLogout() {
 // ═══════════════════════════════════════
 // CLOCK
 // ═══════════════════════════════════════
+let clockTimer = null;
+
 function startClock() {
   function tick() {
     const el = document.getElementById('clock-display');
     if (el) el.textContent = new Date().toLocaleTimeString('en-PH', { hour12: false });
   }
   tick();
-  setInterval(tick, 1000);
+  if (clockTimer === null) clockTimer = setInterval(tick, 1000);
 }
 
 // ═══════════════════════════════════════
@@ -626,14 +716,14 @@ function buildCharts() {
   });
 
   // Hole
-  const bg = getComputedStyle(document.documentElement).getPropertyValue('--card-bg').trim() || '#1a1f2e';
+  const bg = getComputedStyle(document.body).getPropertyValue('--bg-panel').trim() || '#ffffff';
   ctx.beginPath();
   ctx.arc(60, 60, 30, 0, 2 * Math.PI);
   ctx.fillStyle = bg || '#1a1f2e';
   ctx.fill();
 
   // Center total
-  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#fff';
+  ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-primary').trim() || '#fff';
   ctx.font = 'bold 18px sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -668,10 +758,11 @@ function renderDashPurokBreakdown() {
   container.innerHTML = '';
   const countByPurok = {};
   RESIDENTS.forEach(r => { countByPurok[r.purok] = (countByPurok[r.purok] || 0) + 1; });
-  const total = RESIDENTS.length;
+  const total = Number(DEMOGRAPHIC_SUMMARY?.total ?? RESIDENTS.length);
   PUROK_DATA.forEach(p => {
-    const count = countByPurok[p.key] || 0;
-    const pct = total > 0 ? Math.round(count / total * 100) : 0;
+    const count = Number(p.residentsCount ?? countByPurok[p.key] ?? 0);
+    const demographicTotal = Number(DEMOGRAPHIC_SUMMARY?.total ?? total);
+    const pct = demographicTotal > 0 ? Math.round(count / demographicTotal * 100) : 0;
     container.innerHTML += `
       <div>
         <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;">
@@ -686,13 +777,13 @@ function renderDashPurokBreakdown() {
 // ═══════════════════════════════════════
 // DEMOGRAPHICS
 // ═══════════════════════════════════════
-function renderDemographics() {
+function legacyRenderDemographics() {
   renderPurokCards();
   renderAgeDistribution();
   renderSeniorList();
 }
 
-function renderPurokCards() {
+function legacyRenderPurokCards() {
   const grid = document.getElementById('demo-purok-grid');
   if (!grid) return;
   syncPurokSelects();
@@ -722,7 +813,7 @@ function renderPurokCards() {
   });
 }
 
-function renderAgeDistribution() {
+function legacyRenderAgeDistribution() {
   const list = document.getElementById('age-distribution-list');
   if (!list) return;
   const groups = [
@@ -754,7 +845,7 @@ function renderAgeDistribution() {
   });
 }
 
-function renderSeniorList() {
+function legacyRenderSeniorList() {
   const container = document.getElementById('senior-citizens-list');
   if (!container) return;
   const seniors = RESIDENTS.filter(r => isSenior(r.dob));
@@ -787,7 +878,7 @@ function renderSeniorList() {
 // ═══════════════════════════════════════
 // RESIDENTS TABLE
 // ═══════════════════════════════════════
-function renderResidentsTable(filter = '', statusFilter = '') {
+function legacyRenderResidentsTable(filter = '', statusFilter = '') {
   const tbody = document.getElementById('records-tbody');
   if (!tbody) return;
   tbody.innerHTML = '';
@@ -824,12 +915,12 @@ function renderResidentsTable(filter = '', statusFilter = '') {
     });
 }
 
-function filterResidents() {
+function legacyBrowserFilterResidents() {
   const q = document.getElementById('residents-search')?.value || '';
   renderResidentsTable(q);
 }
 
-function deleteResident(id) {
+function legacyDeleteResident(id) {
   if (!confirm('Sigurado ka bang tanggalin ang resident record na ito? Hindi na ito mababawi.')) return;
   const idx = RESIDENTS.findIndex(r => r.id === id);
   if (idx === -1) return;
@@ -846,13 +937,13 @@ function deleteResident(id) {
   refreshPopulationStats();
 }
 
-function filterResidentStatus(val, el) {
+function legacyFilterResidentStatus(val, el) {
   document.querySelectorAll('#screen-records .status-pill').forEach(p => p.classList.remove('active'));
   if (el) el.classList.add('active');
   renderResidentsTable('', val);
 }
 
-function openEditResident(id) {
+function legacyOpenEditResident(id) {
   const r = RESIDENTS.find(x => x.id === id);
   if (!r) { showToast('Resident not found.', 'red'); return; }
   syncPurokSelects(r.purok);
@@ -889,7 +980,7 @@ function openEditResident(id) {
   openModal('modal-resident');
 }
 
-function openAddResident() {
+function legacyBrowserOpenAddResident() {
   syncPurokSelects();
   // Reset title and fields for adding a new resident
   const titleEl = document.getElementById('modal-resident-title');
@@ -901,7 +992,7 @@ function openAddResident() {
   openModal('modal-resident');
 }
 
-function saveResident() {
+function legacySaveResident() {
   const name = document.getElementById('res-name')?.value?.trim();
   const lastName = document.getElementById('res-lastname')?.value?.trim();
   const dob = document.getElementById('res-dob')?.value;
@@ -944,7 +1035,7 @@ function saveResident() {
 // VIEW RESIDENT
 // ═══════════════════════════════════════
 let currentViewResidentId = null;
-function openViewResident(id) {
+function legacyOpenViewResident(id) {
   currentViewResidentId = id;
   const r = RESIDENTS.find(x => x.id === id);
   if (!r) return;
@@ -978,7 +1069,7 @@ function openViewResident(id) {
 // ═══════════════════════════════════════
 // CERTIFICATES
 // ═══════════════════════════════════════
-function renderCertRequests(filter = '') {
+function legacyRenderCertRequests(filter = '') {
   const tbody = document.getElementById('cert-requests-tbody');
   if (!tbody) return;
   tbody.innerHTML = '';
@@ -1078,6 +1169,7 @@ async function issueManualCertificate(event) {
       },
       body: JSON.stringify({
         certificate_type: document.getElementById('manual-certificate-type')?.value,
+        resident_id: Number(document.getElementById('manual-resident-id')?.value) || null,
         resident_name: document.getElementById('manual-resident-name')?.value.trim(),
         address: document.getElementById('manual-resident-address')?.value.trim() || null,
         purpose: document.getElementById('manual-certificate-purpose')?.value.trim() || null
@@ -1441,36 +1533,9 @@ function switchQRTab(tab) {
 
 // PURPOSE 1 — Document Authenticity Scan
 function simulateQRScan(mode) {
-  if (mode === 'status') {
-    // PURPOSE 2 — Request status
-    const area = document.getElementById('qr-status-area');
-    const lbl = document.getElementById('qr-status-label');
-    area.classList.add('active-scan');
-    lbl.textContent = '🔄 Reading QR slip...';
-    setTimeout(() => {
-      area.classList.remove('active-scan');
-      // Pick a random request for simulation
-      const r = CERT_REQUESTS[Math.floor(Math.random() * CERT_REQUESTS.length)];
-      lbl.textContent = `✅ Request Found — ${r.code}`;
-      showRequestStatus(r.code);
-    }, 1400);
-    return;
-  }
-
-  // PURPOSE 1 — Document verification
-  const area = document.getElementById('qr-scan-area');
-  const lbl = document.getElementById('qr-scan-label');
-  area.classList.add('active-scan');
-  lbl.textContent = '🔄 Reading QR code...';
-  setTimeout(() => {
-    area.classList.remove('active-scan');
-    // Pick only completed (issued) documents for doc verification simulation
-    const issued = CERT_REQUESTS.filter(r => r.status === 'Completed' || r.status === 'Ready to Print');
-    const r = issued.length > 0 ? issued[Math.floor(Math.random() * issued.length)] : CERT_REQUESTS[0];
-    lbl.textContent = `✅ Document Verified — ${r.code}`;
-    showDocVerificationResult(r.code, true);
-    pushQRRecentLog(r.code, r.name, r.type, true);
-  }, 1400);
+  if (mode === 'status') { document.getElementById('status-code')?.focus(); }
+  else { document.getElementById('manual-code')?.focus(); }
+  showToast('Enter the code printed on the document, or scan it with your phone camera.', '');
 }
 
 // Show document authenticity result (Purpose 1)
@@ -1619,10 +1684,22 @@ function showRealCertificateVerification(certificate) {
 }
 
 // PURPOSE 2 — Request Status Check (for residents)
-function checkRequestStatus(code) {
-  if (!code || !code.trim()) { showToast('Please enter your confirmation code.', 'red'); return; }
-  const r = CERT_REQUESTS.find(x => x.code.trim().toUpperCase() === code.trim().toUpperCase());
-  showRequestStatus(r ? r.code : null, r);
+async function checkRequestStatus(code) {
+  if (!code?.trim()) { showToast('Please enter your confirmation code.', 'red'); return; }
+  const result = document.getElementById('qr-status-result');
+  const card = document.getElementById('qr-status-result-card');
+  result.style.display = 'block';
+  card.textContent = 'Checking request status...';
+  try {
+    const request = await adminRequest(`/portal/request/${encodeURIComponent(code.trim().toUpperCase())}`);
+    card.innerHTML = `<div class="card-header"><div class="card-title">${escapeText(request.document_type)}</div></div>
+      <p><strong>${escapeText(request.reference_code)}</strong></p>
+      <p class="badge badge-blue">${escapeText(request.status.replaceAll('_', ' '))}</p>
+      <p style="margin-top:12px">${escapeText(request.rejection_reason || request.remarks || 'Present your reference code at the Barangay Hall for assistance.')}</p>`;
+  } catch (error) {
+    card.textContent = error.message;
+    showToast(error.message, 'red');
+  }
 }
 
 function showRequestStatus(code, reqData) {
@@ -1673,24 +1750,24 @@ function showRequestStatus(code, reqData) {
       <div class="qr-status-header" style="background:${statusColor}10;border-bottom:1px solid ${statusColor}22;">
         <div style="width:48px;height:48px;border-radius:50%;background:${statusColor};display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">📋</div>
         <div style="flex:1;">
-          <div style="font-size:15px;font-weight:800;color:var(--text-primary);">${r.type}</div>
-          <div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">Request for: <strong style="color:var(--text-primary);">${r.name}</strong></div>
+          <div style="font-size:15px;font-weight:800;color:var(--text-primary);">${escapeText(r.type)}</div>
+          <div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">Request for: <strong style="color:var(--text-primary);">${escapeText(r.name)}</strong></div>
         </div>
         ${statusBadge}
       </div>
       <div style="padding:14px 18px;display:flex;gap:16px;border-bottom:1px solid var(--row-sep);">
-        <div style="flex:1;"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">Confirmation Code</div><div style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:${statusColor};">${r.code}</div></div>
-        <div style="flex:1;"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">Date Filed</div><div style="font-size:12.5px;font-weight:600;color:var(--text-primary);">${r.requested}</div></div>
-        <div style="flex:1;"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">Channel</div><div><span class="badge ${r.via === 'Online' ? 'badge-purple' : 'badge-gray'}">${r.via}</span></div></div>
+        <div style="flex:1;"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">Confirmation Code</div><div style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:${statusColor};">${escapeText(r.code)}</div></div>
+        <div style="flex:1;"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">Date Filed</div><div style="font-size:12.5px;font-weight:600;color:var(--text-primary);">${escapeText(r.requested)}</div></div>
+        <div style="flex:1;"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">Channel</div><div><span class="badge ${r.via === 'Online' ? 'badge-purple' : 'badge-gray'}">${escapeText(r.via)}</span></div></div>
       </div>
       <div class="qr-status-track">${stepsHtml}</div>
       ${r.status === 'Ready to Print' ? `
       <div style="padding:12px 18px;background:var(--green-dim);border-top:1px solid var(--border-green);display:flex;align-items:center;gap:10px;font-size:12px;color:var(--green-500);">
-        🏛️ <strong>Your document is ready!</strong> Visit Barangay Anabu I-G Hall and present your confirmation code: <strong style="font-family:var(--font-mono);">${r.code}</strong>
+        🏛️ <strong>Your document is ready!</strong> Visit Barangay Anabu I-G Hall and present your confirmation code: <strong style="font-family:var(--font-mono);">${escapeText(r.code)}</strong>
       </div>` : ''}
     </div>`;
   resultDiv.style.display = 'block';
-  showToast(`Request ${r.code} found — Status: ${r.status}`, 'green');
+  showToast(`Request ${escapeText(r.code)} found — Status: ${r.status}`, 'green');
 }
 
 // Recent verifications log (Purpose 1)
@@ -1747,169 +1824,16 @@ function simulateFaceRecognition() {
 }
 
 // ═══════════════════════════════════════
-// INCIDENTS
-// ═══════════════════════════════════════
-function renderIncidents() {
-  const tbody = document.getElementById('incidents-tbody');
-  if (!tbody) return;
-  tbody.innerHTML = '';
-  if (typeof refreshDashboardStats === 'function') refreshDashboardStats();
-
-  // Update stat cards
-  const now = new Date();
-  const pending  = INCIDENTS.filter(i => i.status === 'Pending').length;
-  const resolved = INCIDENTS.filter(i => {
-    if (i.status !== 'Resolved') return false;
-    const d = new Date(i.date);
-    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-  }).length;
-  const high = INCIDENTS.filter(i => i.severity === 'High').length;
-  const setS = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-  setS('inc-stat-pending',  pending);
-  setS('inc-stat-resolved', resolved);
-  setS('inc-stat-high',     high);
-
-  INCIDENTS.forEach(inc => {
-    const sevClass = inc.severity === 'High' ? 'badge-red' : inc.severity === 'Medium' ? 'badge-amber' : 'badge-gray';
-    const statClass = inc.status === 'Pending' ? 'badge-amber' : 'badge-green';
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><span style="font-family:var(--font-mono);font-size:10.5px;color:var(--blue-400);">${escapeText(inc.id)}</span></td>
-      <td style="font-weight:600;color:var(--text-primary);">${escapeText(inc.type)}</td>
-      <td>${escapeText(inc.loc)}</td>
-      <td style="font-size:11.5px;">${escapeText(inc.date)}</td>
-      <td>${escapeText(inc.reported)}</td>
-      <td style="color:${inc.complainee ? 'var(--text-primary)' : 'var(--text-muted)'};">${inc.complainee ? escapeText(inc.complainee) : '—'}</td>
-      <td><span class="badge ${sevClass}">${inc.severity}</span></td>
-      <td><span class="badge ${statClass}">${inc.status}</span></td>
-      <td style="white-space:nowrap;">
-        <button class="btn btn-xs" onclick="openViewIncident('${escapeText(inc.id)}')" style="background:rgba(34,197,94,0.08);border-color:rgba(34,197,94,0.3);color:#4ADE80;">👁 View</button>
-        <button class="btn btn-xs btn-primary" onclick="openEditIncident('${escapeText(inc.id)}')">✏️ Edit</button>
-        <button class="btn btn-xs btn-danger" onclick="deleteIncident('${escapeText(inc.id)}')">🗑</button>
-      </td>`;
-    tbody.appendChild(tr);
-  });
-}
-
-function openViewIncident(id) {
-  const inc = INCIDENTS.find(x => x.id === id);
-  if (!inc) return;
-  const sevColor = inc.severity === 'High' ? '#EF4444' : inc.severity === 'Medium' ? '#F59E0B' : '#6B7280';
-  const statColor = inc.status === 'Pending' ? '#F59E0B' : '#22C55E';
-  const set = (elId, val) => { const el = document.getElementById(elId); if (el) el.textContent = val || '—'; };
-  set('view-inc-id',          inc.id);
-  set('view-inc-type',        inc.type);
-  set('view-inc-date',        inc.date);
-  set('view-inc-loc',         inc.loc);
-  set('view-inc-reported',    inc.reported);
-  set('view-inc-complainee',  inc.complainee || '—');
-  set('view-inc-description', inc.description || 'Walang detalye.');
-  const sevEl = document.getElementById('view-inc-severity');
-  if (sevEl) { sevEl.textContent = inc.severity; sevEl.style.color = sevColor; }
-  const statEl = document.getElementById('view-inc-status');
-  if (statEl) { statEl.textContent = inc.status; statEl.style.color = statColor; }
-  const editBtn = document.getElementById('view-inc-edit-btn');
-  if (editBtn) editBtn.onclick = () => { closeModal('modal-view-incident'); openEditIncident(id); };
-  // Show attachments if any
-  const attWrap = document.getElementById('view-inc-attachments-wrap');
-  const attEl   = document.getElementById('view-inc-attachments');
-  if (attWrap && attEl) {
-    let urls = [];
-    if (Array.isArray(inc.attachments)) {
-      urls = inc.attachments;
-    } else if (typeof inc.attachments === 'string' && inc.attachments) {
-      try {
-        urls = JSON.parse(inc.attachments);
-        if (!Array.isArray(urls)) {
-          try { urls = JSON.parse(urls); } catch(e) { urls = []; }
-          if (!Array.isArray(urls)) urls = [];
-        }
-      } catch(e) { urls = []; }
-    }
-    if (urls.length) {
-      attEl.innerHTML = urls.map(u => {
-        const isImg = /\.(png|jpe?g|gif|webp|heic)$/i.test(u);
-        return isImg
-          ? `<a href="${u}" target="_blank"><img src="${u}" style="max-height:80px;max-width:120px;border-radius:6px;border:1px solid var(--border);object-fit:cover;" title="View attachment"/></a>`
-          : `<a href="${u}" target="_blank" style="font-size:12px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-glass);color:var(--blue-400);">📎 Attachment</a>`;
-      }).join('');
-      attWrap.style.display = 'block';
-    } else {
-      attWrap.style.display = 'none';
-    }
-  }
-  openModal('modal-view-incident');
-}
-
-function deleteIncident(id) {
-  if (!confirm('Sigurado ka bang tanggalin ang incident report na ito? Hindi na ito mababawi.')) return;
-  const idx = INCIDENTS.findIndex(x => x.id === id);
-  if (idx === -1) return;
-  const inc = INCIDENTS[idx];
-  INCIDENTS.splice(idx, 1);
-  addLiveAuditEntry('🗑️', 'incident', 'Incident Report Deleted', `${id} — ${inc.type}`, currentUserName || 'Staff');
-  showToast(`Incident report ${id} ay natanggal.`, '');
-  renderIncidents();
-}
-
-function openEditIncident(id) {
-  const inc = INCIDENTS.find(x => x.id === id);
-  if (!inc) return;
-  const set = (field, value) => { const el = document.getElementById(field); if (el) el.value = value || ''; };
-  set('inc-edit-id',   inc.id);
-  set('inc-type',      inc.type);
-  set('inc-location',  inc.loc);
-  set('inc-reported',  inc.reported);
-  set('inc-complainee',inc.complainee);
-  set('inc-severity',  inc.severity);
-  set('inc-details',   inc.description);
-  const attInput = document.getElementById('inc-attachments');
-  if (attInput) attInput.value = '';
-  const attPreview = document.getElementById('inc-attachments-preview');
-  if (attPreview) attPreview.innerHTML = '';
-  const titleEl = document.getElementById('inc-modal-title');
-  if (titleEl) titleEl.textContent = '✏️ I-edit ang Incident Report';
-  const saveBtn = document.querySelector('#modal-incident .btn-danger');
-  if (saveBtn) saveBtn.textContent = '💾 I-update ang Report';
-  openModal('modal-incident');
-}
-
-function openAddIncident() {
-  ['inc-type','inc-location','inc-reported','inc-complainee','inc-severity','inc-date','inc-time','inc-details','inc-edit-id'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
-  const attInput = document.getElementById('inc-attachments');
-  if (attInput) attInput.value = '';
-  const attPreview = document.getElementById('inc-attachments-preview');
-  if (attPreview) attPreview.innerHTML = '';
-  const titleEl = document.getElementById('inc-modal-title');
-  if (titleEl) titleEl.textContent = '🚨 File Incident Report';
-  const saveBtn = document.querySelector('#modal-incident .btn-danger');
-  if (saveBtn) saveBtn.textContent = '🚨 File Report';
-  openModal('modal-incident');
-}
-
-function saveIncident() {
-  const type = document.getElementById('inc-type')?.value;
-  if (!type) { showToast('Please complete the incident report.', 'red'); return; }
-  const newId = 'INC-2025-00' + (INCIDENTS.length + 1);
-  showToast(`Incident report ${newId} filed successfully!`, 'green');
-  closeModal('modal-incident');
-  renderIncidents();
-}
-
-// ═══════════════════════════════════════
 // AUDIT LOG
 // ═══════════════════════════════════════
-function renderAuditLog() {
+function legacyRenderAuditLog() {
   const container = document.getElementById('audit-log-list');
   if (!container) return;
   container.innerHTML = '';
   AUDIT_LOGS.forEach(log => {
     const div = document.createElement('div');
     div.className = 'log-item';
-    div.innerHTML = `<div class="log-icon-box">${log.icon}</div><div style="flex:1;"><div class="log-action">${log.action}</div><div class="log-detail">${log.detail}</div><div class="log-time">🕐 ${log.time}</div></div>`;
+    div.innerHTML = `<div class="log-icon-box">${escapeText(log.icon)}</div><div style="flex:1;"><div class="log-action">${escapeText(log.action)}</div><div class="log-detail">${escapeText(log.detail)}</div><div class="log-time">🕐 ${escapeText(log.time)}</div></div>`;
     container.appendChild(div);
   });
 }
@@ -1917,7 +1841,7 @@ function renderAuditLog() {
 // ═══════════════════════════════════════
 // USER MANAGEMENT
 // ═══════════════════════════════════════
-function renderUsers() {
+function legacyRenderUsers() {
   const tbody = document.getElementById('users-tbody');
   if (!tbody) return;
   tbody.innerHTML = '';
@@ -1990,9 +1914,20 @@ function submitPortalRequest() {
 // ═══════════════════════════════════════
 // MODALS
 // ═══════════════════════════════════════
-function openModal(id) { const el = document.getElementById(id); if (el) el.classList.add('show'); }
-function closeModal(id) { const el = document.getElementById(id); if (el) el.classList.remove('show'); }
-document.addEventListener('click', function(e) { if (e.target.classList.contains('modal-overlay')) e.target.classList.remove('show'); });
+let modalTrigger = null;
+function openModal(id) {
+  const element = document.getElementById(id);
+  if (!element) return;
+  modalTrigger = document.activeElement;
+  element.classList.add('show');
+  element.setAttribute('role', 'dialog');
+  element.setAttribute('aria-modal', 'true');
+  const title = element.querySelector('.modal-title');
+  if (title) { if (!title.id) title.id = id + '-title'; element.setAttribute('aria-labelledby', title.id); }
+  element.querySelector('input:not([type="hidden"]), select, textarea, button, [tabindex="0"]')?.focus();
+}
+function closeModal(id) { const el = document.getElementById(id); if (el) el.classList.remove('show'); modalTrigger?.focus(); }
+document.addEventListener('click', function(e) { if (e.target.classList.contains('modal-overlay')) closeModal(e.target.id); });
 
 // ═══════════════════════════════════════
 // TOAST
@@ -2003,7 +1938,7 @@ function showToast(msg, type) {
   const toast = document.createElement('div');
   toast.className = 'toast' + (type ? ' ' + type : '');
   const icons = { green: '✅', red: '❌', '': 'ℹ️' };
-  toast.innerHTML = `<span style="font-size:15px;">${icons[type] || 'ℹ️'}</span><span>${msg}</span>`;
+  toast.innerHTML = `<span style="font-size:15px;">${icons[type] || 'ℹ️'}</span><span>${escapeText(msg)}</span>`;
   wrap.appendChild(toast);
   setTimeout(() => {
     toast.style.opacity = '0';
@@ -2041,19 +1976,20 @@ document.addEventListener('click', function(e) {
 // ═══════════════════════════════════════
 // GENERATE REPORT / SETTINGS
 // ═══════════════════════════════════════
-function generateReport() {
-  showToast('Generating report... Please wait.', '');
-  setTimeout(() => { showToast('Report generated successfully!', 'green'); closeModal('modal-report'); }, 2000);
-}
-function saveSettings() { showToast('System settings saved successfully.', 'green'); }
+function generateReport() { window.location.href = '/admin/residents-export'; closeModal('modal-report'); }
+
 
 // ═══════════════════════════════════════
 // REQUEST RECORDS
 // ═══════════════════════════════════════
 let rrCurrentFilter = '';
 let rrCurrentStatusFilter = '';
+let rrCurrentPage = 1;
+let rrLastPage = 1;
+let rrSearchTimer = null;
+let requestRecordResidents = [];
 
-function renderRequestRecords(nameFilter = '', statusFilter = '') {
+function legacyRenderRequestRecords(nameFilter = '', statusFilter = '') {
   const container = document.getElementById('rr-resident-list');
   if (!container) return;
   container.innerHTML = '';
@@ -2183,12 +2119,12 @@ function advanceRequestRecord(code, nextStatus) {
   renderCertKanban();
 }
 
-function filterRequestRecords() {
+function legacyFilterRequestRecords() {
   rrCurrentFilter = document.getElementById('rr-search')?.value || '';
   renderRequestRecords(rrCurrentFilter, rrCurrentStatusFilter);
 }
 
-function filterRRStatus(status, el) {
+function legacyFilterRRStatus(status, el) {
   document.querySelectorAll('.rr-filter-btn').forEach(b => b.classList.remove('active'));
   if (el) el.classList.add('active');
   rrCurrentStatusFilter = status;
@@ -2209,7 +2145,10 @@ function populateEligResidentDropdown(preselect) {
   const sel = document.getElementById('elig-resident-select');
   if (!sel) return;
   sel.innerHTML = '<option value="">— Pumili ng Residente —</option>';
-  RESIDENTS.forEach(r => {
+  const availableResidents = manualResidentsById.size > 0
+    ? [...manualResidentsById.values()].map(residentFromApi)
+    : RESIDENTS;
+  availableResidents.forEach(r => {
     const opt = document.createElement('option');
     opt.value = r.id;
     const age = calcAge(r.dob);
@@ -2228,7 +2167,7 @@ function openEligibilityForResident(residentId) {
   openModal('modal-eligibility-check');
 }
 
-function runEligibilityCheck() {
+function legacyRunEligibilityCheck() {
   const residentId = document.getElementById('elig-resident-select').value;
   const certId = document.getElementById('elig-doc-select').value;
   if (!residentId || !certId) { showToast('Pumili ng residente at dokumento.', 'red'); return; }
@@ -2251,7 +2190,7 @@ function runEligibilityCheck() {
   currentEligResidentId = residentId;
 }
 
-function checkEligibility(residentId, certId) {
+function legacyCheckEligibility(residentId, certId) {
   const resident = RESIDENTS.find(r => r.id === residentId);
   const status = RESIDENT_STATUS[residentId];
   const rule = ELIGIBILITY_RULES[certId];
@@ -2295,7 +2234,7 @@ function checkEligibility(residentId, certId) {
   return { eligible, reasons, resident, rule, status };
 }
 
-function elig_proceedRequest() {
+function legacyBrowserEligProceedRequest() {
   const residentId = document.getElementById('elig-resident-select').value;
   const certId = document.getElementById('elig-doc-select').value;
   const ct = CERTIFICATE_TYPES.find(c => c.id === certId);
@@ -2309,7 +2248,7 @@ function elig_proceedRequest() {
   closeModal('modal-eligibility-check');
 }
 
-function openViewResidentRequests(residentId) {
+function legacyOpenViewResidentRequests(residentId) {
   if (!residentId) return;
   const r = RESIDENTS.find(x => x.id === residentId);
   const requests = REQUEST_RECORDS.filter(req => req.residentId === residentId);
@@ -2342,17 +2281,17 @@ const NOTIFICATIONS = [];
 function renderNotifications() {
   const list = document.getElementById('notif-list');
   if (!list) return;
-  list.innerHTML = '';
+  list.innerHTML = NOTIFICATIONS.length ? '' : '<div class="civic-empty">No recent notifications.</div>';
   NOTIFICATIONS.forEach(n => {
     const div = document.createElement('div');
     div.className = 'notif-item' + (n.read ? '' : ' unread');
-    div.onclick = () => { n.read = true; updateNotifBadge(); renderNotifications(); toggleNotifPanel(); showScreen(n.screen, document.querySelector('.nav-item')); };
+    div.onclick = () => { n.read = true; updateNotifBadge(); renderNotifications(); toggleNotifPanel(); showScreen(n.screen, findNavItem(n.screen)); };
     div.innerHTML = `
       <div class="notif-dot" style="background:${n.dot};margin-top:5px;flex-shrink:0;"></div>
       <div style="flex:1;">
-        <div class="notif-body"><strong>${n.title}</strong></div>
-        <div class="notif-body" style="margin-top:2px;">${n.detail}</div>
-        <div class="notif-time">${n.time}</div>
+        <div class="notif-body"><strong>${escapeText(n.title)}</strong></div>
+        <div class="notif-body" style="margin-top:2px;">${escapeText(n.detail)}</div>
+        <div class="notif-time">${escapeText(n.time)}</div>
       </div>
       ${!n.read ? '<div style="width:7px;height:7px;border-radius:50%;background:var(--blue-400);flex-shrink:0;margin-top:4px;"></div>' : ''}`;
     list.appendChild(div);
@@ -2395,9 +2334,11 @@ function renderSpecialGroups() {
   const container = document.getElementById('special-groups-container');
   if (!container) return;
   const active = RESIDENTS.filter(r => r.status === 'Active');
-  const total = active.length;
+  const total = Number(DEMOGRAPHIC_SUMMARY?.total ?? active.length);
   const groups = Object.keys(SPECIAL_GROUP_META).map(key => {
-    const count = active.filter(r => getResidentGroups(r).includes(key)).length;
+    const count = key === 'Senior Citizen'
+      ? Number(DEMOGRAPHIC_SUMMARY?.seniors ?? active.filter(r => isSenior(r.dob)).length)
+      : Number(DEMOGRAPHIC_SUMMARY?.special_groups?.[key] ?? active.filter(r => getResidentGroups(r).includes(key)).length);
     const meta = SPECIAL_GROUP_META[key];
     return { ...meta, count, pct: total ? ((count / total) * 100).toFixed(1) : '0.0' };
   });
@@ -2434,14 +2375,14 @@ function renderPurokCards() {
     if (groups.includes('PWD')) pwdByPurok[r.purok] = (pwdByPurok[r.purok] || 0) + 1;
     if (groups.includes('4Ps Beneficiary')) beneByPurok[r.purok] = (beneByPurok[r.purok] || 0) + 1;
   });
-  const total = RESIDENTS.length;
+  const total = Number(DEMOGRAPHIC_SUMMARY?.total ?? RESIDENTS.length);
   PUROK_DATA.forEach(p => {
-    const count = countByPurok[p.key] || 0;
+    const count = Number(p.residentsCount ?? countByPurok[p.key] ?? 0);
     const pct = total > 0 ? ((count / total) * 100).toFixed(1) : '0.0';
     const barPct = total > 0 ? (count / total * 100) : 0;
-    const seniors = seniorByPurok[p.key] || 0;
-    const pwd = pwdByPurok[p.key] || 0;
-    const bene = beneByPurok[p.key] || 0;
+    const seniors = Number(p.seniorCount ?? seniorByPurok[p.key] ?? 0);
+    const pwd = Number(p.pwdCount ?? pwdByPurok[p.key] ?? 0);
+    const bene = Number(p.fourPsCount ?? beneByPurok[p.key] ?? 0);
     grid.innerHTML += `
       <div class="demo-purok-card">
         <div class="demo-purok-name">📍 ${escapeText(p.label)}</div>
@@ -2473,7 +2414,15 @@ function renderAgeDistribution() {
     const g = counts.find(x => age >= x.min && age <= x.max);
     if (g) g.count++;
   });
-  const total = RESIDENTS.length;
+  if (DEMOGRAPHIC_SUMMARY?.age_groups) {
+    const summaryCounts = DEMOGRAPHIC_SUMMARY.age_groups;
+    counts[0].count = Number(summaryCounts.children || 0);
+    counts[1].count = Number(summaryCounts.youth || 0);
+    counts[2].count = Number(summaryCounts.young_adults || 0);
+    counts[3].count = Number(summaryCounts.middle_age || 0);
+    counts[4].count = Number(summaryCounts.seniors || 0);
+  }
+  const total = Number(DEMOGRAPHIC_SUMMARY?.total ?? RESIDENTS.length);
   const maxCount = Math.max(...counts.map(g => g.count), 1);
   list.innerHTML = counts.map(g => {
     const pct = total > 0 ? ((g.count / total) * 100).toFixed(1) : '0.0';
@@ -2489,11 +2438,10 @@ function renderAgeDistribution() {
 
 function renderDemographicsStats() {
   const active = RESIDENTS.filter(r => r.status === 'Active');
-  const total  = active.length;
-  const male   = active.filter(r => r.gender === 'Male').length;
-  const female = active.filter(r => r.gender === 'Female').length;
-  const uniqueHH = new Set(active.map(r => r.household).filter(Boolean)).size;
-  const hh = uniqueHH > 0 ? uniqueHH : (total > 0 ? Math.ceil(total / 4) : 0);
+  const total  = Number(DEMOGRAPHIC_SUMMARY?.total ?? active.length);
+  const male   = Number(DEMOGRAPHIC_SUMMARY?.male ?? active.filter(r => r.gender === 'Male').length);
+  const female = Number(DEMOGRAPHIC_SUMMARY?.female ?? active.filter(r => r.gender === 'Female').length);
+  const seniors = Number(DEMOGRAPHIC_SUMMARY?.seniors ?? active.filter(r => isSenior(r.dob)).length);
 
   const setEl = (id, val) => { const el = document.getElementById(id); if (el) { el.textContent = val.toLocaleString(); el.dataset.target = val; } };
   const setSub = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
@@ -2501,10 +2449,10 @@ function renderDemographicsStats() {
   setEl('demo-stat-total',      total);
   setEl('demo-stat-male',       male);
   setEl('demo-stat-female',     female);
-  setEl('demo-stat-households', hh);
+  setEl('demo-stat-households', seniors);
   setSub('demo-sub-male',       total > 0 ? `${((male   / total) * 100).toFixed(1)}% ng populasyon` : '—');
   setSub('demo-sub-female',     total > 0 ? `${((female / total) * 100).toFixed(1)}% ng populasyon` : '—');
-  setSub('demo-sub-households', uniqueHH > 0 ? `${hh} household${hh !== 1 ? 's' : ''} na naka-register` : `tinatayang ${hh} household`);
+  setSub('demo-sub-households', 'Age 60 and above');
 }
 
 function renderDemographics() {
@@ -2664,7 +2612,7 @@ function renderCertKanban(filter = '') {
           name: r.full_name,
           type: r.document_type,
           status: uiStatus,
-          via: 'Online',
+          via: r.source === 'online' ? 'Online' : 'Walk-in',
 
           requested: r.created_at
             ? new Date(r.created_at).toLocaleString('en-PH')
@@ -2835,22 +2783,17 @@ function renderCertKanban(filter = '') {
               </button>
             `;
 
-            const removeBtn = `
-              <button
-                class="btn btn-xs"
-                style="
-                  flex:1;
-                  font-size:9.5px;
-                  padding:3px 6px;
-                  background:rgba(239,68,68,0.08);
-                  border-color:rgba(239,68,68,0.3);
-                  color:#EF4444;
-                "
-                onclick="hideCertRequest('${r.code}')"
-              >
-                🗑️ Alisin
-              </button>
-            `;
+            const rejectBtn = lane.id !== 'completed' && r.via === 'Online'
+              ? `
+                <button
+                  class="btn btn-xs btn-danger"
+                  style="flex:1;font-size:9.5px;padding:3px 6px;"
+                  onclick="openRejectRequest(${Number(r.id)}, '${r.code}', event)"
+                >
+                  Reject
+                </button>
+              `
+              : '';
 
             const btnRow = `
               <div
@@ -2862,7 +2805,7 @@ function renderCertKanban(filter = '') {
               >
                 ${proceedBtn}
                 ${viewBtn}
-                ${removeBtn}
+                ${rejectBtn}
               </div>
             `;
 
@@ -2883,17 +2826,17 @@ function renderCertKanban(filter = '') {
                   </span>
 
                   <div class="cert-card-name">
-                    ${r.name}
+                    ${escapeText(r.name)}
                   </div>
 
                 </div>
 
                 <div class="cert-card-type">
-                  ${r.type}
+                  ${escapeText(r.type)}
                 </div>
 
                 <div class="cert-card-code">
-                  ${r.code}
+                  ${escapeText(r.code)}
                 </div>
 
                 <div
@@ -3033,6 +2976,7 @@ function renderAuditLog() {
   if (auditCurrentType !== 'all') logs = logs.filter(l => l.type === auditCurrentType);
   if (auditCurrentSearch) logs = logs.filter(l => l.action.toLowerCase().includes(auditCurrentSearch) || l.detail.toLowerCase().includes(auditCurrentSearch) || l.user.toLowerCase().includes(auditCurrentSearch));
   const dateFilter = document.getElementById('audit-date-filter')?.value;
+  if (dateFilter) logs = logs.filter(log => log.date === dateFilter);
   // Update stats
   const setEl = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
   setEl('astat-total', LIVE_AUDIT_LOGS.length);
@@ -3055,13 +2999,13 @@ function renderAuditLog() {
     row.className = 'audit-log-row';
     row.style.background = sev;
     row.innerHTML = `
-      <div class="audit-type-icon" style="background:${typeBg};border-color:${typeColor}20;">${log.icon}</div>
-      <div class="audit-time">${log.time}</div>
+      <div class="audit-type-icon" style="background:${typeBg};border-color:${typeColor}20;">${escapeText(log.icon)}</div>
+      <div class="audit-time">${escapeText(log.time)}</div>
       <div>
-        <div class="audit-action">${log.action}</div>
-        <div class="audit-detail">${log.detail}</div>
+        <div class="audit-action">${escapeText(log.action)}</div>
+        <div class="audit-detail">${escapeText(log.detail)}</div>
       </div>
-      <div style="font-size:11.5px;color:var(--text-secondary);">${log.user}</div>
+      <div style="font-size:11.5px;color:var(--text-secondary);">${escapeText(log.user)}</div>
       <span class="badge" style="background:${typeBg};color:${typeColor};border-color:${typeColor}30;font-size:9.5px;">${log.type.toUpperCase()}</span>`;
     container.appendChild(row);
   });
@@ -3087,24 +3031,27 @@ function clearAuditFilter() {
   renderAuditLog();
 }
 
-function addLiveAuditEntry(icon, type, action, detail, user) {
-  const now = new Date().toLocaleTimeString('en-PH', { hour12: false });
-  const entry = { icon, type, action, detail, user, time: 'Today ' + now, severity: type === 'security' ? 'danger' : 'ok' };
-  LIVE_AUDIT_LOGS.unshift(entry);
-  if (document.getElementById('screen-audit')?.classList.contains('active')) {
+async function reloadAuditLog() {
+  try {
+    const payload = await adminRequest('/admin/audit-log');
+    LIVE_AUDIT_LOGS.splice(0, LIVE_AUDIT_LOGS.length, ...payload.events);
     renderAuditLog();
-    const firstRow = document.querySelector('#audit-log-list .audit-log-row');
-    if (firstRow) { firstRow.classList.add('new-row'); setTimeout(() => firstRow.classList.remove('new-row'), 3000); }
+  } catch (error) {
+    document.getElementById('audit-log-list').textContent = error.message;
+    showToast(error.message, 'red');
   }
-  if (document.getElementById('screen-dashboard')?.classList.contains('active')) {
-    refreshDashboardStats();
-  }
+}
+
+function addLiveAuditEntry() {
+  if (document.getElementById('screen-audit')?.classList.contains('active')) void reloadAuditLog();
+  if (document.getElementById('screen-dashboard')?.classList.contains('active')) void refreshDashboardStats();
 }
 
 // ═══════════════════════════════════════
 // ENHANCED USER MANAGEMENT
 // ═══════════════════════════════════════
 const ACCESS_PERMS = {
+  'Staff Access': ['Dashboard', 'Records', 'Certificates', 'Requests', 'Incidents', 'QR', 'Audit', 'Settings'],
   'Full Access':             ['Dashboard', 'Records', 'Certificates', 'Requests', 'Incidents', 'RFID', 'Cabinet', 'QR', 'Face', 'Audit', 'Users', 'Settings'],
   'Records & Certificates':  ['Dashboard', 'Records', 'Certificates', 'Requests', 'QR'],
   'Certificates Only':       ['Dashboard', 'Certificates', 'QR'],
@@ -3116,199 +3063,137 @@ const ALL_PERMS = ['Dashboard', 'Records', 'Certificates', 'Requests', 'Incident
 let userRoleFilter = 'all';
 let userSearch = '';
 
+async function adminRequest(url, options = {}) {
+  const response = await fetch(url, {
+    credentials: 'same-origin',
+    ...options,
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...csrfRequestHeaders(), ...options.headers },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.errors ? Object.values(payload.errors).flat()[0] : payload.message || 'The request could not be completed. Please try again.');
+  }
+  return payload;
+}
+
+async function reloadUsers() {
+  const container = document.getElementById('users-list-container');
+  try {
+    const payload = await adminRequest('/admin/users');
+    USERS.splice(0, USERS.length, ...payload.users);
+    renderUsers();
+  } catch (error) {
+    if (container) container.textContent = error.message;
+    showToast(error.message, 'red');
+  }
+}
+
 function renderUsers() {
   const container = document.getElementById('users-list-container');
   if (!container) return;
-  let users = [...USERS];
-  if (userRoleFilter === 'admin') users = users.filter(u => u.access === 'Full');
-  if (userRoleFilter === 'active') users = users.filter(u => u.status === 'Active');
-  if (userRoleFilter === 'suspended') users = users.filter(u => u.status === 'Suspended');
-  if (userSearch) users = users.filter(u => u.name.toLowerCase().includes(userSearch) || u.role.toLowerCase().includes(userSearch));
-  // Stats
-  const setEl = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-  setEl('usr-active', USERS.filter(u => u.status === 'Active').length);
-  setEl('usr-face', USERS.filter(u => u.face).length);
-  setEl('usr-rfid', USERS.filter(u => u.rfid).length);
-  setEl('usr-suspended', USERS.filter(u => u.status === 'Suspended').length);
-  container.innerHTML = '';
-  users.forEach(u => {
-    const perms = ACCESS_PERMS[u.access] || [];
-    const card = document.createElement('div');
-    card.className = 'user-card' + (u.status === 'Suspended' ? ' suspended' : '');
-    card.innerHTML = `
-      <div class="user-avatar-lg" style="${u.status === 'Suspended' ? 'border-color:rgba(239,68,68,0.4);color:#EF4444;' : ''}">${u.name.split(' ').map(n => n[0]).join('').slice(0,2)}</div>
+  const users = USERS.filter(user =>
+    (userRoleFilter !== 'admin' || user.role === 'admin') &&
+    (userRoleFilter !== 'active' || user.is_active) &&
+    (userRoleFilter !== 'suspended' || !user.is_active) &&
+    (!userSearch || `${user.name} ${user.email} ${user.role}`.toLowerCase().includes(userSearch))
+  );
+  document.getElementById('usr-active').textContent = USERS.filter(user => user.is_active).length;
+  document.getElementById('usr-suspended').textContent = USERS.filter(user => !user.is_active).length;
+  container.innerHTML = users.length ? users.map(user => `
+    <div class="user-card ${user.is_active ? '' : 'suspended'}">
+      <div class="user-avatar-lg">${escapeText(initials(user.name))}</div>
       <div class="user-info">
-        <div class="user-name">${u.name}
-          ${u.status === 'Suspended' ? '<span class="badge badge-red" style="margin-left:6px;font-size:9px;">Suspended</span>' : ''}
-        </div>
-        <div class="user-role-tag">${u.role} — <span style="font-family:var(--font-mono);font-size:10px;">${u.id}</span></div>
-        <div class="user-badges" style="margin-top:5px;">
-          ${u.face ? '<span class="badge badge-green" style="font-size:9.5px;">😊 Face ID</span>' : '<span class="badge badge-gray" style="font-size:9.5px;">No Face ID</span>'}
-          ${u.rfid ? '<span class="badge badge-blue" style="font-size:9.5px;">📡 RFID Card</span>' : '<span class="badge badge-gray" style="font-size:9.5px;">No RFID</span>'}
-          <span class="badge badge-gray" style="font-size:9.5px;">Last: ${u.last}</span>
-        </div>
-        <div class="user-perm-grid" style="margin-top:8px;grid-template-columns:repeat(6,1fr);">
-          ${ALL_PERMS.map(p => `<div class="user-perm ${perms.includes(p) ? 'allowed' : 'denied'}" title="${p}">${p.slice(0,5)}</div>`).join('')}
+        <div class="user-name">${escapeText(user.name)}</div>
+        <div class="user-role-tag">${escapeText(user.email)}</div>
+        <div class="user-badges"><span class="badge badge-blue">${escapeText(user.role)}</span>
+          <span class="badge ${user.is_active ? 'badge-green' : 'badge-red'}">${user.is_active ? 'Active' : 'Suspended'}</span>
+          <span class="badge badge-gray">${user.two_factor_confirmed_at ? '2FA enabled' : '2FA not configured'}</span>
         </div>
       </div>
-      <div class="user-actions">
-        <button class="btn btn-xs btn-primary" onclick="openEditUser('${u.id}')">✏️ Edit</button>
-        ${u.status === 'Active' ? `<button class="btn btn-xs btn-danger" onclick="suspendUser('${u.id}')">🚫 Suspend</button>` : `<button class="btn btn-xs btn-green" onclick="activateUser('${u.id}')">✓ Activate</button>`}
-        <button class="btn btn-xs" onclick="showToast('Viewing activity for ${u.name}','')">📋 Log</button>
-        <button class="btn btn-xs btn-danger" onclick="deleteUser('${u.id}')">🗑 Delete</button>
-      </div>`;
-    container.appendChild(card);
-  });
+      <div class="user-actions"><button class="btn btn-primary" onclick="openEditUser(${Number(user.id)})">Edit account</button>
+      ${Number(user.id) !== Number(window.AUTHENTICATED_USER.id) ? `<button class="btn" onclick="setUserActive(${Number(user.id)}, ${!user.is_active})">${user.is_active ? 'Suspend' : 'Activate'}</button>` : ''}</div>
+    </div>`).join('') : '<div class="card civic-empty">No accounts match your filters.</div>';
 }
 
 function filterUsers() {
-  userSearch = document.getElementById('user-search')?.value?.toLowerCase() || '';
-  renderUsers();
-}
-function filterUserRole(role, el) {
-  document.querySelectorAll('.user-role-filter').forEach(b => b.classList.remove('active'));
-  if (el) el.classList.add('active');
-  userRoleFilter = role;
-  renderUsers();
-}
-function suspendUser(id) {
-  const u = USERS.find(x => x.id === id);
-  if (!u) return;
-  u.status = 'Suspended';
-  addLiveAuditEntry('🚫', 'security', 'User Suspended', `${u.name} (${u.id}) — suspended by admin`, currentUserName || 'Staff');
-  showToast(`${u.name} has been suspended.`, '');
-  renderUsers();
-}
-function activateUser(id) {
-  const u = USERS.find(x => x.id === id);
-  if (!u) return;
-  u.status = 'Active';
-  addLiveAuditEntry('✅', 'auth', 'User Activated', `${u.name} (${u.id}) — account reactivated`, currentUserName || 'Staff');
-  showToast(`${u.name} has been reactivated.`, 'green');
+  userSearch = document.getElementById('user-search').value.trim().toLowerCase();
   renderUsers();
 }
 
-function deleteUser(id) {
-  if (!confirm('Sigurado ka bang tanggalin ang user account na ito? Hindi na ito mababawi.')) return;
-  const idx = USERS.findIndex(u => u.id === id);
-  if (idx === -1) return;
-  const name = USERS[idx].name;
-  USERS.splice(idx, 1);
-  const credIdx = VALID_CREDENTIALS.findIndex(c => c.empId === id);
-  if (credIdx !== -1) VALID_CREDENTIALS.splice(credIdx, 1);
-  addLiveAuditEntry('🗑️', 'security', 'User Account Deleted', `${id} — ${name}`, currentUserName || 'Staff');
-  showToast(`User account ni ${name} ay natanggal.`, '');
+function filterUserRole(role, element) {
+  userRoleFilter = role;
+  document.querySelectorAll('.user-role-filter').forEach(button => button.classList.toggle('active', button === element));
   renderUsers();
 }
 
 function openAddUser() {
-  const f = id => { const e = document.getElementById(id); if (e) e.value = ''; };
-  ['adduser-name','adduser-empid','adduser-username','adduser-password'].forEach(f);
-  const roleEl = document.getElementById('adduser-role'); if (roleEl) roleEl.selectedIndex = 3;
-  const accEl  = document.getElementById('adduser-access'); if (accEl) accEl.selectedIndex = 4;
-  const editId = document.getElementById('adduser-edit-id'); if (editId) editId.value = '';
-  const title  = document.getElementById('adduser-modal-title'); if (title) title.textContent = '👤 Add New User';
-  const passLbl = document.getElementById('adduser-pass-label'); if (passLbl) passLbl.style.display = 'none';
-  const saveBtn = document.getElementById('adduser-save-btn'); if (saveBtn) saveBtn.textContent = '💾 Create User';
-  const toggle = document.getElementById('adduser-facetoggle');
-  if (toggle) { toggle.classList.remove('off'); toggle.classList.add('on'); }
+  ['adduser-edit-id', 'adduser-name', 'adduser-email', 'adduser-password'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('adduser-role').value = 'staff';
+  document.getElementById('adduser-status').value = 'active';
+  document.getElementById('adduser-password').required = true;
+  document.getElementById('adduser-modal-title').textContent = 'New user account';
   openModal('modal-adduser');
 }
 
 function openEditUser(id) {
-  const u = USERS.find(x => x.id === id);
-  if (!u) return;
-  const set = (elId, val) => { const e = document.getElementById(elId); if (e) e.value = val || ''; };
-  set('adduser-edit-id', u.id);
-  set('adduser-name', u.name);
-  set('adduser-empid', u.id);
-  set('adduser-username', u.username || '');
-  set('adduser-password', '');
-  // Set role dropdown
-  const roleEl = document.getElementById('adduser-role');
-  if (roleEl) { for (let i=0;i<roleEl.options.length;i++) { if (roleEl.options[i].text === u.role) { roleEl.selectedIndex=i; break; } } }
-  // Set access dropdown
-  const accEl = document.getElementById('adduser-access');
-  if (accEl) {
-    const accessMap = { 'Full':'Full Access', 'Full Access':'Full Access', 'Records & Certs':'Records & Certificates', 'Records & Certificates':'Records & Certificates', 'Certificates Only':'Certificates Only', 'Incidents Only':'Incidents Only', 'View Only':'View Only', 'Records Only':'View Only' };
-    const mapped = accessMap[u.access] || u.access;
-    for (let i=0;i<accEl.options.length;i++) { if (accEl.options[i].text === mapped) { accEl.selectedIndex=i; break; } }
-  }
-  // Toggle face
-  const toggle = document.getElementById('adduser-facetoggle');
-  if (toggle) { toggle.classList.toggle('on', !!u.face); toggle.classList.toggle('off', !u.face); }
-  // Update modal UI for edit mode
-  const title   = document.getElementById('adduser-modal-title'); if (title) title.textContent = `✏️ Edit User — ${u.name}`;
-  const passLbl = document.getElementById('adduser-pass-label'); if (passLbl) passLbl.style.display = '';
-  const saveBtn = document.getElementById('adduser-save-btn'); if (saveBtn) saveBtn.textContent = '💾 Save Changes';
+  const user = USERS.find(item => item.id === id);
+  if (!user) return;
+  document.getElementById('adduser-edit-id').value = user.id;
+  document.getElementById('adduser-name').value = user.name;
+  document.getElementById('adduser-email').value = user.email;
+  document.getElementById('adduser-role').value = user.role;
+  document.getElementById('adduser-status').value = user.is_active ? 'active' : 'suspended';
+  document.getElementById('adduser-password').value = '';
+  document.getElementById('adduser-password').required = false;
+  document.getElementById('adduser-modal-title').textContent = 'Edit user account';
   openModal('modal-adduser');
 }
 
-function saveNewUser() {
-  const f    = id => document.getElementById(id)?.value?.trim();
-  const name = f('adduser-name');
-  const pass = document.getElementById('adduser-password')?.value || '';
-  const role = f('adduser-role') || 'Barangay Clerk';
-  const accessRaw = f('adduser-access') || 'View Only';
-  const accessMap = { 'Full Access':'Full', 'Records & Certificates':'Records & Certs', 'Certificates Only':'Certificates Only', 'Incidents Only':'Incidents Only', 'View Only':'View Only' };
-  const access = accessMap[accessRaw] || accessRaw;
-  const username = f('adduser-username') || (name ? name.toLowerCase().replace(/\s+/g,'.') : '');
-  const faceOn   = document.getElementById('adduser-facetoggle')?.classList.contains('on');
-  const editId   = f('adduser-edit-id');
-
-  if (!name) { showToast('❌ Pakiusap ilagay ang pangalan.', 'red'); return; }
-
-  if (editId) {
-    // EDIT existing user
-    const u = USERS.find(x => x.id === editId);
-    if (!u) { showToast('❌ User not found.', 'red'); return; }
-    u.name     = name;
-    u.role     = role;
-    u.access   = access;
-    u.username = username;
-    u.face     = faceOn;
-    if (pass.length >= 8) {
-      // Update password in VALID_CREDENTIALS too
-      if (typeof VALID_CREDENTIALS !== 'undefined') {
-        const cred = VALID_CREDENTIALS.find(c => c.username === u.username || c.empId === editId);
-        if (cred) { cred.password = pass; cred.username = username; cred.name = name; cred.role = role; }
-      }
-    } else if (pass.length > 0 && pass.length < 8) {
-      showToast('❌ Password ay dapat 8 characters man lang.', 'red'); return;
-    }
-    // DB sync if available
-    if (typeof http !== 'undefined') {
-      const payload = { name, role, access: accessRaw, username, face: faceOn, rfid: u.rfid||false, status: u.status||'Active' };
-      if (pass.length >= 8) payload.password = pass;
-      http.put(`/api/users/${editId}`, payload).then(() => {
-        reloadUsers && reloadUsers();
-      }).catch(()=>{});
-    }
-    addLiveAuditEntry('✏️','auth','User Updated',`${name} — ${role} — ${editId}`,'Admin');
-    showToast(`✅ Na-update ang user na "${name}"!`, 'green');
+async function saveNewUser() {
+  const id = document.getElementById('adduser-edit-id').value;
+  const payload = {
+    name: document.getElementById('adduser-name').value.trim(),
+    email: document.getElementById('adduser-email').value.trim(),
+    role: document.getElementById('adduser-role').value,
+    is_active: document.getElementById('adduser-status').value === 'active',
+    password: document.getElementById('adduser-password').value || null,
+  };
+  const button = document.getElementById('adduser-save-btn');
+  button.disabled = true;
+  try {
+    const result = await adminRequest(id ? `/admin/users/${id}` : '/admin/users', { method: id ? 'PATCH' : 'POST', body: JSON.stringify(payload) });
     closeModal('modal-adduser');
-    renderUsers();
-  } else {
-    // ADD new user
-    if (pass.length < 8) { showToast('❌ Ang password ay dapat 8 characters man lang.', 'red'); return; }
-    const newId = 'USR-' + String(USERS.length + 1).padStart(3,'0');
-    const newUser = { id: newId, name, role, access, username, face: faceOn, rfid: false, status: 'Active', last: '—' };
-    USERS.push(newUser);
-    if (typeof VALID_CREDENTIALS !== 'undefined') {
-      VALID_CREDENTIALS.push({ empId: newId, username, password: pass, name, role });
-    }
-    // DB sync if available
-    if (typeof http !== 'undefined') {
-      http.post('/api/users', { name, role, access: accessRaw, username, password: pass, face: faceOn, rfid: false }).then(result => {
-        if (result?.id) newUser.id = result.id;
-        reloadUsers && reloadUsers();
-      }).catch(()=>{});
-    }
-    addLiveAuditEntry('👤','auth','New User Created',`${name} — ${role} — ${newId}`,'Admin');
-    showToast(`✅ User "${name}" (${newId}) na-create!`, 'green');
-    closeModal('modal-adduser');
-    renderUsers();
+    showToast(result.message, 'green');
+    await reloadUsers();
+  } catch (error) {
+    showToast(error.message, 'red');
+  } finally {
+    button.disabled = false;
   }
+}
+
+async function setUserActive(id, active) {
+  const user = USERS.find(item => item.id === id);
+  if (!user || !confirm(`${active ? 'Activate' : 'Suspend'} ${user.name}'s account?`)) return;
+  try {
+    const result = await adminRequest(`/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify({ name: user.name, email: user.email, role: user.role, is_active: active }) });
+    showToast(result.message, 'green');
+    await reloadUsers();
+  } catch (error) {
+    showToast(error.message, 'red');
+  }
+}
+
+function exportUsers() {
+  const cell = value => {
+    const text = String(value ?? '');
+    return '"' + (/^[=+@\-\t\r]/.test(text) ? "'" : '') + text.replaceAll('"', '""') + '"';
+  };
+  const rows = [['Name', 'Email', 'Role', 'Status'], ...USERS.map(user => [user.name, user.email, user.role, user.is_active ? 'Active' : 'Suspended'])];
+  const url = URL.createObjectURL(new Blob(['\uFEFF' + rows.map(row => row.map(cell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' }));
+  const link = document.createElement('a');
+  link.href = url; link.download = 'barangay-users.csv'; link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 // ═══════════════════════════════════════
@@ -3355,10 +3240,14 @@ function renderCertRequests(filter = '') {
 // ═══════════════════════════════════════
 // REAL-TIME AUDIT LOG AUTO-REFRESH
 // ═══════════════════════════════════════
+let auditRefreshTimer = null;
+
 function startAuditAutoRefresh() {
-  setInterval(() => {
+  if (auditRefreshTimer !== null) return;
+
+  auditRefreshTimer = setInterval(() => {
     if (document.getElementById('screen-audit')?.classList.contains('active')) {
-      renderAuditLog();
+      void reloadAuditLog();
     }
   }, 15000);
 }
@@ -3372,6 +3261,8 @@ function launchApp(name = 'Staff', role = 'Staff') {
   currentUserRole = role || 'Staff';
   const dbUser = USERS.find(u => u.name === currentUserName || u.role === currentUserRole);
   const roleAccessMap = {
+    'admin': 'Full Access',
+    'staff': 'Staff Access',
     'Super Administrator': 'Full',
     'Barangay Captain': 'Full',
     'Barangay Secretary': 'Full',
@@ -3402,8 +3293,9 @@ function launchApp(name = 'Staff', role = 'Staff') {
   renderRFIDTags();
   renderCabinet();
   renderAuditLog();
-  renderUsers();
-  renderIncidents();
+  if (currentUserRole === 'admin') void reloadUsers();
+  void refreshDashboardStats();
+  void loadIncidents();
   renderDemographics();
   renderDashPurokBreakdown();
   renderNotifications();
@@ -3421,25 +3313,34 @@ function launchApp(name = 'Staff', role = 'Staff') {
 function renderSeniorList() {
   const container = document.getElementById('senior-citizens-list');
   if (!container) return;
-  const seniors = RESIDENTS.filter(r => isSenior(r.dob));
+  const seniors = Array.isArray(DEMOGRAPHIC_SUMMARY?.senior_residents)
+    ? DEMOGRAPHIC_SUMMARY.senior_residents.map(resident => ({
+        id: resident.resident_number,
+        name: resident.full_name,
+        dob: resident.date_of_birth,
+        purok: resident.purok,
+        status: resident.status === 'active' ? 'Active' : 'Inactive',
+        age: resident.age
+      }))
+    : RESIDENTS.filter(r => isSenior(r.dob));
   const countEl = document.getElementById('demo-senior-count');
-  if (countEl) countEl.textContent = RESIDENTS.filter(r => isSenior(r.dob)).length.toLocaleString();
+  if (countEl) countEl.textContent = Number(DEMOGRAPHIC_SUMMARY?.seniors ?? seniors.length).toLocaleString();
   if (seniors.length === 0) {
-    container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;">No senior citizens in sample data.</div>';
+    container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;">No registered senior citizens.</div>';
     return;
   }
   container.innerHTML = `
     <table class="tbl">
       <thead><tr><th>Resident ID</th><th>Full Name</th><th>Age</th><th>Date of Birth</th><th>Zone / Purok</th><th>Status</th><th>Classification</th></tr></thead>
       <tbody>${seniors.map(r => {
-        const age = calcAge(r.dob);
+        const age = Number(r.age ?? calcAge(r.dob));
         return `<tr>
-          <td><span style="font-family:var(--font-mono);font-size:10.5px;color:var(--blue-400);">${r.id}</span></td>
-          <td><strong style="color:var(--text-primary);">${r.name}</strong></td>
+          <td><span style="font-family:var(--font-mono);font-size:10.5px;color:var(--blue-400);">${escapeText(r.id)}</span></td>
+          <td><strong style="color:var(--text-primary);">${escapeText(r.name)}</strong></td>
           <td><span style="font-weight:700;color:var(--senior-color);font-size:14px;">${age}</span></td>
           <td style="font-size:11.5px;">${r.dob}</td>
-          <td>${r.purok}</td>
-          <td><span class="badge ${r.status === 'Active' ? 'badge-green' : 'badge-red'}">${r.status}</span></td>
+          <td>${escapeText(r.purok)}</td>
+          <td><span class="badge ${r.status === 'Active' ? 'badge-green' : 'badge-red'}">${escapeText(r.status)}</span></td>
           <td><span class="badge badge-senior">👴 Senior Citizen</span></td>
         </tr>`;
       }).join('')}</tbody>
@@ -3447,7 +3348,7 @@ function renderSeniorList() {
 }
 
 // Override openViewResident for English
-function openViewResident(id) {
+function legacyEnglishOpenViewResident(id) {
   currentViewResidentId = id;
   const r = RESIDENTS.find(x => x.id === id);
   if (!r) return;
@@ -3523,7 +3424,7 @@ function checkEligibility(residentId, certId) {
   return { eligible, reasons, resident, rule, status };
 }
 
-function runEligibilityCheck() {
+function legacyEnglishRunEligibilityCheck() {
   const residentId = document.getElementById('elig-resident-select').value;
   const certId = document.getElementById('elig-doc-select').value;
   if (!residentId || !certId) { showToast('Please select a resident and document type.', 'red'); return; }
@@ -3549,7 +3450,7 @@ function runEligibilityCheck() {
 
 // Real-time audit log integration for key actions
 const _origSaveResident = saveResident;
-function saveResident() {
+function legacyEnglishSaveResident() {
   const name = document.getElementById('res-name')?.value?.trim();
   const lastName = document.getElementById('res-lastname')?.value?.trim();
   const dob = document.getElementById('res-dob')?.value;
@@ -3595,37 +3496,324 @@ function saveResident() {
   populateEligResidentDropdown(null);
 }
 
-const _origSaveIncident = saveIncident;
-function saveIncident() {
-  const type = document.getElementById('inc-type')?.value;
-  const loc = document.getElementById('inc-location')?.value?.trim() || '';
-  const reported = document.getElementById('inc-reported')?.value?.trim() || 'Anonymous';
-  const complainee = document.getElementById('inc-complainee')?.value?.trim() || '';
-  const severity = document.getElementById('inc-severity')?.value || 'Medium';
-  const dateVal = document.getElementById('inc-date')?.value;
-  const editId = document.getElementById('inc-edit-id')?.value;
-  if (!type || !loc) { showToast('Please complete the incident type and location.', 'red'); return; }
-  const displayDate = dateVal
-    ? new Date(dateVal + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
-    : new Date().toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
-  if (editId) {
-    const inc = INCIDENTS.find(x => x.id === editId);
-    if (!inc) { showToast('Incident not found.', 'red'); return; }
-    Object.assign(inc, { type, loc, reported, complainee, severity, date: displayDate });
-    addLiveAuditEntry('🚨', 'incident', 'Incident Report Updated', `${editId} - ${type}`, currentUserName || 'Staff');
-    showToast(`Incident ${editId} updated.`, 'green');
-  } else {
-    const newId = 'INC-2025-' + String(INCIDENTS.length + 1).padStart(3, '0');
-    INCIDENTS.unshift({ id: newId, type, loc, date: displayDate, reported, complainee, status: 'Pending', severity });
-    addLiveAuditEntry('🚨', 'incident', 'Incident Report Filed', `${newId} - ${type}`, currentUserName || 'Staff');
-    showToast(`Incident report ${newId} filed successfully!`, 'green');
+async function loadIncidents(page = 1) {
+  const tbody = document.getElementById('incidents-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="9" class="resident-table-message">Loading incident reports...</td></tr>';
+  const query = new URLSearchParams({ page: String(page), per_page: '15' });
+  const search = document.getElementById('incident-search')?.value.trim();
+  const status = document.getElementById('incident-status-filter')?.value;
+  const severity = document.getElementById('incident-severity-filter')?.value;
+  if (search) query.set('search', search);
+  if (status) query.set('status', status);
+  if (severity) query.set('severity', severity);
+
+  try {
+    const response = await fetch(`/admin/incidents?${query}`, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload?.message || 'Hindi ma-load ang incident reports.');
+    INCIDENTS.splice(0, INCIDENTS.length, ...(payload.data || []));
+    incidentCurrentPage = Number(payload.current_page || 1);
+    incidentLastPage = Number(payload.last_page || 1);
+    renderIncidents(payload.total || 0);
+    updateIncidentSummary(payload.summary || {});
+  } catch (error) {
+    tbody.innerHTML = `<tr><td colspan="9" class="resident-table-message resident-table-error">${escapeText(error.message)}</td></tr>`;
   }
-  closeModal('modal-incident');
-  ['inc-type','inc-location','inc-reported','inc-complainee','inc-severity','inc-date','inc-time','inc-details','inc-edit-id'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
+}
+
+function renderIncidents(total = 0) {
+  const tbody = document.getElementById('incidents-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  if (INCIDENTS.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" class="resident-table-message">Walang nakitang incident report.</td></tr>';
+  }
+
+  INCIDENTS.forEach(incident => {
+    const severityClass = incident.severity === 'high' ? 'badge-red' : incident.severity === 'medium' ? 'badge-amber' : 'badge-gray';
+    const statusClass = incident.status === 'resolved' ? 'badge-green' : incident.status === 'dismissed' ? 'badge-gray' : 'badge-amber';
+    const archiveButton = window.AUTHENTICATED_USER?.role === 'admin'
+      ? `<button class="btn btn-xs btn-danger" onclick="archiveIncident(${incident.id})">Archive</button>`
+      : '';
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td><span class="resident-number">${escapeText(incident.incident_number)}</span></td>
+      <td><strong>${escapeText(incident.incident_type)}</strong></td>
+      <td>${escapeText(incident.location)}</td>
+      <td>${escapeText(incident.occurred_at_display)}</td>
+      <td>${escapeText(incident.complainant_name)}</td>
+      <td>${incident.respondent_name ? escapeText(incident.respondent_name) : '—'}</td>
+      <td><span class="badge ${severityClass}">${escapeText(incident.severity_label)}</span></td>
+      <td><span class="badge ${statusClass}">${escapeText(incident.status_label)}</span></td>
+      <td class="resident-actions">
+        <button class="btn btn-xs" onclick="openViewIncident(${incident.id})">View</button>
+        <button class="btn btn-xs btn-primary" onclick="openEditIncident(${incident.id})">Edit</button>
+        ${archiveButton}
+      </td>`;
+    tbody.appendChild(row);
   });
-  renderIncidents();
+
+  const pagination = document.getElementById('incident-pagination');
+  if (pagination) {
+    pagination.innerHTML = `
+      <span class="resident-page-summary">${Number(total).toLocaleString()} report${Number(total) === 1 ? '' : 's'}</span>
+      <button class="btn btn-xs" ${incidentCurrentPage <= 1 ? 'disabled' : ''} onclick="loadIncidents(${incidentCurrentPage - 1})">Previous</button>
+      <span>Page ${incidentCurrentPage} of ${incidentLastPage}</span>
+      <button class="btn btn-xs" ${incidentCurrentPage >= incidentLastPage ? 'disabled' : ''} onclick="loadIncidents(${incidentCurrentPage + 1})">Next</button>`;
+  }
+}
+
+function updateIncidentSummary(summary) {
+  const set = (id, value) => { const element = document.getElementById(id); if (element) element.textContent = Number(value || 0).toLocaleString(); };
+  set('inc-stat-pending', summary.pending);
+  set('inc-stat-resolved', summary.resolved_this_month);
+  set('inc-stat-high', summary.high);
+}
+
+function filterIncidents() {
+  clearTimeout(incidentSearchTimer);
+  incidentSearchTimer = setTimeout(() => loadIncidents(1), 250);
+}
+
+function openViewIncident(id) {
+  const incident = INCIDENTS.find(item => item.id === id);
+  if (!incident) return;
+  const set = (elementId, value) => { const element = document.getElementById(elementId); if (element) element.textContent = value || '—'; };
+  set('view-inc-id', incident.incident_number);
+  set('view-inc-type', incident.incident_type);
+  set('view-inc-date', incident.occurred_at_display);
+  set('view-inc-loc', incident.location);
+  set('view-inc-reported', incident.complainant_name);
+  set('view-inc-complainee', incident.respondent_name);
+  set('view-inc-description', incident.details);
+  set('view-inc-severity', incident.severity_label);
+  set('view-inc-status', incident.status_label);
+  const editButton = document.getElementById('view-inc-edit-btn');
+  if (editButton) editButton.onclick = () => { closeModal('modal-view-incident'); openEditIncident(id); };
+  const attachmentWrapper = document.getElementById('view-inc-attachments-wrap');
+  const attachmentList = document.getElementById('view-inc-attachments');
+  const attachments = Array.isArray(incident.attachments) ? incident.attachments : [];
+  if (attachmentWrapper && attachmentList) {
+    attachmentList.innerHTML = attachments.map(attachment => `<a href="${escapeText(attachment.url)}" target="_blank" rel="noopener" class="btn btn-xs">${escapeText(attachment.name)}</a>`).join('');
+    attachmentWrapper.style.display = attachments.length ? 'block' : 'none';
+  }
+  openModal('modal-view-incident');
+}
+
+function openEditIncident(id) {
+  const incident = INCIDENTS.find(item => item.id === id);
+  if (!incident) return;
+  const set = (elementId, value) => { const element = document.getElementById(elementId); if (element) element.value = value || ''; };
+  set('inc-edit-id', incident.id);
+  set('inc-type', incident.incident_type);
+  set('inc-date', incident.occurred_date);
+  set('inc-time', incident.occurred_time);
+  set('inc-location', incident.location);
+  set('inc-reported', incident.complainant_name === 'Anonymous' ? '' : incident.complainant_name);
+  set('inc-complainee', incident.respondent_name);
+  set('inc-severity', incident.severity);
+  set('inc-details', incident.details);
+  set('inc-status', incident.status);
+  set('inc-resolution-notes', incident.resolution_notes);
+  document.getElementById('inc-status-group').style.display = 'block';
+  document.getElementById('inc-attachments').value = '';
+  document.getElementById('inc-attachments-preview').innerHTML = '';
+  document.getElementById('inc-modal-title').textContent = 'Edit Incident Report';
+  document.querySelector('#modal-incident .btn-danger').textContent = 'Save Changes';
+  toggleIncidentResolution();
+  openModal('modal-incident');
+}
+
+function openAddIncident() {
+  ['inc-type','inc-location','inc-reported','inc-complainee','inc-time','inc-details','inc-edit-id','inc-resolution-notes'].forEach(id => {
+    const element = document.getElementById(id);
+    if (element) element.value = '';
+  });
+  document.getElementById('inc-date').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('inc-severity').value = 'medium';
+  document.getElementById('inc-status').value = 'pending';
+  document.getElementById('inc-status-group').style.display = 'none';
+  document.getElementById('inc-resolution-group').style.display = 'none';
+  document.getElementById('inc-attachments').value = '';
+  document.getElementById('inc-attachments-preview').innerHTML = '';
+  document.getElementById('inc-modal-title').textContent = 'File Incident Report';
+  document.querySelector('#modal-incident .btn-danger').textContent = 'File Report';
+  openModal('modal-incident');
+}
+
+function toggleIncidentResolution() {
+  const group = document.getElementById('inc-resolution-group');
+  if (group) group.style.display = document.getElementById('inc-status')?.value === 'resolved' ? 'block' : 'none';
+}
+
+async function saveIncident() {
+  const incidentId = document.getElementById('inc-edit-id')?.value;
+  const formData = new FormData();
+  formData.append('incident_type', document.getElementById('inc-type')?.value || '');
+  formData.append('occurred_date', document.getElementById('inc-date')?.value || '');
+  formData.append('occurred_time', document.getElementById('inc-time')?.value || '');
+  formData.append('location', document.getElementById('inc-location')?.value.trim() || '');
+  formData.append('complainant_name', document.getElementById('inc-reported')?.value.trim() || '');
+  formData.append('respondent_name', document.getElementById('inc-complainee')?.value.trim() || '');
+  formData.append('severity', document.getElementById('inc-severity')?.value.toLowerCase() || 'medium');
+  formData.append('details', document.getElementById('inc-details')?.value.trim() || '');
+  if (incidentId) {
+    formData.append('_method', 'PATCH');
+    formData.append('status', document.getElementById('inc-status')?.value || 'pending');
+    formData.append('resolution_notes', document.getElementById('inc-resolution-notes')?.value.trim() || '');
+  }
+  [...(document.getElementById('inc-attachments')?.files || [])].forEach(file => formData.append('attachments[]', file));
+  const button = document.querySelector('#modal-incident .btn-danger');
+  if (button) button.disabled = true;
+
+  try {
+    const response = await fetch(incidentId ? `/admin/incidents/${incidentId}` : '/admin/incidents', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Accept': 'application/json', ...csrfRequestHeaders() },
+      body: formData
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      const message = result?.errors ? Object.values(result.errors).flat()[0] : result?.message;
+      throw new Error(message || 'Hindi ma-save ang incident report.');
+    }
+    closeModal('modal-incident');
+    showToast(result.message, 'green');
+    await loadIncidents(incidentId ? incidentCurrentPage : 1);
+    await refreshDashboardStats();
+  } catch (error) {
+    showToast(error.message || 'Hindi ma-save ang incident report.', 'red');
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+async function archiveIncident(id) {
+  if (!confirm('I-archive ang incident report na ito?')) return;
+  try {
+    const response = await fetch(`/admin/incidents/${id}`, { method: 'DELETE', credentials: 'same-origin', headers: { 'Accept': 'application/json', ...csrfRequestHeaders() } });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result?.message || 'Hindi ma-archive ang incident report.');
+    showToast(result.message, 'green');
+    await loadIncidents(incidentCurrentPage);
+    await refreshDashboardStats();
+  } catch (error) {
+    showToast(error.message || 'Hindi ma-archive ang incident report.', 'red');
+  }
+}
+
+async function loadRequestRecords(page = 1) {
+  const container = document.getElementById('rr-resident-list');
+  if (!container) return;
+  container.innerHTML = '<div class="resident-table-message">Loading request records...</div>';
+  const query = new URLSearchParams({ page: String(page), per_page: '15' });
+  if (rrCurrentFilter.trim()) query.set('search', rrCurrentFilter.trim());
+  if (rrCurrentStatusFilter) query.set('eligibility', rrCurrentStatusFilter);
+
+  try {
+    const response = await fetch(`/admin/request-records?${query}`, {
+      credentials: 'same-origin',
+      headers: { 'Accept': 'application/json' }
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload?.message || 'Hindi ma-load ang request records.');
+    requestRecordResidents = payload.data || [];
+    rrCurrentPage = Number(payload.current_page || 1);
+    rrLastPage = Number(payload.last_page || 1);
+    renderRequestRecords(Number(payload.total || 0));
+    const summary = payload.summary || {};
+    const set = (id, value) => { const element = document.getElementById(id); if (element) element.textContent = Number(value || 0).toLocaleString(); };
+    set('rr-total', summary.total_requests);
+    set('rr-completed', summary.completed);
+    set('rr-blocked', summary.blocked);
+    set('rr-review', summary.needs_review);
+  } catch (error) {
+    container.innerHTML = `<div class="resident-table-message resident-table-error">${escapeText(error.message)}</div>`;
+  }
+}
+
+function renderRequestRecords(total = 0) {
+  const container = document.getElementById('rr-resident-list');
+  if (!container) return;
+
+  if (requestRecordResidents.length === 0) {
+    container.innerHTML = '<div class="resident-table-message">Walang nakitang resident request record.</div>';
+  } else {
+    container.innerHTML = requestRecordResidents.map(resident => {
+      const eligible = resident.status === 'active' && Boolean(resident.is_in_good_standing);
+      const requests = Array.isArray(resident.document_requests) ? resident.document_requests : [];
+      const requestRows = requests.length === 0
+        ? '<tr><td colspan="5" class="resident-table-message">Wala pang linked request.</td></tr>'
+        : requests.map(request => {
+            const status = String(request.status || 'pending');
+            const statusClass = status === 'released' ? 'badge-green' : status === 'rejected' ? 'badge-red' : status === 'ready_for_release' ? 'badge-blue' : 'badge-amber';
+            return `<tr>
+              <td><span class="resident-number">${escapeText(request.reference_code)}</span></td>
+              <td>${escapeText(request.document_type)}</td>
+              <td>${escapeText(String(request.created_at || '').slice(0, 10))}</td>
+              <td>${escapeText(request.source || 'online')}</td>
+              <td><span class="badge ${statusClass}">${escapeText(status.replaceAll('_', ' '))}</span></td>
+            </tr>`;
+          }).join('');
+
+      return `<div class="card rr-resident-card" style="margin-bottom:0;">
+        <div class="rr-resident-header" onclick="toggleRRCard(this)">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div class="rr-avatar">${escapeText(String(resident.full_name || '?').charAt(0))}</div>
+            <div>
+              <div style="font-weight:700;color:var(--text-primary);font-size:13.5px;">${escapeText(resident.full_name)}</div>
+              <div style="font-size:11px;color:var(--text-muted);">${escapeText(resident.resident_number)} &nbsp;•&nbsp; ${escapeText(resident.purok)} &nbsp;•&nbsp; ${Number(resident.age)} yrs old</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="badge ${eligible ? 'badge-green' : 'badge-red'}">${eligible ? 'Good Standing' : 'Needs Review'}</span>
+            <span class="badge badge-gray">${requests.length} req</span>
+            <button class="btn btn-xs btn-primary" onclick="event.stopPropagation();openEligibilityForRequestResident(${resident.id})">Check</button>
+            <span class="rr-chevron">▼</span>
+          </div>
+        </div>
+        <div class="rr-requests-panel" style="display:none;">
+          <div class="table-scroll"><table class="tbl"><thead><tr><th>Code</th><th>Document</th><th>Date</th><th>Source</th><th>Status</th></tr></thead><tbody>${requestRows}</tbody></table></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  const pagination = document.getElementById('rr-pagination');
+  if (pagination) {
+    pagination.innerHTML = `
+      <span class="resident-page-summary">${Number(total).toLocaleString()} resident${Number(total) === 1 ? '' : 's'}</span>
+      <button class="btn btn-xs" ${rrCurrentPage <= 1 ? 'disabled' : ''} onclick="loadRequestRecords(${rrCurrentPage - 1})">Previous</button>
+      <span>Page ${rrCurrentPage} of ${rrLastPage}</span>
+      <button class="btn btn-xs" ${rrCurrentPage >= rrLastPage ? 'disabled' : ''} onclick="loadRequestRecords(${rrCurrentPage + 1})">Next</button>`;
+  }
+}
+
+function openEligibilityForRequestResident(databaseId) {
+  const resident = requestRecordResidents.find(item => Number(item.id) === Number(databaseId));
+  if (!resident) return;
+  manualResidentsById.set(String(resident.id), resident);
+  const mapped = residentFromApi(resident);
+  const existingIndex = RESIDENTS.findIndex(item => item.id === mapped.id);
+  if (existingIndex >= 0) RESIDENTS[existingIndex] = mapped;
+  else RESIDENTS.push(mapped);
+  openEligibilityForResident(mapped.id);
+}
+
+function filterRequestRecords() {
+  rrCurrentFilter = document.getElementById('rr-search')?.value || '';
+  clearTimeout(rrSearchTimer);
+  rrSearchTimer = setTimeout(() => loadRequestRecords(1), 250);
+}
+
+function filterRRStatus(status, element) {
+  document.querySelectorAll('.rr-filter-btn').forEach(button => button.classList.remove('active'));
+  element?.classList.add('active');
+  rrCurrentStatusFilter = status;
+  void loadRequestRecords(1);
 }
 
 async function refreshDocumentRequestsLive() {
@@ -3746,3 +3934,637 @@ async function confirmPrintRelease() {
     }
   }
 }
+
+// Database-backed Resident Records module.
+let residentCurrentPage = 1;
+let residentLastPage = 1;
+let residentStatusFilter = '';
+let residentSearchTimer = null;
+const manualResidentsById = new Map();
+
+function residentFromApi(resident) {
+  return {
+    databaseId: resident.id,
+    id: resident.resident_number,
+    name: resident.full_name,
+    firstName: resident.first_name,
+    middleName: resident.middle_name || '',
+    lastName: resident.last_name,
+    suffix: resident.suffix || '',
+    purok: resident.purok,
+    dob: String(resident.date_of_birth || '').slice(0, 10),
+    gender: resident.gender,
+    civil: resident.civil_status,
+    contact: resident.contact_number || '',
+    status: resident.status === 'active' ? 'Active' : 'Inactive',
+    type: resident.residency_type,
+    address: resident.address,
+    specialGroups: resident.special_groups || [],
+    goodStanding: Boolean(resident.is_in_good_standing),
+    archived: Boolean(resident.deleted_at),
+    documentRequestsCount: resident.document_requests_count || 0,
+    issuedCertificatesCount: resident.issued_certificates_count || 0
+  };
+}
+
+async function loadResidents(page = 1) {
+  const tbody = document.getElementById('records-tbody');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="resident-table-message">Loading resident records...</td></tr>';
+
+  const query = new URLSearchParams({ page: String(page), per_page: '15' });
+  const search = document.getElementById('residents-search')?.value.trim();
+  if (search) query.set('search', search);
+  if (residentStatusFilter) query.set('status', residentStatusFilter.toLowerCase());
+
+  try {
+    const response = await fetch(`/admin/residents?${query}`, {
+      credentials: 'same-origin',
+      headers: { 'Accept': 'application/json' }
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload?.message || 'Unable to load resident records.');
+
+    RESIDENTS.splice(0, RESIDENTS.length, ...payload.data.map(residentFromApi));
+    RESIDENT_TOTAL = payload.total;
+    residentCurrentPage = payload.current_page;
+    residentLastPage = payload.last_page;
+    renderResidentsTable();
+    renderResidentPagination(payload.total);
+    refreshPopulationStats();
+    renderDemographics();
+    renderDashPurokBreakdown();
+    populateEligResidentDropdown(null);
+  } catch (error) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="resident-table-message resident-table-error">${escapeText(error.message)}</td></tr>`;
+  }
+}
+
+function renderResidentsTable() {
+  const tbody = document.getElementById('records-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  if (RESIDENTS.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="resident-table-message">No resident records found.</td></tr>';
+    return;
+  }
+
+  RESIDENTS.forEach(resident => {
+    const row = document.createElement('tr');
+    const archivedBadge = resident.archived ? '<span class="badge badge-red">Archived</span>' : `<span class="badge ${resident.status === 'Active' ? 'badge-green' : 'badge-red'}">${escapeText(resident.status)}</span>`;
+    const actions = resident.archived
+      ? `<button class="btn btn-xs btn-green" onclick="restoreResident(${resident.databaseId})">Restore</button>`
+      : `<button class="btn btn-xs btn-primary" onclick="openViewResident('${resident.id}')">View</button>
+         <button class="btn btn-xs" onclick="openEditResident('${resident.id}')">Edit</button>
+         <button class="btn btn-xs btn-danger" onclick="deleteResident('${resident.id}')">Archive</button>`;
+
+    row.innerHTML = `
+      <td><span class="resident-number">${escapeText(resident.id)}</span></td>
+      <td><strong>${escapeText(resident.name)}</strong>${calcAge(resident.dob) >= 60 ? '<span class="badge badge-senior">Senior</span>' : ''}</td>
+      <td>${calcAge(resident.dob)}</td>
+      <td>${escapeText(resident.purok)}</td>
+      <td>${escapeText(resident.gender)}</td>
+      <td>${escapeText(resident.civil)}</td>
+      <td>${archivedBadge}</td>
+      <td><div class="resident-actions">${actions}</div></td>`;
+    tbody.appendChild(row);
+  });
+}
+
+function renderResidentPagination(total) {
+  const container = document.getElementById('resident-pagination');
+  if (!container) return;
+  container.innerHTML = `
+    <span class="resident-page-summary">${Number(total).toLocaleString()} record${total === 1 ? '' : 's'}</span>
+    <button class="btn btn-xs" ${residentCurrentPage <= 1 ? 'disabled' : ''} onclick="loadResidents(${residentCurrentPage - 1})">Previous</button>
+    <span>Page ${residentCurrentPage} of ${residentLastPage}</span>
+    <button class="btn btn-xs" ${residentCurrentPage >= residentLastPage ? 'disabled' : ''} onclick="loadResidents(${residentCurrentPage + 1})">Next</button>`;
+}
+
+function filterResidents() {
+  clearTimeout(residentSearchTimer);
+  residentSearchTimer = setTimeout(() => loadResidents(1), 250);
+}
+
+function filterResidentStatus(value, element) {
+  document.querySelectorAll('#screen-records .status-pill').forEach(pill => pill.classList.remove('active'));
+  element?.classList.add('active');
+  residentStatusFilter = value;
+  loadResidents(1);
+}
+
+function exportResidents() {
+  const query = new URLSearchParams();
+  const search = document.getElementById('residents-search')?.value.trim();
+  if (search) query.set('search', search);
+  if (residentStatusFilter) query.set('status', residentStatusFilter.toLowerCase());
+  window.location.href = `/admin/residents-export?${query}`;
+}
+
+function openAddResident() {
+  syncPurokSelects();
+  document.querySelector('#modal-resident-title span').textContent = 'Register New Resident';
+  ['res-lastname', 'res-name', 'res-middlename', 'res-suffix', 'res-dob', 'res-contact', 'res-address', 'res-edit-id'].forEach(id => {
+    const element = document.getElementById(id);
+    if (element) element.value = '';
+  });
+  document.getElementById('res-status').value = 'active';
+  document.getElementById('res-good-standing').checked = true;
+  setCheckedSpecialGroups([]);
+  openModal('modal-resident');
+}
+
+function openEditResident(residentNumber) {
+  const resident = RESIDENTS.find(item => item.id === residentNumber);
+  if (!resident) return showToast('Resident not found.', 'red');
+  syncPurokSelects(resident.purok);
+  document.querySelector('#modal-resident-title span').textContent = 'Edit Resident Record';
+  const values = {
+    'res-lastname': resident.lastName, 'res-name': resident.firstName,
+    'res-middlename': resident.middleName, 'res-suffix': resident.suffix,
+    'res-dob': resident.dob, 'res-contact': resident.contact,
+    'res-address': resident.address, 'res-edit-id': resident.id,
+    'res-gender': resident.gender, 'res-civil': resident.civil,
+    'res-purok': resident.purok, 'res-type': resident.type,
+    'res-status': resident.status.toLowerCase()
+  };
+  Object.entries(values).forEach(([id, value]) => {
+    const element = document.getElementById(id);
+    if (element) element.value = value || '';
+  });
+  document.getElementById('res-good-standing').checked = resident.goodStanding;
+  setCheckedSpecialGroups(resident.specialGroups);
+  openModal('modal-resident');
+}
+
+function residentFormPayload(confirmDuplicate = false) {
+  return {
+    first_name: document.getElementById('res-name')?.value.trim(),
+    middle_name: document.getElementById('res-middlename')?.value.trim() || null,
+    last_name: document.getElementById('res-lastname')?.value.trim(),
+    suffix: document.getElementById('res-suffix')?.value.trim() || null,
+    date_of_birth: document.getElementById('res-dob')?.value,
+    gender: document.getElementById('res-gender')?.value,
+    civil_status: document.getElementById('res-civil')?.value,
+    purok: document.getElementById('res-purok')?.value,
+    address: document.getElementById('res-address')?.value.trim(),
+    contact_number: document.getElementById('res-contact')?.value.trim() || null,
+    residency_type: document.getElementById('res-type')?.value,
+    special_groups: getCheckedSpecialGroups(),
+    status: document.getElementById('res-status')?.value,
+    is_in_good_standing: document.getElementById('res-good-standing')?.checked,
+    confirm_duplicate: confirmDuplicate
+  };
+}
+
+async function saveResident(confirmDuplicate = false) {
+  const residentNumber = document.getElementById('res-edit-id')?.value;
+  const resident = RESIDENTS.find(item => item.id === residentNumber);
+  const url = resident ? `/admin/residents/${resident.databaseId}` : '/admin/residents';
+  const method = resident ? 'PATCH' : 'POST';
+
+  try {
+    const response = await fetch(url, {
+      method,
+      credentials: 'same-origin',
+      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', ...csrfRequestHeaders() },
+      body: JSON.stringify(residentFormPayload(confirmDuplicate))
+    });
+    const payload = await response.json();
+    if (response.status === 422 && payload?.errors?.duplicate && !confirmDuplicate) {
+      if (confirm(`${payload.errors.duplicate[0]}\n\nSave as a separate resident anyway?`)) return saveResident(true);
+      return;
+    }
+    if (!response.ok) {
+      const message = payload?.errors ? Object.values(payload.errors).flat()[0] : payload?.message;
+      throw new Error(message || 'Unable to save the resident record.');
+    }
+    closeModal('modal-resident');
+    showToast(payload.message, 'green');
+    await loadResidents(resident ? residentCurrentPage : 1);
+    await loadPuroks();
+    await populateManualResidentDropdown();
+  } catch (error) {
+    showToast(error.message, 'red');
+  }
+}
+
+async function deleteResident(residentNumber) {
+  const resident = RESIDENTS.find(item => item.id === residentNumber);
+  if (!resident || !confirm(`Archive ${resident.name}? The record can be restored later.`)) return;
+  await changeResidentArchiveState(`/admin/residents/${resident.databaseId}`, 'DELETE');
+}
+
+async function restoreResident(databaseId) {
+  await changeResidentArchiveState(`/admin/residents/${databaseId}/restore`, 'PATCH');
+}
+
+async function changeResidentArchiveState(url, method) {
+  try {
+    const response = await fetch(url, { method, credentials: 'same-origin', headers: { 'Accept': 'application/json', ...csrfRequestHeaders() } });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload?.message || 'Unable to update the resident record.');
+    showToast(payload.message, 'green');
+    await loadResidents(1);
+    await loadPuroks();
+    await populateManualResidentDropdown();
+  } catch (error) {
+    showToast(error.message, 'red');
+  }
+}
+
+function openViewResident(residentNumber) {
+  const resident = RESIDENTS.find(item => item.id === residentNumber);
+  if (!resident) return;
+  currentViewResidentId = resident.id;
+  const groups = resident.specialGroups.map(group => `<span class="badge badge-blue">${escapeText(group)}</span>`).join(' ') || 'None';
+  document.getElementById('view-resident-content').innerHTML = `
+    <div class="resident-detail-grid">
+      <div><span>Resident ID</span><strong>${escapeText(resident.id)}</strong></div>
+      <div><span>Status</span><strong>${escapeText(resident.status)}</strong></div>
+      <div><span>Full Name</span><strong>${escapeText(resident.name)}</strong></div>
+      <div><span>Date of Birth</span><strong>${escapeText(resident.dob)}</strong></div>
+      <div><span>Age</span><strong>${calcAge(resident.dob)} years old</strong></div>
+      <div><span>Gender</span><strong>${escapeText(resident.gender)}</strong></div>
+      <div><span>Civil Status</span><strong>${escapeText(resident.civil)}</strong></div>
+      <div><span>Purok</span><strong>${escapeText(resident.purok)}</strong></div>
+      <div><span>Contact</span><strong>${escapeText(resident.contact || 'None')}</strong></div>
+      <div><span>Residency Type</span><strong>${escapeText(resident.type)}</strong></div>
+      <div class="resident-detail-wide"><span>Address</span><strong>${escapeText(resident.address)}</strong></div>
+      <div class="resident-detail-wide"><span>Special Groups</span><strong>${groups}</strong></div>
+      <div><span>Document Requests</span><strong>${resident.documentRequestsCount}</strong></div>
+      <div><span>Issued Certificates</span><strong>${resident.issuedCertificatesCount}</strong></div>
+      <div class="resident-detail-wide"><span>Eligibility</span><strong>${resident.goodStanding ? 'In good standing' : 'Not in good standing'}</strong></div>
+    </div>`;
+  openModal('modal-view-resident');
+}
+
+async function populateManualResidentDropdown() {
+  const select = document.getElementById('manual-resident-id');
+  if (!select) return;
+  try {
+    const response = await fetch('/admin/residents?status=active&per_page=100', { headers: { 'Accept': 'application/json' } });
+    if (!response.ok) return;
+    const payload = await response.json();
+    manualResidentsById.clear();
+    select.innerHTML = '<option value="">Manual / legacy issuance</option>';
+    payload.data.forEach(resident => {
+      manualResidentsById.set(String(resident.id), resident);
+      const option = document.createElement('option');
+      option.value = resident.id;
+      option.textContent = `${resident.resident_number} — ${resident.full_name}`;
+      select.appendChild(option);
+    });
+    populateEligResidentDropdown(currentEligResidentId);
+  } catch (error) {
+    console.error('Resident selector failed:', error);
+  }
+}
+
+function selectManualResident() {
+  const resident = manualResidentsById.get(document.getElementById('manual-resident-id')?.value);
+  if (!resident) return;
+  document.getElementById('manual-resident-name').value = resident.full_name;
+  document.getElementById('manual-resident-address').value = resident.address;
+}
+
+async function openViewResidentRequests(residentNumber) {
+  const resident = RESIDENTS.find(item => item.id === residentNumber);
+  if (!resident) return;
+  try {
+    const response = await fetch(`/admin/residents/${resident.databaseId}`, { headers: { 'Accept': 'application/json' } });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload?.message || 'Unable to load request history.');
+    const requests = payload.document_requests || [];
+    const rows = requests.length === 0
+      ? '<tr><td colspan="5" class="resident-table-message">No linked document requests.</td></tr>'
+      : requests.map(request => `<tr>
+          <td>${escapeText(request.reference_code)}</td>
+          <td>${escapeText(request.document_type)}</td>
+          <td>${escapeText(String(request.created_at || '').slice(0, 10))}</td>
+          <td><span class="badge badge-blue">${escapeText(request.status)}</span></td>
+          <td>${escapeText(request.source || 'online')}</td>
+        </tr>`).join('');
+    document.getElementById('rr-detail-title').textContent = `${resident.name} — Request History`;
+    document.getElementById('rr-detail-content').innerHTML = `<div class="table-scroll"><table class="tbl"><thead><tr><th>Code</th><th>Document</th><th>Date</th><th>Status</th><th>Source</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    closeModal('modal-view-resident');
+    openModal('modal-rr-detail');
+  } catch (error) {
+    showToast(error.message, 'red');
+  }
+}
+
+async function runEligibilityCheck() {
+  const residentNumber = document.getElementById('elig-resident-select')?.value;
+  const certificateCode = document.getElementById('elig-doc-select')?.value;
+  const resident = RESIDENTS.find(item => item.id === residentNumber);
+  const certificateType = CERTIFICATE_TYPES.find(type => type.id === certificateCode)?.label;
+  if (!resident || !certificateType) return showToast('Please select a resident and document type.', 'red');
+
+  try {
+    const query = new URLSearchParams({ certificate_type: certificateType });
+    const response = await fetch(`/admin/residents/${resident.databaseId}/eligibility?${query}`, { headers: { 'Accept': 'application/json' } });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload?.message || 'Unable to check eligibility.');
+    const result = document.getElementById('elig-result');
+    result.style.display = 'block';
+    result.innerHTML = `<div class="eligibility-result ${payload.eligible ? 'eligible' : 'ineligible'}">
+      <strong>${payload.eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE'}</strong>
+      <div>${escapeText(payload.resident.full_name)} — ${escapeText(payload.certificate_type)}</div>
+      ${payload.reasons.map(reason => `<div>${escapeText(reason)}</div>`).join('')}
+    </div>`;
+    document.getElementById('elig-proceed-btn').style.display = payload.eligible ? 'block' : 'none';
+    currentEligResidentId = resident.id;
+  } catch (error) {
+    showToast(error.message, 'red');
+  }
+}
+
+function elig_proceedRequest() {
+  const resident = RESIDENTS.find(item => item.id === currentEligResidentId);
+  const certificateCode = document.getElementById('elig-doc-select')?.value;
+  const certificateType = CERTIFICATE_TYPES.find(type => type.id === certificateCode)?.label;
+  if (!resident || !certificateType) return;
+  document.getElementById('manual-resident-id').value = String(resident.databaseId);
+  document.getElementById('manual-certificate-type').value = certificateType;
+  selectManualResident();
+  updateManualCertificateFee();
+  closeModal('modal-eligibility-check');
+  openModal('modal-cert-issue');
+}
+
+let voterCurrentPage = 1;
+let voterLastPage = 1;
+let voterEligibilityFilter = '';
+let voterPurokFilter = '';
+let voterSearchTimer = null;
+let voterRegistrations = [];
+let voterEligibleResidents = [];
+
+async function loadVoterRegistry(page = 1) {
+  const tbody = document.getElementById('voter-registry-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="7" class="resident-table-message">Loading voter list...</td></tr>';
+
+  const query = new URLSearchParams({ page: String(page), per_page: '15' });
+  const search = document.getElementById('voter-search')?.value.trim();
+  if (search) query.set('search', search);
+  if (voterEligibilityFilter) query.set('eligibility', voterEligibilityFilter);
+  if (voterPurokFilter) query.set('purok', voterPurokFilter);
+
+  try {
+    const response = await fetch(`/admin/voter-registrations?${query}`, {
+      credentials: 'same-origin',
+      headers: { 'Accept': 'application/json' }
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload?.message || 'Unable to load the voter registry.');
+
+    voterRegistrations = payload.data || [];
+    voterEligibleResidents = payload.eligible_residents || [];
+    voterCurrentPage = Number(payload.current_page || 1);
+    voterLastPage = Number(payload.last_page || 1);
+    populateVoterPurokFilter(payload.puroks || []);
+    renderVoterRegistry(payload.total || 0);
+    updateVoterSummary(payload.summary || {});
+  } catch (error) {
+    tbody.innerHTML = `<tr><td colspan="7" class="resident-table-message resident-table-error">${escapeText(error.message)}</td></tr>`;
+  }
+}
+
+function renderVoterRegistry(total) {
+  const tbody = document.getElementById('voter-registry-tbody');
+  if (!tbody) return;
+
+  if (voterRegistrations.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="voter-empty-state"><strong>Walang nakitang botante.</strong><span>Subukang baguhin ang purok, age group, o search.</span></td></tr>';
+  } else {
+    tbody.innerHTML = voterRegistrations.map(registration => {
+      const eligibilityClass = registration.voter_eligibility === 'sk_only'
+        ? 'badge-amber'
+        : registration.voter_eligibility === 'sk_and_regular' ? 'badge-green' : 'badge-blue';
+
+      return `<tr>
+        <td><span class="resident-number">${escapeText(registration.resident_number)}</span></td>
+        <td><strong>${escapeText(registration.resident_name)}</strong></td>
+        <td><strong>${Number(registration.age)}</strong></td>
+        <td>${escapeText(registration.purok)}</td>
+        <td><span class="badge ${eligibilityClass}">${escapeText(registration.voter_eligibility_label)}</span></td>
+        <td>${escapeText(registration.precinct_number)}</td>
+        <td>${escapeText(registration.cluster_number)}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  const pagination = document.getElementById('voter-pagination');
+  if (pagination) {
+    pagination.innerHTML = `
+      <span class="resident-page-summary">${Number(total).toLocaleString()} record${Number(total) === 1 ? '' : 's'}</span>
+      <button class="btn btn-xs" ${voterCurrentPage <= 1 ? 'disabled' : ''} onclick="loadVoterRegistry(${voterCurrentPage - 1})">Previous</button>
+      <span>Page ${voterCurrentPage} of ${voterLastPage}</span>
+      <button class="btn btn-xs" ${voterCurrentPage >= voterLastPage ? 'disabled' : ''} onclick="loadVoterRegistry(${voterCurrentPage + 1})">Next</button>`;
+  }
+}
+
+function updateVoterSummary(summary) {
+  const values = {
+    'voter-stat-total': summary.total || 0,
+    'voter-stat-sk-only': summary.sk_only || 0,
+    'voter-stat-sk-regular': summary.sk_and_regular || 0,
+    'voter-stat-regular-only': summary.regular_only || 0
+  };
+  Object.entries(values).forEach(([id, value]) => {
+    const element = document.getElementById(id);
+    if (element) element.textContent = Number(value).toLocaleString();
+  });
+}
+
+function filterVoterRegistry() {
+  clearTimeout(voterSearchTimer);
+  voterSearchTimer = setTimeout(() => loadVoterRegistry(1), 250);
+}
+
+function filterVoterEligibility(eligibility, element) {
+  document.querySelectorAll('#screen-voters .status-pill').forEach(pill => pill.classList.remove('active'));
+  element?.classList.add('active');
+  voterEligibilityFilter = eligibility;
+  loadVoterRegistry(1);
+}
+
+function filterVoterPurok(purok) {
+  voterPurokFilter = purok;
+  loadVoterRegistry(1);
+}
+
+function populateVoterPurokFilter(puroks) {
+  const select = document.getElementById('voter-purok-filter');
+  if (!select || select.options.length > 1) return;
+
+  puroks.forEach(purok => {
+    const option = document.createElement('option');
+    option.value = purok;
+    option.textContent = purok;
+    select.appendChild(option);
+  });
+}
+
+function populateVoterResidentSelect() {
+  const select = document.getElementById('voter-resident-id');
+  if (!select) return;
+
+  select.innerHTML = '<option value="">Pumili ng resident edad 15 pataas...</option>';
+  voterEligibleResidents.forEach(resident => {
+    const option = document.createElement('option');
+    option.value = resident.id;
+    option.textContent = `${resident.resident_number} — ${resident.full_name}, ${resident.age} (${resident.purok}) — ${resident.voter_eligibility_label}`;
+    select.appendChild(option);
+  });
+}
+
+async function openVoterRegistration() {
+  if (voterEligibleResidents.length === 0) await loadVoterRegistry(1);
+  populateVoterResidentSelect();
+  document.getElementById('voter-resident-id').value = '';
+  document.getElementById('voter-comelec-number').value = '';
+  document.getElementById('voter-precinct').value = '';
+  document.getElementById('voter-cluster').value = '';
+  document.getElementById('voter-registration-date').value = new Date().toISOString().slice(0, 10);
+  openModal('modal-voter-registration');
+}
+
+async function saveVoterRegistration() {
+  const payload = {
+    resident_id: Number(document.getElementById('voter-resident-id')?.value),
+    comelec_voter_number: document.getElementById('voter-comelec-number')?.value.trim(),
+    precinct_number: document.getElementById('voter-precinct')?.value.trim(),
+    cluster_number: document.getElementById('voter-cluster')?.value.trim(),
+    registration_date: document.getElementById('voter-registration-date')?.value,
+    status: 'active'
+  };
+  const button = document.getElementById('voter-save-button');
+  if (button) button.disabled = true;
+
+  try {
+    const response = await fetch('/admin/voter-registrations', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', ...csrfRequestHeaders() },
+      body: JSON.stringify(payload)
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      const message = result?.errors ? Object.values(result.errors).flat()[0] : result?.message;
+      throw new Error(message || 'Hindi ma-save ang voter registration.');
+    }
+
+    closeModal('modal-voter-registration');
+    showToast('Naidagdag na ang botante.', 'green');
+    await loadVoterRegistry(1);
+  } catch (error) {
+    showToast(error.message || 'Hindi ma-save ang voter registration.', 'red');
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+function exportVoterRegistry() {
+  const query = new URLSearchParams();
+  const search = document.getElementById('voter-search')?.value.trim();
+  if (search) query.set('search', search);
+  if (voterEligibilityFilter) query.set('eligibility', voterEligibilityFilter);
+  if (voterPurokFilter) query.set('purok', voterPurokFilter);
+  window.location.href = `/admin/voter-registrations-export?${query}`;
+}
+
+function openRejectRequest(requestId, referenceCode, event) {
+  event?.stopPropagation();
+  document.getElementById('reject-request-id').value = String(requestId);
+  document.getElementById('reject-request-code').textContent = `${referenceCode} — the reason will be saved in the request audit record.`;
+  document.getElementById('reject-request-reason').value = '';
+  openModal('modal-reject-request');
+}
+
+async function confirmRejectRequest() {
+  const requestId = document.getElementById('reject-request-id')?.value;
+  const reason = document.getElementById('reject-request-reason')?.value.trim();
+  if (!requestId || !reason || reason.length < 10) {
+    showToast('Enter a clear rejection reason of at least 10 characters.', 'red');
+    return;
+  }
+
+  const button = document.getElementById('reject-request-submit');
+  if (button) button.disabled = true;
+
+  try {
+    const response = await fetch(`/admin/document-requests/${requestId}/status`, {
+      method: 'PATCH',
+      credentials: 'same-origin',
+      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', ...csrfRequestHeaders() },
+      body: JSON.stringify({ status: 'rejected', rejection_reason: reason })
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      const message = payload?.errors ? Object.values(payload.errors).flat()[0] : payload?.message;
+      throw new Error(message || 'Unable to reject the request.');
+    }
+    closeModal('modal-reject-request');
+    showToast(payload.message, 'green');
+    await refreshDocumentRequestsLive();
+  } catch (error) {
+    showToast(error.message, 'red');
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const authenticatedUser = window.AUTHENTICATED_USER;
+  if (authenticatedUser) {
+    await loadPuroks();
+    launchApp(authenticatedUser.name, authenticatedUser.role);
+    await loadResidents();
+    populateManualResidentDropdown();
+    loadVoterRegistry();
+    try {
+      const screen = new URLSearchParams(window.location.search).get('screen') || localStorage.getItem('smartbrgy_active_screen');
+      const navigation = screen ? findNavItem(screen) : null;
+      if (navigation && navigation.style.display !== 'none') showScreen(screen, navigation);
+    } catch (_) {}
+  }
+});
+
+function toggleNavigation(force) {
+  const sidebar = document.getElementById('admin-navigation');
+  const open = force ?? !sidebar.classList.contains('is-open');
+  sidebar.classList.toggle('is-open', open);
+  document.querySelector('.mobile-menu-button')?.setAttribute('aria-expanded', String(open));
+}
+
+document.addEventListener('keydown', event => {
+  const modal = document.querySelector('.modal-overlay.show');
+  if (event.key === 'Escape') {
+    if (modal) closeModal(modal.id);
+    toggleNavigation(false);
+  }
+  if (event.key === 'Tab' && modal) {
+    const controls = [...modal.querySelectorAll('button, a[href], input, select, textarea, [tabindex="0"]')].filter(element => !element.disabled && element.getClientRects().length);
+    const first = controls[0], last = controls.at(-1);
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+    if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+  }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  try { if (localStorage.getItem('smartbrgy_theme') === 'dark') toggleTheme(); } catch (_) {}
+  document.querySelectorAll('.nav-item[onclick], .dark-mode-toggle, .topbar-avatar, .notif-badge-wrap, .modal-close:not(button)').forEach(element => {
+    element.tabIndex = 0;
+    element.setAttribute('role', 'button');
+    if (element.classList.contains('topbar-avatar')) element.setAttribute('aria-label', 'Sign out');
+    element.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); element.click(); } });
+  });
+  document.querySelectorAll('.form-group').forEach((group, index) => {
+    const label = group.querySelector('.form-label');
+    const field = group.querySelector('input:not([type="hidden"]), select, textarea');
+    if (label && field && !field.labels?.length) { label.id ||= `field-label-${index}`; field.setAttribute('aria-labelledby', label.id); }
+  });
+});

@@ -3,36 +3,56 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\UpdateDocumentRequestStatusRequest;
 use App\Models\DocumentRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 class DocumentRequestController extends Controller
 {
     public function index(): View
     {
-        $requests = DocumentRequest::query()->latest()->get();
+        Gate::authorize('viewAny', DocumentRequest::class);
+        $requests = DocumentRequest::query()->latest()->paginate(25);
 
         return view('admin.document-requests.index', compact('requests'));
     }
 
     public function show(DocumentRequest $documentRequest): View
     {
+        Gate::authorize('view', $documentRequest);
+
         return view('admin.document-requests.show', compact('documentRequest'));
     }
 
     public function updateStatus(
-        Request $request,
+        UpdateDocumentRequestStatusRequest $request,
         DocumentRequest $documentRequest,
     ): JsonResponse|RedirectResponse {
-        $validated = $request->validate([
-            'status' => 'required|in:pending,processing,approved,ready_for_release,rejected',
-            'remarks' => 'nullable|string|max:1000',
-        ]);
+        $validated = $request->validated();
+        $lockedRequest = DB::transaction(function () use ($request, $documentRequest, $validated): ?DocumentRequest {
+            $locked = DocumentRequest::query()->lockForUpdate()->findOrFail($documentRequest->id);
 
-        if ($documentRequest->issuedCertificate()->exists()) {
+            if ($locked->issuedCertificate()->exists()) {
+                return null;
+            }
+
+            $isRejected = $validated['status'] === 'rejected';
+            $locked->update([
+                'status' => $validated['status'],
+                'remarks' => $validated['remarks'] ?? $locked->remarks,
+                'rejection_reason' => $isRejected ? $validated['rejection_reason'] : null,
+                'rejected_at' => $isRejected ? now() : null,
+                'rejected_by' => $isRejected ? $request->user()->id : null,
+            ]);
+
+            return $locked;
+        });
+
+        if ($lockedRequest === null) {
             $message = 'This request already has an issued certificate and its status is locked.';
 
             if ($request->expectsJson()) {
@@ -45,16 +65,13 @@ class DocumentRequestController extends Controller
             return back()->withErrors(['status' => $message]);
         }
 
-        $documentRequest->update([
-            'status' => $validated['status'],
-            'remarks' => $validated['remarks'] ?? null,
-        ]);
-
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Document request updated successfully.',
-                'request' => $documentRequest->fresh(),
+                'message' => $validated['status'] === 'rejected'
+                    ? 'Document request rejected with a recorded reason.'
+                    : 'Document request updated successfully.',
+                'request' => $lockedRequest->fresh(),
             ]);
         }
 
@@ -63,6 +80,8 @@ class DocumentRequestController extends Controller
 
     public function live(): JsonResponse
     {
+        Gate::authorize('viewAny', DocumentRequest::class);
+
         return response()->json(DocumentRequest::query()->latest()->get());
     }
 }

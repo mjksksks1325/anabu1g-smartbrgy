@@ -3,6 +3,7 @@
 use App\CertificateType;
 use App\Models\DocumentRequest;
 use App\Models\IssuedCertificate;
+use App\Models\Resident;
 use App\Models\User;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Filesystem\FilesystemManager;
@@ -128,6 +129,68 @@ it('creates and links an onsite request while using the server fee', function ()
     );
 });
 
+it('links an onsite certificate to an eligible resident record', function () {
+    Storage::fake('public');
+    $user = User::factory()->create();
+    $resident = Resident::factory()->create([
+        'first_name' => 'Ana',
+        'middle_name' => null,
+        'last_name' => 'Reyes',
+    ]);
+
+    $this->actingAs($user)->postJson(route('admin.issued-certificates.store'), [
+        'resident_id' => $resident->id,
+        'certificate_type' => CertificateType::CertificateOfResidency->value,
+        'resident_name' => 'Client supplied name is replaced',
+        'address' => $resident->address,
+    ])->assertOk()
+        ->assertJsonPath('certificate.resident_id', $resident->id)
+        ->assertJsonPath('certificate.resident_name', 'Ana Reyes');
+
+    expect(DocumentRequest::query()->sole()->resident_id)->toBe($resident->id);
+});
+
+it('rejects clearance issuance for a linked resident who is not in good standing', function () {
+    Storage::fake('public');
+    $user = User::factory()->create();
+    $resident = Resident::factory()->create(['is_in_good_standing' => false]);
+
+    $this->actingAs($user)->postJson(route('admin.issued-certificates.store'), [
+        'resident_id' => $resident->id,
+        'certificate_type' => CertificateType::BarangayClearance->value,
+        'resident_name' => $resident->full_name,
+        'address' => $resident->address,
+    ])->assertUnprocessable()
+        ->assertJsonPath('message', 'Resident is not in good standing.');
+
+    expect(IssuedCertificate::query()->count())->toBe(0)
+        ->and(DocumentRequest::query()->count())->toBe(0);
+});
+
+it('rejects a second First Time Jobseeker certificate for the same linked resident', function () {
+    Storage::fake('public');
+    $user = User::factory()->create();
+    $resident = Resident::factory()->create();
+    IssuedCertificate::query()->create([
+        'resident_id' => $resident->id,
+        'certificate_number' => 'CERT-2026-FIRST',
+        'verification_code' => 'FIRSTJOBSEEKER1',
+        'certificate_type' => CertificateType::FirstTimeJobseeker->value,
+        'resident_name' => $resident->full_name,
+        'issued_at' => now(),
+    ]);
+
+    $this->actingAs($user)->postJson(route('admin.issued-certificates.store'), [
+        'resident_id' => $resident->id,
+        'certificate_type' => CertificateType::FirstTimeJobseeker->value,
+        'resident_name' => $resident->full_name,
+        'address' => $resident->address,
+    ])->assertUnprocessable()
+        ->assertJsonPath('message', 'A First Time Jobseeker certificate has already been issued to this resident.');
+
+    expect(IssuedCertificate::query()->count())->toBe(1);
+});
+
 it('rejects an unsupported manual certificate type', function () {
     $user = User::factory()->create();
 
@@ -232,7 +295,7 @@ it('renders the matching print template for every certificate type', function (
     $this->actingAs($user)
         ->get(route('admin.issued-certificates.print', $certificate))
         ->assertOk()
-        ->assertViewIs($expectedView)
+        ->assertSee('Back to certificates')->assertSee('css/certificates.css')->assertViewIs($expectedView)
         ->assertSeeText('Maria Santos')
         ->assertSeeText($certificate->certificate_number);
 })->with('certificate types');
@@ -289,4 +352,24 @@ it('escapes resident-provided content on public verification and print pages', f
         ->assertOk()
         ->assertSee('&lt;script&gt;', false)
         ->assertDontSee($dangerousName, false);
+});
+
+it('forbids view-only accounts from listing printing or issuing certificates', function () {
+    $viewer = User::factory()->create(['role' => 'viewer']);
+    $request = DocumentRequest::query()->create([
+        'reference_code' => 'REQ-PERM-001', 'document_type' => CertificateType::BarangayClearance->value,
+        'full_name' => 'Juan Dela Cruz', 'address' => 'Anabu I-G', 'status' => 'ready_for_release',
+    ]);
+    $certificate = IssuedCertificate::query()->create([
+        'certificate_number' => 'CERT-PERM-001', 'verification_code' => 'VERIFY-PERM-001',
+        'certificate_type' => CertificateType::BarangayClearance->value,
+        'resident_name' => 'Juan Dela Cruz', 'issued_at' => now(),
+    ]);
+
+    $this->actingAs($viewer)->getJson(route('admin.issued-certificates.index'))->assertForbidden();
+    $this->get(route('admin.issued-certificates.print', $certificate))->assertForbidden();
+    $this->postJson(route('admin.issued-certificates.store'))->assertForbidden();
+    $this->postJson(route('admin.document-requests.issue', $request))->assertForbidden();
+    $this->assertDatabaseCount('issued_certificates', 1);
+    expect($request->fresh()->status)->toBe('ready_for_release');
 });

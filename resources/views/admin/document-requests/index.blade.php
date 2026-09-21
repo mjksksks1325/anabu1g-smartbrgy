@@ -6,67 +6,19 @@
 
     <title>Document Requests</title>
 
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f4f6f8;
-            margin: 0;
-            padding: 30px;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: auto;
-        }
-
-        h1 {
-            margin-bottom: 20px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-        }
-
-        th, td {
-            padding: 12px;
-            border-bottom: 1px solid #ddd;
-            text-align: left;
-        }
-
-        th {
-            background: #166534;
-            color: white;
-        }
-
-        .status {
-            text-transform: capitalize;
-        }
-
-        .btn {
-            display: inline-block;
-            padding: 7px 12px;
-            background: #166534;
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-        }
-
-        .empty {
-            text-align: center;
-            padding: 30px;
-        }
-    </style>
+    <link rel="icon" type="image/jpeg" href="{{ asset('images/anabu-logo.jpg') }}">
+    <link rel="stylesheet" href="{{ asset('css/government.css') }}">
 </head>
 
-<body>
+<body class="civic-page">
+@include('partials.civic-header')
 
-<div class="container">
+<main class="civic-main" id="main-content" tabindex="-1">
 
-    <h1>Document Requests</h1>
+    <h1 class="civic-page-title">Document Requests</h1>
+<p class="civic-lead">Review resident submissions and follow each request through to release.</p>
 
-    <table>
+    <div class="civic-table-wrap"><table class="civic-table">
 
         <thead>
             <tr>
@@ -90,7 +42,7 @@
 
                 <td>{{ $request->document_type }}</td>
 
-                <td class="status">
+                <td class="civic-status">
                     {{ str_replace('_', ' ', $request->status) }}
                 </td>
 
@@ -101,7 +53,7 @@
                 <td>
                     <a
                         href="{{ route('admin.document-requests.show', $request) }}"
-                        class="btn"
+                        class="civic-link"
                     >
                         View
                     </a>
@@ -111,7 +63,7 @@
         @empty
 
             <tr>
-                <td colspan="6" class="empty">
+                <td colspan="6" class="civic-empty">
                     No document requests found.
                 </td>
             </tr>
@@ -120,9 +72,10 @@
 
         </tbody>
 
-    </table>
+    </table></div>
+<div style="margin-top:24px;">{{ $requests->links() }}</div>
 
-</div>
-
+</main>
+@include('partials.civic-footer')
 </body>
 </html>

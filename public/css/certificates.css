@@ -1,0 +1,7 @@
+.certificate-navigation { display:flex; align-items:center; justify-content:space-between; gap:20px; padding:18px 24px; background:#163650; border-bottom:3px solid #b48a35; color:#fff; font:13px/1.5 'Segoe UI',system-ui,sans-serif; margin-bottom:24px; }
+.certificate-navigation a { color:#fff; text-underline-offset:4px; }
+.certificate-navigation a:focus-visible, .print-btn:focus-visible, .print-button:focus-visible { outline:3px solid #b48a35; outline-offset:4px; }
+.print-btn, .print-button { background:#163650; border-radius:5px; font-family:'Segoe UI',system-ui,sans-serif; }
+@media screen { body { padding:0 0 24px; } .page, .certificate, .id-card { box-shadow:0 4px 22px #16365018; } }
+@media (max-width:760px) { .certificate-navigation { padding:14px 16px; flex-wrap:wrap; } .page, .certificate { margin-left:16px; margin-right:16px; } }
+@media print { .certificate-navigation { display:none; } .page, .certificate, .id-card { box-shadow:none; } }

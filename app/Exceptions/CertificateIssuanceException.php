@@ -31,6 +31,11 @@ class CertificateIssuanceException extends Exception
         return new self('This certificate type is not supported.', 422);
     }
 
+    public static function residentIsNotEligible(string $reason): self
+    {
+        return new self($reason, 422);
+    }
+
     public function httpStatus(): int
     {
         return $this->httpStatus;

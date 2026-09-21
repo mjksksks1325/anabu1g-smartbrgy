@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\CertificateType;
 use App\Models\DocumentRequest;
+use App\Models\Resident;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -13,6 +14,13 @@ use Illuminate\Validation\Rule;
 
 class DocumentRequestController extends Controller
 {
+    public function csrfToken(Request $request): JsonResponse
+    {
+        return response()
+            ->json(['token' => $request->session()->token()])
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
+    }
+
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -31,9 +39,11 @@ class DocumentRequestController extends Controller
             'document-request-attachments',
             'public'
         );
+        $resident = $this->matchingResident($validated);
 
         $documentRequest = DocumentRequest::create([
             ...Arr::except($validated, ['attachment']),
+            'resident_id' => $resident?->id,
             'reference_code' => $referenceCode,
             'source' => 'online',
             'attachment_path' => $attachmentPath ? Storage::url($attachmentPath) : null,
@@ -46,6 +56,23 @@ class DocumentRequestController extends Controller
             'reference_code' => $documentRequest->reference_code,
             'status' => $documentRequest->status,
         ]);
+    }
+
+    /** @param array<string, mixed> $attributes */
+    private function matchingResident(array $attributes): ?Resident
+    {
+        if (empty($attributes['date_of_birth'])) {
+            return null;
+        }
+
+        $expectedName = Str::lower(Str::squish($attributes['full_name']));
+        $matches = Resident::query()
+            ->where('status', 'active')
+            ->whereDate('date_of_birth', $attributes['date_of_birth'])
+            ->get()
+            ->filter(fn (Resident $resident): bool => Str::lower(Str::squish($resident->full_name)) === $expectedName);
+
+        return $matches->count() === 1 ? $matches->first() : null;
     }
 
     public function status(string $referenceCode): JsonResponse
@@ -65,6 +92,9 @@ class DocumentRequestController extends Controller
             'document_type' => $documentRequest->document_type,
             'status' => $documentRequest->status,
             'remarks' => $documentRequest->remarks,
+            'rejection_reason' => $documentRequest->status === 'rejected'
+                ? $documentRequest->rejection_reason
+                : null,
         ]);
     }
 }

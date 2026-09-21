@@ -91,3 +91,71 @@ test('request status is locked after its certificate has been issued', function 
 
     expect($documentRequest->fresh()->status)->toBe('released');
 });
+
+test('rejecting an online request requires a meaningful reason', function () {
+    $user = User::factory()->create();
+    $documentRequest = DocumentRequest::query()->create([
+        'reference_code' => 'REQ-2026-REJECT-REASON',
+        'document_type' => 'Barangay Clearance',
+        'full_name' => 'Juan Dela Cruz',
+        'address' => 'Anabu I-G, Imus City',
+        'status' => 'pending',
+    ]);
+
+    $this->actingAs($user)
+        ->patchJson(route('admin.document-requests.update-status', $documentRequest), [
+            'status' => 'rejected',
+            'rejection_reason' => 'Too short',
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('rejection_reason');
+
+    expect($documentRequest->fresh()->status)->toBe('pending');
+});
+
+test('rejecting an online request records the reason actor and timestamp', function () {
+    $user = User::factory()->create();
+    $documentRequest = DocumentRequest::query()->create([
+        'reference_code' => 'REQ-2026-REJECTED',
+        'source' => 'online',
+        'document_type' => 'Barangay Clearance',
+        'full_name' => 'Maria Santos',
+        'address' => 'Anabu I-G, Imus City',
+        'status' => 'pending',
+    ]);
+
+    $this->actingAs($user)
+        ->patchJson(route('admin.document-requests.update-status', $documentRequest), [
+            'status' => 'rejected',
+            'rejection_reason' => 'The submitted address does not match the resident record.',
+        ])
+        ->assertOk()
+        ->assertJsonPath('request.status', 'rejected')
+        ->assertJsonPath('request.rejection_reason', 'The submitted address does not match the resident record.');
+
+    $documentRequest->refresh();
+
+    expect($documentRequest->rejected_by)->toBe($user->id);
+    expect($documentRequest->rejected_at)->not->toBeNull();
+});
+
+test('users without a staff role cannot reject online requests', function () {
+    $user = User::factory()->create();
+    $user->forceFill(['role' => 'viewer'])->save();
+    $documentRequest = DocumentRequest::query()->create([
+        'reference_code' => 'REQ-2026-FORBIDDEN',
+        'document_type' => 'Barangay Clearance',
+        'full_name' => 'Pedro Reyes',
+        'address' => 'Anabu I-G, Imus City',
+        'status' => 'pending',
+    ]);
+
+    $this->actingAs($user)
+        ->patchJson(route('admin.document-requests.update-status', $documentRequest), [
+            'status' => 'rejected',
+            'rejection_reason' => 'The submitted requirements could not be verified.',
+        ])
+        ->assertForbidden();
+
+    expect($documentRequest->fresh()->status)->toBe('pending');
+});

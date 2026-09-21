@@ -1,33 +1,47 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fil">
 <head>
 <meta charset="UTF-8"/>
 <meta name="csrf-token" content="{{ csrf_token() }}">
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>SmartBrgy Portal - Document Request | Barangay Anabu I-G</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<title>Online Document Services | Barangay Anabu I-G</title>
 <link rel="icon" type="image/jpeg" href="{{ asset('images/anabu-logo.jpg') }}">
 <link rel="stylesheet" href="{{ asset('css/portal.css') }}">
+<link rel="stylesheet" href="{{ asset('css/government.css') }}">
 </head>
 <body>
+<a href="#main-content" class="skip-link">Skip to main content</a>
+<div class="portal-government-bar">City of Imus / Province of Cavite <a href="{{ route('login') }}">Staff sign in</a></div>
 
-<div id="toast-wrap"></div>
+<div id="toast-wrap" role="status" aria-live="polite"></div>
 <div id="loader" style="display:none;"><div class="spinner"></div><div style="font-size:13px;color:var(--text-muted);">Sandali lang...</div></div>
 
 <!-- HEADER -->
-<div class="header">
+<header class="header">
   <div class="header-seal"><img src="{{ asset('images/anabu-logo.jpg') }}" alt="Barangay Anabu I-G"></div>
   <div class="header-info">
-    <h1>SmartBrgy Online Portal</h1>
-    <p>Barangay Anabu I-G, Imus City, Cavite</p>
+    <h1>Barangay Anabu I-G</h1>
+    <p>Online Document Services · City of Imus</p>
   </div>
-  <div class="header-badge">🌐 Online</div>
-  <div id="portal-theme-toggle" onclick="togglePortalTheme()">
+  <div class="header-badge"><span></span> Services online</div>
+  <button type="button" id="portal-theme-toggle" onclick="togglePortalTheme()" aria-label="Change color theme">
     <span id="portal-theme-icon">🌙</span>
     <span id="portal-theme-label">Dark Mode</span>
-  </div>
-</div>
+  </button>
+</header>
 
-<div class="container">
+<div class="container" id="main-content" tabindex="-1">
+  <section class="portal-intro" aria-labelledby="portal-title">
+    <div>
+      <div class="portal-eyebrow">Resident Services</div>
+      <h2 id="portal-title">Request barangay documents online</h2>
+      <p>Submit your request securely, track its progress, and collect the approved document at the barangay hall.</p>
+    </div>
+    <div class="portal-service-meta">
+      <span>Monday–Friday</span>
+      <strong>8:00 AM–5:00 PM</strong>
+    </div>
+  </section>
 
   <!-- ═══════ SCREEN 1: WELCOME + TERMS AND CONDITIONS ═══════ -->
   <div class="screen active" id="screen-terms">
@@ -41,7 +55,7 @@
 
     <div class="card">
       <div class="card-header">
-        <h2>📋 Mga Tuntunin at Kundisyon</h2>
+        <h2>Mga Tuntunin at Kundisyon</h2>
         <p>Basahin nang mabuti bago mag-request ng dokumento</p>
       </div>
       <div class="card-body">
@@ -50,7 +64,7 @@
           <div><strong>Mahalaga:</strong> Ang inyong personal na impormasyon ay pinangangalagaan ng Barangay Anabu I-G alinsunod sa Republic Act 10173 (Data Privacy Act ng 2012). Basahin ang mga sumusunod bago magpatuloy.</div>
         </div>
 
-        <div class="tnc-box" id="tnc-scroll">
+        <div class="tnc-box" id="tnc-scroll" tabindex="0" role="region" aria-label="Mga tuntunin at kundisyon">
           <h3>📜 KASUNDUAN SA PAGGAMIT NG SMARTBRGY ONLINE PORTAL</h3>
           <p><em>Barangay Anabu I-G, Imus City, Cavite — Bersyon 1.0, Mayo 2025</em></p>
 
@@ -163,17 +177,17 @@
 
     <div class="card">
       <div class="card-header">
-        <h2>📄 Piliin ang Uri ng Dokumento</h2>
+        <h2>Piliin ang Uri ng Dokumento</h2>
         <p>I-click ang dokumentong gusto ninyong i-request</p>
       </div>
       <div class="card-body">
         <div class="cert-grid" id="cert-type-grid">
-          <div class="cert-btn" onclick="selectDoc('BC',this)"><div class="icon">📄</div><div class="label">Barangay Clearance</div><div class="fee">PHP 50.00</div><div class="days">✓ 1 araw</div></div>
-          <div class="cert-btn" onclick="selectDoc('CR',this)"><div class="icon">🏠</div><div class="label">Certificate of Residency</div><div class="fee">PHP 50.00</div><div class="days">✓ 1 araw</div></div>
-          <div class="cert-btn" onclick="selectDoc('CI',this)"><div class="icon">📋</div><div class="label">Certificate of Indigency</div><div class="fee">Libre</div><div class="days">✓ 1 araw</div></div>
-          <div class="cert-btn" onclick="selectDoc('BID',this)"><div class="icon">🪪</div><div class="label">Barangay ID</div><div class="fee">PHP 100.00</div><div class="days">✓ 3-5 araw</div></div>
-          <div class="cert-btn" onclick="selectDoc('CTFJ',this)"><div class="icon">💼</div><div class="label">First Time Jobseeker</div><div class="fee">Libre</div><div class="days">✓ 1 araw</div></div>
-          <div class="cert-btn" onclick="selectDoc('BBC',this)"><div class="icon">🏪</div><div class="label">Business Clearance</div><div class="fee">PHP 200.00+</div><div class="days">✓ 3-5 araw</div></div>
+          <div class="cert-btn" role="button" tabindex="0" aria-pressed="false" onclick="selectDoc('BC',this)"><div class="icon">📄</div><div class="label">Barangay Clearance</div><div class="fee">PHP 50.00</div><div class="days">✓ 1 araw</div></div>
+          <div class="cert-btn" role="button" tabindex="0" aria-pressed="false" onclick="selectDoc('CR',this)"><div class="icon">🏠</div><div class="label">Certificate of Residency</div><div class="fee">PHP 50.00</div><div class="days">✓ 1 araw</div></div>
+          <div class="cert-btn" role="button" tabindex="0" aria-pressed="false" onclick="selectDoc('CI',this)"><div class="icon">📋</div><div class="label">Certificate of Indigency</div><div class="fee">Libre</div><div class="days">✓ 1 araw</div></div>
+          <div class="cert-btn" role="button" tabindex="0" aria-pressed="false" onclick="selectDoc('BID',this)"><div class="icon">🪪</div><div class="label">Barangay ID</div><div class="fee">PHP 100.00</div><div class="days">✓ 3-5 araw</div></div>
+          <div class="cert-btn" role="button" tabindex="0" aria-pressed="false" onclick="selectDoc('CTFJ',this)"><div class="icon">💼</div><div class="label">First Time Jobseeker</div><div class="fee">Libre</div><div class="days">✓ 1 araw</div></div>
+          <div class="cert-btn" role="button" tabindex="0" aria-pressed="false" onclick="selectDoc('BBC',this)"><div class="icon">🏪</div><div class="label">Business Clearance</div><div class="fee">PHP 200.00+</div><div class="days">✓ 3-5 araw</div></div>
         </div>
 
         <div id="doc-selected-info" style="display:none;" class="alert alert-green">
@@ -200,10 +214,11 @@
 
     <div class="card">
       <div class="card-header">
-        <h2>✍️ Punan ang Impormasyon</h2>
+        <h2>Punan ang Impormasyon</h2>
         <p>Tiyaking tama ang lahat ng inyong impormasyon</p>
       </div>
-      <div class="card-body">
+      <form class="card-body" id="resident-details-form" novalidate onsubmit="event.preventDefault();goToAttachment()">
+        <div id="portal-form-error" class="alert alert-red" role="alert" hidden></div>
         <div class="alert alert-blue" style="margin-bottom:16px;">
           <span style="font-size:16px;flex-shrink:0;">📄</span>
           <div>Nire-request: <strong id="form-doc-label"></strong> — <span id="form-doc-fee" style="font-weight:700;color:var(--blue);"></span></div>
@@ -211,34 +226,34 @@
 
         <div class="form-group">
           <label class="form-label" for="f-name">Buong Pangalan <span class="req">*</span></label>
-          <input class="form-input" id="f-name" placeholder="Halimbawa: Juan dela Cruz" autocomplete="name"/>
+          <input class="form-input" id="f-name" required maxlength="255" enterkeyhint="next" placeholder="Halimbawa: Juan dela Cruz" autocomplete="name"/>
           <div class="form-note">Isulat ang inyong buong pangalan tulad ng nakasaad sa inyong valid ID</div>
         </div>
 
         <div class="form-group">
           <label class="form-label" for="f-address">Address sa Barangay <span class="req">*</span></label>
-          <input class="form-input" id="f-address" placeholder="Purok, Sityo o Street — Barangay Anabu I-G"/>
+          <input class="form-input" id="f-address" required maxlength="1000" autocomplete="street-address" enterkeyhint="next" placeholder="Purok, Sityo o Street — Barangay Anabu I-G"/>
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="f-email">Email Address <span class="req">*</span> <span style="font-weight:400;color:#6b7280;">(para sa notification)</span></label>
-          <input class="form-input" id="f-email" placeholder="example@gmail.com" type="email" autocomplete="email" required/>
-          <div class="form-note">Dito ipapadala ang mga update tungkol sa inyong request</div>
+          <label class="form-label" for="f-email">Email Address <span class="req">*</span> <span style="font-weight:400;color:#6b7280;">(para makipag-ugnayan)</span></label>
+          <input class="form-input" id="f-email" maxlength="255" inputmode="email" autocapitalize="none" spellcheck="false" enterkeyhint="next" placeholder="example@gmail.com" type="email" autocomplete="email" required/>
+          <div class="form-note">Gagamitin ito kung kailangang makipag-ugnayan ang barangay tungkol sa inyong request</div>
         </div>
 
         <div class="form-group">
           <label class="form-label" for="f-dob">Petsa ng Kapanganakan <span class="req">*</span></label>
-          <input class="form-input" id="f-dob" type="date" required/>
+          <input class="form-input" id="f-dob" type="date" autocomplete="bday" max="{{ now()->toDateString() }}" required/>
         </div>
 
         <div class="form-group">
           <label class="form-label" for="f-purpose">Layunin / Dahilan <span class="req">*</span></label>
-          <input class="form-input" id="f-purpose" placeholder="Halimbawa: Para sa trabaho, scholarship, loan, business..."/>
+          <input class="form-input" id="f-purpose" required maxlength="255" enterkeyhint="next" placeholder="Halimbawa: Para sa trabaho, scholarship, loan, business..."/>
         </div>
 
         <div id="business-field" style="display:none;" class="form-group">
           <label class="form-label" for="f-business">Pangalan ng Negosyo <span class="req">*</span></label>
-          <input class="form-input" id="f-business" placeholder="Pangalan ng inyong negosyo"/>
+          <input class="form-input" id="f-business" maxlength="255" autocomplete="organization" enterkeyhint="done" placeholder="Pangalan ng inyong negosyo"/>
         </div>
 
         <div class="alert alert-yellow" style="margin:16px 0 10px;">
@@ -247,10 +262,10 @@
         </div>
 
         <div class="btn-row">
-          <button class="btn btn-outline" onclick="goBack('screen-doctype')">← Bumalik</button>
-          <button class="btn btn-green" onclick="goToAttachment()">Susunod → Attachment</button>
+          <button type="button" class="btn btn-outline" onclick="goBack('screen-doctype')">← Bumalik</button>
+          <button type="submit" class="btn btn-green">Susunod → Attachment</button>
         </div>
-      </div>
+      </form>
     </div>
   </div>
 
@@ -265,7 +280,7 @@
     </div>
     <div class="card">
       <div class="card-header">
-        <h2>🪪 I-upload ang Inyong Valid ID</h2>
+        <h2>I-upload ang Inyong Valid ID</h2>
         <p>Mag-upload ng larawan ng inyong valid ID bilang patunay ng pagkakakilanlan</p>
       </div>
       <div class="card-body">
@@ -275,13 +290,13 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label">Larawan ng Valid ID <span style="font-weight:400;color:#6b7280;">(JPG, PNG, WebP — max 5MB)</span></label>
-          <div id="att-dropzone" style="border:2px dashed var(--border);border-radius:12px;padding:32px 16px;text-align:center;cursor:pointer;transition:border-color .2s;" onclick="document.getElementById('f-attachment').click()" ondragover="event.preventDefault();this.style.borderColor='var(--green)'" ondragleave="this.style.borderColor='var(--border)'" ondrop="handleAttachmentDrop(event)">
+          <label class="form-label" for="f-attachment">Larawan ng Valid ID <span style="font-weight:400;color:#6b7280;">(JPG, PNG, WebP — max 5MB)</span></label>
+          <div id="att-dropzone" aria-label="Pumili ng larawan ng valid ID" style="border:2px dashed var(--border);border-radius:12px;padding:32px 16px;text-align:center;cursor:pointer;transition:border-color .2s;" onclick="document.getElementById('f-attachment').click()" ondragover="event.preventDefault();this.style.borderColor='var(--green)'" ondragleave="this.style.borderColor='var(--border)'" ondrop="handleAttachmentDrop(event)">
             <div style="font-size:36px;margin-bottom:8px;">🪪</div>
-            <div style="font-size:13px;font-weight:600;color:var(--text-main);margin-bottom:4px;">I-click o i-drag ang larawan dito</div>
-            <div style="font-size:11px;color:var(--text-sub);">JPG, PNG, WebP — hanggang 5MB</div>
+            <div style="font-size:13px;font-weight:600;color:var(--text-main);margin-bottom:4px;">Pumili ng larawan o kumuha gamit ang camera</div>
+            <div id="attachment-help" style="font-size:11px;color:var(--text-sub);">JPG, PNG, WebP — hanggang 5MB</div>
           </div>
-          <input type="file" id="f-attachment" accept="image/jpeg,image/png,image/webp" style="display:none;" onchange="previewAttachment(this)"/>
+          <input type="file" id="f-attachment" accept="image/jpeg,image/png,image/webp" class="attachment-input" aria-describedby="attachment-help" onchange="previewAttachment(this)"/>
         </div>
 
         <div id="att-preview" style="display:none;margin-top:12px;text-align:center;">
@@ -292,7 +307,7 @@
 
         <div class="btn-row" style="margin-top:20px;">
           <button class="btn btn-outline" onclick="goBack('screen-form')">← Bumalik</button>
-          <button class="btn btn-green" onclick="submitRequest()">📨 I-submit ang Request</button>
+          <button class="btn btn-green" id="submit-request-button" onclick="submitRequest()">I-submit ang Request</button>
         </div>
       </div>
     </div>
@@ -315,6 +330,7 @@
           <h2 style="font-size:20px;font-weight:800;color:var(--green);margin-bottom:6px;">Request na Na-submit!</h2>
           <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;">Ang inyong reference code ay:</p>
           <div class="confirm-code" id="conf-code">REQ-0000</div>
+          <button class="btn btn-outline copy-code-button" type="button" onclick="copyReferenceCode()">Kopyahin ang code</button>
           <div class="confirm-note">
             <strong>I-screenshot o isulat ang code na ito.</strong><br/>
             Ibibigay ito sa Barangay Hall pagdating ninyo para makuha ang inyong dokumento.
@@ -323,7 +339,7 @@
           <div class="confirm-steps">
             <p style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px;">📋 Susunod na Hakbang:</p>
             <ol>
-              <li>Hintayin ang email update mula sa barangay tungkol sa status ng iyong request</li>
+              <li>I-check ang status ng inyong request gamit ang reference code sa portal</li>
               <li>Pumunta sa <strong>Barangay Hall, Anabu I-G</strong> sa loob ng 30 araw</li>
               <li>Magdala ng <strong>1 valid government ID</strong></li>
               <li>Ipakita ang reference code: <strong id="conf-code-mini"></strong></li>
@@ -334,8 +350,8 @@
           <div id="conf-summary" class="alert alert-green" style="text-align:left;margin-bottom:16px;"></div>
 
           <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-            <button class="btn btn-outline" onclick="goToStatus()">🔍 I-check ang Status</button>
-            <button class="btn btn-green" onclick="newRequest()">➕ Bagong Request</button>
+            <button class="btn btn-outline" onclick="goToStatus()">I-check ang Status</button>
+            <button class="btn btn-green" onclick="newRequest()">Bagong Request</button>
           </div>
         </div>
       </div>
@@ -346,18 +362,18 @@
   <div class="screen" id="screen-status">
     <div class="card">
       <div class="card-header">
-        <h2>🔍 I-check ang Status ng Request</h2>
+        <h2>I-check ang Status ng Request</h2>
         <p>Ilagay ang inyong reference code upang makita ang status</p>
       </div>
       <div class="card-body">
         <div class="form-group">
           <label class="form-label" for="status-code">Reference Code <span class="req">*</span></label>
-          <div style="display:flex;gap:8px;">
-            <input class="form-input" id="status-code" placeholder="Halimbawa: REQ-2025-0001" style="flex:1;" onkeydown="if(event.key==='Enter')checkStatus()"/>
-            <button class="btn btn-green" onclick="checkStatus()">🔍 Hanapin</button>
+          <div class="status-search-row">
+            <input class="form-input" id="status-code" maxlength="32" autocapitalize="characters" autocomplete="off" spellcheck="false" enterkeyhint="search" placeholder="REQ-2026-XXXXXX" style="flex:1;" onkeydown="if(event.key==='Enter')checkStatus()"/>
+            <button class="btn btn-green" onclick="checkStatus()">Hanapin</button>
           </div>
         </div>
-        <div id="status-result" style="display:none;"></div>
+        <div id="status-result" role="status" aria-live="polite" style="display:none;"></div>
         <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);text-align:center;">
           <button class="btn btn-outline" onclick="showScreen('screen-terms')">← Bumalik sa Simula</button>
         </div>
@@ -475,6 +491,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Restore session state after all DOM setup is done
   _restoreSession();
+  initializePortalNavigation();
 });
 </script>
 <script src="{{ asset('js/portal-form.js')  }}" ></script>

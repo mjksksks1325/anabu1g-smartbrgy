@@ -6,6 +6,7 @@ use App\CertificateType;
 use App\Exceptions\CertificateIssuanceException;
 use App\Models\DocumentRequest;
 use App\Models\IssuedCertificate;
+use App\Models\Resident;
 use F9WebLtd\QrCode\Generator;
 use Illuminate\Filesystem\FilesystemManager;
 use Illuminate\Support\Facades\DB;
@@ -22,6 +23,7 @@ class IssueCertificate
     /**
      * @param  array{
      *     certificate_type: string,
+     *     resident_id?: int|null,
      *     resident_name: string,
      *     address?: string,
      *     purpose?: string|null
@@ -46,9 +48,19 @@ class IssueCertificate
                 $certificateType = CertificateType::tryFromLabel($attributes['certificate_type'])
                     ?? throw CertificateIssuanceException::unsupportedCertificateType();
 
+                $residentId = $documentRequest === null
+                    ? ($attributes['resident_id'] ?? null)
+                    : $documentRequest->resident_id;
+                $resident = $residentId === null
+                    ? null
+                    : Resident::query()->lockForUpdate()->find($residentId);
+
+                $this->ensureResidentIsEligible($resident, $certificateType);
+
                 $lockedRequest = $documentRequest === null
                     ? DocumentRequest::query()->create([
                         'reference_code' => 'REQ-ONSITE-'.now()->format('Y').'-'.Str::upper(Str::random(8)),
+                        'resident_id' => $resident?->id,
                         'source' => 'onsite',
                         'document_type' => $certificateType->value,
                         'full_name' => $attributes['resident_name'],
@@ -85,10 +97,11 @@ class IssueCertificate
 
                 $certificate = IssuedCertificate::query()->create([
                     'document_request_id' => $lockedRequest->id,
+                    'resident_id' => $resident?->id,
                     'certificate_number' => $certificateNumber,
                     'verification_code' => $verificationCode,
                     'certificate_type' => $certificateType->value,
-                    'resident_name' => $attributes['resident_name'],
+                    'resident_name' => $resident === null ? $attributes['resident_name'] : $resident->full_name,
                     'purpose' => $attributes['purpose'] ?? null,
                     'amount_paid' => $certificateType->fee(),
                     'issued_at' => now(),
@@ -109,6 +122,19 @@ class IssueCertificate
             }
 
             throw $exception;
+        }
+    }
+
+    private function ensureResidentIsEligible(?Resident $resident, CertificateType $certificateType): void
+    {
+        if ($resident === null) {
+            return;
+        }
+
+        $eligibility = $resident->certificateEligibility($certificateType);
+
+        if (! $eligibility['eligible']) {
+            throw CertificateIssuanceException::residentIsNotEligible($eligibility['reasons'][0]);
         }
     }
 }
