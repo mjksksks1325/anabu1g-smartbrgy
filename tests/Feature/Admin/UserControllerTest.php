@@ -87,4 +87,5 @@ it('does not authenticate a suspended account with a correct password', function
     $this->post(route('login.store'), ['email' => $user->email, 'password' => 'password'])
         ->assertSessionHasErrors('email');
     $this->assertGuest();
+    $this->assertDatabaseEmpty('administrative_audits');
 });

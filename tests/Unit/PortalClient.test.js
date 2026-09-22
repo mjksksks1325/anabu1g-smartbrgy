@@ -27,6 +27,7 @@ function portal() {
   element('tnc-agree').checked = true;
   const saved = new Map();
   const revoked = [];
+  const listeners = new Map();
   const context = vm.createContext({
     console, FormData, Object,
     DOC_TYPES: { BC: { label: 'Barangay Clearance', icon: 'BC', fee: 'PHP 50', days: '1 day' }, BBC: { label: 'Business Clearance', icon: 'BBC', fee: 'PHP 200', days: '3 days' } },
@@ -41,7 +42,7 @@ function portal() {
       },
       querySelectorAll: selector => selector === '.screen' ? screens : selector === '.cert-btn' ? cards : [],
     },
-    window: { history: { pushState() {}, replaceState() {} }, scrollTo() {}, addEventListener() {} },
+    window: { history: { pushState() {}, replaceState() {} }, scrollTo() {}, addEventListener(name, handler) { listeners.set(name, handler); } },
     navigator: {}, URL: { createObjectURL: file => 'blob:' + file.name, revokeObjectURL: url => revoked.push(url) },
     sessionStorage: { setItem: (key, value) => saved.set(key, value), getItem: key => saved.get(key), removeItem: key => saved.delete(key) },
     setTimeout() {}, clearTimeout() {},
@@ -51,15 +52,16 @@ function portal() {
   }
   context.messages = [];
   vm.runInContext('toast = (message, type) => messages.push({ message, type });', context);
-  return { context, element, screens, saved, revoked };
+  return { context, element, screens, saved, revoked, listeners };
 }
 
 test('mobile navigation still works when browser storage is unavailable', () => {
   const { context, element } = portal();
   context.sessionStorage.setItem = () => { throw new Error('Storage blocked'); };
   context.sessionStorage.getItem = () => { throw new Error('Storage blocked'); };
+  context.sessionStorage.removeItem = () => { throw new Error('Storage blocked'); };
 
-  assert.doesNotThrow(() => context._restoreSession());
+  assert.doesNotThrow(() => context.initializePortalSession());
   assert.doesNotThrow(() => context.showScreen('screen-status'));
   assert.equal(element('screen-status').classList.contains('active'), true);
 });
@@ -68,8 +70,59 @@ test('invalid restored screens cannot leave the portal blank', () => {
   const { context, saved, element } = portal();
   saved.set('smartbrgy_session', JSON.stringify({ screen: 'missing-screen', docId: 'invalid', tncScrolled: true, tncChecked: true }));
 
-  context._restoreSession();
+  context.initializePortalSession();
 
+  assert.equal(element('screen-terms').classList.contains('active'), true);
+});
+
+test('opening the portal discards legacy drafts and resets browser-restored resident data', () => {
+  const { context, saved, element } = portal();
+  saved.set('smartbrgy_session', JSON.stringify({ screen: 'screen-confirm', form: { name: 'Previous Resident' }, lastCode: 'REQ-OLD' }));
+  element('status-code').value = 'REQ-OLD';
+  element('conf-summary').textContent = 'Previous Resident';
+  element('f-attachment').value = 'previous-id.jpg';
+
+  context.initializePortalSession();
+
+  assert.equal(saved.has('smartbrgy_session'), false);
+  for (const id of ['f-name', 'f-address', 'f-email', 'f-dob', 'f-purpose', 'f-business', 'status-code', 'f-attachment']) {
+    assert.equal(element(id).value, '');
+  }
+  assert.equal(element('conf-summary').textContent, '');
+  assert.equal(element('tnc-agree').checked, false);
+  assert.equal(element('tnc-agree').disabled, true);
+  assert.equal(element('btn-proceed-terms').disabled, true);
+  assert.equal(context.selectedDocId, null);
+  assert.equal(context.lastCode, '');
+  assert.equal(element('screen-terms').classList.contains('active'), true);
+});
+
+test('navigation retains the current form in memory and stores only the theme preference', () => {
+  const { context, saved, element } = portal();
+
+  context.goToAttachment();
+  context.goBack('screen-form');
+  context.togglePortalTheme();
+
+  assert.equal(element('f-name').value, 'Juan Dela Cruz');
+  assert.deepEqual([...saved], [['smartbrgy_portal_theme', 'dark']]);
+  context.initializePortalSession();
+  assert.equal(element('body').classList.contains('dark-mode'), true);
+  assert.equal(element('f-name').value, '');
+});
+
+test('returning from the browser page cache clears resident details and attachments', () => {
+  const { context, element, listeners, revoked } = portal();
+  element('f-attachment').files = [{ name: 'id.jpg', size: 1000, type: 'image/jpeg' }];
+  context.previewAttachment(element('f-attachment'));
+  context.showScreen('screen-attachment');
+
+  listeners.get('pageshow')({ persisted: true });
+
+  assert.equal(element('f-name').value, '');
+  assert.equal(element('f-attachment').value, '');
+  assert.equal(element('att-preview').style.display, 'none');
+  assert.deepEqual(revoked, ['blob:id.jpg']);
   assert.equal(element('screen-terms').classList.contains('active'), true);
 });
 

@@ -22,6 +22,21 @@ test('users can authenticate using the login screen', function () {
         ->assertRedirect(route('dashboard', absolute: false));
 
     $this->assertAuthenticated();
+    $this->assertDatabaseHas('administrative_audits', [
+        'user_id' => $user->id,
+        'actor' => $user->name,
+        'action' => 'auth.login',
+        'type' => 'auth',
+        'record' => null,
+    ]);
+
+    $this->getJson(route('admin.audit.index'))
+        ->assertJsonCount(1, 'events')
+        ->assertJsonPath('events.0.action', 'Login')
+        ->assertJsonPath('events.0.detail', 'Successful sign in')
+        ->assertJsonPath('events.0.user', $user->name)
+        ->assertJsonPath('events.0.type', 'auth');
+    $this->getJson(route('admin.audit.index'))->assertJsonCount(1, 'events');
 });
 
 test('users can not authenticate with invalid password', function () {
@@ -35,6 +50,7 @@ test('users can not authenticate with invalid password', function () {
     $response->assertSessionHasErrorsIn('email');
 
     $this->assertGuest();
+    $this->assertDatabaseEmpty('administrative_audits');
 });
 
 test('users with two factor enabled are redirected to two factor challenge', function () {
@@ -54,6 +70,7 @@ test('users with two factor enabled are redirected to two factor challenge', fun
 
     $response->assertRedirect(route('two-factor.login'));
     $this->assertGuest();
+    $this->assertDatabaseEmpty('administrative_audits');
 });
 
 test('users can logout', function () {
@@ -62,6 +79,14 @@ test('users can logout', function () {
     $response = $this->actingAs($user)->post(route('logout'));
 
     $response->assertRedirect(route('home'));
+
+    $this->assertGuest();
+});
+
+test('users can logout through the confirmation dialog request', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->postJson(route('logout'))->assertNoContent();
 
     $this->assertGuest();
 });

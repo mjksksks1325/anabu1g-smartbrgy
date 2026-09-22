@@ -605,37 +605,54 @@ startClock();
 showScreen('dashboard');
 
 }
-async function doLogout() {
-  if (!confirm('Mag-logout ka na?')) return;
-  const response = await fetch('/logout', {
-    method: 'POST',
-    credentials: 'same-origin',
-    headers: { 'Accept': 'application/json', ...csrfRequestHeaders() }
-  });
-  if (response.ok || response.redirected) {
-    localStorage.removeItem('smartbrgy_active_screen');
-    window.location.href = '/login';
-    return;
-  }
-  document.getElementById('app').classList.remove('visible');
-  const ls = document.getElementById('login-screen');
-  ls.style.display = 'flex';
-  const box = document.getElementById('face-scan-box');
-  if (box) box.classList.remove('success', 'scanning');
-  const lbl = document.getElementById('face-scan-label');
-  if (lbl) lbl.textContent = 'Scan Biometrics';
-  const prog = document.getElementById('face-svg-progress');
-  if (prog) { prog.style.strokeDashoffset = '264'; prog.style.stroke = ''; }
-  const iconEl = document.getElementById('face-icon-svg');
-  if (iconEl) {
-    iconEl.innerHTML = '<circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>';
-    iconEl.style.stroke = 'rgba(0,255,106,0.8)';
-  }
+let logoutPending = false;
 
-  const ei = document.getElementById('login-empid');
-  if (ei) ei.value = '';
-  document.getElementById('login-user').value = '';
-  document.getElementById('login-pass').value = '';
+function doLogout() {
+  const dialog = document.getElementById('logout-dialog');
+  if (!dialog || dialog.open) return;
+  document.getElementById('logout-error').hidden = true;
+  dialog.showModal();
+}
+
+function cancelLogout() {
+  if (!logoutPending) document.getElementById('logout-dialog').close();
+}
+
+async function confirmLogout() {
+  const dialog = document.getElementById('logout-dialog');
+  if (!dialog?.open || logoutPending) return;
+  const error = document.getElementById('logout-error');
+  const confirmButton = document.getElementById('logout-confirm');
+  logoutPending = true;
+  error.hidden = true;
+  dialog.setAttribute('aria-busy', 'true');
+  dialog.querySelectorAll('button').forEach(button => button.disabled = true);
+  confirmButton.textContent = 'Logging out...';
+
+  try {
+    const response = await fetch(dialog.dataset.logoutUrl, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Accept': 'application/json', ...csrfRequestHeaders() }
+    });
+    if (!response.ok) {
+      throw new Error(response.status === 419
+        ? 'Your session has expired. Refresh this page and try again.'
+        : 'Unable to log out. Please try again.');
+    }
+    try { localStorage.removeItem('smartbrgy_active_screen'); } catch (_) {}
+    window.location.href = dialog.dataset.loginUrl;
+  } catch (failure) {
+    error.textContent = failure instanceof TypeError
+      ? 'Unable to connect. Check your connection and try again.'
+      : failure.message || 'Unable to log out. Please try again.';
+    error.hidden = false;
+  } finally {
+    logoutPending = false;
+    dialog.removeAttribute('aria-busy');
+    dialog.querySelectorAll('button').forEach(button => button.disabled = false);
+    confirmButton.textContent = 'Log out';
+  }
 }
 
 // ═══════════════════════════════════════
@@ -4556,7 +4573,7 @@ document.addEventListener('keydown', event => {
 
 document.addEventListener('DOMContentLoaded', () => {
   try { if (localStorage.getItem('smartbrgy_theme') === 'dark') toggleTheme(); } catch (_) {}
-  document.querySelectorAll('.nav-item[onclick], .dark-mode-toggle, .topbar-avatar, .notif-badge-wrap, .modal-close:not(button)').forEach(element => {
+  document.querySelectorAll('.nav-item[onclick], .dark-mode-toggle, .topbar-avatar:not(button), .notif-badge-wrap, .modal-close:not(button)').forEach(element => {
     element.tabIndex = 0;
     element.setAttribute('role', 'button');
     if (element.classList.contains('topbar-avatar')) element.setAttribute('aria-label', 'Sign out');

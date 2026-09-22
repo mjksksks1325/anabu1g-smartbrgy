@@ -520,6 +520,28 @@ body.dark-mode .tnc-box { background:rgba(11,61,107,.2); }
   .cert-btn { min-height:auto; }
 }
 
+/* Soft light surfaces keep the existing civic layout. */
+body:not(.dark-mode) {
+  --portal-surface:#edf2f3;
+  --portal-input:#f4f6f5;
+  --gray-light:#dfe8ec;
+  --border:#bdcdd5;
+  background:#dce5e9;
+}
+body:not(.dark-mode) .header { background:#e4ecef; }
+body:not(.dark-mode) .card,
+body:not(.dark-mode) .card-header,
+body:not(.dark-mode) .steps,
+body:not(.dark-mode) .header-badge,
+body:not(.dark-mode) .btn-outline,
+body:not(.dark-mode) #portal-theme-toggle { background:var(--portal-surface); }
+body:not(.dark-mode) .tnc-box { background:var(--gray-light); }
+body:not(.dark-mode) .cert-btn { background:var(--portal-input); }
+body:not(.dark-mode) .cert-btn:hover,
+body:not(.dark-mode) .cert-btn.selected { background:var(--green-light); }
+body:not(.dark-mode) .form-input { background:var(--portal-input); }
+body:not(.dark-mode) #loader { background:rgba(220,229,233,.94); }
+
 /* Government resident services */
 body { --text-muted:#57687a; --green:#246547; --green-dark:#194c34; background:#f3f5f7; }
 .portal-government-bar { background:#163650; color:#dbe5ef; padding:9px max(24px,calc((100vw - 1120px)/2)); display:flex; justify-content:space-between; gap:16px; font-size:11px; letter-spacing:.04em; }

@@ -35,7 +35,7 @@
       <div class="topbar-chip">IoT Not Connected</div>
       <div class="topbar-chip notif-badge-wrap" onclick="toggleNotifPanel()" id="notif-chip" style="cursor:pointer;position:relative;">Notifications <span class="notif-count" id="notif-count">0</span></div>
       <div class="topbar-chip" id="clock-display">--:--:--</div>
-      <div class="topbar-avatar" onclick="doLogout()" title="Mag-logout">JC</div>
+      <button type="button" class="topbar-avatar" onclick="doLogout()" title="Log out" aria-label="Log out" aria-haspopup="dialog" aria-controls="logout-dialog">JC</button>
     </div>
   </div>
 
@@ -884,6 +884,23 @@
 </div><!-- end app -->
 
 <!-- MODALS -->
+<dialog class="modal logout-dialog" id="logout-dialog" aria-labelledby="logout-title" aria-describedby="logout-description" data-logout-url="{{ route('logout') }}" data-login-url="{{ route('login') }}" oncancel="if (logoutPending) event.preventDefault()">
+  <button type="button" class="modal-close logout-close" aria-label="Cancel logout" onclick="cancelLogout()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg>
+  </button>
+  <div class="logout-symbol" aria-hidden="true">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4M14 8l4 4-4 4M8 12h13"/></svg>
+  </div>
+  <p class="logout-eyebrow">Staff workspace</p>
+  <h2 id="logout-title">Log out of SmartBrgy?</h2>
+  <p id="logout-description">You're about to end your staff session. You can sign in again anytime.</p>
+  <p class="logout-error" id="logout-error" role="alert" hidden></p>
+  <div class="logout-actions">
+    <button type="button" class="btn logout-cancel" onclick="cancelLogout()" autofocus>Cancel</button>
+    <button type="button" class="btn logout-confirm" id="logout-confirm" onclick="confirmLogout()">Log out</button>
+  </div>
+</dialog>
+
 <!-- Add/Edit Purok -->
 <div class="modal-overlay" id="modal-purok">
   <div class="modal">

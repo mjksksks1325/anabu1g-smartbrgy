@@ -11,7 +11,7 @@
 </head>
 <body>
 <a href="#main-content" class="skip-link">Skip to main content</a>
-<div class="portal-government-bar">City of Imus / Province of Cavite <a href="{{ route('login') }}">Staff sign in</a></div>
+<div class="portal-government-bar">City of Imus / Province of Cavite</div>
 
 <div id="toast-wrap" role="status" aria-live="polite"></div>
 <div id="loader" style="display:none;"><div class="spinner"></div><div style="font-size:13px;color:var(--text-muted);">Sandali lang...</div></div>
@@ -217,7 +217,7 @@
         <h2>Punan ang Impormasyon</h2>
         <p>Tiyaking tama ang lahat ng inyong impormasyon</p>
       </div>
-      <form class="card-body" id="resident-details-form" novalidate onsubmit="event.preventDefault();goToAttachment()">
+      <form class="card-body" id="resident-details-form" autocomplete="off" novalidate onsubmit="event.preventDefault();goToAttachment()">
         <div id="portal-form-error" class="alert alert-red" role="alert" hidden></div>
         <div class="alert alert-blue" style="margin-bottom:16px;">
           <span style="font-size:16px;flex-shrink:0;">📄</span>
@@ -226,24 +226,24 @@
 
         <div class="form-group">
           <label class="form-label" for="f-name">Buong Pangalan <span class="req">*</span></label>
-          <input class="form-input" id="f-name" required maxlength="255" enterkeyhint="next" placeholder="Halimbawa: Juan dela Cruz" autocomplete="name"/>
+          <input class="form-input" id="f-name" required maxlength="255" enterkeyhint="next" placeholder="Halimbawa: Juan dela Cruz" autocomplete="off"/>
           <div class="form-note">Isulat ang inyong buong pangalan tulad ng nakasaad sa inyong valid ID</div>
         </div>
 
         <div class="form-group">
           <label class="form-label" for="f-address">Address sa Barangay <span class="req">*</span></label>
-          <input class="form-input" id="f-address" required maxlength="1000" autocomplete="street-address" enterkeyhint="next" placeholder="Purok, Sityo o Street — Barangay Anabu I-G"/>
+          <input class="form-input" id="f-address" required maxlength="1000" autocomplete="off" enterkeyhint="next" placeholder="Purok, Sityo o Street — Barangay Anabu I-G"/>
         </div>
 
         <div class="form-group">
           <label class="form-label" for="f-email">Email Address <span class="req">*</span> <span style="font-weight:400;color:#6b7280;">(para makipag-ugnayan)</span></label>
-          <input class="form-input" id="f-email" maxlength="255" inputmode="email" autocapitalize="none" spellcheck="false" enterkeyhint="next" placeholder="example@gmail.com" type="email" autocomplete="email" required/>
+          <input class="form-input" id="f-email" maxlength="255" inputmode="email" autocapitalize="none" spellcheck="false" enterkeyhint="next" placeholder="example@gmail.com" type="email" autocomplete="off" required/>
           <div class="form-note">Gagamitin ito kung kailangang makipag-ugnayan ang barangay tungkol sa inyong request</div>
         </div>
 
         <div class="form-group">
           <label class="form-label" for="f-dob">Petsa ng Kapanganakan <span class="req">*</span></label>
-          <input class="form-input" id="f-dob" type="date" autocomplete="bday" max="{{ now()->toDateString() }}" required/>
+          <input class="form-input" id="f-dob" type="date" autocomplete="off" max="{{ now()->toDateString() }}" required/>
         </div>
 
         <div class="form-group">
@@ -253,7 +253,7 @@
 
         <div id="business-field" style="display:none;" class="form-group">
           <label class="form-label" for="f-business">Pangalan ng Negosyo <span class="req">*</span></label>
-          <input class="form-input" id="f-business" maxlength="255" autocomplete="organization" enterkeyhint="done" placeholder="Pangalan ng inyong negosyo"/>
+          <input class="form-input" id="f-business" maxlength="255" autocomplete="off" enterkeyhint="done" placeholder="Pangalan ng inyong negosyo"/>
         </div>
 
         <div class="alert alert-yellow" style="margin:16px 0 10px;">
@@ -408,7 +408,7 @@ let tncScrolled = false;
 let lastCode = '';
 let _portalDark = false;
 
-// ── Session persistence ──
+// Remove drafts saved by earlier versions of the portal.
 const _SK = 'smartbrgy_session';
 
 const tncBox = document.getElementById('tnc-scroll');
@@ -428,8 +428,6 @@ tncBox.addEventListener('scroll', function () {
         notice.style.background = '#d1fae5';
         notice.style.borderColor = '#6ee7b7';
         notice.style.color = '#065f46';
-
-        _saveSession();
     }
 });
 
@@ -438,8 +436,6 @@ function onTncCheck() {
     const button = document.getElementById('btn-proceed-terms');
 
     button.disabled = !checkbox.checked;
-
-    _saveSession();
 }
 
 function proceedFromTerms() {
@@ -483,14 +479,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const proceed = document.getElementById('btn-proceed-terms');
   if (proceed) proceed.textContent = 'I Agree - Continue';
 
-  // Auto-save form fields on every keystroke
-  ['f-name','f-address','f-email','f-purpose','f-business','f-dob'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener('input', _saveSession);
-  });
-
-  // Restore session state after all DOM setup is done
-  _restoreSession();
+  initializePortalSession();
   initializePortalNavigation();
 });
 </script>

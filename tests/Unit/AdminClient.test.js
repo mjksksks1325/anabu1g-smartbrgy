@@ -102,3 +102,102 @@ test('demographics escapes resident names and puroks in the senior register', as
   assert.match(fields.get('senior-citizens-list').innerHTML, /&lt;script/);
   assert.doesNotMatch(fields.get('senior-citizens-list').innerHTML, /<img|<script/);
 });
+
+async function logoutClient() {
+  const { context, fields } = await client();
+  const buttons = [{ disabled: false }, { disabled: false }, { disabled: false, textContent: 'Log out' }];
+  const attributes = new Map();
+  const dialog = {
+    open: false, dataset: { logoutUrl: '/logout', loginUrl: '/login' },
+    showModal() { this.open = true; }, close() { this.open = false; },
+    querySelectorAll: () => buttons,
+    setAttribute: (key, value) => attributes.set(key, value),
+    removeAttribute: key => attributes.delete(key),
+  };
+  const error = { hidden: true, textContent: '' };
+  fields.set('logout-dialog', dialog);
+  fields.set('logout-confirm', buttons[2]);
+  fields.set('logout-error', error);
+  context.window.location = { href: '/admin' };
+  context.document.cookie = 'XSRF-TOKEN=test-token';
+  return { context, dialog, buttons, error };
+}
+
+test('opening and cancelling logout never sends a logout request', async () => {
+  const { context, dialog } = await logoutClient();
+  let requests = 0;
+  context.fetch = async () => { requests++; };
+
+  context.doLogout();
+  assert.equal(dialog.open, true);
+  assert.equal(requests, 0);
+  context.cancelLogout();
+  await context.confirmLogout();
+
+  assert.equal(dialog.open, false);
+  assert.equal(requests, 0);
+  assert.equal(context.window.location.href, '/admin');
+});
+
+test('confirming logout sends one CSRF-protected request and redirects even when storage is blocked', async () => {
+  const { context, dialog, buttons } = await logoutClient();
+  const requests = [];
+  let finish;
+  context.fetch = (url, options) => {
+    requests.push({ url, options });
+    return new Promise(resolve => finish = resolve);
+  };
+  context.localStorage.removeItem = () => { throw new Error('Storage blocked'); };
+  context.doLogout();
+
+  const pending = context.confirmLogout();
+  await context.confirmLogout();
+  context.cancelLogout();
+  assert.equal(dialog.open, true);
+  assert.equal(buttons.every(button => button.disabled), true);
+  assert.equal(buttons[2].textContent, 'Logging out...');
+  finish({ ok: true });
+  await pending;
+
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].url, '/logout');
+  assert.equal(requests[0].options.method, 'POST');
+  assert.equal(requests[0].options.credentials, 'same-origin');
+  assert.equal(requests[0].options.headers['X-XSRF-TOKEN'], 'test-token');
+  assert.equal(context.window.location.href, '/login');
+});
+
+for (const [status, message] of [
+  [500, 'Unable to log out. Please try again.'],
+  [419, 'Your session has expired. Refresh this page and try again.'],
+]) {
+  test(`a ${status} logout response keeps the dialog open with a useful error`, async () => {
+    const { context, dialog, buttons, error } = await logoutClient();
+    context.fetch = async () => ({ ok: false, status });
+    context.doLogout();
+
+    await context.confirmLogout();
+
+    assert.equal(dialog.open, true);
+    assert.equal(error.hidden, false);
+    assert.equal(error.textContent, message);
+    assert.equal(buttons.every(button => !button.disabled), true);
+    assert.equal(buttons[2].textContent, 'Log out');
+    assert.equal(context.window.location.href, '/admin');
+  });
+}
+
+test('a network failure lets the user retry logout', async () => {
+  const { context, error, buttons } = await logoutClient();
+  vm.runInContext('fetch = async () => { throw new TypeError("Failed to fetch"); };', context);
+  context.doLogout();
+
+  await context.confirmLogout();
+
+  assert.equal(error.hidden, false);
+  assert.match(error.textContent, /Check your connection/);
+  assert.equal(buttons.every(button => !button.disabled), true);
+  context.fetch = async () => ({ ok: true });
+  await context.confirmLogout();
+  assert.equal(context.window.location.href, '/login');
+});

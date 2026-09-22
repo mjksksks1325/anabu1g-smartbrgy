@@ -21,8 +21,8 @@ class AuditLogController extends Controller
             ->map(fn (object $event): array => [
                 'id' => $event->id,
                 'type' => $event->type,
-                'action' => str_replace(['admin.', '-', '.'], ['', ' ', ' / '], $event->action),
-                'detail' => $event->record ? 'Record ID: '.$event->record : 'Administrative operation',
+                'action' => $event->action === 'auth.login' ? 'Login' : str_replace(['admin.', '-', '.'], ['', ' ', ' / '], $event->action),
+                'detail' => $event->action === 'auth.login' ? 'Successful sign in' : ($event->record ? 'Record ID: '.$event->record : 'Administrative operation'),
                 'user' => $event->actor,
                 'date' => Carbon::parse($event->created_at)->toDateString(),
                 'time' => Carbon::parse($event->created_at)->format('M d, Y H:i'),

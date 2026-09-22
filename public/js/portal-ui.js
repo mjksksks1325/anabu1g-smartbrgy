@@ -54,7 +54,6 @@ function showScreen(id, recordHistory = true) {
         try { window.history[id === 'screen-confirm' ? 'replaceState' : 'pushState']({ portalScreen: id }, ''); } catch (_) {}
     }
     window.scrollTo({ top: 0, behavior: 'instant' });
-    _saveSession();
 }
 
 function initializePortalNavigation() {
@@ -102,7 +101,7 @@ function togglePortalTheme() {
         label.textContent = _portalDark ? 'Light Mode' : 'Dark Mode';
     }
 
-    _saveSession();
+    savePortalTheme();
 }
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.cert-btn, #att-dropzone').forEach(element => {

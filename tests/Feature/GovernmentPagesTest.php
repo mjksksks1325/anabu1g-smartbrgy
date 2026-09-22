@@ -16,6 +16,10 @@ it('rejects a viewer before disclosing records in the dashboard html', function 
 it('renders account links and a labeled mobile navigation in the workspace', function () {
     $this->actingAs(User::factory()->create())->get(route('admin.dashboard'))
         ->assertOk()->assertSee('aria-controls="admin-navigation"', false)
+        ->assertSee('aria-controls="logout-dialog"', false)
+        ->assertSee('aria-labelledby="logout-title"', false)
+        ->assertSee('Log out of SmartBrgy?')
+        ->assertSee('data-logout-url="'.route('logout').'"', false)
         ->assertSee(route('profile.edit'))->assertSee(route('security.edit'))
         ->assertDontSee('All users are verified with biometric authentication');
 });
@@ -43,10 +47,33 @@ it('provides mobile input controls and accessible feedback throughout the reside
     $this->get(route('home'))->assertOk()
         ->assertSee('viewport-fit=cover', false)
         ->assertSee('inputmode="email"', false)
-        ->assertSee('autocomplete="bday"', false)
+        ->assertSee('autocomplete="off"', false)
         ->assertSee('class="status-search-row"', false)
         ->assertSee('id="submit-request-button"', false)
         ->assertSee('id="portal-form-error"', false)
         ->assertSee('Kopyahin ang code')
         ->assertSee('id="resident-details-form"', false);
 });
+
+it('keeps staff sign in out of the public resident portal', function () {
+    $this->get(route('home'))
+        ->assertDontSee('Staff sign in')
+        ->assertDontSee('href="'.route('login').'"', false);
+
+    $this->get(route('login'))->assertOk();
+});
+
+it('keeps settings content beside the sidebar in the Flux layout', function (string $route) {
+    $response = $this->actingAs(User::factory()->create())
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->get(route($route));
+    $response->assertOk()->assertSee('href="#account-content"', false);
+
+    $document = new DOMDocument;
+    @$document->loadHTML($response->getContent());
+    $xpath = new DOMXPath($document);
+
+    /** Flux applies its layout grid to the direct parent of data-flux-main. */
+    expect($xpath->query('//body/*[@data-flux-sidebar]')->length)->toBe(1);
+    expect($xpath->query('//body/*[@data-flux-main and @id="account-content" and @role="main" and @tabindex="-1"]')->length)->toBe(1);
+})->with(['profile.edit', 'security.edit', 'appearance.edit']);

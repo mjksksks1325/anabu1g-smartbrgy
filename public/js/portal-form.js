@@ -17,8 +17,6 @@ function selectDoc(id, el) {
 
     document.getElementById('doc-selected-info').style.display = 'flex';
     document.getElementById('btn-proceed-doc').disabled = false;
-
-    _saveSession();
 }
 
 function proceedFromDoc() {
@@ -72,7 +70,7 @@ function goToAttachment() {
     if (validatePortalForm()) showScreen('screen-attachment');
 }
 
-function newRequest() {
+function newRequest(recordHistory = true) {
     try { sessionStorage.removeItem(_SK); } catch (_) {}
 
     selectedDocId = null;
@@ -102,5 +100,5 @@ function newRequest() {
 
     clearAttachment();
 
-    showScreen('screen-doctype');
+    showScreen('screen-doctype', recordHistory);
 }

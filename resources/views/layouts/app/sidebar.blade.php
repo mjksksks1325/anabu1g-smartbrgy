@@ -84,7 +84,7 @@
         </flux:header>
 
         <a href="#account-content" class="skip-link">Skip to account settings</a>
-        <div id="account-content" tabindex="-1" class="contents">{{ $slot }}</div>
+        {{ $slot }}
 
         @persist('toast')
             <flux:toast.group>
