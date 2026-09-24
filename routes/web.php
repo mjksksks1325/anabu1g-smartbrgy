@@ -3,14 +3,24 @@
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DocumentRequestController as AdminDocumentRequestController;
+use App\Http\Controllers\Admin\EmployeeCabinetAccessController;
 use App\Http\Controllers\Admin\IncidentController;
 use App\Http\Controllers\Admin\IssuedCertificateController;
 use App\Http\Controllers\Admin\PurokController;
 use App\Http\Controllers\Admin\ResidentController;
+use App\Http\Controllers\Admin\ResidentPortalAccountController;
+use App\Http\Controllers\Admin\RfidFileTrackingController;
+use App\Http\Controllers\Admin\SmartCabinetController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\VoterRegistrationController;
 use App\Http\Controllers\CertificateVerificationController;
 use App\Http\Controllers\DocumentRequestController;
+use App\Http\Controllers\EmployeeSessionController;
+use App\Http\Controllers\ResidentPortalController;
+use App\Http\Controllers\ResidentRegistrationController;
+use App\Http\Controllers\ResidentSessionController;
+use App\Http\Middleware\EnsureGuestResidentPortal;
+use App\Http\Middleware\EnsureResidentAccount;
 use App\Http\Middleware\RecordAdministrativeAction;
 use App\Models\DocumentRequest;
 use Illuminate\Http\RedirectResponse;
@@ -21,24 +31,42 @@ Route::get('/', function () {
     return redirect('/portal');
 });
 
-Route::get('/portal', function () {
-    return view('portal.index');
-})->name('home');
+Route::get('/portal', [ResidentPortalController::class, 'index'])->name('home');
+Route::get('/portal/request', [ResidentPortalController::class, 'createRequest'])
+    ->middleware(EnsureResidentAccount::class)
+    ->name('portal.request.create');
 
 Route::get('/dashboard', function (): RedirectResponse {
-    return redirect()->route('admin.dashboard');
+    return redirect()->route(auth()->user()->isResidentAccount() ? 'portal.account' : 'admin.dashboard');
 })->middleware('auth')->name('dashboard');
 
 Route::post('/portal/request', [DocumentRequestController::class, 'store'])
-    ->middleware('throttle:10,1')
+    ->middleware([EnsureResidentAccount::class, 'throttle:10,1'])
     ->name('portal.request.store');
 
 Route::get('/portal/csrf-token', [DocumentRequestController::class, 'csrfToken'])
     ->name('portal.csrf-token');
 
 Route::get('/portal/request/{referenceCode}', [DocumentRequestController::class, 'status'])
-    ->middleware('throttle:60,1')
+    ->middleware(['auth:resident', 'throttle:60,1'])
     ->name('portal.request.status');
+
+Route::get('/portal/information', [ResidentPortalController::class, 'information'])->name('portal.information');
+Route::middleware(EnsureGuestResidentPortal::class)->group(function () {
+    Route::get('/portal/login', [ResidentPortalController::class, 'login'])->name('portal.login');
+    Route::post('/portal/login', [ResidentSessionController::class, 'store'])->middleware('throttle:resident-login')->name('portal.login.store');
+    Route::get('/portal/register', [ResidentRegistrationController::class, 'create'])->name('portal.register');
+    Route::post('/portal/register/verify', [ResidentRegistrationController::class, 'verify'])->middleware('throttle:resident-registration')->name('portal.register.verify');
+    Route::post('/portal/register', [ResidentRegistrationController::class, 'store'])->middleware('throttle:resident-registration')->name('portal.register.store');
+    Route::view('/portal/registration-help', 'portal.registration-help')->name('portal.registration.denied');
+});
+Route::post('/portal/logout', [ResidentSessionController::class, 'destroy'])->middleware('auth:resident')->name('portal.logout');
+Route::post('/logout', [EmployeeSessionController::class, 'destroy'])->middleware('auth:web')->name('logout');
+Route::middleware(EnsureResidentAccount::class)->group(function () {
+    Route::get('/portal/account', [ResidentPortalController::class, 'account'])->name('portal.account');
+    Route::get('/portal/profile', [ResidentPortalController::class, 'profile'])->name('portal.profile');
+    Route::get('/portal/identity', [ResidentPortalController::class, 'identity'])->name('portal.identity');
+});
 
 Route::middleware(['auth', RecordAdministrativeAction::class])->prefix('admin')->name('admin.')->group(function () {
 
@@ -49,10 +77,19 @@ Route::middleware(['auth', RecordAdministrativeAction::class])->prefix('admin')-
         return view('admin.dashboard', compact('requests'));
     })->name('dashboard');
 
-    Route::get('/audit-log', AuditLogController::class)->name('audit.index');
-    Route::get('/users', [UserController::class, 'index'])->name('users.index');
-    Route::post('/users', [UserController::class, 'store'])->name('users.store');
-    Route::patch('/users/{user}', [UserController::class, 'update'])->name('users.update');
+    Route::get('/rfid-file-tracking', RfidFileTrackingController::class)->middleware('can:view-rfid-files')->name('rfid-files.index');
+    Route::middleware('can:view-administration')->group(function () {
+        Route::get('/smart-cabinet', SmartCabinetController::class)->name('smart-cabinet.index');
+        Route::get('/employee-cabinet-access', [EmployeeCabinetAccessController::class, 'index'])->name('cabinet-access.index');
+        Route::patch('/employee-cabinet-access/{user}', [EmployeeCabinetAccessController::class, 'update'])->name('cabinet-access.update');
+        Route::patch('/employee-cabinet-access/{user}/rpi-employee-id', [EmployeeCabinetAccessController::class, 'updateRpiEmployeeId'])->name('cabinet-access.rpi-employee-id.update');
+        Route::post('/employee-cabinet-access/{user}/enrollment/{method}', [EmployeeCabinetAccessController::class, 'enroll'])->name('cabinet-access.enroll');
+        Route::get('/audit-log', AuditLogController::class)->name('audit.index');
+        Route::get('/users', [UserController::class, 'index'])->name('users.index');
+        Route::post('/users', [UserController::class, 'store'])->name('users.store');
+        Route::patch('/users/{user}', [UserController::class, 'update'])->name('users.update');
+        Route::patch('/residents/{resident}/portal-account', [ResidentPortalAccountController::class, 'update'])->name('residents.portal-account');
+    });
 
     Route::get('/document-requests-live', [AdminDocumentRequestController::class, 'live'])
         ->name('document-requests.live');
@@ -66,6 +103,8 @@ Route::middleware(['auth', RecordAdministrativeAction::class])->prefix('admin')-
     Route::get('/incidents/{incident}/attachments/{attachment}', [IncidentController::class, 'attachment'])
         ->whereNumber('attachment')
         ->name('incidents.attachments.show');
+
+    Route::post('/residents/{resident}/portal-activation', [ResidentPortalAccountController::class, 'store'])->name('residents.portal-activation');
 
     Route::get('/residents', [ResidentController::class, 'index'])->name('residents.index');
     Route::get('/residents-export', [ResidentController::class, 'export'])->name('residents.export');
@@ -91,6 +130,9 @@ Route::middleware(['auth', RecordAdministrativeAction::class])->prefix('admin')-
 
     Route::get('/document-requests/{documentRequest}', [AdminDocumentRequestController::class, 'show'])
         ->name('document-requests.show');
+
+    Route::get('/document-requests/{documentRequest}/attachment', [AdminDocumentRequestController::class, 'attachment'])
+        ->name('document-requests.attachment');
 
     Route::patch('/document-requests/{documentRequest}/status', [AdminDocumentRequestController::class, 'updateStatus'])
         ->name('document-requests.update-status');

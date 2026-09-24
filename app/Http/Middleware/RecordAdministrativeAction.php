@@ -26,11 +26,20 @@ class RecordAdministrativeAction
 
             if ($response->getStatusCode() < 400 && ! $request->session()->has('errors')) {
                 $name = $request->route()->getName();
+                if ($name === 'admin.residents.portal-account') {
+                    $name .= $request->boolean('is_active') ? '.reactivated' : '.suspended';
+                }
+                if ($name === 'admin.cabinet-access.update') {
+                    $name .= $request->boolean('is_active') ? '.enabled' : '.disabled';
+                }
+                if ($name === 'admin.cabinet-access.enroll') {
+                    $name .= '.initiated';
+                }
                 $parameters = collect($request->route()->parameters())->map(
                     fn (mixed $value): string => (string) ($value instanceof Model ? $value->getKey() : $value),
                 )->implode(', ');
                 $type = match (true) {
-                    str_contains($name, 'users') => 'security',
+                    str_contains($name, 'users'), str_contains($name, 'portal-account'), str_contains($name, 'portal-activation'), str_contains($name, 'cabinet-access') => 'security',
                     str_contains($name, 'certificate'), str_contains($name, 'document-request') => 'cert',
                     str_contains($name, 'incident') => 'incident',
                     default => 'record',

@@ -15,6 +15,7 @@ use Illuminate\Support\Str;
 /**
  * @property CarbonInterface $date_of_birth
  * @property list<string>|null $special_groups
+ * @property CarbonInterface|null $portal_registration_expires_at
  */
 class Resident extends Model
 {
@@ -28,6 +29,14 @@ class Resident extends Model
     ];
 
     protected $appends = ['full_name', 'age'];
+
+    protected $hidden = ['portal_registration_hash', 'portal_registration_expires_at'];
+
+    /** @return HasOne<User, $this> */
+    public function portalAccount(): HasOne
+    {
+        return $this->hasOne(User::class);
+    }
 
     protected static function booted(): void
     {
@@ -96,6 +105,7 @@ class Resident extends Model
     {
         return [
             'date_of_birth' => 'date',
+            'portal_registration_expires_at' => 'datetime',
             'special_groups' => 'array',
             'is_in_good_standing' => 'boolean',
         ];

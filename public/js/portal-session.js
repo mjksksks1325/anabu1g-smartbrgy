@@ -30,7 +30,9 @@ function resetPortalSession() {
     document.getElementById('business-field').style.display = 'none';
     document.querySelectorAll('.cert-btn').forEach(button => button.setAttribute('aria-pressed', 'false'));
     showScreen('screen-terms', false);
-    try { window.history.replaceState({ portalScreen: 'screen-terms' }, ''); } catch (_) {}
+    document.getElementById('request-flow').hidden = true;
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    try { window.history.replaceState({ portalScreen: 'home' }, ''); } catch (_) {}
 }
 
 function initializePortalSession() {
@@ -39,6 +41,12 @@ function initializePortalSession() {
         if (sessionStorage.getItem(PORTAL_THEME_KEY) === 'dark' && !_portalDark) togglePortalTheme();
     } catch (_) {}
     resetPortalSession();
+    if (window.RESIDENT_PORTAL?.startRequest) {
+        showScreen('screen-terms', false);
+        try { window.history.replaceState({ portalScreen: 'screen-terms' }, ''); } catch (_) {}
+    }
 }
 
-window.addEventListener('pageshow', resetPortalSession);
+window.addEventListener('pageshow', event => {
+    if (event.persisted) resetPortalSession();
+});

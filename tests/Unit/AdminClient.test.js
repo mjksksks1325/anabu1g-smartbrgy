@@ -26,6 +26,34 @@ async function client() {
   return { context, fields };
 }
 
+test('cancelling resident restoration does not send an administrative mutation', async () => {
+  const { context } = await client();
+  context.confirm = () => false;
+  let requests = 0;
+  context.fetch = () => { requests++; };
+  await context.restoreResident(1);
+  assert.equal(requests, 0);
+});
+
+test('a private activation code cannot appear in another resident modal after navigation', async () => {
+  const { context, fields } = await client();
+  const original = { isConnected: true, innerHTML: '' };
+  const replacement = { isConnected: true, innerHTML: '' };
+  fields.set('resident-activation-result', original);
+  context.confirm = () => true;
+  let finish;
+  context.fetch = () => new Promise(resolve => { finish = resolve; });
+  const button = { disabled: false, closest: () => ({ classList: { contains: () => true } }) };
+  const pending = context.issuePortalActivation(1, button);
+  original.isConnected = false;
+  fields.set('resident-activation-result', replacement);
+  finish({ ok: true, json: async () => ({ activation_code: 'PRIVATE-CODE', message: 'Private', expires_at: 'tomorrow' }) });
+  await pending;
+  assert.equal(replacement.innerHTML, '');
+  assert.equal(original.innerHTML, '');
+  assert.equal(button.disabled, false);
+});
+
 test('failed account save keeps the form open and releases the submit button', async () => {
   const { context, fields } = await client();
   for (const [id, value] of Object.entries({
@@ -45,37 +73,22 @@ test('failed account save keeps the form open and releases the submit button', a
   assert.equal(context.messages[0].type, 'red');
 });
 
-test('request lookup gets rejected requests from the server and escapes their content', async () => {
-  const { context, fields } = await client();
-  fields.set('qr-status-result', { style: {} });
-  fields.set('qr-status-result-card', { textContent: '', innerHTML: '' });
-  let requestedUrl;
-  context.fetch = async url => {
-    requestedUrl = url;
-    return { ok: true, json: async () => ({
-      reference_code: 'REQ-2026-ABC', document_type: 'Barangay Clearance', status: 'rejected',
-      rejection_reason: '<img src=x onerror=alert(1)>',
-    }) };
-  };
+test('no employee access profile includes the removed QR module', async () => {
+  const { context } = await client();
+  const grantsQr = vm.runInContext('Object.values(ACCESS_PERMS).some(permissions => permissions.includes("QR"))', context);
 
-  await context.checkRequestStatus(' req-2026-abc ');
-
-  assert.equal(requestedUrl, '/portal/request/REQ-2026-ABC');
-  assert.match(fields.get('qr-status-result-card').innerHTML, /rejected/);
-  assert.match(fields.get('qr-status-result-card').innerHTML, /&lt;img/);
-  assert.doesNotMatch(fields.get('qr-status-result-card').innerHTML, /<img/);
+  assert.equal(grantsQr, false);
 });
 
-test('failed request lookup replaces stale results with a readable error', async () => {
+test('opening an obsolete QR screen does not clear the current workspace', async () => {
   const { context, fields } = await client();
-  fields.set('qr-status-result', { style: {} });
-  fields.set('qr-status-result-card', { textContent: 'Old success' });
-  context.fetch = async () => ({ ok: false, json: async () => ({ message: 'Request not found.' }) });
+  let dashboardCleared = false;
+  fields.set('screen-dashboard', { classList: { remove() { dashboardCleared = true; } } });
+  context.document.querySelectorAll = selector => selector === '.content' ? [fields.get('screen-dashboard')] : [];
 
-  await context.checkRequestStatus('missing');
+  context.showScreen('qr', null);
 
-  assert.equal(fields.get('qr-status-result-card').textContent, 'Request not found.');
-  assert.equal(context.messages.at(-1).type, 'red');
+  assert.equal(dashboardCleared, false);
 });
 
 test('staff navigation does not grant access to account administration', async () => {

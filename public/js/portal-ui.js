@@ -44,22 +44,35 @@ function showScreen(id, recordHistory = true) {
     id = validPortalScreen(id);
     const screen = document.getElementById(id);
     if (!screen) return;
+    const workflow = document.getElementById('request-flow');
+    const wasHidden = workflow?.hidden || false;
+    if (workflow) workflow.hidden = false;
     const previous = document.querySelector('.screen.active')?.id;
     document.querySelectorAll('.screen').forEach(element => element.classList.remove('active'));
     screen.classList.add('active');
     screen.setAttribute('tabindex', '-1');
     screen.focus({ preventScroll: true });
     document.querySelectorAll('.step.active').forEach(step => step.setAttribute('aria-current', 'step'));
-    if (recordHistory && previous !== id) {
+    if (recordHistory && (previous !== id || wasHidden)) {
         try { window.history[id === 'screen-confirm' ? 'replaceState' : 'pushState']({ portalScreen: id }, ''); } catch (_) {}
     }
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    const workflowTop = document.getElementById('request-flow')?.offsetTop || 0;
+    window.scrollTo({ top: Math.max(0, workflowTop - 130), behavior: 'instant' });
 }
 
 function initializePortalNavigation() {
-    const screen = validPortalScreen(document.querySelector('.screen.active')?.id);
+    const screen = document.getElementById('request-flow')?.hidden
+        ? 'home'
+        : validPortalScreen(document.querySelector('.screen.active')?.id);
     try { window.history.replaceState({ portalScreen: screen }, ''); } catch (_) {}
-    window.addEventListener('popstate', event => showScreen(event.state?.portalScreen || 'screen-terms', false));
+    window.addEventListener('popstate', event => {
+        if (event.state?.portalScreen === 'home') {
+            document.getElementById('request-flow').hidden = true;
+            window.scrollTo({ top: 0, behavior: 'instant' });
+            return;
+        }
+        showScreen(event.state?.portalScreen || 'screen-terms', false);
+    });
 }
 
 async function copyReferenceCode() {

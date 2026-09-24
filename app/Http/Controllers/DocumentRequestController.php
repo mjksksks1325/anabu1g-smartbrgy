@@ -3,12 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\CertificateType;
+use App\Http\Middleware\EnsureResidentAccount;
 use App\Models\DocumentRequest;
-use App\Models\Resident;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -25,11 +24,7 @@ class DocumentRequestController extends Controller
     {
         $validated = $request->validate([
             'document_type' => ['required', 'string', Rule::in(CertificateType::values())],
-            'full_name' => 'required|string|max:255',
-            'date_of_birth' => 'nullable|date',
-            'address' => 'required|string',
-            'email' => 'required|email|max:255',
-            'purpose' => 'nullable|string|max:255',
+            'purpose' => 'required|string|max:255',
             'business_name' => 'nullable|string|max:255',
             'attachment' => 'nullable|file|mimes:jpg,jpeg,png,webp|max:5120',
         ]);
@@ -37,16 +32,20 @@ class DocumentRequestController extends Controller
         $referenceCode = 'REQ-'.now()->format('Y').'-'.strtoupper(Str::random(6));
         $attachmentPath = $request->file('attachment')?->store(
             'document-request-attachments',
-            'public'
+            'local'
         );
-        $resident = $this->matchingResident($validated);
+        $resident = $request->user()->resident;
 
         $documentRequest = DocumentRequest::create([
             ...Arr::except($validated, ['attachment']),
-            'resident_id' => $resident?->id,
+            'resident_id' => $resident->id,
+            'full_name' => $resident->full_name,
+            'date_of_birth' => $resident->date_of_birth->toDateString(),
+            'address' => $resident->address,
+            'email' => $request->user()->email,
             'reference_code' => $referenceCode,
             'source' => 'online',
-            'attachment_path' => $attachmentPath ? Storage::url($attachmentPath) : null,
+            'private_attachment_path' => $attachmentPath,
             'status' => 'pending',
         ]);
 
@@ -58,26 +57,12 @@ class DocumentRequestController extends Controller
         ]);
     }
 
-    /** @param array<string, mixed> $attributes */
-    private function matchingResident(array $attributes): ?Resident
+    public function status(Request $request, string $referenceCode): JsonResponse
     {
-        if (empty($attributes['date_of_birth'])) {
-            return null;
-        }
-
-        $expectedName = Str::lower(Str::squish($attributes['full_name']));
-        $matches = Resident::query()
-            ->where('status', 'active')
-            ->whereDate('date_of_birth', $attributes['date_of_birth'])
-            ->get()
-            ->filter(fn (Resident $resident): bool => Str::lower(Str::squish($resident->full_name)) === $expectedName);
-
-        return $matches->count() === 1 ? $matches->first() : null;
-    }
-
-    public function status(string $referenceCode): JsonResponse
-    {
-        $documentRequest = DocumentRequest::where('reference_code', $referenceCode)->first();
+        $user = $request->user();
+        abort_unless($user->canUseResidentPortal(), 403, EnsureResidentAccount::ASSISTANCE);
+        $query = $user->resident->documentRequests();
+        $documentRequest = $query->where('reference_code', $referenceCode)->first();
 
         if (! $documentRequest) {
             return response()->json([

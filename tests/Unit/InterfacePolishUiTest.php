@@ -1,21 +1,22 @@
 <?php
 
-test('resident portal uses the restrained civic design system', function () {
+test('resident portal presents its current services design', function () {
     $portal = file_get_contents(dirname(__DIR__, 2).'/resources/views/portal/index.blade.php');
     $styles = file_get_contents(dirname(__DIR__, 2).'/public/css/portal.css');
 
     expect($portal)
         ->toContain("asset('css/portal.css')")
-        ->toContain('class="portal-intro"')
-        ->toContain('Resident Services')
-        ->toContain('Request barangay documents online')
-        ->toContain('Services online')
+        ->toContain('class="portal-hero"')
+        ->toContain('class="portal-service-grid"')
+        ->toContain('Resident services')
+        ->toContain('Request a document')
+        ->toContain('Track your requests')
+        ->not->toContain('Report an incident')
         ->not->toContain('<h2>📋 Mga Tuntunin at Kundisyon</h2>');
     expect($styles)
-        ->toContain('/* 2026 civic portal refresh */')
-        ->toContain('.cert-grid { grid-template-columns:repeat(3, 1fr);')
-        ->toContain('background:#f5f7f9;')
-        ->toContain('@media (max-width:500px)');
+        ->toContain('.portal-hero {')
+        ->toContain('.portal-service-card {')
+        ->toContain('.portal-service-grid { grid-template-columns:1fr; }');
 });
 
 test('admin interface is light first with consistent professional surfaces', function () {

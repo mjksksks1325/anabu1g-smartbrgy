@@ -11,6 +11,15 @@ enum CertificateType: string
     case FirstTimeJobseeker = 'First Time Jobseeker';
     case BusinessClearance = 'Business Clearance';
 
+    public function portalCode(): string
+    {
+        return match ($this) {
+            self::BarangayClearance => 'BC', self::CertificateOfResidency => 'CR',
+            self::CertificateOfIndigency => 'CI', self::BarangayId => 'BID',
+            self::FirstTimeJobseeker => 'CTFJ', self::BusinessClearance => 'BBC',
+        };
+    }
+
     public function fee(): int
     {
         return match ($this) {

@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Resident;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -28,6 +29,7 @@ class UserFactory extends Factory
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'role' => 'staff',
+            'is_super_admin' => false,
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
@@ -35,6 +37,19 @@ class UserFactory extends Factory
             'two_factor_recovery_codes' => null,
             'two_factor_confirmed_at' => null,
         ];
+    }
+
+    /**
+     * Link the account to an existing official resident record.
+     */
+    public function resident(): static
+    {
+        return $this->state(fn (): array => ['role' => 'resident', 'resident_id' => Resident::factory()]);
+    }
+
+    public function superAdmin(): static
+    {
+        return $this->state(fn (): array => ['role' => 'admin', 'is_super_admin' => true]);
     }
 
     /**

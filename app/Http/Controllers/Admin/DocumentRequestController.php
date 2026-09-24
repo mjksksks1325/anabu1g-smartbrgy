@@ -9,10 +9,20 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DocumentRequestController extends Controller
 {
+    public function attachment(DocumentRequest $documentRequest): StreamedResponse
+    {
+        Gate::authorize('view', $documentRequest);
+        abort_unless($documentRequest->private_attachment_path && Storage::disk('local')->exists($documentRequest->private_attachment_path), 404);
+
+        return Storage::disk('local')->response($documentRequest->private_attachment_path, null, ['Cache-Control' => 'no-store, private', 'X-Content-Type-Options' => 'nosniff']);
+    }
+
     public function index(): View
     {
         Gate::authorize('viewAny', DocumentRequest::class);

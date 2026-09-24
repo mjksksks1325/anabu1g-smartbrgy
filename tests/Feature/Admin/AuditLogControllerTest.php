@@ -3,14 +3,14 @@
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
-it('requires staff access to read administrative history', function () {
+it('requires super admin access to read administrative history', function () {
     $this->getJson(route('admin.audit.index'))->assertUnauthorized();
     $this->actingAs(User::factory()->create(['role' => 'viewer']))
         ->getJson(route('admin.audit.index'))->assertForbidden();
 });
 
 it('returns saved audit events without request payloads or credentials', function () {
-    $staff = User::factory()->create(['role' => 'staff']);
+    $staff = User::factory()->superAdmin()->create();
     DB::table('administrative_audits')->insert([
         'user_id' => $staff->id, 'actor' => $staff->name, 'action' => 'admin.residents.update',
         'type' => 'record', 'record' => '12', 'created_at' => '2026-09-20 08:30:00', 'updated_at' => '2026-09-20 08:30:00',

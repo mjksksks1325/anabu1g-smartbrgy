@@ -10,7 +10,7 @@ it('requires authentication and administrator access to account management', fun
 });
 
 it('creates a persisted account with a hashed password and audit entry', function () {
-    $admin = User::factory()->create(['role' => 'admin']);
+    $admin = User::factory()->superAdmin()->create(['role' => 'admin']);
 
     $response = $this->actingAs($admin)->postJson(route('admin.users.store'), [
         'name' => 'Records Clerk', 'email' => 'clerk@example.test',
@@ -24,7 +24,7 @@ it('creates a persisted account with a hashed password and audit entry', functio
 });
 
 it('rejects missing fields invalid roles and duplicate emails', function () {
-    $admin = User::factory()->create(['role' => 'admin']);
+    $admin = User::factory()->superAdmin()->create(['role' => 'admin']);
 
     $this->actingAs($admin)->postJson(route('admin.users.store'), [
         'name' => '', 'email' => $admin->email, 'password' => 'short', 'role' => 'superuser',
@@ -44,7 +44,7 @@ it('prevents staff from changing accounts', function () {
 });
 
 it('updates accounts without replacing a blank password', function () {
-    $admin = User::factory()->create(['role' => 'admin']);
+    $admin = User::factory()->superAdmin()->create(['role' => 'admin']);
     $target = User::factory()->create();
     $password = $target->password;
 
@@ -57,7 +57,7 @@ it('updates accounts without replacing a blank password', function () {
 });
 
 it('prevents administrators from removing their own access', function (array $changes) {
-    $admin = User::factory()->create(['role' => 'admin']);
+    $admin = User::factory()->superAdmin()->create(['role' => 'admin']);
 
     $this->actingAs($admin)->patchJson(route('admin.users.update', $admin), [
         'name' => $admin->name, 'email' => $admin->email, 'role' => 'admin', 'is_active' => true, ...$changes,
@@ -67,7 +67,7 @@ it('prevents administrators from removing their own access', function (array $ch
 })->with(['suspend self' => [['is_active' => false]], 'demote self' => [['role' => 'staff']]]);
 
 it('does not expose authentication secrets in the account list', function () {
-    $admin = User::factory()->create(['role' => 'admin', 'two_factor_secret' => 'private-secret']);
+    $admin = User::factory()->superAdmin()->create(['role' => 'admin', 'two_factor_secret' => 'private-secret']);
 
     $this->actingAs($admin)->getJson(route('admin.users.index'))
         ->assertOk()->assertJsonPath('users.0.email', $admin->email)

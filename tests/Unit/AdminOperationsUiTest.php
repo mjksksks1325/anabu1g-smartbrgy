@@ -10,7 +10,9 @@ test('dashboard and incident screens use authenticated database endpoints', func
         ->toContain('id="incident-pagination"')
         ->toContain('id="inc-resolution-notes"')
         ->toContain('IoT Not Connected')
-        ->toContain('class="nav-item deferred"')
+        ->toContain("route('admin.rfid-files.index')")
+        ->not->toContain('id="screen-cabinet"')
+        ->not->toContain('id="screen-face"')
         ->toContain("window.open('{{ route('home') }}','_blank')");
     expect($adminScript)
         ->toContain("fetch('/admin/dashboard-summary'")

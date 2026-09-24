@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Barangay Anabu I-G — Administration</title>
+<title>Barangay Anabu I-G — Staff Workspace</title>
 <link rel="icon" type="image/jpeg" href="{{ asset('images/anabu-logo.jpg') }}">
 <link rel="stylesheet" href="{{ asset('css/admin.css') }}?v={{ filemtime(public_path('css/admin.css')) }}">
 <link rel="stylesheet" href="{{ asset('css/government.css') }}">
@@ -41,7 +41,7 @@
 
   <div class="app-body">
     <!-- SIDEBAR -->
-    <nav class="sidebar" id="admin-navigation" aria-label="Administration">
+    <nav class="sidebar" id="admin-navigation" aria-label="Staff navigation">
       <div class="sidebar-sec">
         <div class="sidebar-label">Overview</div>
         <div class="nav-item active" data-perm="Dashboard" onclick="showScreen('dashboard',this)">
@@ -76,28 +76,20 @@
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           Incident Reports
         </div>
+
       </div>
       <div class="sidebar-sec">
         <div class="sidebar-label">IoT Security</div>
-        <div class="nav-item deferred" aria-disabled="true" title="Deferred until the IoT security design is approved">
+        <a class="nav-item" href="{{ route('admin.rfid-files.index') }}">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
-          RFID File Tracking <span class="nav-badge">Planned</span>
-        </div>
-        <div class="nav-item deferred" aria-disabled="true" title="Deferred until the IoT security design is approved">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="2" width="18" height="20" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="16" x2="21" y2="16"/><circle cx="8" cy="5.5" r="1"/><circle cx="8" cy="12.5" r="1"/><circle cx="8" cy="19" r="1"/></svg>
-          Smart Cabinet <span class="nav-badge">Planned</span>
-        </div>
-        <div class="nav-item" data-perm="QR" onclick="showScreen('qr',this)">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h.01"/></svg>
-          QR Verification
-        </div>
-        <div class="nav-item deferred" aria-disabled="true" title="Deferred until the IoT security design is approved">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/></svg>
-          Face Recognition <span class="nav-badge">Planned</span>
-        </div>
+          RFID File Tracking
+        </a>
       </div>
+      @if(auth()->user()->isSuperAdmin())
       <div class="sidebar-sec">
         <div class="sidebar-label">Administration</div>
+        <a class="nav-item" href="{{ route('admin.smart-cabinet.index') }}">Smart Cabinet</a>
+        <a class="nav-item" href="{{ route('admin.cabinet-access.index') }}">Employee Cabinet Access</a>
         <div class="nav-item" data-perm="Audit" onclick="showScreen('audit',this)">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
           Audit Log
@@ -110,6 +102,11 @@
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           Settings
         </div>
+      </div>
+      @endif
+      <div class="sidebar-sec">
+        <a class="nav-item" href="{{ route('profile.edit') }}">My profile</a>
+        <a class="nav-item" href="{{ route('security.edit') }}">Account security</a>
         <div class="nav-item" onclick="window.open('{{ route('home') }}','_blank')" style="margin-top:8px;border-top:1px solid var(--border-color);padding-top:8px;">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
           Portal ng Residente
@@ -118,7 +115,7 @@
       <div class="sidebar-footer">
         <div class="su-card">
           <div class="su-avatar" id="sidebar-user-avatar">JC</div>
-          <div><div class="su-name" id="sidebar-user-name">Juan dela Cruz</div><div class="su-role" id="sidebar-user-role">⬤ Super Administrator</div></div>
+          <div><div class="su-name" id="sidebar-user-name">Staff account</div><div class="su-role" id="sidebar-user-role">Staff</div></div>
         </div>
       </div>
     </nav>
@@ -298,7 +295,7 @@
     <!-- CERTIFICATES -->
     <div class="content" id="screen-certificates">
       <div class="page-header-row">
-        <div class="page-header"><h1>Certificates &amp; <span>Clearances</span></h1><p>Issue, track, and verify barangay documents — QR-enabled</p></div>
+        <div class="page-header"><h1>Certificates &amp; <span>Clearances</span></h1><p>Issue and track official barangay documents</p></div>
         <div style="display:flex;gap:8px;">
           <button class="btn btn-primary btn-sm" onclick="showPublicPortal()">🌐 Public Portal</button>
           <button class="btn btn-green btn-sm" onclick="openModal('modal-cert-issue')">📄 Issue Certificate</button>
@@ -314,7 +311,6 @@
           <div class="process-step"><div class="ps-num active">3</div><div class="ps-label">Staff<br>Processing</div></div>
           <div class="process-step"><div class="ps-num active">4</div><div class="ps-label">Print + QR<br>Embed</div></div>
           <div class="process-step"><div class="ps-num active">5</div><div class="ps-label">Release &amp;<br>Signature</div></div>
-          <div class="process-step"><div class="ps-num active">6</div><div class="ps-label">QR<br>Verification</div></div>
         </div>
       </div>
 
@@ -354,22 +350,9 @@
       </div>
 
       <!-- Certificate Types Reference -->
-      <div class="two-col">
-        <div class="card">
-          <div class="card-header"><div class="card-title">Available Certificates & Fees</div></div>
-          <div id="cert-types-list" style="display:flex;flex-direction:column;gap:7px;"></div>
-        </div>
-        <div class="card card-green">
-          <div class="card-header"><div class="card-title">QR Verification System</div></div>
-          <div style="font-size:12px;color:var(--text-secondary);line-height:1.8;">
-            <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:6px;"><span>📱</span><span>Every issued document gets a unique embedded QR code</span></div>
-            <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:6px;"><span>🔒</span><span>QR opens a unique, database-backed public verification page</span></div>
-            <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:6px;"><span>✅</span><span>3rd parties (employers, schools) can scan to verify authenticity</span></div>
-            <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:6px;"><span>🚫</span><span>Unknown or altered verification codes are rejected</span></div>
-            <div style="display:flex;gap:8px;align-items:flex-start;"><span>📊</span><span>Manual lookup checks the live certificate database</span></div>
-          </div>
-          <button class="btn btn-green btn-full" style="margin-top:12px;" onclick="showScreen('qr',findNavItem('qr'))">📷 Open QR Scanner →</button>
-        </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Available Certificates &amp; Fees</div></div>
+        <div id="cert-types-list" style="display:flex;flex-direction:column;gap:7px;"></div>
       </div>
     </div>
 
@@ -440,341 +423,7 @@
       <div class="resident-pagination" id="rr-pagination"></div>
     </div>
 
-    <!-- RFID FILE TRACKING -->
-    <div class="content" id="screen-rfid">
-      <div class="page-header"><h1>RFID <span>File Tracking</span></h1><p>Real-time document and file tracking using RFID tags</p></div>
-      <div class="two-col">
-        <div>
-          <div class="card" style="margin-bottom:14px;border-color:rgba(239,68,68,0.3);background:rgba(239,68,68,0.04);">
-            <div class="card-header"><div class="card-title">📡 RFID Scanner</div><span class="badge badge-red">Offline</span></div>
-            <div class="rfid-scan-area" id="rfid-scan-area" onclick="simulateRFIDScan()">
-              <div class="rfid-icon">📡</div>
-              <div class="rfid-label" id="rfid-scan-label">Click to simulate RFID scan</div>
-              <div class="rfid-sub">Place file or card on the RFID reader</div>
-            </div>
-          </div>
-          <div class="card"><div class="card-header"><div class="card-title">🏷️ Registered RFID Tags</div></div><div id="rfid-tags-list" style="display:flex;flex-direction:column;gap:8px;"></div></div>
-        </div>
-        <div class="card">
-          <div class="card-header"><div><div class="card-title">📋 RFID Scan Log</div><div class="card-sub">Real-time log of all RFID activities</div></div><span class="badge badge-green">Live</span></div>
-          <div style="overflow-x:auto;">
-            <table class="tbl">
-              <thead><tr><th>Time</th><th>Tag ID</th><th>File / Tao</th><th>Lokasyon</th><th>Direksyon</th><th>Status</th></tr></thead>
-              <tbody id="rfid-log-tbody"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- SMART CABINET -->
-    <div class="content" id="screen-cabinet">
-      <div class="page-header"><h1>Smart <span>Cabinet</span></h1><p>IoT-controlled na filing cabinet — 2-Factor Authentication: Facial Recognition + RFID Key Card</p></div>
-
-      <!-- 2FA Authentication Panel -->
-      <div class="cab-2fa-panel">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-          <div>
-            <div class="card-title">🔐 Cabinet 2-Factor Authentication</div>
-            <div style="font-size:11.5px;color:var(--text-muted);margin-top:3px;">Kailangan ng DALAWANG verification para mabuksan ang pangunahing pinto ng cabinet</div>
-          </div>
-          <span class="badge badge-green"><span class="pulse-dot" style="margin-right:4px;"></span>Cabinet Online</span>
-        </div>
-        <div class="cab-2fa-steps">
-          <div class="cab-step active" id="cab-step-1">
-            <div class="cab-step-icon">😊</div>
-            <div class="cab-step-label">Step 1: Face Scan</div>
-          </div>
-          <div class="cab-step" id="cab-step-2">
-            <div class="cab-step-icon">📡</div>
-            <div class="cab-step-label">Step 2: RFID Card</div>
-          </div>
-          <div class="cab-step" id="cab-step-3">
-            <div class="cab-step-icon">🔓</div>
-            <div class="cab-step-label">Cabinet Open</div>
-          </div>
-        </div>
-        <div style="margin-top:12px;display:flex;gap:8px;">
-          <button class="btn btn-green btn-sm" onclick="simulateCabFaceScan()">😊 I-simulate ang Face Scan</button>
-          <button class="btn btn-primary btn-sm" onclick="simulateCabRFID()">📡 I-tap ang RFID Card</button>
-          <button class="btn btn-danger btn-sm" onclick="resetCabAuth()">↺ I-reset</button>
-        </div>
-        <div id="cab-auth-status" style="display:none;margin-top:10px;padding:8px 12px;border-radius:var(--radius-sm);font-size:12px;"></div>
-      </div>
-
-      <div class="col-3-2">
-        <div>
-          <div class="card card-green" style="margin-bottom:14px;">
-            <div class="card-header">
-              <div><div class="card-title">🗄️ Cabinet Control Panel</div><div class="card-sub">Mga drawer — i-tap ang RFID key card para mabuksan ang bawat isa</div></div>
-              <span class="badge badge-green"><span class="pulse-dot" style="margin-right:4px;"></span>Online</span>
-            </div>
-            <div class="search-row" style="margin-bottom:10px;">
-              <div class="search-wrap"><span class="si">🔍</span><input class="search-input" id="drawer-search" placeholder="Hanapin ang drawer o kategorya..." oninput="searchDrawer()"/></div>
-            </div>
-            <div id="cabinet-drawers" style="display:flex;flex-direction:column;gap:6px;"></div>
-          </div>
-
-          <!-- Folder/File RFID inside drawers -->
-          <div class="card">
-            <div class="card-header">
-              <div><div class="card-title">📁 Files sa Loob ng Cabinet</div><div class="card-sub">Bawat folder ay may RFID tag — alam ng sistema kung anong file ang kinukuha</div></div>
-              <span class="badge badge-amber">RFID-Tagged</span>
-            </div>
-            <div id="cabinet-folders-list" style="display:flex;flex-direction:column;gap:4px;"></div>
-            <div style="margin-top:10px;padding:8px 12px;background:var(--green-dim);border:1px solid var(--border-green);border-radius:var(--radius-sm);font-size:11.5px;color:var(--green-500);">
-              📡 Kapag kinuha ang isang folder, nire-record ng RFID scanner kung sino ang kumuha at kelan.
-            </div>
-          </div>
-        </div>
-
-        <div style="display:flex;flex-direction:column;gap:14px;">
-          <div class="cabinet-visual">
-            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:12px;">Cabinet Diagram</div>
-            <div class="cabinet-body">
-              <div class="cabinet-top">🏛️ SMARTBRGY CABINET</div>
-              <div style="padding:6px;display:flex;flex-direction:column;gap:3px;">
-                <div style="background:rgba(0,138,56,0.15);border-radius:4px;padding:5px 7px;display:flex;align-items:center;justify-content:space-between;">
-                  <span style="font-size:9px;color:var(--text-secondary);">Row A — Resident Files A–L</span>
-                  <span style="font-size:9px;color:var(--green-500);">🟢 Unlocked</span>
-                </div>
-                <div style="background:rgba(239,68,68,0.08);border-radius:4px;padding:5px 7px;display:flex;align-items:center;justify-content:space-between;">
-                  <span style="font-size:9px;color:var(--text-secondary);">Row B — Resident Files M–Z</span>
-                  <span style="font-size:9px;color:#EF4444;">🔴 Locked</span>
-                </div>
-                <div style="background:rgba(0,138,56,0.08);border-radius:4px;padding:5px 7px;display:flex;align-items:center;justify-content:space-between;">
-                  <span style="font-size:9px;color:var(--text-secondary);">Row C — Certificates</span>
-                  <span style="font-size:9px;color:var(--green-500);">🟢 Unlocked</span>
-                </div>
-                <div style="background:rgba(239,68,68,0.08);border-radius:4px;padding:5px 7px;display:flex;align-items:center;justify-content:space-between;">
-                  <span style="font-size:9px;color:var(--text-secondary);">Row D — Sensitive Records</span>
-                  <span style="font-size:9px;color:#EF4444;">🔴 Locked</span>
-                </div>
-              </div>
-            </div>
-            <div style="margin-top:10px;font-size:10px;color:var(--text-muted);">🟢 Unlocked &nbsp;🔴 Locked (RFID + Face required)</div>
-          </div>
-          <div class="card card-green">
-            <div class="card-header"><div class="card-title">🔐 Access Methods</div></div>
-            <div style="display:flex;flex-direction:column;gap:9px;font-size:12px;">
-              <div style="display:flex;align-items:center;gap:10px;"><span style="font-size:18px;">🚪</span><div><div style="font-weight:600;color:var(--text-primary);">Main Door — 2FA Required</div><div style="color:var(--text-muted);font-size:11px;">Face Recognition + RFID Key Card (parehong kailangan)</div></div></div>
-              <div style="display:flex;align-items:center;gap:10px;"><span style="font-size:18px;">📡</span><div><div style="font-weight:600;color:var(--text-primary);">Drawer — RFID Card Only</div><div style="color:var(--text-muted);font-size:11px;">I-tap ang authorized RFID card sa bawat drawer</div></div></div>
-              <div style="display:flex;align-items:center;gap:10px;"><span style="font-size:18px;">📁</span><div><div style="font-weight:600;color:var(--text-primary);">Folder Tracking — Auto RFID</div><div style="color:var(--text-muted);font-size:11px;">All ng folder sa loob ay RFID-tagged, alam kung sino ang kumuha</div></div></div>
-            </div>
-          </div>
-          <div class="card">
-            <div class="card-header"><div class="card-title">⚡ Cabinet Status</div></div>
-            <div class="sys-row"><div class="sys-name">Power Supply</div><div class="sys-status"><div class="sdot offline"></div><span style="color:#EF4444">Offline</span></div></div>
-            <div class="sys-row"><div class="sys-name">Lock Mechanism</div><div class="sys-status"><div class="sdot offline"></div><span style="color:#EF4444">Offline</span></div></div>
-            <div class="sys-row"><div class="sys-name">RFID Reader</div><div class="sys-status"><div class="sdot offline"></div><span style="color:#EF4444">Offline</span></div></div>
-            <div class="sys-row"><div class="sys-name">Camera Module</div><div class="sys-status"><div class="sdot offline"></div><span style="color:#EF4444">Offline</span></div></div>
-            <div class="sys-row"><div class="sys-name">Tamper Alert</div><div class="sys-status"><div class="sdot offline"></div><span style="color:#EF4444">Offline</span></div></div>
-          </div>
-          <div class="card">
-            <div class="card-header"><div class="card-title">📋 Cabinet Access Log</div></div>
-            <div style="overflow-x:auto;">
-              <table class="tbl">
-                <thead><tr><th>Time</th><th>Drawer</th><th>Actions</th><th>Staff</th></tr></thead>
-                <tbody id="cabinet-log-tbody">
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- QR VERIFICATION — TWO PURPOSES -->
-    <div class="content" id="screen-qr">
-      <div class="page-header">
-        <h1>QR <span>Verification</span></h1>
-        <p>Two purposes: verify document authenticity (for employers/schools/third parties) and check request status (for residents)</p>
-      </div>
-
-      <!-- PURPOSE CARDS -->
-      <div class="two-col" style="margin-bottom:20px;">
-        <div style="border:1.5px solid var(--border-green);border-radius:var(--radius-lg);padding:18px;background:var(--green-dim);">
-          <div style="display:inline-flex;align-items:center;gap:6px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;background:var(--border-green);color:var(--green-500);padding:3px 10px;border-radius:20px;margin-bottom:10px;">📄 PURPOSE 1</div>
-          <div style="font-size:14px;font-weight:700;color:var(--green-500);margin-bottom:8px;">Document Authenticity Verification</div>
-          <div style="font-size:12px;color:var(--text-secondary);line-height:1.8;">
-            For <strong style="color:var(--text-primary);">employers, schools, banks, and any third party</strong> who received a barangay document and wants to confirm it is real.<br><br>
-            ✅ Every printed barangay document (clearance, indigency, residency, etc.) has an <strong style="color:var(--text-primary);">embedded QR code</strong>.<br>
-            ✅ Scanning it shows: document type, resident name, date issued, issued by, and validity — <strong style="color:var(--text-primary);">no system login needed</strong>.<br>
-            🚫 Unknown or altered verification codes <strong style="color:#EF4444;">cannot pass</strong> this verification.
-          </div>
-        </div>
-        <div style="border:1.5px solid rgba(42,126,211,.3);border-radius:var(--radius-lg);padding:18px;background:rgba(42,126,211,.05);">
-          <div style="display:inline-flex;align-items:center;gap:6px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;background:rgba(42,126,211,.2);color:var(--blue-400);padding:3px 10px;border-radius:20px;margin-bottom:10px;">📋 PURPOSE 2</div>
-          <div style="font-size:14px;font-weight:700;color:var(--blue-400);margin-bottom:8px;">Request Status Tracking</div>
-          <div style="font-size:12px;color:var(--text-secondary);line-height:1.8;">
-            For <strong style="color:var(--text-primary);">residents</strong> who filed a request and want to know if their document is ready — without going back to the barangay.<br><br>
-            ✅ When a resident files a request, they receive a <strong style="color:var(--text-primary);">QR code slip</strong> (or confirmation code).<br>
-            ✅ Scanning the QR shows: current status (Processing / Ready / Released), estimated release date.<br>
-            📱 Works from any phone — <strong style="color:var(--text-primary);">no app needed</strong>, no login required.
-          </div>
-        </div>
-      </div>
-
-      <!-- QR MODE TABS -->
-      <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:18px;">
-        <div class="qr-tab active" id="qr-tab-doc" onclick="switchQRTab('doc')" style="padding:9px 20px;font-size:12.5px;font-weight:600;cursor:pointer;border-bottom:2px solid var(--green-500);color:var(--green-500);margin-bottom:-1px;">📄 Document Verification</div>
-        <div class="qr-tab" id="qr-tab-status" onclick="switchQRTab('status')" style="padding:9px 20px;font-size:12.5px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:var(--text-muted);margin-bottom:-1px;">📋 Request Status</div>
-      </div>
-
-      <!-- TAB 1: DOCUMENT VERIFICATION -->
-      <div id="qr-panel-doc">
-        <div class="two-col">
-          <div>
-            <div class="card card-green" style="margin-bottom:14px;">
-              <div class="card-header"><div class="card-title">📷 Document QR Scanner</div><span class="badge badge-green">Phone Ready</span></div>
-              <div class="qr-scan-area" id="qr-scan-area" onclick="showToast('Scan the printed QR using any phone camera. It opens the public verification page.','green')">
-                <div class="qr-icon">▣</div>
-                <div style="font-size:13px;font-weight:600;color:var(--green-500);" id="qr-scan-label">Scan with any phone camera</div>
-                <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">The QR opens the live public verification record—no app or login needed</div>
-              </div>
-            </div>
-            <div class="card">
-              <div class="card-header"><div class="card-title">🔍 Manual Code Lookup</div></div>
-              <div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px;">Enter the verification code printed on an issued certificate.</div>
-              <div class="form-group">
-                <div class="form-label">Certificate Verification Code</div>
-                <div style="display:flex;gap:8px;">
-                  <input class="form-input" id="manual-code" placeholder="e.g. A1B2C3D4E5F6G7H8" style="flex:1;"/>
-                  <button class="btn btn-green" onclick="verifyCertCode(document.getElementById('manual-code').value)">🔍 Verify</button>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div>
-            <!-- VERIFICATION RESULT (hidden by default) -->
-            <div id="qr-doc-result" style="display:none;margin-bottom:14px;">
-              <div class="card" id="qr-doc-result-card"></div>
-            </div>
-            <div class="card" style="margin-bottom:14px;">
-              <div class="card-header"><div class="card-title">📋 Recent Verifications</div><span class="rt-indicator"><span class="pulse-dot"></span>Live</span></div>
-              <div id="qr-recent-list" style="display:flex;flex-direction:column;gap:7px;"></div>
-            </div>
-            <div class="card card-green">
-              <div class="card-header"><div class="card-title">🔐 Document Security</div></div>
-              <div style="font-size:12px;color:var(--text-secondary);line-height:1.9;">
-                🔒 QR points to a unique live database record.<br>
-                📋 Each verification code is unique per issuance.<br>
-                ✅ Certificate details are loaded from the server.<br>
-                🚫 Unknown or altered codes return “not found.”<br>
-                📱 Verification works with a normal phone camera.
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- TAB 2: REQUEST STATUS -->
-      <div id="qr-panel-status" style="display:none;">
-        <div class="two-col">
-          <div>
-            <div class="card card-blue" style="margin-bottom:14px;border-color:rgba(42,126,211,.3);background:rgba(42,126,211,.05);">
-              <div class="card-header"><div class="card-title">📱 Request Status QR Scanner</div><span class="badge badge-blue">Active</span></div>
-              <div class="qr-scan-area" id="qr-status-area" style="border-color:rgba(42,126,211,.4);background:rgba(42,126,211,.06);" onclick="document.getElementById('status-code').focus()">
-                <div class="qr-icon" style="color:var(--blue-400);">▣</div>
-                <div style="font-size:13px;font-weight:600;color:var(--blue-400);" id="qr-status-label">Check your request reference code</div>
-                <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Residents scan the QR from their request slip to check status</div>
-              </div>
-            </div>
-            <div class="card">
-              <div class="card-header"><div class="card-title">🔍 Manual Request Lookup</div></div>
-              <div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px;">Residents can enter their confirmation code here to check their document status anytime.</div>
-              <div class="form-group">
-                <div class="form-label">Request Confirmation Code</div>
-                <div style="display:flex;gap:8px;">
-                  <input class="form-input" id="status-code" placeholder="e.g. REQ-7741" style="flex:1;"/>
-                  <button class="btn btn-primary" onclick="checkRequestStatus(document.getElementById('status-code').value)">🔍 Check Status</button>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div>
-            <!-- STATUS RESULT (hidden by default) -->
-            <div id="qr-status-result" style="display:none;margin-bottom:14px;">
-              <div class="card" id="qr-status-result-card"></div>
-            </div>
-            <div class="card" style="margin-bottom:14px;">
-              <div class="card-header"><div class="card-title">📊 What Each Status Means</div></div>
-              <div style="display:flex;flex-direction:column;gap:8px;">
-                <div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--bg-glass);border:1px solid var(--border);border-radius:var(--radius-sm);">
-                  <span class="badge badge-amber">⏳ Processing</span>
-                  <div style="font-size:12px;color:var(--text-secondary);">Request received. Staff is reviewing and preparing your document. Usually takes 1 business day.</div>
-                </div>
-                <div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--bg-glass);border:1px solid var(--border);border-radius:var(--radius-sm);">
-                  <span class="badge badge-green">🖨️ Ready to Pick Up</span>
-                  <div style="font-size:12px;color:var(--text-secondary);">Your document is printed and ready! Visit the Barangay Hall and present your confirmation code.</div>
-                </div>
-                <div style="display:flex;align-items:center;gap:12px;padding:10px;background:var(--bg-glass);border:1px solid var(--border);border-radius:var(--radius-sm);">
-                  <span class="badge badge-blue">✅ Released</span>
-                  <div style="font-size:12px;color:var(--text-secondary);">Document has been released to the resident. Transaction complete.</div>
-                </div>
-                <div style="display:flex;align-items:center;gap:12px;padding:10px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:var(--radius-sm);">
-                  <span class="badge badge-red">🚫 On Hold</span>
-                  <div style="font-size:12px;color:var(--text-secondary);">Request is on hold — usually due to missing requirements or a blotter record. Visit the barangay for details.</div>
-                </div>
-              </div>
-            </div>
-            <div class="card" style="background:rgba(42,126,211,.05);border-color:rgba(42,126,211,.25);">
-              <div class="card-header"><div class="card-title" style="color:var(--blue-400);">📱 For Residents: No App Needed</div></div>
-              <div style="font-size:12px;color:var(--text-secondary);line-height:1.9;">
-                📲 When you file a request, you receive a <strong style="color:var(--text-primary);">QR code slip</strong>.<br>
-                🔍 Scan it anytime using any phone camera.<br>
-                🌐 Or visit the <strong style="color:var(--text-primary);">Barangay Public Portal</strong> and enter your code.<br>
-                ⏰ No need to visit the barangay just to check status.<br>
-                📩 You'll also receive an SMS when your document is ready.
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- FACE RECOGNITION -->
-    <div class="content" id="screen-face">
-      <div class="page-header"><h1>Face <span>Recognition</span></h1><p>Biometric access control for barangay staff and cabinet access</p></div>
-      <div class="two-col">
-        <div>
-          <div class="card card-green" style="margin-bottom:14px;">
-            <div class="card-header"><div class="card-title">😊 Face Recognition Scanner</div><span class="badge badge-green">Camera Active</span></div>
-            <div class="face-live-area" id="face-live-area" onclick="simulateFaceRecognition()">
-              <div class="face-ring-wrap"><div class="face-ring"></div><div class="face-emoji">😊</div></div>
-              <div style="font-size:13px;font-weight:600;color:var(--green-500);margin-top:4px;" id="face-live-label">Click to simulate face scan</div>
-              <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Look at the camera to be recognized</div>
-            </div>
-            <div class="recognition-result" id="face-live-result">
-              <div style="display:flex;align-items:center;gap:10px;">
-                <div style="font-size:30px;">😊</div>
-                <div><div class="rec-name">Juan dela Cruz</div><div class="rec-role">⬤ Super Administrator — Full Access</div><div class="rec-conf">Confidence: 99.4% • Match ID: ANB-USR-001</div></div>
-              </div>
-            </div>
-          </div>
-          <div class="card">
-            <div class="card-header"><div class="card-title">👤 Enrolled Faces</div></div>
-            <div style="display:flex;flex-direction:column;gap:7px;">
-              <div class="cert-request-item"><div class="cert-icon-box">😊</div><div style="flex:1;"><div class="cert-name">Juan dela Cruz</div><div class="cert-detail">Admin • 2 face templates enrolled</div></div><span class="badge badge-green">Active</span></div>
-              <div class="cert-request-item"><div class="cert-icon-box">😊</div><div style="flex:1;"><div class="cert-name">Maria R. Lim</div><div class="cert-detail">Records Officer • 1 face template</div></div><span class="badge badge-green">Active</span></div>
-              <div class="cert-request-item"><div class="cert-icon-box">😊</div><div style="flex:1;"><div class="cert-name">Rosario C. Dela Vega</div><div class="cert-detail">Tanod Captain • 1 face template</div></div><span class="badge badge-green">Active</span></div>
-            </div>
-            <button class="btn btn-green btn-full" style="margin-top:12px;" onclick="showToast('Face enrollment mode activated. Pumunta sa camera.','green')">➕ Enroll New Face</button>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-header"><div class="card-title">📋 Face Recognition Access Log</div></div>
-          <div style="display:flex;flex-direction:column;gap:0;">
-            <div class="log-item"><div class="log-icon-box">✅</div><div><div class="log-action">Access Granted — Juan dela Cruz</div><div class="log-detail">Admin Panel Login • Confidence: 99.4%</div><div class="log-time">Today 09:02:14</div></div></div>
-            <div class="log-item"><div class="log-icon-box">✅</div><div><div class="log-action">Cabinet Access — Rosario Dela Vega</div><div class="log-detail">Row C - Drawer 1 unlocked • Confidence: 97.8%</div><div class="log-time">Today 08:55:00</div></div></div>
-            <div class="log-item"><div class="log-icon-box">❌</div><div><div class="log-action">Access Denied — Unknown Face</div><div class="log-detail">No match found • Alert sent to admin</div><div class="log-time">Today 08:30:44</div></div></div>
-            <div class="log-item"><div class="log-icon-box">✅</div><div><div class="log-action">Login — Maria R. Lim</div><div class="log-detail">Records Officer Login • Confidence: 98.1%</div><div class="log-time">Today 08:10:22</div></div></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
+    @if(auth()->user()->isSuperAdmin())
     <!-- AUDIT LOG -->
     <div class="content" id="screen-audit">
       <div class="page-header-row">
@@ -865,6 +514,7 @@
         </div>
       </div>
     </div>
+    @endif
 
   <!-- NOTIFICATION PANEL -->
   <div class="notif-panel" id="notif-panel">
@@ -877,7 +527,7 @@
     </div>
     <div id="notif-list"></div>
     <div style="padding:10px 16px;text-align:center;border-top:1px solid var(--border);">
-      <button class="btn btn-xs" onclick="toggleNotifPanel();showScreen('audit',findNavItem('audit'))">View all in Audit Log</button>
+      @if(auth()->user()->isSuperAdmin())<button class="btn btn-xs" onclick="toggleNotifPanel();showScreen('audit',findNavItem('audit'))">View all in Audit Log</button>@endif
     </div>
   </div>
   </div><!-- end app-body -->
@@ -1175,29 +825,6 @@
   </div>
 </div>
 
-<!-- QR Verify -->
-<div class="modal-overlay" id="modal-qr-verify">
-  <div class="modal">
-    <div class="modal-header"><div class="modal-title">✅ <span>QR Verification Result</span></div><div class="modal-close" onclick="closeModal('modal-qr-verify')">✕</div></div>
-    <div style="background:var(--green-dim);border:1px solid var(--border-green);border-radius:var(--radius);padding:16px;margin-bottom:14px;text-align:center;">
-      <div style="font-size:28px;margin-bottom:6px;">✅</div>
-      <div style="font-size:14px;font-weight:700;color:var(--green-500);">AUTHENTIC DOCUMENT</div>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Verified authentic document from Barangay Anabu I-G</div>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:10px;">
-      <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:var(--text-muted);">Document Type</span><span style="color:var(--text-primary);font-weight:600;" id="qr-verify-doc-title">—</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:var(--text-muted);">Full Name</span><span style="color:var(--text-primary);font-weight:600;" id="qr-verify-name">—</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:var(--text-muted);">Confirmation Code</span><span style="color:var(--green-500);font-family:var(--font-mono);" id="qr-verify-code">—</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:var(--text-muted);">Request Date</span><span style="color:var(--text-primary);" id="qr-verify-date">—</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:var(--text-muted);">Status</span><span id="qr-verify-status">—</span></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn" onclick="closeModal('modal-qr-verify')">Close</button>
-      <button class="btn btn-green" onclick="closeModal('modal-qr-verify');showScreen('certificates',findNavItem('certificates'))">✅ Manage certificate</button>
-    </div>
-  </div>
-</div>
-
 <!-- Incident Report -->
 <div class="modal-overlay" id="modal-incident">
   <div class="modal">
@@ -1276,6 +903,7 @@
 </div>
 
 <!-- Add User -->
+@if(auth()->user()->isSuperAdmin())
 <div class="modal-overlay" id="modal-adduser">
   <form class="modal" onsubmit="event.preventDefault();saveNewUser()">
     <div class="modal-header"><div class="modal-title" id="adduser-modal-title">New user</div><button type="button" class="modal-close" onclick="closeModal('modal-adduser')" aria-label="Close user form">&times;</button></div>
@@ -1288,6 +916,7 @@
     <div class="modal-footer"><button class="btn" type="button" onclick="closeModal('modal-adduser')">Cancel</button><button class="btn btn-green" id="adduser-save-btn" type="submit">Save account</button></div>
   </form>
 </div>
+@endif
 
 <!-- Eligibility Checker Modal -->
 <div class="modal-overlay" id="modal-eligibility-check">
@@ -1325,7 +954,7 @@
 
 <script>
     window.LARAVEL_DOCUMENT_REQUESTS = @json($requests);
-    window.AUTHENTICATED_USER = {{ Illuminate\Support\Js::from(auth()->user()->only(['id', 'name', 'role'])) }};
+    window.AUTHENTICATED_USER = {{ Illuminate\Support\Js::from(['id' => auth()->id(), 'name' => auth()->user()->name, 'role' => auth()->user()->role, 'is_super_admin' => auth()->user()->isSuperAdmin()]) }};
 </script>
 
 <script src="{{ asset('js/admin.js') }}?v={{ filemtime(public_path('js/admin.js')) }}"></script>

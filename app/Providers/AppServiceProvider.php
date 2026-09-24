@@ -8,6 +8,7 @@ use Illuminate\Auth\Events\Login;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -28,6 +29,10 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
 
+        Gate::define('access-employee-settings', fn (User $user): bool => ! $user->isResidentAccount());
+        Gate::define('view-administration', fn (User $user): bool => $user->isSuperAdmin());
+        Gate::define('view-rfid-files', fn (User $user): bool => $user->canTrackRfidFiles());
+
         Event::listen(Login::class, function (Login $event): void {
             if (! $event->user instanceof User || ! $event->user->is_active) {
                 return;
@@ -38,7 +43,7 @@ class AppServiceProvider extends ServiceProvider
                 'actor' => $event->user->name,
                 'action' => 'auth.login',
                 'type' => 'auth',
-                'record' => null,
+                'record' => $event->user->isResidentAccount() ? 'resident_portal' : null,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);

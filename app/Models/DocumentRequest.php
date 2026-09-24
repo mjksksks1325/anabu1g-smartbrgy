@@ -21,12 +21,22 @@ class DocumentRequest extends Model
         'purpose',
         'business_name',
         'attachment_path',
+        'private_attachment_path',
         'status',
         'remarks',
         'rejection_reason',
         'rejected_at',
         'rejected_by',
     ];
+
+    protected $hidden = ['private_attachment_path'];
+
+    public function getAttachmentPathAttribute(?string $value): ?string
+    {
+        return $this->private_attachment_path
+            ? route('admin.document-requests.attachment', $this)
+            : $value;
+    }
 
     /**
      * @return HasOne<IssuedCertificate, $this>

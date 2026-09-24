@@ -14,7 +14,7 @@ class SaveUserRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return $this->user()?->role === 'admin';
+        return $this->user()?->isSuperAdmin() ?? false;
     }
 
     /**

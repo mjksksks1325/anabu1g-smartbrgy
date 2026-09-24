@@ -38,6 +38,7 @@ async function sendPortalDocumentRequest(formData) {
 }
 
 async function submitRequest() {
+    const generation = typeof residentIdentityGeneration === 'number' ? residentIdentityGeneration : null;
     if (portalSubmitting) return;
     if (lastCode) { showScreen('screen-confirm'); return; }
     if (!validatePortalForm()) return;
@@ -46,7 +47,6 @@ async function submitRequest() {
     const purpose = document.getElementById('f-purpose').value.trim();
     const emailInput = document.getElementById('f-email');
     const email = emailInput.value.trim();
-    const dob = document.getElementById('f-dob').value;
     const biz = document.getElementById('f-business').value.trim();
     const attachment = document.getElementById('f-attachment').files[0];
 
@@ -78,10 +78,6 @@ async function submitRequest() {
         const formData = new FormData();
 
         formData.append('document_type', d.label);
-        formData.append('full_name', name);
-        formData.append('date_of_birth', dob || '');
-        formData.append('address', address);
-        formData.append('email', email);
         formData.append('purpose', finalPurpose || '');
         formData.append('business_name', biz);
 
@@ -92,6 +88,7 @@ async function submitRequest() {
         const response = await sendPortalDocumentRequest(formData);
 
         const data = await response.json().catch(() => ({}));
+        if (generation !== null && generation !== residentIdentityGeneration) return;
 
         if (!response.ok) {
             console.error(data);
@@ -119,6 +116,7 @@ async function submitRequest() {
         );
 
     } catch (error) {
+        if (generation !== null && generation !== residentIdentityGeneration) return;
         console.error(error);
         toast(error.message || 'Hindi makakonekta sa server.', 'red');
     } finally {

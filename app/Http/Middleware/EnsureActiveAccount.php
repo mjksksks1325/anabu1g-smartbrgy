@@ -16,16 +16,20 @@ class EnsureActiveAccount
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->user() && ! $request->user()->is_active) {
-            Auth::logout();
-            $request->session()->invalidate();
+        $guard = $request->is('portal*') ? 'resident' : 'web';
+        $user = Auth::guard($guard)->user();
+
+        if ($user && ! $user->is_active) {
+            $loginRoute = $guard === 'resident' ? 'portal.login' : 'login';
+            Auth::guard($guard)->logout();
+            $request->session()->regenerate();
             $request->session()->regenerateToken();
 
             if ($request->expectsJson()) {
                 return response()->json(['message' => 'Your account is suspended. Contact the barangay administrator.'], 401);
             }
 
-            return redirect()->route('login')->withErrors(['email' => 'Your account is suspended. Contact the barangay administrator.']);
+            return redirect()->route($loginRoute)->withErrors(['email' => 'Your account is suspended. Contact the barangay administrator.']);
         }
 
         return $next($request);

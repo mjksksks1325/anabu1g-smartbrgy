@@ -19,18 +19,17 @@ test('manual certificate modal submits real issuance fields and opens the genera
         ->toContain('printWindow.location.href = data.print_url;');
 });
 
-test('manual QR lookup verifies the issued certificate against the server', function () {
+test('certificates retain public verification without the old staff QR scanner', function () {
     $dashboard = file_get_contents(dirname(__DIR__, 2).'/resources/views/admin/dashboard.blade.php');
     $adminScript = file_get_contents(dirname(__DIR__, 2).'/public/js/admin.js');
 
     expect($dashboard)
-        ->toContain('Certificate Verification Code')
-        ->toContain('Scan with any phone camera')
-        ->not->toContain('Click to Simulate Scanning a Document QR');
+        ->toContain('Issued Certificate History')
+        ->not->toContain('id="screen-qr"')
+        ->not->toContain('Open QR Scanner');
     expect($adminScript)
-        ->toContain('async function verifyCertCode(code)')
-        ->toContain('fetch(`/verify-certificate/${encodeURIComponent(verificationCode)}`')
-        ->toContain('showRealCertificateVerification(certificate)');
+        ->toContain("row.querySelector('.issued-verify')")
+        ->not->toContain('async function verifyCertCode(code)');
 });
 
 test('issued certificate history supports reprinting and verification after issuance', function () {

@@ -320,21 +320,6 @@ const CERTIFICATE_TYPES = [
 // ═══════════════════════════════════════
 // RFID TAGS — DOCUMENT/FOLDER TRACKING (no rfid in resident record)
 // ═══════════════════════════════════════
-const RFID_TAGS = [];
-
-const CABINET_FOLDERS = [];
-
-const CABINET_DRAWERS = [
-  { id: 'CA1', label: 'Row A - Drawer 1', category: 'Resident Files A–E', rfid: 'RF-CA1', locked: false, icon: '🗂️' },
-  { id: 'CA2', label: 'Row A - Drawer 2', category: 'Resident Files F–L', rfid: 'RF-CA2', locked: false, icon: '🗂️' },
-  { id: 'CB1', label: 'Row B - Drawer 1', category: 'Resident Files M–R', rfid: 'RF-CB1', locked: true,  icon: '🗂️' },
-  { id: 'CB2', label: 'Row B - Drawer 2', category: 'Resident Files S–Z', rfid: 'RF-CB2', locked: true,  icon: '🗂️' },
-  { id: 'CC1', label: 'Row C - Drawer 1', category: 'Clearances & Certificates', rfid: 'RF-CC1', locked: false, icon: '📋' },
-  { id: 'CC2', label: 'Row C - Drawer 2', category: 'Incident Reports', rfid: 'RF-CC2', locked: true,  icon: '🚨' },
-  { id: 'CD1', label: 'Row D - Drawer 1', category: 'Business Clearances', rfid: 'RF-CD1', locked: true, icon: '🏪' },
-  { id: 'CD2', label: 'Row D - Drawer 2', category: 'Sensitive Records',   rfid: 'RF-CD2', locked: true, icon: '🔒' },
-];
-
 const INCIDENTS = [];
 let incidentCurrentPage = 1;
 let incidentLastPage = 1;
@@ -405,8 +390,7 @@ function showScreen(id, el) {
     'dashboard': 'Dashboard', 'demographics': 'Records',
     'records': 'Records', 'voters': 'Records', 'certificates': 'Certificates',
     'request-records': 'Requests', 'incidents': 'Incidents',
-    'rfid': 'RFID', 'cabinet': 'Cabinet', 'qr': 'QR',
-    'face': 'Face', 'audit': 'Audit', 'users': 'Users', 'settings': 'Settings'
+    'audit': 'Audit', 'users': 'Users', 'settings': 'Settings'
   };
   const needed = screenPermMap[id];
   const allowed = ACCESS_PERMS[currentUserAccess] || ACCESS_PERMS['View Only'];
@@ -414,10 +398,11 @@ function showScreen(id, el) {
     showToast(`🚫 Walang access sa "${needed}". Makipag-ugnayan sa Admin.`, 'red');
     return;
   }
+  const screen = document.getElementById('screen-' + id);
+  if (!screen) return;
   document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const screen = document.getElementById('screen-' + id);
-  if (screen) screen.classList.add('active');
+  screen.classList.add('active');
   if (el) el.classList.add('active');
   try { localStorage.setItem('smartbrgy_active_screen', id); } catch (_) {}
   if (screen) { screen.setAttribute('tabindex', '-1'); screen.focus({ preventScroll: true }); }
@@ -474,7 +459,7 @@ function startLoginClock() {
 
 // ── Stat ticker ──
 const TICKER_LINES = [
-  'SmartBrgy System: <strong style="color:rgba(0,255,106,0.85);">Online</strong>&ensp;|&ensp;RFID Cabinet: 2FA Active&ensp;|&ensp;All systems normal',
+  'SmartBrgy staff workspace&ensp;|&ensp;RFID cabinet hardware integration pending',
   'Online Portal: <strong style="color:rgba(0,255,106,0.85);">Active</strong>&ensp;|&ensp;5 Active Puroks',
 ];
 let tickerIdx = 0;
@@ -1086,31 +1071,6 @@ function legacyOpenViewResident(id) {
 // ═══════════════════════════════════════
 // CERTIFICATES
 // ═══════════════════════════════════════
-function legacyRenderCertRequests(filter = '') {
-  const tbody = document.getElementById('cert-requests-tbody');
-  if (!tbody) return;
-  tbody.innerHTML = '';
-  CERT_REQUESTS
-    .filter(r => !filter || r.name.toLowerCase().includes(filter.toLowerCase()) || r.code.toLowerCase().includes(filter.toLowerCase()))
-    .forEach(r => {
-      const badgeClass = r.status === 'Ready to Print' ? 'badge-green' : r.status === 'Processing' ? 'badge-amber' : 'badge-blue';
-      const viaClass = r.via === 'Online' ? 'badge-purple' : 'badge-gray';
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td><span style="font-family:var(--font-mono);font-size:10.5px;color:var(--green-500);">${r.code}</span></td>
-        <td><strong style="color:var(--text-primary);">${r.name}</strong></td>
-        <td>${r.type}</td>
-        <td style="font-size:11px;">${r.requested}</td>
-        <td><span class="badge ${viaClass}">${r.via}</span></td>
-        <td><span class="badge ${badgeClass}">${r.status}</span></td>
-        <td>
-          ${r.status === 'Ready to Print' ? `<button class="btn btn-xs btn-green" onclick="printCert('${r.code}')">🖨️ Print</button>` : ''}
-          <button class="btn btn-xs btn-primary" onclick="viewCertificateRequest('${r.code}')">🔍 View</button>
-        </td>`;
-      tbody.appendChild(tr);
-    });
-}
-
 function printCert(code) {
   const req = CERT_REQUESTS.find(r => r.code === code);
   if (!req) return;
@@ -1289,560 +1249,6 @@ function renderIssuedCertificates(certificates) {
   });
 }
 
-function viewCertificateRequest(code) {
-  const req = CERT_REQUESTS.find(r => r.code === code);
-  if (!req) { showToast('Request not found.', 'red'); return; }
-  document.getElementById('qr-verify-doc-title').textContent = req.type;
-  document.getElementById('qr-verify-name').textContent = req.name;
-  document.getElementById('qr-verify-code').textContent = req.code;
-  document.getElementById('qr-verify-date').textContent = req.requested;
-  document.getElementById('qr-verify-status').textContent = req.status;
-  openModal('modal-qr-verify');
-}
-
-// ═══════════════════════════════════════
-// RFID
-// ═══════════════════════════════════════
-function renderRFIDTags() {
-  const container = document.getElementById('rfid-tags-list');
-  if (!container) return;
-  container.innerHTML = '';
-  RFID_TAGS.forEach(tag => {
-    const div = document.createElement('div');
-    div.className = 'rfid-tag';
-    div.id = 'tag-' + tag.id;
-    div.innerHTML = `
-      <div class="rfid-tag-icon">📡</div>
-      <div style="flex:1;">
-        <div class="rfid-tag-id">${tag.id}</div>
-        <div class="rfid-tag-name">${tag.name}</div>
-        <div class="rfid-tag-doc">${tag.type} — ${tag.loc}</div>
-      </div>
-      <span class="badge ${tag.status === 'In Cabinet' ? 'badge-green' : 'badge-amber'}">${tag.status}</span>`;
-    div.onclick = () => simulateRFIDTag(tag);
-    container.appendChild(div);
-  });
-  const tbody = document.getElementById('rfid-log-tbody');
-  if (!tbody) return;
-  tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);font-size:12px;padding:18px 0;">IoT hardware hindi pa available. Walang scan log.</td></tr>`;
-}
-
-function simulateRFIDScan() {
-  const area = document.getElementById('rfid-scan-area');
-  const lbl = document.getElementById('rfid-scan-label');
-  area.classList.add('active-scan');
-  lbl.textContent = '🔄 Reading RFID signal...';
-  setTimeout(() => {
-    area.classList.remove('active-scan');
-    const tag = RFID_TAGS[Math.floor(Math.random() * RFID_TAGS.length)];
-    lbl.textContent = `✅ Tag detected: ${tag.id}`;
-    simulateRFIDTag(tag);
-  }, 1500);
-}
-
-function simulateRFIDTag(tag) {
-  const el = document.getElementById('tag-' + tag.id);
-  if (el) el.classList.add('scanned');
-  addRFIDLogRow(tag);
-  showToast(`RFID scanned: ${tag.name} — ${tag.type}`, 'green');
-  document.getElementById('rfid-scan-label').textContent = `✅ Last scan: ${tag.id} — ${tag.name}`;
-}
-
-function addRFIDLogRow(tag) {
-  const tbody = document.getElementById('rfid-log-tbody');
-  if (!tbody) return;
-  const dirs = ['↑ Entry', '↓ Exit'];
-  const dir = dirs[Math.floor(Math.random() * 2)];
-  const tr = document.createElement('tr');
-  tr.style.background = 'rgba(0,138,56,0.05)';
-  tr.innerHTML = `<td style="font-family:var(--font-mono);font-size:11px;">${new Date().toLocaleTimeString('en-PH', { hour12: false })}</td><td style="font-family:var(--font-mono);color:var(--green-500);">${tag.id}</td><td style="font-weight:600;color:var(--text-primary);">${tag.name}</td><td>${tag.loc}</td><td><span class="badge ${dir.includes('Entry') ? 'badge-green' : 'badge-blue'}">${dir}</span></td><td><span class="badge badge-green">✓ Verified</span></td>`;
-  tbody.insertBefore(tr, tbody.firstChild);
-  setTimeout(() => tr.style.background = '', 2000);
-}
-
-// ═══════════════════════════════════════
-// SMART CABINET — 2FA
-// ═══════════════════════════════════════
-let cabFaceDone = false;
-let cabRFIDDone = false;
-
-function simulateCabFaceScan() {
-  if (cabFaceDone) { showToast('Face scan na tapos. I-tap na ang RFID card.', ''); return; }
-  const step = document.getElementById('cab-step-1');
-  const status = document.getElementById('cab-auth-status');
-  step.innerHTML = '<div class="cab-step-icon">🔄</div><div class="cab-step-label">Scanning...</div>';
-  setTimeout(() => {
-    cabFaceDone = true;
-    step.classList.remove('active');
-    step.classList.add('done');
-    step.innerHTML = '<div class="cab-step-icon">✅</div><div class="cab-step-label">Face Verified</div>';
-    document.getElementById('cab-step-2').classList.add('active');
-    status.style.display = 'block';
-    status.style.background = 'var(--green-dim)';
-    status.style.border = '1px solid var(--border-green)';
-    status.style.color = 'var(--green-500)';
-    status.textContent = '✅ Step 1 done: Face ng Juan dela Cruz na-verify (99.4%). I-tap na ang RFID key card.';
-    showToast('Face recognized! I-tap na ang RFID card.', 'green');
-    if (cabRFIDDone) unlockCabinet();
-  }, 1800);
-}
-
-function simulateCabRFID() {
-  if (!cabFaceDone) { showToast('Kailangan muna ng Face Scan bago ang RFID!', 'red'); return; }
-  if (cabRFIDDone) { showToast('RFID na na-scan. Bukas na ang cabinet.', ''); return; }
-  const step = document.getElementById('cab-step-2');
-  step.innerHTML = '<div class="cab-step-icon">🔄</div><div class="cab-step-label">Reading card...</div>';
-  setTimeout(() => {
-    cabRFIDDone = true;
-    step.classList.remove('active');
-    step.classList.add('done');
-    step.innerHTML = '<div class="cab-step-icon">✅</div><div class="cab-step-label">RFID Verified</div>';
-    unlockCabinet();
-  }, 1200);
-}
-
-function unlockCabinet() {
-  const step3 = document.getElementById('cab-step-3');
-  step3.classList.add('done');
-  step3.innerHTML = '<div class="cab-step-icon">🔓</div><div class="cab-step-label">Cabinet Open!</div>';
-  const status = document.getElementById('cab-auth-status');
-  status.style.display = 'block';
-  status.style.background = 'var(--green-dim)';
-  status.style.border = '1px solid var(--border-green)';
-  status.style.color = 'var(--green-500)';
-  status.innerHTML = '🔓 <strong>Cabinet unlocked!</strong> 2FA successful — Face + RFID na verified. Access na naka-log sa Audit Trail.';
-  showToast('🔓 Cabinet unlocked! Maaring na-access ang cabinet.', 'green');
-  CABINET_DRAWERS.forEach(d => d.locked = false);
-  renderCabinet();
-}
-
-function resetCabAuth() {
-  cabFaceDone = false;
-  cabRFIDDone = false;
-  ['cab-step-1','cab-step-2','cab-step-3'].forEach((id, i) => {
-    const el = document.getElementById(id);
-    el.classList.remove('active','done');
-    if (i === 0) el.classList.add('active');
-  });
-  document.getElementById('cab-step-1').innerHTML = '<div class="cab-step-icon">😊</div><div class="cab-step-label">Step 1: Face Scan</div>';
-  document.getElementById('cab-step-2').innerHTML = '<div class="cab-step-icon">📡</div><div class="cab-step-label">Step 2: RFID Card</div>';
-  document.getElementById('cab-step-3').innerHTML = '<div class="cab-step-icon">🔓</div><div class="cab-step-label">Cabinet Open</div>';
-  document.getElementById('cab-auth-status').style.display = 'none';
-  CABINET_DRAWERS.forEach((d, i) => d.locked = [false,false,true,true,false,true,true,true][i]);
-  renderCabinet();
-  showToast('Cabinet auth reset.', '');
-}
-
-// ═══════════════════════════════════════
-// SMART CABINET — DRAWERS
-// ═══════════════════════════════════════
-function renderCabinet() {
-  const container = document.getElementById('cabinet-drawers');
-  if (!container) return;
-  container.innerHTML = '';
-  CABINET_DRAWERS.forEach(d => {
-    const div = document.createElement('div');
-    div.className = `cabinet-drawer ${d.locked ? 'locked' : ''}`;
-    div.id = 'drawer-' + d.id;
-    div.onclick = () => toggleDrawer(d.id, d.locked);
-    div.innerHTML = `
-      <div>
-        <div class="drawer-label">${d.icon} ${d.label}</div>
-        <div class="drawer-rfid">${d.category} &nbsp;|&nbsp; RFID: ${d.rfid}</div>
-      </div>
-      <div style="display:flex;align-items:center;gap:6px;">
-        <div style="width:8px;height:8px;border-radius:50%;background:${d.locked ? '#EF4444' : 'var(--green-500)'}"></div>
-        <div class="drawer-status">${d.locked ? '🔒 Locked' : '🔓 Unlocked'}</div>
-      </div>`;
-    container.appendChild(div);
-  });
-}
-
-function toggleDrawer(id, isLocked) {
-  const d = CABINET_DRAWERS.find(x => x.id === id);
-  if (!d) return;
-  if (isLocked) {
-    showToast(`🔒 ${d.label} — I-tap ang RFID key card para mabuksan.`, 'red');
-    return;
-  }
-  const el = document.getElementById('drawer-' + id);
-  const isOpen = el.classList.contains('open');
-  el.classList.toggle('open');
-  showToast(isOpen ? `${d.label} closed.` : `${d.label} opened — ${d.category}`, 'green');
-  addCabinetLog(d, isOpen ? 'Closed' : 'Opened');
-}
-
-function addCabinetLog(d, action) {
-  const tbody = document.getElementById('cabinet-log-tbody');
-  if (!tbody) return;
-  const tr = document.createElement('tr');
-  tr.style.background = 'rgba(0,138,56,0.05)';
-  tr.innerHTML = `<td style="font-family:var(--font-mono);font-size:11px;">${new Date().toLocaleTimeString('en-PH', {hour12:false})}</td><td>${d.label}</td><td><span class="badge ${action === 'Opened' ? 'badge-green' : 'badge-blue'}">${action}</span></td><td>Juan dela Cruz (Admin)</td>`;
-  tbody.insertBefore(tr, tbody.firstChild);
-  setTimeout(() => tr.style.background = '', 2000);
-}
-
-function searchDrawer() {
-  const q = document.getElementById('drawer-search')?.value?.toLowerCase() || '';
-  CABINET_DRAWERS.forEach(d => {
-    const el = document.getElementById('drawer-' + d.id);
-    if (!el) return;
-    const match = d.label.toLowerCase().includes(q) || d.category.toLowerCase().includes(q);
-    el.style.display = match ? 'flex' : 'none';
-  });
-}
-
-// ═══════════════════════════════════════
-// CABINET FOLDERS (RFID-tagged files inside)
-// ═══════════════════════════════════════
-function renderCabinetFolders() {
-  const container = document.getElementById('cabinet-folders-list');
-  if (!container) return;
-  container.innerHTML = '';
-  CABINET_FOLDERS.forEach(f => {
-    const div = document.createElement('div');
-    div.className = 'folder-item';
-    div.innerHTML = `
-      <span style="font-size:16px;">${f.status === 'Checked Out' ? '📂' : '📁'}</span>
-      <div style="flex:1;">
-        <div style="font-weight:600;color:var(--text-primary);font-size:12px;">${f.name}</div>
-        <div style="font-size:10.5px;color:var(--text-muted);">${f.drawer}</div>
-      </div>
-      <span class="badge ${f.status === 'In Cabinet' ? 'badge-green' : 'badge-amber'}" style="font-size:9.5px;">${f.status}</span>
-      <span class="folder-rfid-badge">${f.rfid}</span>`;
-    div.onclick = () => {
-      const newStatus = f.status === 'In Cabinet' ? 'Checked Out' : 'In Cabinet';
-      f.status = newStatus;
-      showToast(`📁 ${f.name} — ${newStatus}. RFID ${f.rfid} na-log.`, 'green');
-      renderCabinetFolders();
-    };
-    container.appendChild(div);
-  });
-}
-
-// ═══════════════════════════════════════
-// QR VERIFICATION — TWO-PURPOSE SYSTEM
-// Purpose 1: Document authenticity (for third parties)
-// Purpose 2: Request status (for residents)
-// ═══════════════════════════════════════
-
-// Active QR tab
-let activeQRTab = 'doc';
-
-function switchQRTab(tab) {
-  activeQRTab = tab;
-  document.getElementById('qr-panel-doc').style.display = tab === 'doc' ? 'block' : 'none';
-  document.getElementById('qr-panel-status').style.display = tab === 'status' ? 'block' : 'none';
-  const docTab = document.getElementById('qr-tab-doc');
-  const statusTab = document.getElementById('qr-tab-status');
-  if (tab === 'doc') {
-    docTab.style.borderBottomColor = 'var(--green-500)';
-    docTab.style.color = 'var(--green-500)';
-    statusTab.style.borderBottomColor = 'transparent';
-    statusTab.style.color = 'var(--text-muted)';
-  } else {
-    statusTab.style.borderBottomColor = 'var(--blue-400)';
-    statusTab.style.color = 'var(--blue-400)';
-    docTab.style.borderBottomColor = 'transparent';
-    docTab.style.color = 'var(--text-muted)';
-  }
-}
-
-// PURPOSE 1 — Document Authenticity Scan
-function simulateQRScan(mode) {
-  if (mode === 'status') { document.getElementById('status-code')?.focus(); }
-  else { document.getElementById('manual-code')?.focus(); }
-  showToast('Enter the code printed on the document, or scan it with your phone camera.', '');
-}
-
-// Show document authenticity result (Purpose 1)
-function showDocVerificationResult(code, isAuthentic) {
-  const r = CERT_REQUESTS.find(x => x.code === code);
-  const resultDiv = document.getElementById('qr-doc-result');
-  const cardDiv = document.getElementById('qr-doc-result-card');
-  if (!resultDiv || !cardDiv) return;
-
-  if (!r || !isAuthentic) {
-    cardDiv.innerHTML = `
-      <div class="qr-doc-failed">
-        <div class="qr-doc-failed-header">
-          <div class="qr-doc-failed-seal">❌</div>
-          <div>
-            <div style="font-size:16px;font-weight:800;color:#EF4444;">DOCUMENT NOT VERIFIED</div>
-            <div style="font-size:11.5px;color:var(--text-secondary);margin-top:3px;">This document could not be authenticated. It may be fake, altered, or expired.</div>
-          </div>
-        </div>
-        <div style="padding:14px 18px;background:rgba(239,68,68,.05);border-top:1px solid rgba(239,68,68,.2);font-size:12px;color:var(--text-secondary);">
-          ⚠️ If you received this document from someone, do not accept it. Contact Barangay Anabu I-G directly for verification.
-        </div>
-      </div>`;
-    resultDiv.style.display = 'block';
-    showToast('⚠️ Document verification failed — may be fake.', 'red');
-    return;
-  }
-
-  const isExpired = false; // In real system, check validity period
-  const resident = RESIDENTS.find(res => res.name === r.name);
-  const issuedDate = r.requested;
-  const validUntil = 'Apr 15, 2026';
-  const issuedBy = 'Maria R. Lim — Records Officer';
-
-  cardDiv.innerHTML = `
-    <div class="qr-doc-verified">
-      <div class="qr-doc-verified-header">
-        <div class="qr-doc-verified-seal">✅</div>
-        <div>
-          <div class="qr-doc-verified-title">AUTHENTIC DOCUMENT</div>
-          <div class="qr-doc-verified-sub">This is a valid, official Barangay Anabu I-G document.</div>
-        </div>
-      </div>
-      <div class="qr-doc-fields">
-        <div class="qr-doc-field"><span class="qr-doc-field-label">Document Type</span><span class="qr-doc-field-val">${r.type}</span></div>
-        <div class="qr-doc-field"><span class="qr-doc-field-label">Issued To</span><span class="qr-doc-field-val" style="color:var(--green-500);">${r.name}</span></div>
-        <div class="qr-doc-field"><span class="qr-doc-field-label">Confirmation Code</span><span class="qr-doc-field-val" style="font-family:var(--font-mono);color:var(--green-500);">${r.code}</span></div>
-        <div class="qr-doc-field"><span class="qr-doc-field-label">Date Requested</span><span class="qr-doc-field-val">${issuedDate}</span></div>
-        <div class="qr-doc-field"><span class="qr-doc-field-label">Valid Until</span><span class="qr-doc-field-val">${validUntil}</span></div>
-        <div class="qr-doc-field"><span class="qr-doc-field-label">Processed By</span><span class="qr-doc-field-val">${issuedBy}</span></div>
-        <div class="qr-doc-field"><span class="qr-doc-field-label">Document Status</span><span class="qr-doc-field-val"><span class="badge badge-green">✅ Authentic</span></span></div>
-      </div>
-      <div class="qr-doc-footer">
-        🏛️ Barangay Anabu I-G, Imus City, Cavite &nbsp;•&nbsp; Verified ${new Date().toLocaleTimeString('en-PH', {hour12:false})}
-        <button class="btn btn-xs btn-green" style="margin-left:auto;" onclick="showToast('Verification logged.','green')">📋 Log Verification</button>
-      </div>
-    </div>`;
-  resultDiv.style.display = 'block';
-  showToast('✅ Document is authentic and valid!', 'green');
-}
-
-// verifyCertCode — called by manual lookup (Purpose 1)
-async function verifyCertCode(code) {
-  const verificationCode = (code || '').trim().toUpperCase();
-
-  if (!verificationCode) {
-    showToast('Please enter a certificate verification code.', 'red');
-    return;
-  }
-
-  try {
-    const response = await fetch(`/verify-certificate/${encodeURIComponent(verificationCode)}`, {
-      headers: { 'Accept': 'application/json' }
-    });
-
-    if (!response.ok) {
-      showRealCertificateVerification(null);
-      pushQRRecentLog(verificationCode, 'Unknown', 'Unknown certificate', false);
-      return;
-    }
-
-    const data = await response.json();
-    const certificate = data.certificate;
-
-    showRealCertificateVerification(certificate);
-    pushQRRecentLog(
-      certificate.verification_code,
-      certificate.resident_name,
-      certificate.certificate_type,
-      true
-    );
-    switchQRTab('doc');
-  } catch (error) {
-    showToast('Unable to reach the verification service. Please try again.', 'red');
-  }
-}
-
-function showRealCertificateVerification(certificate) {
-  const resultDiv = document.getElementById('qr-doc-result');
-  const cardDiv = document.getElementById('qr-doc-result-card');
-
-  if (!resultDiv || !cardDiv) return;
-
-  if (!certificate) {
-    cardDiv.innerHTML = `
-      <div class="qr-doc-failed">
-        <div class="qr-doc-failed-header">
-          <div class="qr-doc-failed-seal">❌</div>
-          <div>
-            <div style="font-size:16px;font-weight:800;color:#EF4444;">DOCUMENT NOT VERIFIED</div>
-            <div style="font-size:11.5px;color:var(--text-secondary);margin-top:3px;">No issued certificate matches this verification code.</div>
-          </div>
-        </div>
-      </div>`;
-    resultDiv.style.display = 'block';
-    showToast('Document verification failed.', 'red');
-    return;
-  }
-
-  const issuedDate = certificate.issued_at
-    ? new Date(certificate.issued_at).toLocaleString('en-PH')
-    : 'Not recorded';
-
-  cardDiv.innerHTML = `
-    <div class="qr-doc-verified">
-      <div class="qr-doc-verified-header">
-        <div class="qr-doc-verified-seal">✅</div>
-        <div>
-          <div class="qr-doc-verified-title">AUTHENTIC DOCUMENT</div>
-          <div class="qr-doc-verified-sub">This certificate matches the official Barangay Anabu I-G database.</div>
-        </div>
-      </div>
-      <div class="qr-doc-fields">
-        <div class="qr-doc-field"><span class="qr-doc-field-label">Certificate Number</span><span class="qr-doc-field-val">${escapeText(certificate.certificate_number)}</span></div>
-        <div class="qr-doc-field"><span class="qr-doc-field-label">Document Type</span><span class="qr-doc-field-val">${escapeText(certificate.certificate_type)}</span></div>
-        <div class="qr-doc-field"><span class="qr-doc-field-label">Issued To</span><span class="qr-doc-field-val" style="color:var(--green-500);">${escapeText(certificate.resident_name)}</span></div>
-        <div class="qr-doc-field"><span class="qr-doc-field-label">Verification Code</span><span class="qr-doc-field-val" style="font-family:var(--font-mono);color:var(--green-500);">${escapeText(certificate.verification_code)}</span></div>
-        <div class="qr-doc-field"><span class="qr-doc-field-label">Date Issued</span><span class="qr-doc-field-val">${escapeText(issuedDate)}</span></div>
-        <div class="qr-doc-field"><span class="qr-doc-field-label">Issued By</span><span class="qr-doc-field-val">${escapeText(certificate.issued_by || 'Barangay Staff')}</span></div>
-        <div class="qr-doc-field"><span class="qr-doc-field-label">Document Status</span><span class="qr-doc-field-val"><span class="badge badge-green">✅ Authentic</span></span></div>
-      </div>
-      <div class="qr-doc-footer">🏛️ Barangay Anabu I-G, Imus City, Cavite</div>
-    </div>`;
-  resultDiv.style.display = 'block';
-  showToast('✅ Document is authentic.', 'green');
-}
-
-// PURPOSE 2 — Request Status Check (for residents)
-async function checkRequestStatus(code) {
-  if (!code?.trim()) { showToast('Please enter your confirmation code.', 'red'); return; }
-  const result = document.getElementById('qr-status-result');
-  const card = document.getElementById('qr-status-result-card');
-  result.style.display = 'block';
-  card.textContent = 'Checking request status...';
-  try {
-    const request = await adminRequest(`/portal/request/${encodeURIComponent(code.trim().toUpperCase())}`);
-    card.innerHTML = `<div class="card-header"><div class="card-title">${escapeText(request.document_type)}</div></div>
-      <p><strong>${escapeText(request.reference_code)}</strong></p>
-      <p class="badge badge-blue">${escapeText(request.status.replaceAll('_', ' '))}</p>
-      <p style="margin-top:12px">${escapeText(request.rejection_reason || request.remarks || 'Present your reference code at the Barangay Hall for assistance.')}</p>`;
-  } catch (error) {
-    card.textContent = error.message;
-    showToast(error.message, 'red');
-  }
-}
-
-function showRequestStatus(code, reqData) {
-  const r = reqData || CERT_REQUESTS.find(x => x.code === code);
-  const resultDiv = document.getElementById('qr-status-result');
-  const cardDiv = document.getElementById('qr-status-result-card');
-  if (!resultDiv || !cardDiv) return;
-
-  if (!r) {
-    cardDiv.innerHTML = `
-      <div style="border:1.5px solid rgba(239,68,68,.35);border-radius:var(--radius-lg);padding:18px;background:rgba(239,68,68,.05);text-align:center;">
-        <div style="font-size:28px;margin-bottom:8px;">❓</div>
-        <div style="font-size:14px;font-weight:700;color:#EF4444;margin-bottom:6px;">Request Not Found</div>
-        <div style="font-size:12px;color:var(--text-secondary);">No request matches this code. Please check your slip or visit the Barangay Hall.</div>
-      </div>`;
-    resultDiv.style.display = 'block';
-    showToast('Request code not found.', 'red');
-    return;
-  }
-
-  // Determine step states
-  const steps = [
-    { label: 'Request Received', meta: r.requested, done: true, current: false },
-    { label: 'Under Review / Eligibility Check', meta: 'Staff verifying requirements', done: r.status !== 'Processing', current: r.status === 'Processing' },
-    { label: 'Document Processing', meta: 'Being prepared and printed', done: r.status === 'Ready to Print' || r.status === 'Completed', current: false },
-    { label: 'Ready for Pick-Up', meta: 'Visit Barangay Hall — bring confirmation code', done: r.status === 'Completed', current: r.status === 'Ready to Print' },
-    { label: 'Released', meta: r.status === 'Completed' ? 'Document has been released' : 'Awaiting pick-up', done: r.status === 'Completed', current: false },
-  ];
-
-  const statusColor = r.status === 'Ready to Print' ? 'var(--green-500)' : r.status === 'Completed' ? 'var(--blue-400)' : '#F59E0B';
-  const statusBadge = r.status === 'Ready to Print' ? '<span class="badge badge-green">🖨️ Ready for Pick-Up</span>'
-    : r.status === 'Completed' ? '<span class="badge badge-blue">✅ Released</span>'
-    : '<span class="badge badge-amber">⏳ Processing</span>';
-
-  const stepsHtml = steps.map(s => `
-    <div class="qr-track-step ${s.done ? 'done' : ''}">
-      <div class="qr-track-dot ${s.done ? 'done' : s.current ? 'current' : ''}">
-        ${s.done ? '✓' : s.current ? '●' : '○'}
-      </div>
-      <div>
-        <div class="qr-track-label" style="color:${s.done ? 'var(--green-500)' : s.current ? '#F59E0B' : 'var(--text-muted)'};">${s.label}</div>
-        <div class="qr-track-meta">${s.meta}</div>
-      </div>
-    </div>`).join('');
-
-  cardDiv.innerHTML = `
-    <div class="qr-status-card" style="border:1.5px solid ${statusColor}33;background:${statusColor}08;">
-      <div class="qr-status-header" style="background:${statusColor}10;border-bottom:1px solid ${statusColor}22;">
-        <div style="width:48px;height:48px;border-radius:50%;background:${statusColor};display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">📋</div>
-        <div style="flex:1;">
-          <div style="font-size:15px;font-weight:800;color:var(--text-primary);">${escapeText(r.type)}</div>
-          <div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">Request for: <strong style="color:var(--text-primary);">${escapeText(r.name)}</strong></div>
-        </div>
-        ${statusBadge}
-      </div>
-      <div style="padding:14px 18px;display:flex;gap:16px;border-bottom:1px solid var(--row-sep);">
-        <div style="flex:1;"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">Confirmation Code</div><div style="font-family:var(--font-mono);font-size:14px;font-weight:700;color:${statusColor};">${escapeText(r.code)}</div></div>
-        <div style="flex:1;"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">Date Filed</div><div style="font-size:12.5px;font-weight:600;color:var(--text-primary);">${escapeText(r.requested)}</div></div>
-        <div style="flex:1;"><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">Channel</div><div><span class="badge ${r.via === 'Online' ? 'badge-purple' : 'badge-gray'}">${escapeText(r.via)}</span></div></div>
-      </div>
-      <div class="qr-status-track">${stepsHtml}</div>
-      ${r.status === 'Ready to Print' ? `
-      <div style="padding:12px 18px;background:var(--green-dim);border-top:1px solid var(--border-green);display:flex;align-items:center;gap:10px;font-size:12px;color:var(--green-500);">
-        🏛️ <strong>Your document is ready!</strong> Visit Barangay Anabu I-G Hall and present your confirmation code: <strong style="font-family:var(--font-mono);">${escapeText(r.code)}</strong>
-      </div>` : ''}
-    </div>`;
-  resultDiv.style.display = 'block';
-  showToast(`Request ${escapeText(r.code)} found — Status: ${r.status}`, 'green');
-}
-
-// Recent verifications log (Purpose 1)
-const QR_RECENT_LOG = [];
-
-function pushQRRecentLog(code, name, type, ok) {
-  QR_RECENT_LOG.unshift({ code, name, type, time: new Date().toLocaleTimeString('en-PH', {hour12:true}), ok });
-  renderQRRecentLog();
-}
-
-function renderQRRecentLog() {
-  const container = document.getElementById('qr-recent-list');
-  if (!container) return;
-  container.innerHTML = '';
-  QR_RECENT_LOG.slice(0, 5).forEach(l => {
-    const div = document.createElement('div');
-    div.style.cssText = 'display:flex;align-items:center;gap:10px;padding:9px;background:var(--bg-glass);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:all .15s;';
-    div.onmouseenter = function() { this.style.borderColor = 'var(--border-hover)'; };
-    div.onmouseleave = function() { this.style.borderColor = 'var(--border)'; };
-    div.innerHTML = `
-      <div style="width:34px;height:34px;border-radius:8px;background:${l.ok ? 'var(--green-dim)' : 'rgba(239,68,68,.1)'};border:1px solid ${l.ok ? 'var(--border-green)' : 'rgba(239,68,68,.25)'};display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">${l.ok ? '✅' : '❌'}</div>
-      <div style="flex:1;">
-        <div style="font-size:12px;font-weight:600;color:var(--text-primary);">${escapeText(l.type)} — <span style="font-family:var(--font-mono);color:var(--green-500);">${escapeText(l.code)}</span></div>
-        <div style="font-size:11px;color:var(--text-muted);">${escapeText(l.name)} • ${escapeText(l.time)} • ${l.ok ? '✅ Authentic' : '❌ Invalid'}</div>
-      </div>`;
-    div.onclick = () => { verifyCertCode(l.code); };
-    container.appendChild(div);
-  });
-}
-
-// ═══════════════════════════════════════
-// FACE RECOGNITION
-// ═══════════════════════════════════════
-function simulateFaceRecognition() {
-  const area = document.getElementById('face-live-area');
-  const lbl = document.getElementById('face-live-label');
-  const res = document.getElementById('face-live-result');
-  if (!area) return;
-  area.classList.add('active-scan');
-  lbl.textContent = '🔄 Analyzing biometrics...';
-  res.classList.remove('show');
-  let p = 0;
-  const iv = setInterval(() => {
-    p += 10;
-    lbl.textContent = `🔄 Processing facial data... ${p}%`;
-    if (p >= 100) {
-      clearInterval(iv);
-      area.classList.remove('active-scan');
-      lbl.textContent = '✅ Recognition Complete';
-      res.classList.add('show');
-      showToast('Face recognized: Juan dela Cruz — Admin (99.4% confidence)', 'green');
-    }
-  }, 140);
-}
-
-// ═══════════════════════════════════════
-// AUDIT LOG
-// ═══════════════════════════════════════
 function legacyRenderAuditLog() {
   const container = document.getElementById('audit-log-list');
   if (!container) return;
@@ -1943,7 +1349,7 @@ function openModal(id) {
   if (title) { if (!title.id) title.id = id + '-title'; element.setAttribute('aria-labelledby', title.id); }
   element.querySelector('input:not([type="hidden"]), select, textarea, button, [tabindex="0"]')?.focus();
 }
-function closeModal(id) { const el = document.getElementById(id); if (el) el.classList.remove('show'); modalTrigger?.focus(); }
+function closeModal(id) { if (id === 'modal-view-resident') document.getElementById('resident-activation-result')?.replaceChildren(); const el = document.getElementById(id); if (el) el.classList.remove('show'); modalTrigger?.focus(); }
 document.addEventListener('click', function(e) { if (e.target.classList.contains('modal-overlay')) closeModal(e.target.id); });
 
 // ═══════════════════════════════════════
@@ -3068,14 +2474,14 @@ function addLiveAuditEntry() {
 // ENHANCED USER MANAGEMENT
 // ═══════════════════════════════════════
 const ACCESS_PERMS = {
-  'Staff Access': ['Dashboard', 'Records', 'Certificates', 'Requests', 'Incidents', 'QR', 'Audit', 'Settings'],
-  'Full Access':             ['Dashboard', 'Records', 'Certificates', 'Requests', 'Incidents', 'RFID', 'Cabinet', 'QR', 'Face', 'Audit', 'Users', 'Settings'],
-  'Records & Certificates':  ['Dashboard', 'Records', 'Certificates', 'Requests', 'QR'],
-  'Certificates Only':       ['Dashboard', 'Certificates', 'QR'],
+  'Staff Access': ['Dashboard', 'Records', 'Certificates', 'Requests', 'Incidents'],
+  'Full Access':             ['Dashboard', 'Records', 'Certificates', 'Requests', 'Incidents', 'Audit', 'Users', 'Settings'],
+  'Records & Certificates':  ['Dashboard', 'Records', 'Certificates', 'Requests'],
+  'Certificates Only':       ['Dashboard', 'Certificates'],
   'Incidents Only':          ['Dashboard', 'Incidents'],
   'View Only':               ['Dashboard'],
 };
-const ALL_PERMS = ['Dashboard', 'Records', 'Certificates', 'Requests', 'Incidents', 'RFID', 'Cabinet', 'QR', 'Face', 'Audit', 'Users', 'Settings'];
+const ALL_PERMS = ['Dashboard', 'Records', 'Certificates', 'Requests', 'Incidents', 'Audit', 'Users', 'Settings'];
 
 let userRoleFilter = 'all';
 let userSearch = '';
@@ -3123,12 +2529,13 @@ function renderUsers() {
         <div class="user-name">${escapeText(user.name)}</div>
         <div class="user-role-tag">${escapeText(user.email)}</div>
         <div class="user-badges"><span class="badge badge-blue">${escapeText(user.role)}</span>
+          ${user.is_super_admin ? '<span class="badge badge-green">Super Admin</span>' : ''}
           <span class="badge ${user.is_active ? 'badge-green' : 'badge-red'}">${user.is_active ? 'Active' : 'Suspended'}</span>
           <span class="badge badge-gray">${user.two_factor_confirmed_at ? '2FA enabled' : '2FA not configured'}</span>
         </div>
       </div>
       <div class="user-actions"><button class="btn btn-primary" onclick="openEditUser(${Number(user.id)})">Edit account</button>
-      ${Number(user.id) !== Number(window.AUTHENTICATED_USER.id) ? `<button class="btn" onclick="setUserActive(${Number(user.id)}, ${!user.is_active})">${user.is_active ? 'Suspend' : 'Activate'}</button>` : ''}</div>
+      ${Number(user.id) !== Number(window.AUTHENTICATED_USER.id) && !user.is_super_admin ? `<button class="btn" onclick="setUserActive(${Number(user.id)}, ${!user.is_active})">${user.is_active ? 'Suspend' : 'Activate'}</button>` : ''}</div>
     </div>`).join('') : '<div class="card civic-empty">No accounts match your filters.</div>';
 }
 
@@ -3278,7 +2685,7 @@ function launchApp(name = 'Staff', role = 'Staff') {
   currentUserRole = role || 'Staff';
   const dbUser = USERS.find(u => u.name === currentUserName || u.role === currentUserRole);
   const roleAccessMap = {
-    'admin': 'Full Access',
+    'admin': window.AUTHENTICATED_USER?.is_super_admin ? 'Full Access' : 'Staff Access',
     'staff': 'Staff Access',
     'Super Administrator': 'Full',
     'Barangay Captain': 'Full',
@@ -3307,10 +2714,8 @@ function launchApp(name = 'Staff', role = 'Staff') {
   renderResidentsTable();
   renderCertKanban();
   renderCertTypesList();
-  renderRFIDTags();
-  renderCabinet();
-  renderAuditLog();
-  if (currentUserRole === 'admin') void reloadUsers();
+  if (window.AUTHENTICATED_USER?.is_super_admin) renderAuditLog();
+  if (window.AUTHENTICATED_USER?.is_super_admin) void reloadUsers();
   void refreshDashboardStats();
   void loadIncidents();
   renderDemographics();
@@ -3979,6 +3384,7 @@ function residentFromApi(resident) {
     specialGroups: resident.special_groups || [],
     goodStanding: Boolean(resident.is_in_good_standing),
     archived: Boolean(resident.deleted_at),
+    archivedAt: resident.deleted_at,
     documentRequestsCount: resident.document_requests_count || 0,
     issuedCertificatesCount: resident.issued_certificates_count || 0
   };
@@ -4028,7 +3434,7 @@ function renderResidentsTable() {
 
   RESIDENTS.forEach(resident => {
     const row = document.createElement('tr');
-    const archivedBadge = resident.archived ? '<span class="badge badge-red">Archived</span>' : `<span class="badge ${resident.status === 'Active' ? 'badge-green' : 'badge-red'}">${escapeText(resident.status)}</span>`;
+    const archivedBadge = resident.archived ? `<span class="badge badge-red">Archived</span><small>${escapeText(String(resident.archivedAt || '').slice(0, 10))}</small>` : `<span class="badge ${resident.status === 'Active' ? 'badge-green' : 'badge-red'}">${escapeText(resident.status)}</span>`;
     const actions = resident.archived
       ? `<button class="btn btn-xs btn-green" onclick="restoreResident(${resident.databaseId})">Restore</button>`
       : `<button class="btn btn-xs btn-primary" onclick="openViewResident('${resident.id}')">View</button>
@@ -4173,6 +3579,8 @@ async function deleteResident(residentNumber) {
 }
 
 async function restoreResident(databaseId) {
+  const resident = RESIDENTS.find(item => item.databaseId === databaseId);
+  if (!resident || !confirm(`Restore ${resident.name} to the resident records?`)) return;
   await changeResidentArchiveState(`/admin/residents/${databaseId}/restore`, 'PATCH');
 }
 
@@ -4213,7 +3621,9 @@ function openViewResident(residentNumber) {
       <div><span>Issued Certificates</span><strong>${resident.issuedCertificatesCount}</strong></div>
       <div class="resident-detail-wide"><span>Eligibility</span><strong>${resident.goodStanding ? 'In good standing' : 'Not in good standing'}</strong></div>
     </div>`;
+  document.getElementById('view-resident-content').insertAdjacentHTML('beforeend', '<section id="resident-portal-account" class="resident-account-panel" aria-live="polite">Loading portal account...</section>');
   openModal('modal-view-resident');
+  void loadResidentPortalAccount(resident.databaseId);
 }
 
 async function populateManualResidentDropdown() {
@@ -4585,3 +3995,42 @@ document.addEventListener('DOMContentLoaded', () => {
     if (label && field && !field.labels?.length) { label.id ||= `field-label-${index}`; field.setAttribute('aria-labelledby', label.id); }
   });
 });
+
+
+async function loadResidentPortalAccount(residentId) {
+  const panel = document.getElementById('resident-portal-account');
+  try {
+    const resident = await adminRequest(`/admin/residents/${residentId}`);
+    if (!panel?.isConnected) return;
+    const account = resident.portal_account;
+    panel.innerHTML = `<h3>Resident Portal account</h3><p>Resident record: ${escapeText(resident.status)}</p>`;
+    if (account.registered) {
+      panel.innerHTML += `<p>Account: <strong>${account.is_active ? 'Active' : 'Suspended'}</strong></p><p>${escapeText(account.email)} &middot; Created ${escapeText(account.created_at)}</p><p>Last login: ${escapeText(account.last_login || 'Not yet recorded')}</p>`;
+      if (currentUserRole === 'admin') panel.innerHTML += `<button class="btn btn-sm" onclick="changePortalAccountStatus(${residentId}, ${!account.is_active}, this)">${account.is_active ? 'Suspend' : 'Reactivate'} portal account</button>`;
+    } else {
+      panel.innerHTML += '<p>Not registered. Verify the resident in person before issuing their private activation code.</p>';
+      if (resident.status === 'active') panel.innerHTML += `<button class="btn btn-sm btn-primary" onclick="issuePortalActivation(${residentId}, this)">Issue activation code</button><div id="resident-activation-result"></div>`;
+    }
+  } catch (error) { if (panel?.isConnected) panel.textContent = error.message; }
+}
+
+async function issuePortalActivation(residentId, button) {
+  if (button.disabled) return;
+  if (!confirm('Issue a private activation code for this resident after verifying their identity? Any previous code will stop working.')) return;
+  button.disabled = true;
+  const output = document.getElementById('resident-activation-result');
+  try {
+    const result = await adminRequest(`/admin/residents/${residentId}/portal-activation`, { method: 'POST' });
+    if (output?.isConnected && button.closest('.modal-overlay')?.classList.contains('show')) output.innerHTML = `<p>${escapeText(result.message)}</p><label for="resident-activation-code">Private activation code</label><input id="resident-activation-code" class="form-input" readonly autocomplete="off" value="${escapeText(result.activation_code)}"><p>Expires: ${escapeText(result.expires_at)}</p>`;
+  } catch (error) { showToast(error.message, 'red'); }
+  finally { button.disabled = false; }
+}
+
+async function changePortalAccountStatus(residentId, active, button) {
+  if (button.disabled || !confirm(`${active ? 'Reactivate' : 'Suspend'} this portal account? Resident records and request history will be retained.`)) return;
+  button.disabled = true;
+  try {
+    await adminRequest(`/admin/residents/${residentId}/portal-account`, { method: 'PATCH', body: JSON.stringify({ is_active: active }) });
+    await loadResidentPortalAccount(residentId);
+  } catch (error) { showToast(error.message, 'red'); button.disabled = false; }
+}

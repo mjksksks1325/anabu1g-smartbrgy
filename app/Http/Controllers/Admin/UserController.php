@@ -14,10 +14,10 @@ class UserController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        abort_unless($request->user()->role === 'admin', 403);
+        abort_unless($request->user()->isSuperAdmin(), 403);
 
-        return response()->json(['users' => User::query()->orderBy('name')->get([
-            'id', 'name', 'email', 'role', 'is_active', 'created_at', 'two_factor_confirmed_at',
+        return response()->json(['users' => User::query()->whereNull('resident_id')->whereIn('role', ['admin', 'staff', 'viewer'])->orderBy('name')->get([
+            'id', 'name', 'email', 'role', 'is_active', 'is_super_admin', 'created_at', 'two_factor_confirmed_at',
         ])]);
     }
 
@@ -33,11 +33,13 @@ class UserController extends Controller
 
     public function update(SaveUserRequest $request, User $user): JsonResponse
     {
+        abort_if($user->isResidentAccount() || $user->resident_id !== null, 403);
+
         DB::transaction(function () use ($request, $user): void {
             $locked = User::query()->lockForUpdate()->findOrFail($user->id);
 
-            if ($locked->is($request->user()) && ($request->validated('role') !== 'admin' || ! $request->boolean('is_active'))) {
-                throw ValidationException::withMessages(['role' => 'You cannot suspend or remove your own administrator access.']);
+            if ($locked->is_super_admin && ($request->validated('role') !== 'admin' || ! $request->boolean('is_active'))) {
+                throw ValidationException::withMessages(['role' => 'Revoke Super Admin access with the local command before changing this account.']);
             }
 
             $locked->fill($request->safe()->only(['name', 'email']));

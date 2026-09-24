@@ -44,7 +44,7 @@ it('provides branded recovery links for unknown certificate codes', function () 
 });
 
 it('provides mobile input controls and accessible feedback throughout the resident portal', function () {
-    $this->get(route('home'))->assertOk()
+    $this->actingAs(User::factory()->resident()->create(), 'resident')->get(route('portal.request.create'))->assertOk()
         ->assertSee('viewport-fit=cover', false)
         ->assertSee('inputmode="email"', false)
         ->assertSee('autocomplete="off"', false)

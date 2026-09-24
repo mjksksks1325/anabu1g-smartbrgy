@@ -12,7 +12,9 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -94,6 +96,15 @@ class ResidentController extends Controller
     public function show(Resident $resident): JsonResponse
     {
         Gate::authorize('view', $resident);
+
+        $account = $resident->portalAccount()->first();
+        $resident->setAttribute('portal_account', $account ? [
+            'registered' => true,
+            'is_active' => $account->is_active,
+            'email' => Str::mask($account->email, '*', 1, max(1, strpos($account->email, '@') - 1)),
+            'created_at' => $account->created_at?->toDateString(),
+            'last_login' => DB::table('administrative_audits')->where('user_id', $account->id)->where('action', 'auth.login')->max('created_at'),
+        ] : ['registered' => false]);
 
         return response()->json($resident
             ->load([

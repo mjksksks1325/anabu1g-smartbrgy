@@ -21,12 +21,14 @@ function portal() {
   }
   const screens = ['screen-terms', 'screen-doctype', 'screen-form', 'screen-attachment', 'screen-confirm', 'screen-status'].map(element);
   screens[0].classList.add('active');
+  element('request-flow').hidden = true;
   const cards = [element('card-BC'), element('card-BBC')];
   const values = { name: 'Juan Dela Cruz', address: 'Anabu I-G', email: 'juan@example.test', dob: '2000-01-01', purpose: 'Employment', business: '' };
   for (const [key, value] of Object.entries(values)) element('f-' + key).value = value;
   element('tnc-agree').checked = true;
   const saved = new Map();
   const revoked = [];
+  const scrolls = [];
   const listeners = new Map();
   const context = vm.createContext({
     console, FormData, Object,
@@ -42,7 +44,7 @@ function portal() {
       },
       querySelectorAll: selector => selector === '.screen' ? screens : selector === '.cert-btn' ? cards : [],
     },
-    window: { history: { pushState() {}, replaceState() {} }, scrollTo() {}, addEventListener(name, handler) { listeners.set(name, handler); } },
+    window: { history: { pushState() {}, replaceState() {} }, scrollTo(value) { scrolls.push(value); }, addEventListener(name, handler) { listeners.set(name, handler); } },
     navigator: {}, URL: { createObjectURL: file => 'blob:' + file.name, revokeObjectURL: url => revoked.push(url) },
     sessionStorage: { setItem: (key, value) => saved.set(key, value), getItem: key => saved.get(key), removeItem: key => saved.delete(key) },
     setTimeout() {}, clearTimeout() {},
@@ -52,8 +54,43 @@ function portal() {
   }
   context.messages = [];
   vm.runInContext('toast = (message, type) => messages.push({ message, type });', context);
-  return { context, element, screens, saved, revoked, listeners };
+  return { context, element, screens, saved, revoked, listeners, scrolls };
 }
+
+test('request steps scroll to the workflow below the service landing', () => {
+  const { context, element, scrolls } = portal();
+  element('request-flow').offsetTop = 700;
+
+  context.showScreen('screen-status');
+
+  assert.equal(scrolls.at(-1).top, 570);
+});
+
+test('terms stay inside the document request flow until a resident starts it', () => {
+  const { context, element, listeners } = portal();
+
+  context.initializePortalSession();
+  context.initializePortalNavigation();
+  assert.equal(element('request-flow').hidden, true);
+
+  context.showScreen('screen-terms');
+  assert.equal(element('request-flow').hidden, false);
+
+  listeners.get('popstate')({ state: { portalScreen: 'home' } });
+  assert.equal(element('request-flow').hidden, true);
+});
+
+test('returning from resident login opens the document terms as the first request step', () => {
+  const { context, element, listeners } = portal();
+  context.window.RESIDENT_PORTAL = { startRequest: true };
+
+  context.initializePortalSession();
+  assert.equal(element('request-flow').hidden, false);
+  assert.equal(element('screen-terms').classList.contains('active'), true);
+
+  listeners.get('pageshow')({ persisted: true });
+  assert.equal(element('request-flow').hidden, true);
+});
 
 test('mobile navigation still works when browser storage is unavailable', () => {
   const { context, element } = portal();
@@ -200,4 +237,47 @@ test('an expired CSRF session retries once with a new token', async () => {
   assert.equal(calls.length, 4);
   assert.equal(calls[1].token, 'token-1');
   assert.equal(calls[3].token, 'token-3');
+});
+
+test('request payload contains request details without editable resident identity', async () => {
+  const { context } = portal();
+  let submitted;
+  context.sendPortalDocumentRequest = async data => {
+    submitted = data;
+    return { ok: true, json: async () => ({ reference_code: 'REQ-PRIVATE' }) };
+  };
+  await context.submitRequest();
+  for (const key of ['resident_id', 'full_name', 'address', 'email', 'date_of_birth']) assert.equal(submitted.has(key), false);
+  assert.equal(submitted.get('purpose'), 'Employment');
+  assert.equal(submitted.get('document_type'), 'Barangay Clearance');
+});
+
+test('a submission response arriving after account state is cleared cannot restore confirmation details', async () => {
+  const { context, element } = portal();
+  context.residentIdentityGeneration = 0;
+  let finish;
+  context.sendPortalDocumentRequest = () => new Promise(resolve => { finish = resolve; });
+  const pending = context.submitRequest();
+  context.residentIdentityGeneration++;
+  context.resetPortalSession();
+  finish({ ok: true, json: async () => ({ reference_code: 'REQ-OLD-ACCOUNT' }) });
+  await pending;
+  assert.equal(element('conf-code').textContent, '');
+  assert.equal(context.lastCode, '');
+  assert.equal(element('screen-confirm').classList.contains('active'), false);
+});
+
+test('a status response arriving after account state is cleared cannot restore private results', async () => {
+  const { context, element } = portal();
+  context.residentIdentityGeneration = 0;
+  element('status-code').value = 'REQ-OLD-ACCOUNT';
+  let finish;
+  context.fetch = () => new Promise(resolve => { finish = resolve; });
+  const pending = context.checkStatus();
+  context.residentIdentityGeneration++;
+  context.resetPortalSession();
+  finish({ ok: true, json: async () => ({ success: true, reference_code: 'REQ-OLD-ACCOUNT', status: 'pending' }) });
+  await pending;
+  assert.equal(element('status-result').innerHTML, '');
+  assert.equal(element('status-result').textContent, '');
 });

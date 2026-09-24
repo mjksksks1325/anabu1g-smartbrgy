@@ -19,7 +19,8 @@ function selectDoc(id, el) {
     document.getElementById('btn-proceed-doc').disabled = false;
 }
 
-function proceedFromDoc() {
+async function proceedFromDoc() {
+    if (typeof ensurePortalIdentity === 'function' && !await ensurePortalIdentity()) return;
     if (!selectedDocId) return;
 
     const d = DOC_TYPES[selectedDocId];

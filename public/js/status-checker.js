@@ -9,6 +9,7 @@ function escapeStatusText(value = '') {
 }
 
 async function checkStatus() {
+    const generation = typeof residentIdentityGeneration === 'number' ? residentIdentityGeneration : null;
     const code = document
         .getElementById('status-code')
         .value
@@ -38,6 +39,7 @@ async function checkStatus() {
         );
 
         const data = await res.json().catch(() => ({}));
+        if (generation !== null && generation !== residentIdentityGeneration) return;
 
         resultDiv.style.display = 'block';
 
@@ -46,6 +48,10 @@ async function checkStatus() {
                 ? `Walang record ng request na may code na ${code}.`
                 : res.status === 429
                     ? 'Masyadong maraming pagsubok. Maghintay ng isang minuto bago subukan muli.'
+                    : res.status === 401
+                        ? 'Mag-log in sa Resident Portal para makita ang sarili mong request.'
+                    : res.status === 403
+                        ? 'Please contact the barangay for assistance with your resident account.'
                     : 'Hindi makuha ang status ngayon. Subukan muli mamaya.';
             resultDiv.innerHTML = `<div class="alert alert-red">${escapeStatusText(message)}</div>`;
             return;
@@ -90,6 +96,7 @@ async function checkStatus() {
         `;
 
     } catch (error) {
+        if (generation !== null && generation !== residentIdentityGeneration) return;
         console.error(error);
 
         resultDiv.style.display = 'block';
