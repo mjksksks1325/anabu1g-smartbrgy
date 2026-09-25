@@ -2,9 +2,20 @@ function escapePortalText(value = '') {
     return String(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
 }
 
+function portalSummaryList(rows) {
+    return '<dl class="summary-list">' + rows.map(([label, value]) => `<dt>${escapePortalText(label)}</dt><dd>${escapePortalText(value || 'Wala')}</dd>`).join('') + '</dl>';
+}
+
 function renderConfirmationSummary(summary) {
-    const rows = [['Pangalan', summary.name], ['Dokumento', summary.document], ['Bayad', summary.fee], ['Address', summary.address], ['Layunin', summary.purpose]];
-    document.getElementById('conf-summary').innerHTML = '<div><strong>Buod ng Request</strong><br>' + rows.map(([label, value]) => `${label}: <strong>${escapePortalText(value || 'N/A')}</strong>`).join('<br>') + '</div>';
+    const rows = [['Dokumento', summary.document], ['Fee', summary.fee], ['Pangalan', summary.name], ['Address', summary.address], ['Purpose', summary.purpose]];
+    document.getElementById('conf-summary').innerHTML = portalSummaryList(rows);
+}
+
+function renderReviewSummary(summary) {
+    const rows = [['Dokumento', summary.document], ['Fee', summary.fee], ['Pangalan', summary.name], ['Address', summary.address], ['Email', summary.email], ['Purpose', summary.purpose]];
+    if (summary.business !== null) rows.push(['Business name', summary.business]);
+    rows.push(['Valid ID', summary.attachment]);
+    document.getElementById('review-summary').innerHTML = portalSummaryList(rows);
 }
 
 function toast(msg, type='') {
@@ -28,7 +39,7 @@ function setLoading(v) {
     document.getElementById('loader').style.display = v ? 'flex' : 'none';
 }
 
-const PORTAL_SCREENS = ['screen-terms', 'screen-doctype', 'screen-form', 'screen-attachment', 'screen-confirm', 'screen-status'];
+const PORTAL_SCREENS = ['screen-terms', 'screen-doctype', 'screen-form', 'screen-attachment', 'screen-review', 'screen-confirm', 'screen-status'];
 
 function validPortalScreen(id) {
     if (!PORTAL_SCREENS.includes(id)) return 'screen-terms';
@@ -36,7 +47,7 @@ function validPortalScreen(id) {
     if (lastCode) return 'screen-confirm';
     if (!document.getElementById('tnc-agree').checked) return 'screen-terms';
     if (id === 'screen-confirm') return 'screen-doctype';
-    if (['screen-form', 'screen-attachment'].includes(id) && !DOC_TYPES[selectedDocId]) return 'screen-doctype';
+    if (['screen-form', 'screen-attachment', 'screen-review'].includes(id) && !DOC_TYPES[selectedDocId]) return 'screen-doctype';
     return id;
 }
 
@@ -79,6 +90,7 @@ async function copyReferenceCode() {
     if (!lastCode) return;
     try {
         await navigator.clipboard.writeText(lastCode);
+        showCopiedReference();
         toast('Nakopya na ang reference code.', 'green');
     } catch (_) {
         const range = document.createRange();
@@ -87,6 +99,17 @@ async function copyReferenceCode() {
         selection.removeAllRanges(); selection.addRange(range);
         toast('Naka-select ang code. Pindutin nang matagal at piliin ang Copy.', '');
     }
+}
+
+function showCopiedReference() {
+    const button = document.querySelector('.copy-code-button');
+    if (!button) return;
+    button.classList.add('is-copied');
+    button.textContent = 'Nakopya na';
+    setTimeout(() => {
+        button.classList.remove('is-copied');
+        button.textContent = 'Kopyahin ang code';
+    }, 2500);
 }
 
 function goBack(screenId) {
@@ -102,26 +125,7 @@ function togglePortalTheme() {
     _portalDark = !_portalDark;
 
     document.body.classList.toggle('dark-mode', _portalDark);
-
-    const icon = document.getElementById('portal-theme-icon');
-    const label = document.getElementById('portal-theme-label');
-
-    if (icon) {
-        icon.textContent = _portalDark ? '☀️' : '🌙';
-    }
-
-    if (label) {
-        label.textContent = _portalDark ? 'Light Mode' : 'Dark Mode';
-    }
+    document.querySelector('[data-resident-theme]')?.setAttribute('aria-pressed', String(_portalDark));
 
     savePortalTheme();
 }
-document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('.cert-btn, #att-dropzone').forEach(element => {
-    element.setAttribute('role', 'button');
-    element.tabIndex = 0;
-    element.addEventListener('keydown', event => {
-      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); element.click(); }
-    });
-  });
-});

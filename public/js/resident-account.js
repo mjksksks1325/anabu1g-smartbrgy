@@ -49,10 +49,31 @@ window.addEventListener('pageshow', event => {
 try {
     if (sessionStorage.getItem('smartbrgy_portal_theme') === 'dark') document.body.classList.add('dark-mode');
 } catch (_) {}
-document.querySelector('[data-resident-theme]')?.addEventListener('click', () => {
-    const dark = document.body.classList.toggle('dark-mode');
-    try { sessionStorage.setItem('smartbrgy_portal_theme', dark ? 'dark' : 'light'); } catch (_) {}
-});
+const residentThemeButton = document.querySelector('[data-resident-theme]');
+if (residentThemeButton) {
+    residentThemeButton.setAttribute('aria-pressed', String(document.body.classList.contains('dark-mode')));
+    residentThemeButton.addEventListener('click', () => {
+        const dark = document.body.classList.toggle('dark-mode');
+        residentThemeButton.setAttribute('aria-pressed', String(dark));
+        try { sessionStorage.setItem('smartbrgy_portal_theme', dark ? 'dark' : 'light'); } catch (_) {}
+    });
+}
+const residentMenuButton = document.querySelector('[data-menu-toggle]');
+const residentNavigation = document.getElementById('site-nav');
+if (residentMenuButton && residentNavigation) {
+    const setResidentMenu = open => {
+        residentMenuButton.setAttribute('aria-expanded', String(open));
+        residentNavigation.classList.toggle('is-open', open);
+    };
+    document.body.classList.add('nav-collapsible');
+    residentMenuButton.addEventListener('click', () => setResidentMenu(residentMenuButton.getAttribute('aria-expanded') !== 'true'));
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && residentNavigation.classList.contains('is-open')) {
+            setResidentMenu(false);
+            residentMenuButton.focus();
+        }
+    });
+}
 const residentLogoutDialog = document.getElementById('resident-logout-dialog');
 document.querySelector('[data-resident-logout]')?.addEventListener('click', () => residentLogoutDialog.showModal());
 document.querySelector('[data-resident-cancel]')?.addEventListener('click', () => residentLogoutDialog.close());

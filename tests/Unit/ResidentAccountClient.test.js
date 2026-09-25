@@ -11,6 +11,8 @@ function residentClient() {
       addEventListener(name, handler) { this.listeners[name] = handler; },
       replaceChildren() { this.cleared = true; },
       hasAttribute: name => attributes.has(name), setAttribute: (name, value) => attributes.set(name, value), removeAttribute: name => attributes.delete(name),
+      getAttribute: name => attributes.get(name), focus() { this.focused = true; },
+      classList: { classes: new Set(), toggle(name, state) { if (state) this.classes.add(name); else this.classes.delete(name); }, contains(name) { return this.classes.has(name); } },
     };
   }
   const fields = new Map(['f-name', 'f-address', 'f-email', 'f-dob', 'portal-form-error'].map(id => [id, element('Previous resident')]));
@@ -28,6 +30,11 @@ function residentClient() {
   dialog.close = () => { dialog.open = false; };
   dialog.querySelector = () => form.hasAttribute('data-submitting') ? form : null;
   fields.set('resident-logout-dialog', dialog);
+  const menuButton = element();
+  const theme = element();
+  fields.set('site-nav', element());
+  const bodyClasses = new Set();
+  const documentListeners = {};
   const listeners = new Map();
   const saved = new Map([['smartbrgy_session', 'private draft']]);
   const context = vm.createContext({
@@ -35,8 +42,10 @@ function residentClient() {
     resetPortalSession() { context.resetCount++; },
     fetch: async () => ({ ok: true, json: async () => ({ name: 'Verified resident', address: 'Official address', email: 'resident@example.test', dob: '1990-01-01' }) }),
     document: {
-      body: { classList: { add() {}, toggle() {} } }, getElementById: id => fields.get(id),
-      querySelector: selector => ({ '[data-resident-logout]': logout, '[data-resident-cancel]': cancel })[selector] ?? null,
+      body: { classList: { add: name => bodyClasses.add(name), contains: name => bodyClasses.has(name), toggle(name) { if (bodyClasses.has(name)) { bodyClasses.delete(name); return false; } bodyClasses.add(name); return true; } } },
+      getElementById: id => fields.get(id),
+      addEventListener: (name, handler) => { documentListeners[name] = handler; },
+      querySelector: selector => ({ '[data-resident-logout]': logout, '[data-resident-cancel]': cancel, '[data-menu-toggle]': menuButton, '[data-resident-theme]': theme })[selector] ?? null,
       querySelectorAll: selector => selector === '[data-resident-form]' ? [form] : selector === '[data-resident-private]' ? [privateContent] : [...fields.values()],
     },
     window: {
@@ -47,7 +56,7 @@ function residentClient() {
     sessionStorage: { getItem: key => saved.get(key), setItem: (key, value) => saved.set(key, value), removeItem: key => saved.delete(key) },
   });
   vm.runInContext(readFileSync(new URL('../../public/js/resident-account.js', import.meta.url), 'utf8'), context);
-  return { context, fields, privateContent, submit, cancel, logout, form, dialog, listeners, saved };
+  return { context, fields, privateContent, submit, cancel, logout, form, dialog, listeners, saved, menuButton, theme, bodyClasses, documentListeners };
 }
 
 test('resident identity comes from the authenticated endpoint and is read only', async () => {
@@ -116,4 +125,25 @@ test('logout confirmation supports cancel and prevents duplicate submissions', (
   assert.equal(prevented, 1);
   dialog.listeners.cancel({ preventDefault() { prevented++; } });
   assert.equal(prevented, 2);
+});
+
+test('the mobile menu opens from its button and closes with Escape', () => {
+  const { menuButton, fields, bodyClasses, documentListeners } = residentClient();
+  const navigation = fields.get('site-nav');
+  assert.equal(bodyClasses.has('nav-collapsible'), true);
+  menuButton.listeners.click();
+  assert.equal(menuButton.getAttribute('aria-expanded'), 'true');
+  assert.equal(navigation.classList.contains('is-open'), true);
+  documentListeners.keydown({ key: 'Escape' });
+  assert.equal(menuButton.getAttribute('aria-expanded'), 'false');
+  assert.equal(navigation.classList.contains('is-open'), false);
+  assert.equal(menuButton.focused, true);
+});
+
+test('the theme button reports its state and remembers the choice', () => {
+  const { theme, saved } = residentClient();
+  assert.equal(theme.getAttribute('aria-pressed'), 'false');
+  theme.listeners.click();
+  assert.equal(theme.getAttribute('aria-pressed'), 'true');
+  assert.equal(saved.get('smartbrgy_portal_theme'), 'dark');
 });

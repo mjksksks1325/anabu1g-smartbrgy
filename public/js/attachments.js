@@ -28,7 +28,7 @@ function previewAttachment(input) {
 
 function handleAttachmentDrop(event) {
     event.preventDefault();
-    document.getElementById('att-dropzone').style.borderColor = 'var(--border)';
+    document.getElementById('att-dropzone').style.borderColor = '';
     const input = document.getElementById('f-attachment');
     if (!event.dataTransfer.files.length) return;
     input.files = event.dataTransfer.files;

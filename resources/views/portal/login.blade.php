@@ -1,13 +1,48 @@
 @extends('layouts.portal')
-@section('title', 'Resident login')
+@section('title', 'Log in')
+@section('band')
+<x-portal.page-band title="Log in" title-id="login-title">
+    <p>Gamitin ang email at password ng resident account ninyo.</p>
+</x-portal.page-band>
+@endsection
 @section('content')
-<div class="resident-auth-layout"><aside class="resident-auth-aside"><div class="portal-eyebrow">Your barangay, online</div><h2>Welcome back to your community portal.</h2><p>Use your verified resident account to request documents and follow their progress.</p><div class="resident-auth-aside-footer"><span>01 &nbsp; Secure access</span><span>02 &nbsp; Official barangay review</span><span>03 &nbsp; Request tracking</span></div></aside>
-<section class="card resident-auth-card"><div class="card-header"><div class="portal-eyebrow">Resident Portal</div><h2>Sign in</h2><p>Enter the account linked to your official resident record.</p></div>
-<form class="card-body" method="POST" action="{{ route('portal.login.store') }}" data-resident-form>@csrf
-<div class="form-group"><label class="form-label" for="resident-email">Email address</label><input class="form-input" id="resident-email" name="email" type="email" autocomplete="username" required maxlength="255"></div>
-<div class="form-group"><label class="form-label" for="resident-password">Password</label><input class="form-input" id="resident-password" name="password" type="password" autocomplete="current-password" required></div>
-<label class="resident-remember"><input name="remember" type="checkbox" value="1"> Keep me signed in on this device</label>
-<button class="btn btn-green btn-full" type="submit">Log in</button>
-<p class="form-note"><a href="{{ route('password.request') }}">Forgot password?</a> &middot; <a href="{{ route('portal.register') }}">Create Resident Account</a></p>
-</form></section></div>
+<div class="auth-layout">
+    <section class="card card-accent" aria-labelledby="login-title">
+        <form class="card-body" method="POST" action="{{ route('portal.login.store') }}" data-resident-form>
+            @csrf
+            <div class="form-group">
+                <label class="form-label" for="resident-email">Email address</label>
+                <input class="form-input" id="resident-email" name="email" type="email" value="{{ old('email') }}" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" required maxlength="255" @error('email') aria-invalid="true" aria-describedby="resident-email-error" @enderror>
+                @error('email')<p class="field-error" id="resident-email-error">{{ $message }}</p>@enderror
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="resident-password">Password</label>
+                <input class="form-input" id="resident-password" name="password" type="password" autocomplete="current-password" required>
+            </div>
+            <label class="resident-remember"><input name="remember" type="checkbox" value="1"> Manatiling naka-log in sa device na ito. Huwag gamitin sa shared o pampublikong computer.</label>
+            <button class="btn btn-green btn-full" type="submit">Log in</button>
+            <p class="auth-links"><a href="{{ route('password.request') }}">Nakalimutan ang password?</a></p>
+        </form>
+    </section>
+    <aside class="auth-aside" aria-label="Tungkol sa resident account">
+        <section>
+            <h2>Wala pang account?</h2>
+            <p>Para makagawa ng account, kailangang nasa Resident Records na kayo ng Barangay Anabu I-G. Hahanapin ang record ninyo gamit ang:</p>
+            <ul class="plain-list">
+                <li>buong pangalan</li>
+                <li>petsa ng kapanganakan</li>
+                <li>huling 4 na digit ng contact number na nasa record</li>
+            </ul>
+            <p class="auth-links"><a class="btn btn-outline btn-full" href="{{ route('portal.register') }}">Create account</a></p>
+        </section>
+        <section>
+            <h2>Pagka-log in</h2>
+            <p>Puwede nang mag-request ng dokumento at makita ang status nito sa My requests.</p>
+        </section>
+        <section>
+            <h2>Hindi makapag-log in?</h2>
+            <p>Kung hindi gumagana ang account o may maling detalye sa record, pumunta sa Barangay Hall para magpatulong. <a href="{{ route('portal.information') }}#help">Get help</a></p>
+        </section>
+    </aside>
+</div>
 @endsection

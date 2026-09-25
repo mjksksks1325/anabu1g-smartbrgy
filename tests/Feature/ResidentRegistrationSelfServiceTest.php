@@ -31,11 +31,11 @@ test('existing record reaches email step after normalized name and official-deta
 
     $this->get(route('portal.register'))->assertOk()->assertSee('Full name')->assertDontSee('name="email"', false);
     $this->post(route('portal.register.name'), ['full_name' => '  jAnE   A   SANTOS  '])->assertRedirect(route('portal.register'));
-    $this->get(route('portal.register'))->assertSee('A possible record was found')->assertDontSee($resident->resident_number);
+    $this->get(route('portal.register'))->assertSee('May nakitang record na posibleng sa inyo')->assertDontSee($resident->resident_number);
     $this->post(route('portal.register.confirm-record'), [
         'date_of_birth' => '1990-02-03', 'contact_last_four' => '4567',
     ])->assertRedirect(route('portal.register'));
-    $this->get(route('portal.register'))->assertSee('Resident record verified')->assertSee('Send Activation Code');
+    $this->get(route('portal.register'))->assertSee('Na-verify na ang resident record')->assertSee('Send activation code');
     $this->assertDatabaseCount('residents', 1);
     $this->assertDatabaseEmpty('users');
 });
@@ -46,9 +46,9 @@ test('unavailable email delivery offers staff activation without an unusable sen
     confirmSelfServiceRecord($this);
 
     $this->get(route('portal.register'))->assertOk()
-        ->assertSee('Email activation codes are unavailable right now')
-        ->assertSee('Verify Activation Code')
-        ->assertDontSee('Send Activation Code')
+        ->assertSee('Hindi makapagpadala ng activation code sa email ngayon')
+        ->assertSee('Verify activation code')
+        ->assertDontSee('Send activation code')
         ->assertDontSee('name="email"', false);
 });
 
@@ -56,7 +56,7 @@ test('Unicode name case variants still match the official record', function () {
     selfServiceResident(['first_name' => 'José']);
     $this->post(route('portal.register.name'), ['full_name' => 'JOSÉ A SANTOS'])
         ->assertRedirect(route('portal.register'));
-    $this->get(route('portal.register'))->assertSee('A possible record was found');
+    $this->get(route('portal.register'))->assertSee('May nakitang record na posibleng sa inyo');
 });
 
 test('eligible resident receives a bound activation email and creates an account linked to the existing record', function () {
@@ -83,11 +83,11 @@ test('eligible resident receives a bound activation email and creates an account
     expect($resident->fresh()->portal_registration_hash)->toBe(hash('sha256', $code));
     expect($resident->fresh()->portal_registration_email)->toBe('jane@example.test');
     $this->assertDatabaseMissing('residents', ['id' => $resident->id, 'portal_registration_email' => 'jane@example.test']);
-    $this->get(route('portal.register'))->assertSee('Check your email')->assertDontSee($resident->resident_number)->assertDontSee($code);
+    $this->get(route('portal.register'))->assertSee('I-check ang email ninyo')->assertDontSee($resident->resident_number)->assertDontSee($code);
 
     $this->post(route('portal.register.verify'), ['resident_number' => $resident->resident_number, 'activation_code' => $code])
         ->assertRedirect(route('portal.register'));
-    $this->get(route('portal.register'))->assertSee('Step 2')->assertSee('jane@example.test');
+    $this->get(route('portal.register'))->assertSee('Step 4 of 4')->assertSee('jane@example.test');
     $this->post(route('portal.register.store'), [
         'email' => 'jane@example.test', 'password' => 'ResidentPassword123!',
         'password_confirmation' => 'ResidentPassword123!',
@@ -107,9 +107,9 @@ test('a resident can restart registration from the code screen without ending a 
     confirmSelfServiceRecord($this);
     $this->post(route('portal.register.send-code'), ['email' => 'jane@example.test'])
         ->assertRedirect(route('portal.register'));
-    $this->get(route('portal.register'))->assertSee('Check your email')->assertSee('Start over / Change email');
+    $this->get(route('portal.register'))->assertSee('I-check ang email ninyo')->assertSee('Use a different email');
     $this->post(route('portal.register.reset'))->assertRedirect(route('portal.register'));
-    $this->get(route('portal.register'))->assertSee('Full name')->assertDontSee('Check your email')
+    $this->get(route('portal.register'))->assertSee('Full name')->assertDontSee('I-check ang email ninyo')
         ->assertSessionMissing('resident_code_sent')
         ->assertSessionMissing('resident_identity')
         ->assertSessionMissing('resident_verification');
@@ -141,8 +141,8 @@ test('refreshing registration clears the old step without revoking an emailed ac
         return true;
     });
 
-    $this->get(route('portal.register'))->assertSee('Check your email');
-    $this->get(route('portal.register'))->assertSee('Full name')->assertDontSee('Check your email')
+    $this->get(route('portal.register'))->assertSee('I-check ang email ninyo');
+    $this->get(route('portal.register'))->assertSee('Full name')->assertDontSee('I-check ang email ninyo')
         ->assertSessionMissing('resident_name_check')
         ->assertSessionMissing('resident_identity')
         ->assertSessionMissing('resident_code_sent')
@@ -153,7 +153,7 @@ test('refreshing registration clears the old step without revoking an emailed ac
 
     $this->post(route('portal.register.verify'), ['resident_number' => $resident->resident_number, 'activation_code' => $code])
         ->assertRedirect(route('portal.register'));
-    $this->get(route('portal.register'))->assertSee('Step 2');
+    $this->get(route('portal.register'))->assertSee('Step 4 of 4');
 });
 
 test('refreshing the account creation step removes the pending registration proof', function () {
@@ -166,8 +166,8 @@ test('refreshing the account creation step removes the pending registration proo
     $this->post(route('portal.register.verify'), ['resident_number' => $resident->resident_number, 'activation_code' => $code])
         ->assertRedirect(route('portal.register'));
 
-    $this->get(route('portal.register'))->assertSee('Step 2');
-    $this->get(route('portal.register'))->assertSee('Full name')->assertDontSee('Step 2')
+    $this->get(route('portal.register'))->assertSee('Step 4 of 4');
+    $this->get(route('portal.register'))->assertSee('Full name')->assertDontSee('Step 4 of 4')
         ->assertSessionMissing('resident_verification');
     $this->post(route('portal.register.store'), [
         'email' => 'jane@example.test', 'password' => 'ResidentPassword123!',
@@ -183,8 +183,8 @@ test('registration validation errors show the current step once before a refresh
 
     $this->post(route('portal.register.send-code'), ['email' => 'not-an-email'])
         ->assertSessionHasErrors('email');
-    $this->get(route('portal.register'))->assertSee('Send Activation Code');
-    $this->get(route('portal.register'))->assertSee('Full name')->assertDontSee('Send Activation Code')
+    $this->get(route('portal.register'))->assertSee('Send activation code');
+    $this->get(route('portal.register'))->assertSee('Full name')->assertDontSee('Send activation code')
         ->assertSessionMissing('resident_identity');
 });
 
@@ -209,7 +209,7 @@ test('unknown names reach assistance without creating residents or exposing reco
     $this->post(route('portal.register.name'), ['full_name' => 'Unknown Citizen'])
         ->assertRedirect(route('portal.registration.denied'));
     $this->get(route('portal.registration.denied'))
-        ->assertSee('recently moved')->assertSee('valid ID')->assertDontSee($resident->full_name)
+        ->assertSee('Bagong lipat')->assertSee('valid ID')->assertDontSee($resident->full_name)
         ->assertDontSee($resident->resident_number)->assertDontSee($resident->contact_number);
     $this->post(route('portal.register.send-code'), ['email' => 'unknown@example.test'])
         ->assertRedirect(route('portal.registration.denied'));
@@ -231,7 +231,7 @@ test('an expired name confirmation cannot advance to email', function () {
     $this->travel(11)->minutes();
     $this->post(route('portal.register.confirm-record'), ['date_of_birth' => '1990-02-03', 'contact_last_four' => '4567'])
         ->assertRedirect(route('portal.register'));
-    $this->get(route('portal.register'))->assertSee('Full name')->assertDontSee('Send Activation Code');
+    $this->get(route('portal.register'))->assertSee('Full name')->assertDontSee('Send activation code');
 });
 
 test('inactive and archived residents cannot pass the public name check', function (string $condition) {
@@ -266,7 +266,7 @@ test('same-name residents can be distinguished without disclosing matching recor
     selfServiceResident(['date_of_birth' => '1981-01-01', 'contact_number' => '0999-888-1111']);
     confirmSelfServiceRecord($this);
 
-    $this->get(route('portal.register'))->assertSee('Resident record verified')
+    $this->get(route('portal.register'))->assertSee('Na-verify na ang resident record')
         ->assertDontSee($resident->resident_number)->assertDontSee($resident->contact_number);
 });
 

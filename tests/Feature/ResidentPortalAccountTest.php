@@ -34,7 +34,7 @@ test('registration links an existing resident without changing their record or t
     $resident = portalRegistrationResident();
     $this->post(route('portal.register.verify'), ['resident_number' => strtolower($resident->resident_number), 'activation_code' => 'private-test-activation-code'])
         ->assertRedirect(route('portal.register'));
-    $this->get(route('portal.register'))->assertSee('Step 2');
+    $this->get(route('portal.register'))->assertSee('Step 4 of 4');
 
     $this->post(route('portal.register.store'), portalAccountInput(['role' => 'admin', 'resident_id' => 999, 'name' => 'Someone else', 'is_active' => false]))
         ->assertRedirect(route('portal.login'));
@@ -79,8 +79,8 @@ test('verification denies unknown inactive archived expired and incorrect codes 
 
     $this->post(route('portal.register.verify'), ['resident_number' => $number, 'activation_code' => $code])
         ->assertRedirect(route('portal.registration.denied'))->assertSessionMissing('resident_verification');
-    $this->get(route('portal.registration.denied'))->assertSee('Registration could not be completed')
-        ->assertSee('Please visit Barangay Anabu I-G')->assertDontSee($resident->full_name)->assertDontSee($resident->date_of_birth->toDateString());
+    $this->get(route('portal.registration.denied'))->assertSee('Hindi natapos ang registration')
+        ->assertSee('Pumunta sa Barangay Anabu I-G Hall')->assertDontSee($resident->full_name)->assertDontSee($resident->date_of_birth->toDateString());
     $this->assertDatabaseEmpty('users');
 })->with(['unknown', 'inactive', 'archived', 'expired', 'wrong']);
 
@@ -111,7 +111,7 @@ test('an already linked record offers login and recovery without exposing its em
     $account = User::query()->sole();
     $this->post(route('portal.register.verify'), ['resident_number' => $resident->resident_number, 'activation_code' => 'private-test-activation-code'])
         ->assertRedirect(route('portal.registration.denied'))->assertSessionHas('existing_account', true);
-    $this->get(route('portal.registration.denied'))->assertSee('An online account is already associated')
+    $this->get(route('portal.registration.denied'))->assertSee('May online account na para sa resident record na ito')
         ->assertSee(route('portal.login'))->assertSee(route('password.request'))->assertDontSee($account->email);
     $this->assertDatabaseCount('users', 1);
 });
@@ -204,6 +204,48 @@ test('request history and status are scoped to the authenticated resident', func
     $this->getJson(route('portal.request.status', $other->reference_code))->assertNotFound();
 });
 
+test('request history explains each status, rejection reason, and collection steps', function () {
+    $user = User::factory()->resident()->create();
+    portalRequestFor($user->resident, 'REQ-READY')->update(['status' => 'ready_for_release']);
+    portalRequestFor($user->resident, 'REQ-REJECTED')->update(['status' => 'rejected', 'rejection_reason' => 'Kulang ang <b>detalye</b> ng request.']);
+    portalRequestFor($user->resident, 'REQ-PENDING');
+
+    $this->actingAs($user, 'resident')->get(route('portal.account'))
+        ->assertOk()
+        ->assertSeeInOrder(['REQ-READY', 'Ready for release', 'Paano kunin', 'Dalhin ang valid ID at ang reference number na REQ-READY'])
+        ->assertSeeInOrder(['REQ-REJECTED', 'Not approved', 'Dahilan', 'Kulang ang &lt;b&gt;detalye&lt;/b&gt; ng request.'], false)
+        ->assertSeeInOrder(['REQ-PENDING', 'Received', 'Hinihintay pa ang review ng barangay staff'])
+        ->assertDontSee('<b>detalye</b>', false);
+});
+
+test('a rejected login shows its message beside the email field', function () {
+    $this->from(route('portal.login'))
+        ->post(route('portal.login.store'), ['email' => 'nobody@example.test', 'password' => 'wrong-password'])
+        ->assertRedirect(route('portal.login'));
+
+    $this->get(route('portal.login'))
+        ->assertSee('aria-invalid="true" aria-describedby="resident-email-error"', false)
+        ->assertSee('<p class="field-error" id="resident-email-error">', false);
+});
+
+test('request history marks requests that need resident attention', function () {
+    $user = User::factory()->resident()->create();
+    portalRequestFor($user->resident, 'REQ-READY')->update(['status' => 'ready_for_release']);
+    portalRequestFor($user->resident, 'REQ-REJECTED')->update(['status' => 'rejected']);
+    portalRequestFor($user->resident, 'REQ-RELEASED')->update(['status' => 'released']);
+
+    $this->actingAs($user, 'resident')->get(route('portal.account'))
+        ->assertOk()
+        ->assertSeeInOrder(['class="request-item is-ready"', 'REQ-READY', 'status status-ready'], false)
+        ->assertSeeInOrder(['class="request-item is-rejected"', 'REQ-REJECTED', 'status status-rejected'], false)
+        ->assertSeeInOrder(['REQ-RELEASED', 'status status-done'], false);
+});
+
+test('request history offers a first request when the resident has none', function () {
+    $this->actingAs(User::factory()->resident()->create(), 'resident')->get(route('portal.account'))
+        ->assertOk()->assertSee('Wala pang request')->assertDontSee('class="request-list"', false);
+});
+
 test('inactive archived suspended and unlinked resident accounts cannot submit requests', function (string $condition) {
     $user = User::factory()->resident()->create();
     if ($condition === 'inactive') {
@@ -252,7 +294,7 @@ test('logout invalidates resident access and private pages cannot be cached', fu
 });
 
 test('public services derive supported fees from CertificateType and request links lead to resident login', function () {
-    $this->get(route('portal.information'))->assertOk()->assertSee('Barangay officials')->assertSee('awaiting barangay confirmation');
+    $this->get(route('portal.information'))->assertOk()->assertSee('Barangay officials')->assertSee('Hinihintay pa ang opisyal na listahan');
     $this->get(route('portal.request.create', ['service' => 'BC']))->assertRedirect(route('portal.login', ['next' => 'request', 'service' => 'BC']));
 });
 

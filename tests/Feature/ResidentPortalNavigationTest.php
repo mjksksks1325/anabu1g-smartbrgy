@@ -33,6 +33,12 @@ test('public portal shows community information and usable service links', funct
         ->assertSee(route('portal.information').'#requirements', false);
 });
 
+test('portal home lists every document fee and flags it as awaiting confirmation', function () {
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertSeeInOrder(['Mga dokumento at fee', 'Hindi pa kumpirmado', 'Barangay Clearance', 'PHP 50.00', 'Certificate of Indigency', 'Walang bayad', 'Business Clearance', 'PHP 200.00']);
+});
+
 test('document request page renders the terms when a resident is signed in', function () {
     $resident = User::factory()->resident()->create();
 
@@ -43,6 +49,31 @@ test('document request page renders the terms when a resident is signed in', fun
         ->assertSee('id="request-flow" aria-label="Document request"', false)
         ->assertSee('Terms and Conditions')
         ->assertDontSee('id="population"', false);
+});
+
+test('document request page asks residents to review before submitting', function () {
+    $this->actingAs(User::factory()->resident()->create(), 'resident')
+        ->get(route('portal.request.create'))
+        ->assertOk()
+        ->assertSeeInOrder(['id="screen-attachment"', 'onclick="goToReview()"', 'id="screen-review"', 'id="review-summary"', 'id="submit-request-button"', 'id="screen-confirm"'], false)
+        ->assertSee('Hindi pa kumpirmado ng barangay ang office hours');
+});
+
+test('navigation shows account entry points for guests and account links for residents', function () {
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertSee('href="'.route('portal.login').'"', false)
+        ->assertSee('href="'.route('portal.register').'"', false)
+        ->assertDontSee('data-resident-logout', false)
+        ->assertDontSee('href="'.route('portal.profile').'"', false);
+
+    $this->actingAs(User::factory()->resident()->create(), 'resident')
+        ->get(route('home'))
+        ->assertOk()
+        ->assertSee('href="'.route('portal.account').'"', false)
+        ->assertSee('href="'.route('portal.profile').'"', false)
+        ->assertSee('data-resident-logout', false)
+        ->assertDontSee('href="'.route('portal.register').'"', false);
 });
 
 test('legacy request links redirect to the dedicated request page', function () {

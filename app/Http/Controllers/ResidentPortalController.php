@@ -16,7 +16,7 @@ class ResidentPortalController extends Controller
             return redirect()->route('portal.request.create', ['service' => $request->string('service')->toString()]);
         }
 
-        return view('portal.index');
+        return view('portal.index', ['services' => CertificateType::cases()]);
     }
 
     public function createRequest(): View

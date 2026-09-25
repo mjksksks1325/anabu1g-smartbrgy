@@ -13,7 +13,7 @@ test('portal renders email as the required notification field', function () {
         ->assertSee('type="email"', false)
         ->assertSee('required', false)
         ->assertDontSee('id="f-contact"', false)
-        ->assertSee('Email Address');
+        ->assertSee('Email address');
 });
 
 test('portal assets use https when the request is forwarded through a trusted proxy', function () {

@@ -31,6 +31,14 @@ enum CertificateType: string
     }
 
     /**
+     * The fee as residents read it in the portal.
+     */
+    public function feeLabel(): string
+    {
+        return $this->fee() === 0 ? 'Walang bayad' : 'PHP '.number_format($this->fee(), 2);
+    }
+
+    /**
      * @return view-string
      */
     public function printView(): string

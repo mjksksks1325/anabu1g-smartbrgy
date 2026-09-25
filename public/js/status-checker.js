@@ -51,47 +51,42 @@ async function checkStatus() {
                     : res.status === 401
                         ? 'Mag-log in sa Resident Portal para makita ang sarili mong request.'
                     : res.status === 403
-                        ? 'Please contact the barangay for assistance with your resident account.'
+                        ? 'Hindi magamit ng account ang online services. Magpatulong sa Barangay Hall.'
                     : 'Hindi makuha ang status ngayon. Subukan muli mamaya.';
             resultDiv.innerHTML = `<div class="alert alert-red">${escapeStatusText(message)}</div>`;
             return;
         }
 
         const statusMap = {
-            pending: 'Pending',
-            processing: 'Pinoproseso',
-            approved: 'Approved',
-            ready_for_release: 'Handa nang Kunin',
-            released: 'Nailabas na',
-            rejected: 'Hindi Approved'
+            pending: ['Received', 'Natanggap na. Hinihintay pa ang review ng barangay staff.', ''],
+            processing: ['Processing', 'Pinoproseso na ng barangay staff.', 'status-progress'],
+            approved: ['Approved', 'Aprubado na. Hintaying maging Ready for release bago pumunta sa Barangay Hall.', 'status-progress'],
+            ready_for_release: ['Ready for release', 'Puwede nang kunin sa Barangay Hall. Dalhin ang valid ID at ang reference number.', 'status-ready'],
+            released: ['Released', 'Nakuha na ang dokumento.', 'status-done'],
+            rejected: ['Not approved', 'Hindi naaprubahan ang request.', 'status-rejected']
         };
-        const resultClass = data.status === 'rejected' ? 'alert-red' : 'alert-green';
+        const [label, description, statusClass] = statusMap[data.status] || [data.status, '', ''];
 
         resultDiv.innerHTML = `
-            <div class="alert ${resultClass}" style="margin-top:8px;">
-                <div>
-                    <strong>✅ Request Nahanap</strong><br><br>
-
-                    <strong>Reference Code:</strong>
-                    ${escapeStatusText(data.reference_code)}<br>
-
-                    <strong>Dokumento:</strong>
-                    ${escapeStatusText(data.document_type)}<br>
-
-                    <strong>Status:</strong>
-                    ${escapeStatusText(statusMap[data.status] || data.status)}
-
-                    ${
-                        data.remarks
-                            ? `<br><strong>Remarks:</strong> ${escapeStatusText(data.remarks)}`
-                            : ''
-                    }
-                    ${
-                        data.rejection_reason
-                            ? `<br><strong>Reason for rejection:</strong> ${escapeStatusText(data.rejection_reason)}`
-                            : ''
-                    }
+            <div class="request-item">
+                <div class="request-item-head">
+                    <div>
+                        <h3>${escapeStatusText(data.document_type)}</h3>
+                        <p class="request-meta"><span class="reference">${escapeStatusText(data.reference_code)}</span></p>
+                    </div>
+                    <span class="status ${statusClass}">${escapeStatusText(label)}</span>
                 </div>
+                ${description ? `<p class="request-status-note">${escapeStatusText(description)}</p>` : ''}
+                ${
+                    data.rejection_reason
+                        ? `<div class="request-callout request-callout-rejected"><strong>Dahilan</strong>${escapeStatusText(data.rejection_reason)}</div>`
+                        : ''
+                }
+                ${
+                    data.remarks
+                        ? `<div class="request-callout request-callout-remarks"><strong>Paalala mula sa barangay</strong>${escapeStatusText(data.remarks)}</div>`
+                        : ''
+                }
             </div>
         `;
 
@@ -100,11 +95,7 @@ async function checkStatus() {
         console.error(error);
 
         resultDiv.style.display = 'block';
-        resultDiv.innerHTML = `
-            <div class="alert alert-red">
-                ❌ May error sa pag-check ng request.
-            </div>
-        `;
+        resultDiv.innerHTML = '<div class="alert alert-red">Hindi ma-check ang request ngayon. Subukan ulit mamaya.</div>';
     } finally {
         setLoading(false);
     }

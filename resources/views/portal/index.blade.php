@@ -1,102 +1,124 @@
-<!DOCTYPE html>
-<html lang="fil">
-<head>
-<meta charset="UTF-8"/>
-<meta name="csrf-token" content="{{ csrf_token() }}">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
-<title>Resident Portal | Barangay Anabu I-G</title>
-<link rel="icon" type="image/jpeg" href="{{ asset('images/anabu-logo.jpg') }}">
-<link rel="stylesheet" href="{{ asset('css/portal.css') }}?v={{ filemtime(public_path('css/portal.css')) }}">
-<link rel="stylesheet" href="{{ asset('css/government.css') }}">
-</head>
-<body>
-<a href="#main-content" class="skip-link">Skip to main content</a>
-<div class="portal-government-bar"><span>Republic of the Philippines</span><span>City of Imus, Cavite</span></div>
+@extends('layouts.portal')
+@section('title', 'Resident Portal')
+@php($residentSignedIn = auth('resident')->check())
 
-<div id="toast-wrap" role="status" aria-live="polite"></div>
-<div id="loader" style="display:none;"><div class="spinner"></div><div style="font-size:13px;color:var(--text-muted);">Sandali lang...</div></div>
+@section('band')
+<div class="portal-band" style="--hall-photo:url('{{ asset('images/barangay-hall-anabu-1g.jpg') }}')">
+    <div class="portal-band-inner">
+        <section class="portal-hero" aria-labelledby="portal-title">
+            <h1 id="portal-title">Resident services</h1>
+            <p>Mag-request ng barangay document online, tapos kunin ito sa Barangay Hall kapag Ready for release na. Dito rin makikita ang status ng bawat request ninyo.</p>
+            @unless($residentSignedIn)
+                <p class="portal-hero-account">Wala pang account? <a href="{{ route('portal.register') }}">Create account</a> gamit ang record ninyo sa barangay.</p>
+            @endunless
+        </section>
 
-<!-- HEADER -->
-<header class="header">
-  <div class="header-seal"><img src="{{ asset('images/anabu-logo.jpg') }}" alt="Barangay Anabu I-G"></div>
-  <div class="header-info">
-    <h1>Barangay Anabu I-G</h1>
-    <p>Official Resident Services Portal</p>
-  </div>
-  <div class="header-badge"><span></span> Resident services</div>
-  <button class="btn btn-outline" type="button" data-resident-theme>Change theme</button>
-</header>
-
-@include('partials.resident-nav')
-
-<div class="container" id="main-content" tabindex="-1">
-  <section class="portal-hero" aria-labelledby="portal-title">
-    <div class="portal-hero-copy">
-      <div class="portal-hero-kicker"><span class="portal-hero-kicker-mark"></span> BARANGAY ANABU I-G DIGITAL SERVICES</div>
-      <h2 id="portal-title">Barangay services,<br><em>within your reach.</em></h2>
-      <p>Explore barangay information and request official documents through our secure resident portal. Your barangay office reviews every submission.</p>
-      <div class="portal-hero-actions">
-        <a class="btn portal-hero-primary" href="{{ route('portal.request.create') }}">Request a document <span aria-hidden="true">&rarr;</span></a>
-      </div>
+        <section class="portal-tasks" aria-labelledby="tasks-title">
+            <h2 id="tasks-title" class="sr-only">Ano ang gusto ninyong gawin?</h2>
+            <div class="portal-service-grid">
+                <a class="portal-service-card portal-service-primary" href="{{ route('portal.request.create') }}">
+                    <strong>Request a document</strong>
+                    <span>Barangay Clearance, Certificate of Residency, Certificate of Indigency, Barangay ID, First Time Jobseeker, at Business Clearance.</span>
+                    <span class="service-start" aria-hidden="true">Magsimula</span>
+                </a>
+                <a class="portal-service-card" href="{{ $residentSignedIn ? route('portal.account') : route('portal.login') }}">
+                    <strong>Check my requests</strong>
+                    <span>Status ng request at kung puwede nang kunin.</span>
+                </a>
+                <a class="portal-service-card" href="{{ route('portal.information') }}#requirements">
+                    <strong>Requirements and fees</strong>
+                    <span>Fee ng bawat dokumento at ang dapat dalhin.</span>
+                </a>
+                <a class="portal-service-card" href="{{ route('portal.information') }}#help">
+                    <strong>Get help</strong>
+                    <span>Problema sa account o maling detalye sa record.</span>
+                </a>
+            </div>
+        </section>
     </div>
-    <div class="portal-hero-aside">
-      <img src="{{ asset('images/anabu-logo.jpg') }}" alt="" aria-hidden="true">
-      <div class="portal-hero-aside-label">ANABU I-G<br>IMUS, CAVITE</div>
-      <div class="portal-hero-aside-line"></div>
-      <p>Serving our community with accessible barangay services.</p>
+    <p class="portal-band-caption">Barangay Hall ng Anabu I-G, Lungsod ng Imus</p>
+</div>
+@endsection
+
+@section('content')
+<div class="service-info">
+    <section class="howto" aria-labelledby="howto-title">
+        <h2 id="howto-title">Paano mag-request</h2>
+        <ol class="howto-steps">
+            @if($residentSignedIn)
+                <li><strong>Naka-log in na kayo.</strong> Puwede nang mag-request ng dokumento.</li>
+            @else
+                <li><strong>Mag-log in.</strong> Kailangan ng resident account na naka-link sa record ninyo sa barangay.</li>
+            @endif
+            <li><strong>Piliin ang dokumento at i-submit.</strong> I-review ang details bago i-submit. Makakatanggap kayo ng reference number.</li>
+            <li><strong>Bantayan ang status.</strong> Makikita sa My requests kung Ready for release na.</li>
+            <li><strong>Kunin sa Barangay Hall.</strong> Dalhin ang original na valid ID at ang reference number. Doon din babayaran ang fee, kung mayroon. Walang online payment.</li>
+        </ol>
+        <p class="howto-note">Valid nang 30 araw ang online request mula sa araw na na-submit ito.</p>
+    </section>
+
+    <section class="doc-rates" aria-labelledby="doc-rates-title">
+        <div class="doc-rates-head">
+            <h2 id="doc-rates-title">Mga dokumento at fee</h2>
+            <span class="tag-unconfirmed">Hindi pa kumpirmado</span>
+        </div>
+        <table class="doc-rates-table">
+            <caption class="sr-only">Fee ng bawat dokumento ayon sa system</caption>
+            <thead><tr><th scope="col">Dokumento</th><th scope="col">Fee</th></tr></thead>
+            <tbody>
+                @foreach($services as $service)
+                    <tr><th scope="row">{{ $service->value }}</th><td>{{ $service->feeLabel() }}</td></tr>
+                @endforeach
+            </tbody>
+        </table>
+        <p class="doc-rates-note">Galing sa system ang fees. Hinihintay pa ang kumpirmasyon ng barangay sa fees, requirements, at processing time. <a href="{{ route('portal.information') }}#requirements">Buong requirements at fees</a></p>
+    </section>
+</div>
+
+<section class="home-section" id="announcements" aria-labelledby="announcements-title">
+    <h2 id="announcements-title">Announcements</h2>
+    <div class="notice-row">
+        <article class="notice-callout">
+            <h3>Barangay Anabu I-G</h3>
+            <p>Wala pang inilalathalang anunsiyo ang Barangay Anabu I-G sa portal na ito. Bumalik dito para sa mga susunod na update.</p>
+        </article>
+        <article class="notice-callout">
+            <h3>Lungsod ng Imus</h3>
+            <p>Nasa opisyal na website ng City of Imus ang mga balita at abiso ng lungsod. <a href="https://cityofimus.gov.ph/" target="_blank" rel="noopener noreferrer">Buksan ang City of Imus website</a></p>
+        </article>
     </div>
-  </section>
+</section>
 
-  <section class="portal-service-section" id="services" aria-labelledby="portal-services-title">
-    <div class="portal-section-heading"><div><div class="portal-eyebrow">What you can do here</div><h2 id="portal-services-title">Resident services</h2></div><a href="{{ route('portal.information') }}#requirements">View requirements <span aria-hidden="true">&rarr;</span></a></div>
-    <div class="portal-service-grid">
-      <a class="portal-service-card" href="{{ route('portal.request.create') }}"><span class="portal-service-number">01 / DOCUMENTS</span><span class="portal-service-symbol" aria-hidden="true">&#9638;</span><strong>Request a document</strong><span>Submit a barangay clearance, residency certificate, ID, and other document requests.</span><span class="portal-service-link">Start a request <span aria-hidden="true">&rarr;</span></span></a>
-      <a class="portal-service-card" href="{{ auth('resident')->check() ? route('portal.account') : route('portal.login') }}"><span class="portal-service-number">02 / YOUR ACCOUNT</span><span class="portal-service-symbol" aria-hidden="true">&#9776;</span><strong>Track your requests</strong><span>Check submitted documents and follow their progress in your resident account.</span><span class="portal-service-link">{{ auth('resident')->check() ? 'View my requests' : 'Resident login' }} <span aria-hidden="true">&rarr;</span></span></a>
+<section class="home-section office-section" id="office" aria-labelledby="office-title">
+    <div class="office-details">
+        <h2 id="office-title">Barangay Hall</h2>
+        <p class="office-intro">Dito kukunin ang mga dokumento at dito rin magpapatulong sa account o record.</p>
+        <dl class="info-list">
+            <div><dt>Address</dt><dd>Barangay Anabu I-G, Lungsod ng Imus, Cavite</dd></div>
+            <div><dt>Telepono</dt><dd><span class="tag-unconfirmed">Hindi pa kumpirmado</span></dd></div>
+            <div><dt>Office hours</dt><dd><span class="tag-unconfirmed">Hindi pa kumpirmado</span></dd></div>
+            <div id="population"><dt>Populasyon</dt><dd>2,345 na residente ayon sa 2024 Census of Population ng PSA. <a href="https://psa.gov.ph/classification/psgc/barangays/0402109000" target="_blank" rel="noopener noreferrer">PSA data</a></dd></div>
+        </dl>
+        <p class="office-note">Habang wala pang kumpirmadong numero at oras, pumunta nang personal sa Barangay Hall.</p>
     </div>
-  </section>
-
-  <section class="portal-community-section" id="population" aria-labelledby="population-title">
-    <div class="portal-section-heading"><div><div class="portal-eyebrow">Our community</div><h2 id="population-title">Population</h2></div></div>
-    <div class="portal-population-card">
-      <div><span class="portal-card-label">Barangay Anabu I-G</span><strong>2,345</strong><p>residents in the 2024 Census of Population</p></div>
-      <div class="portal-population-source"><span>OFFICIAL SOURCE</span><p>Philippine Statistics Authority, 2024 POPCEN. Census population is different from the number of residents registered in this portal.</p><a href="https://psa.gov.ph/classification/psgc/barangays/0402109000" target="_blank" rel="noopener noreferrer">View PSA data <span aria-hidden="true">&nearr;</span></a></div>
+    <div class="office-map" id="location">
+        <div class="map-panel">
+            <iframe title="Mapa ng Barangay Anabu I-G, Imus, Cavite" src="https://maps.google.com/maps?q=Barangay%20Anabu%20I-G%2C%20Imus%2C%20Cavite&amp;output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+            <p>Area ng Barangay Anabu I-G. <span class="tag-unconfirmed">Hindi pa kumpirmado</span> ang eksaktong entrance ng Barangay Hall. <a href="https://www.google.com/maps/search/?api=1&amp;query=Barangay+Anabu+I-G%2C+Imus%2C+Cavite" target="_blank" rel="noopener noreferrer">Buksan sa Google Maps</a></p>
+        </div>
     </div>
-  </section>
+</section>
 
-  <section class="portal-community-section" id="announcements" aria-labelledby="announcements-title">
-    <div class="portal-section-heading"><div><div class="portal-eyebrow">Stay informed</div><h2 id="announcements-title">News &amp; announcements</h2></div></div>
-    <div class="portal-information-grid">
-      <article class="portal-information-card"><span class="portal-card-label">BARANGAY UPDATES</span><h3>Official announcements</h3><p>Wala pang inilalathalang anunsiyo ang Barangay Anabu I-G sa portal na ito. Bumalik dito para sa mga susunod na update.</p></article>
-      <article class="portal-information-card"><span class="portal-card-label">CITY UPDATES</span><h3>Balita mula sa Lungsod ng Imus</h3><p>Basahin ang mga pinakabagong balita at abiso sa opisyal na website ng pamahalaang lungsod.</p><a href="https://cityofimus.gov.ph/" target="_blank" rel="noopener noreferrer">Visit City of Imus news <span aria-hidden="true">&nearr;</span></a></article>
+<section class="home-section hotline-panel" id="contacts" aria-labelledby="contacts-title">
+    <div class="hotline-head">
+        <h2 id="contacts-title">Emergency hotlines</h2>
+        <p>Mula sa <a href="https://cityofimus.gov.ph/" target="_blank" rel="noopener noreferrer">City of Imus website</a></p>
     </div>
-  </section>
-
-  <section class="portal-community-section" id="contacts" aria-labelledby="contacts-title">
-    <div class="portal-section-heading"><div><div class="portal-eyebrow">Help when you need it</div><h2 id="contacts-title">Contacts &amp; emergency hotlines</h2></div><a href="https://cityofimus.gov.ph/" target="_blank" rel="noopener noreferrer">Source: City of Imus <span aria-hidden="true">&nearr;</span></a></div>
-    <div class="portal-contact-grid">
-      <article class="portal-information-card"><span class="portal-card-label">BARANGAY OFFICE</span><h3>Barangay Anabu I-G</h3><p>Anabu I-G, City of Imus, Cavite</p><p>The barangay phone number is awaiting official confirmation. Please visit the office for resident account or document assistance.</p></article>
-      <article class="portal-information-card"><span class="portal-card-label">EMERGENCY</span><h3>National emergency hotline</h3><a class="portal-contact-number" href="tel:911">911</a><p>For urgent police, fire, or medical assistance.</p></article>
-      <article class="portal-information-card"><span class="portal-card-label">CITY RESPONSE</span><h3>City of Imus emergency</h3><a class="portal-contact-number" href="tel:+63468889911">(046) 888 9911</a><p>City government emergency hotline.</p></article>
-      <article class="portal-information-card"><span class="portal-card-label">POLICE</span><h3>Imus PNP</h3><a class="portal-contact-number" href="tel:+639985985601">0998 598 5601</a><p>Imus Philippine National Police.</p></article>
-      <article class="portal-information-card"><span class="portal-card-label">FIRE</span><h3>Bureau of Fire Protection</h3><a class="portal-contact-number" href="tel:+639155283256">0915 528 3256</a><p>Fire response number listed by the City of Imus.</p></article>
-    </div>
-  </section>
-
-  <section class="portal-community-section" id="location" aria-labelledby="location-title">
-    <div class="portal-section-heading"><div><div class="portal-eyebrow">Find us</div><h2 id="location-title">Barangay location</h2></div><a href="https://www.google.com/maps/search/?api=1&amp;query=Barangay+Anabu+I-G%2C+Imus%2C+Cavite" target="_blank" rel="noopener noreferrer">Open full map <span aria-hidden="true">&nearr;</span></a></div>
-    <div class="portal-map-panel"><iframe title="Map search for Barangay Anabu I-G, Imus, Cavite" src="https://maps.google.com/maps?q=Barangay%20Anabu%20I-G%2C%20Imus%2C%20Cavite&amp;output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe><p>Barangay Anabu I-G, City of Imus, Cavite. Confirm the exact office entrance before visiting.</p></div>
-  </section>
-
-  <section class="portal-community-section portal-links-section" id="quick-links" aria-labelledby="quick-links-title">
-    <div><div class="portal-section-heading"><div><div class="portal-eyebrow">Get things done</div><h2 id="quick-links-title">Quick links</h2></div></div><div class="portal-link-list"><a href="{{ route('portal.request.create') }}">Request a document <span aria-hidden="true">&rarr;</span></a><a href="{{ route('portal.information') }}#requirements">Document requirements <span aria-hidden="true">&rarr;</span></a><a href="{{ auth('resident')->check() ? route('portal.account') : route('portal.login') }}">My resident account <span aria-hidden="true">&rarr;</span></a></div></div>
-    <div><div class="portal-section-heading"><div><div class="portal-eyebrow">Official resources</div><h2>Government links</h2></div></div><div class="portal-link-list"><a href="https://cityofimus.gov.ph/" target="_blank" rel="noopener noreferrer">City Government of Imus <span aria-hidden="true">&nearr;</span></a><a href="https://psa.gov.ph/" target="_blank" rel="noopener noreferrer">Philippine Statistics Authority <span aria-hidden="true">&nearr;</span></a><a href="https://www.officialgazette.gov.ph/" target="_blank" rel="noopener noreferrer">Official Gazette <span aria-hidden="true">&nearr;</span></a></div></div>
-  </section>
-
-  <section class="portal-guidance" aria-label="How the portal works"><div><span class="portal-guidance-label">HOW IT WORKS</span><p><strong>Sign in</strong> with your resident account, <strong>submit</strong> your document request, then <strong>follow up</strong> with your reference number.</p></div><div class="portal-guidance-hours"><span>BARANGAY OFFICE HOURS</span><strong>Confirm before visiting</strong></div></section>
-
-</div><!-- /container -->
-
-<footer class="footer portal-footer"><div><strong>Barangay Anabu I-G</strong><span>City of Imus, Cavite &middot; Resident Services Portal</span></div><a href="{{ route('portal.information') }}#help">Resident assistance &rarr;</a></footer>
-<script src="{{ asset('js/resident-account.js') }}?v={{ filemtime(public_path('js/resident-account.js')) }}"></script>
-</body>
-</html>
+    <ul class="hotline-list">
+        <li><span>National emergency hotline</span><a href="tel:911">911</a></li>
+        <li><span>City of Imus emergency</span><a href="tel:+63468889911">(046) 888 9911</a></li>
+        <li><span>Imus PNP</span><a href="tel:+639985985601">0998 598 5601</a></li>
+        <li><span>Bureau of Fire Protection</span><a href="tel:+639155283256">0915 528 3256</a></li>
+    </ul>
+</section>
+@endsection

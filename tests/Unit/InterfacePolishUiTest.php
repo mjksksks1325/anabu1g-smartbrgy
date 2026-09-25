@@ -2,21 +2,28 @@
 
 test('resident portal presents its current services design', function () {
     $portal = file_get_contents(dirname(__DIR__, 2).'/resources/views/portal/index.blade.php');
+    $layout = file_get_contents(dirname(__DIR__, 2).'/resources/views/layouts/portal.blade.php');
     $styles = file_get_contents(dirname(__DIR__, 2).'/public/css/portal.css');
 
+    expect($layout)->toContain("asset('css/portal.css')");
     expect($portal)
-        ->toContain("asset('css/portal.css')")
+        ->toContain("@extends('layouts.portal')")
         ->toContain('class="portal-hero"')
         ->toContain('class="portal-service-grid"')
+        ->toContain("class=\"portal-service-card portal-service-primary\" href=\"{{ route('portal.request.create') }}\"")
         ->toContain('Resident services')
         ->toContain('Request a document')
-        ->toContain('Track your requests')
+        ->toContain('Check my requests')
+        ->toContain('Requirements and fees')
+        ->toContain('Get help')
         ->not->toContain('Report an incident')
         ->not->toContain('<h2>📋 Mga Tuntunin at Kundisyon</h2>');
     expect($styles)
         ->toContain('.portal-hero {')
         ->toContain('.portal-service-card {')
-        ->toContain('.portal-service-grid { grid-template-columns:1fr; }');
+        ->toContain('.portal-service-grid { grid-template-columns:1fr; }')
+        ->toContain('@media (hover:hover)')
+        ->toContain('@media (prefers-reduced-motion:reduce)');
 });
 
 test('admin interface is light first with consistent professional surfaces', function () {

@@ -16,15 +16,15 @@ function resetPortalSession() {
     document.getElementById('btn-proceed-terms').disabled = true;
     document.getElementById('tnc-scroll').scrollTop = 0;
     const notice = document.getElementById('tnc-notice');
-    notice.textContent = 'Scroll down to read all terms before confirming';
-    notice.removeAttribute('style');
+    notice.textContent = 'I-scroll hanggang dulo ng terms para ma-check ang kahon sa ibaba.';
+    notice.classList.remove('is-read');
     for (const id of ['status-code', 'f-name', 'f-address', 'f-email', 'f-dob', 'f-purpose', 'f-business']) {
         const field = document.getElementById(id);
         field.value = '';
+        setPortalFieldError(field, false);
         field.removeAttribute('aria-invalid');
-        field.removeAttribute('aria-describedby');
     }
-    for (const id of ['status-result', 'conf-summary', 'conf-code', 'conf-code-mini', 'form-doc-label', 'form-doc-fee']) {
+    for (const id of ['status-result', 'conf-summary', 'review-summary', 'conf-code', 'conf-code-mini', 'form-doc-label', 'form-doc-fee']) {
         document.getElementById(id).textContent = '';
     }
     document.getElementById('business-field').style.display = 'none';

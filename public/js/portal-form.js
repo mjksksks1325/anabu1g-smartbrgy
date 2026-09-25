@@ -10,12 +10,10 @@ function selectDoc(id, el) {
 
     const d = DOC_TYPES[id];
 
-    document.getElementById('doc-sel-icon').textContent = d.icon;
     document.getElementById('doc-sel-label').textContent = d.label;
-    document.getElementById('doc-sel-fee').textContent =
-        d.fee + ' · ' + d.days;
+    document.getElementById('doc-sel-fee').textContent = 'Fee: ' + d.fee;
 
-    document.getElementById('doc-selected-info').style.display = 'flex';
+    document.getElementById('doc-selected-info').style.display = 'block';
     document.getElementById('btn-proceed-doc').disabled = false;
 }
 
@@ -25,15 +23,28 @@ async function proceedFromDoc() {
 
     const d = DOC_TYPES[selectedDocId];
 
-    document.getElementById('form-doc-label').textContent =
-        d.icon + ' ' + d.label;
+    document.getElementById('form-doc-label').textContent = d.label;
 
-    document.getElementById('form-doc-fee').textContent = d.fee;
+    document.getElementById('form-doc-fee').textContent = 'Fee: ' + d.fee;
 
     document.getElementById('business-field').style.display =
         selectedDocId === 'BBC' ? 'block' : 'none';
 
     showScreen('screen-form');
+}
+
+function setPortalFieldError(field, invalid, message = '') {
+    const errorId = field.id + '-error';
+    const inlineError = document.getElementById(errorId);
+    if (inlineError) {
+        inlineError.textContent = invalid ? message : '';
+        inlineError.hidden = !invalid;
+    }
+    const described = (field.getAttribute('aria-describedby') || '').split(' ').filter(id => id && id !== 'portal-form-error' && id !== errorId);
+    if (invalid) described.unshift(inlineError ? errorId : 'portal-form-error');
+    field.setAttribute('aria-invalid', String(invalid));
+    if (described.length) field.setAttribute('aria-describedby', described.join(' '));
+    else field.removeAttribute('aria-describedby');
 }
 
 function validatePortalForm() {
@@ -53,14 +64,13 @@ function validatePortalForm() {
         const required = id !== 'f-business' || selectedDocId === 'BBC';
         field.required = required;
         const invalid = required && (!field.value.trim() || !field.checkValidity());
-        field.setAttribute('aria-invalid', String(invalid));
+        setPortalFieldError(field, invalid, message);
         if (invalid && !firstInvalid) firstInvalid = { field, message };
     }
     if (firstInvalid) {
         showScreen('screen-form');
         error.textContent = firstInvalid.message;
         error.hidden = false;
-        firstInvalid.field.setAttribute('aria-describedby', 'portal-form-error');
         firstInvalid.field.focus();
         return false;
     }
@@ -69,6 +79,23 @@ function validatePortalForm() {
 
 function goToAttachment() {
     if (validatePortalForm()) showScreen('screen-attachment');
+}
+
+function goToReview() {
+    if (!validatePortalForm()) return;
+    const d = DOC_TYPES[selectedDocId];
+    const attachment = document.getElementById('f-attachment').files[0];
+    renderReviewSummary({
+        document: d?.label,
+        fee: d?.fee,
+        name: document.getElementById('f-name').value.trim(),
+        address: document.getElementById('f-address').value.trim(),
+        email: document.getElementById('f-email').value.trim(),
+        purpose: document.getElementById('f-purpose').value.trim(),
+        business: selectedDocId === 'BBC' ? document.getElementById('f-business').value.trim() : null,
+        attachment: attachment ? attachment.name : 'Walang in-upload',
+    });
+    showScreen('screen-review');
 }
 
 function newRequest(recordHistory = true) {

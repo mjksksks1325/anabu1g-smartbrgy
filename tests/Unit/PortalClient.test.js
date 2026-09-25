@@ -19,7 +19,7 @@ function portal() {
     }
     return elements.get(id);
   }
-  const screens = ['screen-terms', 'screen-doctype', 'screen-form', 'screen-attachment', 'screen-confirm', 'screen-status'].map(element);
+  const screens = ['screen-terms', 'screen-doctype', 'screen-form', 'screen-attachment', 'screen-review', 'screen-confirm', 'screen-status'].map(element);
   screens[0].classList.add('active');
   element('request-flow').hidden = true;
   const cards = [element('card-BC'), element('card-BBC')];
@@ -175,6 +175,76 @@ test('required information errors stay visible and focus the invalid field', () 
   assert.equal(element('f-email').getAttribute('aria-invalid'), 'true');
 });
 
+test('field errors keep the field hint linked for screen readers', () => {
+  const { context, element } = portal();
+  const purpose = element('f-purpose');
+  purpose.setAttribute('aria-describedby', 'f-purpose-help');
+  purpose.value = '';
+
+  context.goToAttachment();
+  assert.equal(purpose.getAttribute('aria-describedby'), 'f-purpose-error f-purpose-help');
+
+  purpose.value = 'Employment';
+  context.goToAttachment();
+  assert.equal(purpose.getAttribute('aria-describedby'), 'f-purpose-help');
+  assert.equal(element('screen-attachment').classList.contains('active'), true);
+});
+
+test('each invalid field shows its own message beside the field', () => {
+  const { context, element } = portal();
+  element('f-purpose').value = '';
+
+  context.goToAttachment();
+  assert.equal(element('f-purpose-error').hidden, false);
+  assert.match(element('f-purpose-error').textContent, /layunin/);
+
+  element('f-purpose').value = 'Employment';
+  context.goToAttachment();
+  assert.equal(element('f-purpose-error').hidden, true);
+  assert.equal(element('f-purpose-error').textContent, '');
+});
+
+test('copying the reference number confirms on the button itself', async () => {
+  const { context, element } = portal();
+  const button = element('copy-code-button');
+  const findElement = context.document.querySelector;
+  context.document.querySelector = selector => selector === '.copy-code-button' ? button : findElement(selector);
+  context.navigator.clipboard = { writeText: async () => {} };
+  context.lastCode = 'REQ-2026-ABC123';
+
+  await context.copyReferenceCode();
+
+  assert.equal(button.textContent, 'Nakopya na');
+  assert.equal(button.classList.contains('is-copied'), true);
+});
+
+test('the review step shows escaped request details without submitting', () => {
+  const { context, element } = portal();
+  element('f-purpose').value = '<b>Employment</b>';
+  let submissions = 0;
+  context.sendPortalDocumentRequest = () => { submissions++; };
+
+  context.goToReview();
+
+  assert.equal(element('screen-review').classList.contains('active'), true);
+  assert.match(element('review-summary').innerHTML, /&lt;b&gt;Employment/);
+  assert.doesNotMatch(element('review-summary').innerHTML, /<b>/);
+  assert.match(element('review-summary').innerHTML, /Walang in-upload/);
+  assert.equal(submissions, 0);
+});
+
+test('the review step is unreachable with invalid details or no chosen document', () => {
+  const { context, element } = portal();
+  element('f-purpose').value = '';
+  context.goToReview();
+  assert.equal(element('screen-form').classList.contains('active'), true);
+  assert.equal(element('portal-form-error').hidden, false);
+
+  context.selectedDocId = null;
+  context.showScreen('screen-review');
+  assert.equal(element('screen-doctype').classList.contains('active'), true);
+});
+
 test('replacing an attachment with an invalid image clears stale previews', () => {
   const { context, element, revoked } = portal();
   const input = element('f-attachment');
@@ -198,11 +268,13 @@ test('rapid repeated taps submit only once and escape the confirmation', async (
 
   const first = context.submitRequest();
   await context.submitRequest();
+  assert.equal(element('submit-request-button').getAttribute('aria-busy'), 'true');
   finish({ ok: true, json: async () => ({ reference_code: 'REQ-2026-ABC123' }) });
   await first;
 
   assert.equal(submissions, 1);
   assert.equal(element('submit-request-button').disabled, false);
+  assert.equal(element('submit-request-button').getAttribute('aria-busy'), undefined);
   assert.match(element('conf-summary').innerHTML, /&lt;img/);
   assert.doesNotMatch(element('conf-summary').innerHTML, /<img/);
   assert.equal(element('screen-confirm').classList.contains('active'), true);
