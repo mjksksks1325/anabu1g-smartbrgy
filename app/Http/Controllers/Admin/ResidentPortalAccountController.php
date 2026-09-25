@@ -25,6 +25,8 @@ class ResidentPortalAccountController extends Controller
             $code = Str::random(32);
             $resident->portal_registration_hash = hash('sha256', $code);
             $resident->portal_registration_expires_at = now()->addDay();
+            $resident->portal_registration_email = null;
+            $resident->portal_registration_sent_at = null;
             $resident->save();
 
             return response()->json(['activation_code' => $code, 'expires_at' => $resident->portal_registration_expires_at->toIso8601String(),

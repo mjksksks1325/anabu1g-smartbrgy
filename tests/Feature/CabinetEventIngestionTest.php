@@ -176,12 +176,30 @@ it('accepts a heartbeat and updates the cabinet connection state', function () {
 
     $this->withHeader('X-Device-Token', 'device-token')
         ->postJson(route('api.iot.cabinets.heartbeat', $cabinet), [
-            'door_state' => 'open', 'drawer_reference' => 'A-1', 'drawer_state' => 'open',
+            'door_state' => 'open',
+            'drawer_reference' => 'A-1',
+            'drawer_state' => 'open',
+            'component_health' => [
+                'facelock_service' => 'healthy',
+                'arduino' => 'connected',
+                'camera' => 'connected',
+                'folder_rfid' => 'connected',
+            ],
         ])->assertOk()->assertJsonPath('status', 'online')->assertJsonPath('state.door', 'open')
         ->assertJsonPath('state.drawers.A-1', 'open');
+
     expect($cabinet->fresh()->connectionStatus())->toBe('online');
+
+    expect($cabinet->fresh()->component_health)->toBe([
+        'facelock_service' => 'healthy',
+        'arduino' => 'connected',
+        'camera' => 'connected',
+        'folder_rfid' => 'connected',
+    ]);
+
     $this->postJson(route('api.iot.cabinets.heartbeat', $cabinet), ['door_state' => 'closed'])
         ->assertOk()->assertJsonPath('state.drawers.A-1', 'open');
+
     $this->assertDatabaseEmpty('file_movement_events');
 });
 

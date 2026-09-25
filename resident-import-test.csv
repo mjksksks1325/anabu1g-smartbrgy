@@ -1,0 +1,11 @@
+first_name,middle_name,last_name,suffix,date_of_birth,gender,civil_status,purok,address,contact_number,residency_type,special_groups,status,is_in_good_standing
+Juan,Santos,Dela Cruz,,1988-05-14,Male,Married,Purok 1 - Sampaguita,"Block 2, Lot 8, Sampaguita Street",09171234567,Homeowner,"[]",active,1
+Maria,Lourdes,Reyes,,1994-11-03,Female,Single,Purok 2 - Rosal,"24 Rosal Avenue",+639181234568,Renter,"[""Solo Parent"",""4Ps Beneficiary""]",active,1
+Pedro,Garcia,Santos,Jr.,1952-02-20,Male,Widowed,Purok 3 - Camia,"15 Camia Road",09981234569,Homeowner,"[""PWD""]",active,1
+Ana Mae,,Mendoza,,2001-07-09,Female,Single,Purok 4 - Ilang-Ilang,"Unit 3-B, Ilang-Ilang Homes",,Boarder,"[""Out-of-School Youth""]",active,1
+Roberto,Diaz,Villanueva,Sr.,1976-12-28,Male,Separated,Purok 5 - Mabini,"77 Mabini Extension",09191234570,Renter,"[""Unemployed Adult""]",inactive,0
+Liza,Manalo,Ramos,,1985-03-17,Female,Married,Purok 1 - Sampaguita,"Phase 1, Lot 12, Sampaguita Village",09201234571,Homeowner,"[""4Ps Beneficiary""]",active,1
+Miguel Ángel,Lopez,De León,,1990-09-22,Male,Married,Purok 2 - Rosal,"8 Rosal Street",+639211234572,Homeowner,"[""Indigenous People""]",active,1
+Cristina,Abad,Navarro,,2007-01-30,Female,Single,Purok 3 - Camia,"Sitio Maligaya, Camia",09221234573,Renter,"[""Teenage Mother""]",active,1
+Nico,Reyes,Flores,,2012-06-05,Male,Single,Purok 4 - Ilang-Ilang,"45 Ilang-Ilang Street",,Homeowner,"[""Malnourished Child""]",active,1
+Fe,Lim,Tan,,1960-10-11,Female,Widowed,Purok 5 - Mabini,"101 Mabini Road",09231234574,Boarder,"[""PWD"",""4Ps Beneficiary""]",active,1

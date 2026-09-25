@@ -24,6 +24,11 @@ class CabinetEventController extends Controller
             'drawer_reference' => ['required_with:drawer_state', 'string', 'max:255'],
             'drawer_state' => ['required_with:drawer_reference', Rule::in(['open', 'closed'])],
             'software_version' => ['sometimes', 'string', 'max:255'],
+            'component_health' => ['sometimes', 'array'],
+            'component_health.facelock_service' => ['sometimes', Rule::in(['healthy', 'unhealthy'])],
+            'component_health.arduino' => ['sometimes', Rule::in(['connected', 'disconnected'])],
+            'component_health.camera' => ['sometimes', Rule::in(['connected', 'disconnected'])],
+            'component_health.folder_rfid' => ['sometimes', Rule::in(['connected', 'disconnected'])],
         ]);
 
         $state = $cabinet->cabinet_state ?? [];
@@ -41,6 +46,7 @@ class CabinetEventController extends Controller
             'reported_status' => 'online',
             'cabinet_state' => $state === [] ? null : $state,
             'software_version' => $data['software_version'] ?? $cabinet->software_version,
+            'component_health' => $data['component_health'] ?? $cabinet->component_health,
         ])->save();
 
         return response()->json(['status' => 'online', 'cabinet' => $cabinet->identifier, 'state' => $state]);
@@ -111,6 +117,44 @@ class CabinetEventController extends Controller
             'event_id' => $data['event_id'],
             'duplicate' => ! $movement->wasRecentlyCreated,
         ], $movement->wasRecentlyCreated ? 201 : 200);
+    }
+
+    public function pendingEmployeeEnrollment(CabinetDevice $cabinet): JsonResponse
+    {
+        $access = EmployeeCabinetAccess::query()
+            ->with('user')
+            ->where('is_active', true)
+            ->whereNotNull('rpi_employee_id')
+            ->where(function ($query): void {
+                $query
+                    ->where('rfid_enrollment_status', '!=', EmployeeCabinetAccess::ENROLLED)
+                    ->orWhere('face_enrollment_status', '!=', EmployeeCabinetAccess::ENROLLED);
+            })
+            ->whereHas('user', function ($query): void {
+                $query
+                    ->where('is_active', true)
+                    ->whereIn('role', ['admin', 'staff']);
+            })
+            ->orderBy('updated_at')
+            ->first();
+
+        if ($access === null) {
+            return response()->json([
+                'pending' => false,
+                'employee' => null,
+            ]);
+        }
+
+        return response()->json([
+            'pending' => true,
+            'employee' => [
+                'rpi_employee_id' => $access->rpi_employee_id,
+                'name' => $access->user->name,
+                'rfid_enrollment_required' => $access->rfid_enrollment_status !== EmployeeCabinetAccess::ENROLLED,
+                'face_enrollment_required' => $access->face_enrollment_status !== EmployeeCabinetAccess::ENROLLED,
+                'authorization_version' => $access->authorization_version,
+            ],
+        ]);
     }
 
     public function employeeEnrollment(Request $request, CabinetDevice $cabinet): JsonResponse

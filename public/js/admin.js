@@ -2550,11 +2550,28 @@ function filterUserRole(role, element) {
   renderUsers();
 }
 
+function toggleUserCabinetFields() {
+  const enabled = document.getElementById('adduser-cabinet-access').checked;
+  const fields = document.getElementById('adduser-cabinet-fields');
+  const rpiId = document.getElementById('adduser-rpi-id');
+
+  fields.style.display = enabled ? 'block' : 'none';
+  rpiId.required = enabled;
+}
+
 function openAddUser() {
-  ['adduser-edit-id', 'adduser-name', 'adduser-email', 'adduser-password'].forEach(id => document.getElementById(id).value = '');
+  ['adduser-edit-id', 'adduser-name', 'adduser-email', 'adduser-password', 'adduser-rpi-id']
+    .forEach(id => document.getElementById(id).value = '');
+
   document.getElementById('adduser-role').value = 'staff';
   document.getElementById('adduser-status').value = 'active';
   document.getElementById('adduser-password').required = true;
+
+  document.getElementById('adduser-cabinet-access').checked = false;
+  document.getElementById('adduser-enrollment-status').style.display = 'none';
+
+  toggleUserCabinetFields();
+
   document.getElementById('adduser-modal-title').textContent = 'New user account';
   openModal('modal-adduser');
 }
@@ -2562,6 +2579,9 @@ function openAddUser() {
 function openEditUser(id) {
   const user = USERS.find(item => item.id === id);
   if (!user) return;
+
+  const cabinetAccess = user.cabinet_access || null;
+
   document.getElementById('adduser-edit-id').value = user.id;
   document.getElementById('adduser-name').value = user.name;
   document.getElementById('adduser-email').value = user.email;
@@ -2569,23 +2589,65 @@ function openEditUser(id) {
   document.getElementById('adduser-status').value = user.is_active ? 'active' : 'suspended';
   document.getElementById('adduser-password').value = '';
   document.getElementById('adduser-password').required = false;
+
+  document.getElementById('adduser-cabinet-access').checked =
+    Boolean(cabinetAccess?.is_active);
+
+  document.getElementById('adduser-rpi-id').value =
+    cabinetAccess?.rpi_employee_id || '';
+
+  toggleUserCabinetFields();
+
+  const enrollmentStatus = document.getElementById('adduser-enrollment-status');
+
+  if (cabinetAccess) {
+    document.getElementById('adduser-rfid-status').textContent =
+      cabinetAccess.rfid_enrollment_status === 'enrolled'
+        ? 'Enrolled'
+        : 'Not enrolled';
+
+    document.getElementById('adduser-face-status').textContent =
+      cabinetAccess.face_enrollment_status === 'enrolled'
+        ? 'Enrolled'
+        : 'Not enrolled';
+
+    enrollmentStatus.style.display = 'block';
+  } else {
+    enrollmentStatus.style.display = 'none';
+  }
+
   document.getElementById('adduser-modal-title').textContent = 'Edit user account';
   openModal('modal-adduser');
 }
 
 async function saveNewUser() {
   const id = document.getElementById('adduser-edit-id').value;
+  const cabinetAccess = document.getElementById('adduser-cabinet-access').checked;
+
   const payload = {
     name: document.getElementById('adduser-name').value.trim(),
     email: document.getElementById('adduser-email').value.trim(),
     role: document.getElementById('adduser-role').value,
     is_active: document.getElementById('adduser-status').value === 'active',
     password: document.getElementById('adduser-password').value || null,
+    smart_cabinet_access: cabinetAccess,
+    rpi_employee_id: cabinetAccess
+      ? document.getElementById('adduser-rpi-id').value.trim()
+      : null,
   };
+
   const button = document.getElementById('adduser-save-btn');
   button.disabled = true;
+
   try {
-    const result = await adminRequest(id ? `/admin/users/${id}` : '/admin/users', { method: id ? 'PATCH' : 'POST', body: JSON.stringify(payload) });
+    const result = await adminRequest(
+      id ? `/admin/users/${id}` : '/admin/users',
+      {
+        method: id ? 'PATCH' : 'POST',
+        body: JSON.stringify(payload),
+      }
+    );
+
     closeModal('modal-adduser');
     showToast(result.message, 'green');
     await reloadUsers();
@@ -2598,9 +2660,30 @@ async function saveNewUser() {
 
 async function setUserActive(id, active) {
   const user = USERS.find(item => item.id === id);
-  if (!user || !confirm(`${active ? 'Activate' : 'Suspend'} ${user.name}'s account?`)) return;
+
+  if (
+    !user ||
+    !confirm(`${active ? 'Activate' : 'Suspend'} ${user.name}'s account?`)
+  ) {
+    return;
+  }
+
+  const cabinetAccess = user.cabinet_access || null;
+
   try {
-    const result = await adminRequest(`/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify({ name: user.name, email: user.email, role: user.role, is_active: active }) });
+    const result = await adminRequest(`/admin/users/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        is_active: active,
+        password: null,
+        smart_cabinet_access: Boolean(cabinetAccess?.is_active),
+        rpi_employee_id: cabinetAccess?.rpi_employee_id || null,
+      }),
+    });
+
     showToast(result.message, 'green');
     await reloadUsers();
   } catch (error) {

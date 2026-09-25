@@ -56,6 +56,10 @@ Route::middleware(EnsureGuestResidentPortal::class)->group(function () {
     Route::get('/portal/login', [ResidentPortalController::class, 'login'])->name('portal.login');
     Route::post('/portal/login', [ResidentSessionController::class, 'store'])->middleware('throttle:resident-login')->name('portal.login.store');
     Route::get('/portal/register', [ResidentRegistrationController::class, 'create'])->name('portal.register');
+    Route::post('/portal/register/reset', [ResidentRegistrationController::class, 'reset'])->name('portal.register.reset');
+    Route::post('/portal/register/name', [ResidentRegistrationController::class, 'verifyName'])->middleware('throttle:resident-registration')->name('portal.register.name');
+    Route::post('/portal/register/confirm-record', [ResidentRegistrationController::class, 'confirmRecord'])->middleware('throttle:resident-registration')->name('portal.register.confirm-record');
+    Route::post('/portal/register/send-code', [ResidentRegistrationController::class, 'sendCode'])->middleware('throttle:resident-registration')->name('portal.register.send-code');
     Route::post('/portal/register/verify', [ResidentRegistrationController::class, 'verify'])->middleware('throttle:resident-registration')->name('portal.register.verify');
     Route::post('/portal/register', [ResidentRegistrationController::class, 'store'])->middleware('throttle:resident-registration')->name('portal.register.store');
     Route::view('/portal/registration-help', 'portal.registration-help')->name('portal.registration.denied');

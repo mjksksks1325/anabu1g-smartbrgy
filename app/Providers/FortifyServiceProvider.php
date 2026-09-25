@@ -79,7 +79,10 @@ class FortifyServiceProvider extends ServiceProvider
     private function configureRateLimiting(): void
     {
         RateLimiter::for('resident-registration', function (Request $request): array {
-            return [Limit::perMinute(5)->by('resident-registration:'.$request->ip()), Limit::perHour(30)->by('resident-registration-hour:'.$request->ip())];
+            return [
+                Limit::perMinute(5)->by('resident-registration:'.$request->path().'|'.$request->ip()),
+                Limit::perHour(30)->by('resident-registration-hour:'.$request->ip()),
+            ];
         });
         RateLimiter::for('resident-login', function (Request $request): Limit {
             $key = Str::transliterate(Str::lower((string) $request->input('email')).'|'.$request->ip());

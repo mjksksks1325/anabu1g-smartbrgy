@@ -855,6 +855,11 @@ body:not(.dark-mode) .header { background:#f5f8f6; }
 .resident-auth-layout .btn-full { min-height:50px; }
 .resident-registration-note { display:block; margin-bottom:24px; padding:16px 18px; font-size:13px; line-height:1.65; overflow-wrap:normal; }
 .resident-registration-note strong { white-space:normal; }
+.resident-registration-alternative { margin-top:24px; padding-top:20px; border-top:1px solid #c9d9d4; }
+.resident-registration-alternative summary { cursor:pointer; color:#176b57; font-size:13px; font-weight:700; line-height:1.5; }
+.resident-registration-alternative[open] summary { margin-bottom:16px; }
+.resident-registration-alternative .form-note { margin:0 0 14px; }
+.resident-registration-alternative form { margin-top:12px; }
 .resident-auth-card a { color:#176b57; font-weight:700; text-underline-offset:3px; }
 .resident-account-page .card { background:#f7f9f7; }
 .resident-account-page .card-header { background:#f7f9f7; }

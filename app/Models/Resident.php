@@ -16,6 +16,8 @@ use Illuminate\Support\Str;
  * @property CarbonInterface $date_of_birth
  * @property list<string>|null $special_groups
  * @property CarbonInterface|null $portal_registration_expires_at
+ * @property CarbonInterface|null $portal_registration_sent_at
+ * @property string|null $portal_registration_email
  */
 class Resident extends Model
 {
@@ -30,7 +32,7 @@ class Resident extends Model
 
     protected $appends = ['full_name', 'age'];
 
-    protected $hidden = ['portal_registration_hash', 'portal_registration_expires_at'];
+    protected $hidden = ['portal_registration_hash', 'portal_registration_expires_at', 'portal_registration_email', 'portal_registration_sent_at'];
 
     /** @return HasOne<User, $this> */
     public function portalAccount(): HasOne
@@ -106,6 +108,8 @@ class Resident extends Model
         return [
             'date_of_birth' => 'date',
             'portal_registration_expires_at' => 'datetime',
+            'portal_registration_email' => 'encrypted',
+            'portal_registration_sent_at' => 'datetime',
             'special_groups' => 'array',
             'is_in_good_standing' => 'boolean',
         ];

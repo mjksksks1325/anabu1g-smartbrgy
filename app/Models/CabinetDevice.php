@@ -38,7 +38,7 @@ class CabinetDevice extends Model
             return 'unknown';
         }
 
-        if ($this->last_seen_at->lt(now()->subMinutes(5))) {
+        if ($this->last_seen_at->lt(now()->subSeconds(90))) {
             return 'offline';
         }
 

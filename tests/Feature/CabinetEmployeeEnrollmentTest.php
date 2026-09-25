@@ -183,3 +183,122 @@ it('reports ineffective access when the mapped website employee is suspended', f
     expect($access->fresh()->is_active)->toBeTrue()
         ->and($employee->fresh()->is_active)->toBeFalse();
 });
+
+it('returns the next active employee requiring cabinet enrollment', function () {
+    $cabinet = CabinetDevice::factory()->create([
+        'api_token_hash' => hash('sha256', 'device-token'),
+    ]);
+
+    $employee = User::factory()->create([
+        'name' => 'Jerome Landig',
+        'role' => 'staff',
+        'is_active' => true,
+    ]);
+
+    EmployeeCabinetAccess::factory()->create([
+        'user_id' => $employee->id,
+        'rpi_employee_id' => 'EMP005',
+        'is_active' => true,
+        'rfid_enrollment_status' => EmployeeCabinetAccess::NOT_STARTED,
+        'face_enrollment_status' => EmployeeCabinetAccess::NOT_STARTED,
+        'authorization_version' => 1,
+    ]);
+
+    $this->withHeader('X-Device-Token', 'device-token')
+        ->getJson(route('api.iot.cabinets.employee-enrollment.pending', $cabinet))
+        ->assertOk()
+        ->assertExactJson([
+            'pending' => true,
+            'employee' => [
+                'rpi_employee_id' => 'EMP005',
+                'name' => 'Jerome Landig',
+                'rfid_enrollment_required' => true,
+                'face_enrollment_required' => true,
+                'authorization_version' => 1,
+            ],
+        ]);
+});
+
+it('reports only the missing credential when enrollment is partially complete', function () {
+    $cabinet = CabinetDevice::factory()->create([
+        'api_token_hash' => hash('sha256', 'device-token'),
+    ]);
+
+    $employee = User::factory()->create([
+        'role' => 'staff',
+        'is_active' => true,
+    ]);
+
+    EmployeeCabinetAccess::factory()->create([
+        'user_id' => $employee->id,
+        'rpi_employee_id' => 'EMP005',
+        'is_active' => true,
+        'rfid_enrollment_status' => EmployeeCabinetAccess::ENROLLED,
+        'face_enrollment_status' => EmployeeCabinetAccess::NOT_STARTED,
+    ]);
+
+    $this->withHeader('X-Device-Token', 'device-token')
+        ->getJson(route('api.iot.cabinets.employee-enrollment.pending', $cabinet))
+        ->assertOk()
+        ->assertJsonPath('pending', true)
+        ->assertJsonPath('employee.rpi_employee_id', 'EMP005')
+        ->assertJsonPath('employee.rfid_enrollment_required', false)
+        ->assertJsonPath('employee.face_enrollment_required', true);
+});
+
+it('does not return completed disabled suspended or viewer cabinet employees as pending', function () {
+    $cabinet = CabinetDevice::factory()->create([
+        'api_token_hash' => hash('sha256', 'device-token'),
+    ]);
+
+    $completed = User::factory()->create(['role' => 'staff', 'is_active' => true]);
+    EmployeeCabinetAccess::factory()->create([
+        'user_id' => $completed->id,
+        'rpi_employee_id' => 'EMP001',
+        'is_active' => true,
+        'rfid_enrollment_status' => EmployeeCabinetAccess::ENROLLED,
+        'face_enrollment_status' => EmployeeCabinetAccess::ENROLLED,
+    ]);
+
+    $disabled = User::factory()->create(['role' => 'staff', 'is_active' => true]);
+    EmployeeCabinetAccess::factory()->create([
+        'user_id' => $disabled->id,
+        'rpi_employee_id' => 'EMP002',
+        'is_active' => false,
+    ]);
+
+    $suspended = User::factory()->create(['role' => 'staff', 'is_active' => false]);
+    EmployeeCabinetAccess::factory()->create([
+        'user_id' => $suspended->id,
+        'rpi_employee_id' => 'EMP003',
+        'is_active' => true,
+    ]);
+
+    $viewer = User::factory()->create(['role' => 'viewer', 'is_active' => true]);
+    EmployeeCabinetAccess::factory()->create([
+        'user_id' => $viewer->id,
+        'rpi_employee_id' => 'EMP004',
+        'is_active' => true,
+    ]);
+
+    $this->withHeader('X-Device-Token', 'device-token')
+        ->getJson(route('api.iot.cabinets.employee-enrollment.pending', $cabinet))
+        ->assertOk()
+        ->assertExactJson([
+            'pending' => false,
+            'employee' => null,
+        ]);
+});
+
+it('requires a valid device token to read pending enrollment', function () {
+    $cabinet = CabinetDevice::factory()->create([
+        'api_token_hash' => hash('sha256', 'device-token'),
+    ]);
+
+    $this->getJson(route('api.iot.cabinets.employee-enrollment.pending', $cabinet))
+        ->assertUnauthorized();
+
+    $this->withHeader('X-Device-Token', 'wrong-token')
+        ->getJson(route('api.iot.cabinets.employee-enrollment.pending', $cabinet))
+        ->assertUnauthorized();
+});

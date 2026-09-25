@@ -906,14 +906,84 @@
 @if(auth()->user()->isSuperAdmin())
 <div class="modal-overlay" id="modal-adduser">
   <form class="modal" onsubmit="event.preventDefault();saveNewUser()">
-    <div class="modal-header"><div class="modal-title" id="adduser-modal-title">New user</div><button type="button" class="modal-close" onclick="closeModal('modal-adduser')" aria-label="Close user form">&times;</button></div>
+    <div class="modal-header">
+      <div class="modal-title" id="adduser-modal-title">New user</div>
+      <button type="button" class="modal-close" onclick="closeModal('modal-adduser')" aria-label="Close user form">&times;</button>
+    </div>
+
     <input type="hidden" id="adduser-edit-id">
-    <div class="form-group"><label for="adduser-name" class="form-label">Full name</label><input class="form-input" id="adduser-name" required maxlength="255" autocomplete="name"></div>
-    <div class="form-group"><label for="adduser-email" class="form-label">Email address</label><input class="form-input" id="adduser-email" type="email" required maxlength="255" autocomplete="email"></div>
-    <div class="form-group"><label for="adduser-role" class="form-label">Access role</label><select class="form-input" id="adduser-role"><option value="staff">Staff</option><option value="admin">Administrator</option><option value="viewer">View only (no administrative records)</option></select></div>
-    <div class="form-group"><label for="adduser-status" class="form-label">Account status</label><select class="form-input" id="adduser-status"><option value="active">Active</option><option value="suspended">Suspended</option></select></div>
-    <div class="form-group"><label for="adduser-password" class="form-label">Password</label><input class="form-input" id="adduser-password" type="password" minlength="12" autocomplete="new-password"><p class="card-sub" id="adduser-pass-label">At least 12 characters. Leave blank when editing to keep the current password.</p></div>
-    <div class="modal-footer"><button class="btn" type="button" onclick="closeModal('modal-adduser')">Cancel</button><button class="btn btn-green" id="adduser-save-btn" type="submit">Save account</button></div>
+
+    <div class="form-group">
+      <label for="adduser-name" class="form-label">Full name</label>
+      <input class="form-input" id="adduser-name" required maxlength="255" autocomplete="name">
+    </div>
+
+    <div class="form-group">
+      <label for="adduser-email" class="form-label">Email address</label>
+      <input class="form-input" id="adduser-email" type="email" required maxlength="255" autocomplete="email">
+    </div>
+
+    <div class="form-group">
+      <label for="adduser-role" class="form-label">Access role</label>
+      <select class="form-input" id="adduser-role">
+        <option value="staff">Staff</option>
+        <option value="admin">Administrator</option>
+        <option value="viewer">View only (no administrative records)</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="adduser-status" class="form-label">Account status</label>
+      <select class="form-input" id="adduser-status">
+        <option value="active">Active</option>
+        <option value="suspended">Suspended</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="adduser-password" class="form-label">Password</label>
+      <input class="form-input" id="adduser-password" type="password" minlength="12" autocomplete="new-password">
+      <p class="card-sub" id="adduser-pass-label">At least 12 characters. Leave blank when editing to keep the current password.</p>
+    </div>
+
+    <div style="border-top:1px solid var(--border);margin:18px 0 14px;padding-top:14px;">
+      <div class="form-label" style="margin-bottom:8px;">Smart Cabinet Access</div>
+
+      <label style="display:flex;align-items:center;gap:9px;cursor:pointer;margin-bottom:12px;">
+        <input
+          type="checkbox"
+          id="adduser-cabinet-access"
+          onchange="toggleUserCabinetFields()"
+        >
+        <span>Allow this employee to use the Smart Cabinet</span>
+      </label>
+
+      <div id="adduser-cabinet-fields" style="display:none;">
+        <div class="form-group">
+          <label for="adduser-rpi-id" class="form-label">RPi Employee ID</label>
+          <input
+            class="form-input"
+            id="adduser-rpi-id"
+            maxlength="32"
+            placeholder="Example: EMP005"
+            autocomplete="off"
+          >
+          <p class="card-sub">
+            Stable employee ID used by the Raspberry Pi. Face and RFID enrollment will be completed physically at the cabinet.
+          </p>
+        </div>
+
+        <div id="adduser-enrollment-status" style="display:none;font-size:12px;color:var(--text-secondary);">
+          <div>RFID: <strong id="adduser-rfid-status">Not enrolled</strong></div>
+          <div>Face: <strong id="adduser-face-status">Not enrolled</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn" type="button" onclick="closeModal('modal-adduser')">Cancel</button>
+      <button class="btn btn-green" id="adduser-save-btn" type="submit">Save account</button>
+    </div>
   </form>
 </div>
 @endif
