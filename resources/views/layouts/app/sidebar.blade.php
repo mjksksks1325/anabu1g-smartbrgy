@@ -1,31 +1,61 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
+        <script src="{{ asset('js/staff-settings-theme.js') }}?v={{ filemtime(public_path('js/staff-settings-theme.js')) }}"></script>
         @include('partials.head')
     </head>
     <body class="civic-settings min-h-screen bg-white dark:bg-zinc-800">
-        <flux:sidebar sticky collapsible="mobile" class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
+        <flux:sidebar sticky collapsible="mobile" class="civic-settings-sidebar border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
             <flux:sidebar.header>
-                <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
+                <a class="staff-settings-brand" href="{{ in_array(auth()->user()->role, ['admin', 'staff'], true) ? route('admin.dashboard') : route('admin.rfid-files.index') }}">
+                    <span class="staff-settings-seal"><img src="{{ asset('images/anabu-logo.jpg') }}" alt="Barangay Anabu I-G logo"></span>
+                    <span class="staff-settings-brand-text"><strong>Barangay Anabu I-G</strong><small>STAFF WORKSPACE</small></span>
+                </a>
                 <flux:sidebar.collapse class="lg:hidden" />
             </flux:sidebar.header>
 
-            <flux:sidebar.nav>
-                <flux:sidebar.group :heading="__('Barangay services')" class="grid">
-                    <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
-                        {{ __('Dashboard') }}
-                    </flux:sidebar.item>
-                </flux:sidebar.group>
-            </flux:sidebar.nav>
+            <nav class="staff-settings-navigation" aria-label="Staff navigation">
+                @if(in_array(auth()->user()->role, ['admin', 'staff'], true))
+                    <div class="sidebar-sec">
+                        <div class="sidebar-label">Overview</div>
+                        <a class="nav-item" href="{{ route('admin.dashboard') }}"><x-staff-icon name="dashboard" />Dashboard</a>
+                        <a class="nav-item" href="{{ route('admin.dashboard', ['screen' => 'demographics']) }}"><x-staff-icon name="people" />Demographics</a>
+                    </div>
+                    <div class="sidebar-sec">
+                        <div class="sidebar-label">Records</div>
+                        <a class="nav-item" href="{{ route('admin.dashboard', ['screen' => 'records']) }}"><x-staff-icon name="document" />Resident Records</a>
+                        <a class="nav-item" href="{{ route('admin.dashboard', ['screen' => 'voters']) }}"><x-staff-icon name="check" />Voter Registry</a>
+                        <a class="nav-item" href="{{ route('admin.dashboard', ['screen' => 'certificates']) }}"><x-staff-icon name="card" />Certificates &amp; Clearances</a>
+                        <a class="nav-item" href="{{ route('admin.dashboard', ['screen' => 'request-records']) }}"><x-staff-icon name="document" />Request Eligibility</a>
+                        <a class="nav-item" href="{{ route('admin.dashboard', ['screen' => 'incidents']) }}"><x-staff-icon name="alert" />Incident Reports</a>
+                    </div>
+                @endif
+                @if(auth()->user()->canTrackRfidFiles())
+                    <div class="sidebar-sec">
+                        <div class="sidebar-label">IoT Security</div>
+                        <a class="nav-item" href="{{ route('admin.rfid-files.index') }}"><x-staff-icon name="card" />RFID File Tracking</a>
+                    </div>
+                @endif
+                @if(auth()->user()->isSuperAdmin())
+                    <div class="sidebar-sec">
+                        <div class="sidebar-label">Administration</div>
+                        <a class="nav-item" href="{{ route('admin.smart-cabinet.index') }}"><x-staff-icon name="cabinet" />Smart Cabinet</a>
+                        <a class="nav-item" href="{{ route('admin.cabinet-access.index') }}"><x-staff-icon name="key" />Employee Cabinet Access</a>
+                        <a class="nav-item" href="{{ route('admin.dashboard', ['screen' => 'audit']) }}"><x-staff-icon name="document" />Audit Log</a>
+                        <a class="nav-item" href="{{ route('admin.dashboard', ['screen' => 'users']) }}"><x-staff-icon name="people" />User Management</a>
+                        <a class="nav-item" href="{{ route('admin.dashboard', ['screen' => 'settings']) }}"><x-staff-icon name="settings" />Settings</a>
+                    </div>
+                @endif
+                <div class="sidebar-sec staff-settings-account-links">
+                    <a @class(['nav-item', 'active' => request()->routeIs('profile.edit')]) href="{{ route('profile.edit') }}" aria-current="{{ request()->routeIs('profile.edit') ? 'page' : 'false' }}"><x-staff-icon name="people" />My profile</a>
+                    <a @class(['nav-item', 'active' => request()->routeIs('security.edit')]) href="{{ route('security.edit') }}" aria-current="{{ request()->routeIs('security.edit') ? 'page' : 'false' }}"><x-staff-icon name="shield" />Account security</a>
+                    <a class="nav-item staff-settings-portal" href="{{ route('home') }}" target="_blank" rel="noopener"><x-staff-icon name="globe" />Portal ng Residente</a>
+                </div>
+            </nav>
 
-            <flux:spacer />
-
-            <flux:sidebar.nav>
-                <flux:sidebar.item icon="home" :href="route('home')">Resident services</flux:sidebar.item>
-                <flux:sidebar.item icon="cog" :href="route('profile.edit')" :current="request()->routeIs('*.edit')" wire:navigate>Account settings</flux:sidebar.item>
-            </flux:sidebar.nav>
-
-            <x-desktop-user-menu class="hidden lg:block" :name="auth()->user()->name" />
+            <div class="staff-settings-footer hidden lg:flex">
+                <x-desktop-user-menu :name="auth()->user()->name" />
+            </div>
         </flux:sidebar>
 
         <!-- Mobile User Menu -->

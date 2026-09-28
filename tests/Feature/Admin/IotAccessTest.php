@@ -11,7 +11,11 @@ it('separates employee RFID access from super admin pages', function () {
     }
 
     $staff = User::factory()->create(['role' => 'staff']);
-    $this->actingAs($staff)->get(route('admin.rfid-files.index'))->assertOk()->assertSee('No file movements recorded');
+    $this->actingAs($staff)->get(route('admin.rfid-files.index'))->assertOk()->assertSee('No file movements recorded')
+        ->assertSee('css/figma-iot.css')
+        ->assertSee('Staff workspace')
+        ->assertSee('Physical files, digitally accountable.')
+        ->assertSee('Request Eligibility');
     $this->get(route('admin.smart-cabinet.index'))->assertForbidden();
     $this->get(route('admin.cabinet-access.index'))->assertForbidden();
     $this->getJson(route('admin.audit.index'))->assertForbidden();
@@ -25,6 +29,48 @@ it('separates employee RFID access from super admin pages', function () {
     $this->actingAs($superAdmin)->get(route('admin.smart-cabinet.index'))->assertOk()->assertSee('No cabinets registered')
         ->assertSee('iot-theme-toggle');
     $this->get(route('admin.cabinet-access.index'))->assertOk()->assertSee('No employees have completed cabinet enrollment yet.');
+});
+
+it('renders a visible vector icon beside each smart cabinet sidebar link', function () {
+    $response = $this->actingAs(User::factory()->superAdmin()->create())
+        ->get(route('admin.smart-cabinet.index'))->assertOk();
+
+    $document = new DOMDocument;
+    @$document->loadHTML($response->getContent());
+    $xpath = new DOMXPath($document);
+    $links = $xpath->query('//nav[contains(concat(" ", normalize-space(@class), " "), " side-nav ")]//a');
+
+    expect($links->length)->toBeGreaterThan(0);
+    foreach ($links as $link) {
+        $icon = $xpath->query('./svg', $link)->item(0);
+        expect($icon)->not->toBeNull()
+            ->and($icon->getAttribute('width'))->toBe('18')
+            ->and($icon->getAttribute('height'))->toBe('18')
+            ->and($xpath->query('./svg/*', $link)->length)->toBeGreaterThan(0);
+    }
+});
+
+it('shows a compact cabinet access list without empty pagination', function () {
+    $superAdmin = User::factory()->superAdmin()->create();
+    User::factory()->count(2)->create(['role' => 'staff']);
+
+    $response = $this->actingAs($superAdmin)->get(route('admin.cabinet-access.index'));
+
+    $response->assertSee('3 employees')
+        ->assertSee('Details')
+        ->assertDontSee('<div class="pagination">', false);
+    expect(substr_count($response->getContent(), '<details class="employee-card">'))->toBe(3);
+});
+
+it('keeps pagination for a cabinet access list with more than one page', function () {
+    $superAdmin = User::factory()->superAdmin()->create();
+    User::factory()->count(15)->create(['role' => 'staff']);
+
+    $response = $this->actingAs($superAdmin)->get(route('admin.cabinet-access.index'));
+
+    $response->assertSee('16 employees')
+        ->assertSee('<div class="pagination">', false);
+    expect(substr_count($response->getContent(), '<details class="employee-card">'))->toBe(15);
 });
 
 it('uses saved file movements and filters instead of browser simulation', function () {
@@ -148,4 +194,24 @@ it('does not promote existing administrators automatically', function () {
     $this->actingAs($admin->fresh())->get(route('admin.dashboard'))->assertOk()->assertSee('Employee Cabinet Access');
     $this->assertDatabaseHas('administrative_audits', ['action' => 'security.super-admin.granted', 'user_id' => $admin->id]);
     $this->artisan('user:grant-super-admin', ['email' => $admin->email, '--revoke' => true])->assertFailed();
+});
+
+it('shows smart cabinet component health as readable labels instead of raw json', function () {
+    CabinetDevice::factory()->create([
+        'component_health' => ['camera' => 'connected', 'folder_rfid' => 'disconnected', 'facelock_service' => 'unhealthy'],
+    ]);
+
+    $this->actingAs(User::factory()->superAdmin()->create())
+        ->get(route('admin.smart-cabinet.index'))->assertOk()
+        ->assertSee('1 of 3 components healthy')
+        ->assertSeeInOrder(['Camera', 'Connected', 'Folder RFID', 'Disconnected', 'Face Lock Service', 'Unhealthy'])
+        ->assertDontSee('"camera":"connected"', false);
+});
+
+it('uses the same sidebar icons as the staff dashboard on super admin pages', function () {
+    $this->actingAs(User::factory()->superAdmin()->create())
+        ->get(route('admin.smart-cabinet.index'))->assertOk()
+        ->assertSee('<path d="M9 11l3 3L22 4"/>', false)
+        ->assertSee('<rect x="2" y="3" width="20" height="14" rx="2"/>', false)
+        ->assertSee('<rect x="9" y="3" width="6" height="4" rx="1"/>', false);
 });

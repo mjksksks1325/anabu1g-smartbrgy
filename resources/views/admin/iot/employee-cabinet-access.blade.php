@@ -6,10 +6,11 @@
 <div class="notice">Enrollment requests are recorded as pending until Raspberry Pi integration is available. They do not enroll a credential or open a cabinet.</div>
 @unless($hasCompletedEnrollment)<div class="notice">No employees have completed cabinet enrollment yet.</div>@endunless
 <form class="filter-panel compact" method="GET" action="{{ route('admin.cabinet-access.index') }}"><label>Find employee<input type="search" name="search" value="{{ $search }}" placeholder="Name or email"></label><button class="button" type="submit">Search</button></form>
-<section class="panel"><div class="panel-heading"><h2>Employee permissions</h2><span>{{ $employees->total() }} employees</span></div>
+<section class="panel employee-access-panel"><div class="panel-heading"><h2>Employee permissions</h2><span>{{ $employees->total() }} employees</span></div>
 @forelse($employees as $employee)
     @php($access = $employee->cabinetAccess)
-    <article class="employee-card"><div class="employee-intro"><div><h3>{{ $employee->name }}</h3><p>Employee #{{ $employee->id }} · {{ $employee->email }} · {{ ucfirst($employee->role) }} · Website {{ $employee->is_active ? 'active' : 'inactive' }}</p></div><span class="pill {{ $access?->isEffective() ? 'success' : 'neutral' }}">{{ $access?->isEffective() ? 'Effective access' : 'No effective access' }}</span></div>
+    <details class="employee-card"><summary class="employee-intro"><div><h3>{{ $employee->name }}</h3><p>Employee #{{ $employee->id }} · {{ $employee->email }} · {{ ucfirst($employee->role) }} · Website {{ $employee->is_active ? 'active' : 'inactive' }}</p></div><span class="pill {{ $access?->isEffective() ? 'success' : 'neutral' }}">{{ $access?->isEffective() ? 'Effective access' : 'No effective access' }}</span><span class="employee-expand-hint" aria-hidden="true">Details</span></summary>
+    <div class="employee-card-body">
     <div class="detail-grid"><div><dt>Cabinet permission</dt><dd>{{ $access?->is_active ? 'Enabled' : 'Disabled' }}</dd></div><div><dt>RFID enrollment</dt><dd>{{ str_replace('_', ' ', ucfirst($access?->rfid_enrollment_status ?? 'not_started')) }} · {{ $access?->rfid_enrolled_at?->format('M j, Y g:i A') ?? 'No completion date' }}</dd></div><div><dt>Face enrollment</dt><dd>{{ str_replace('_', ' ', ucfirst($access?->face_enrollment_status ?? 'not_started')) }} · {{ $access?->face_enrolled_at?->format('M j, Y g:i A') ?? 'No completion date' }}</dd></div><div><dt>Authorization version</dt><dd>{{ $access?->authorization_version ?? '—' }} · Updated {{ $access?->updated_at?->format('M j, Y g:i A') ?? 'Never' }}</dd></div></div>
     <div class="employee-mapping-status"><strong>RPi Employee ID</strong><span>{{ $access?->rpi_employee_id ?? 'Not linked' }}</span></div>
     <form class="employee-mapping-form" method="POST" action="{{ route('admin.cabinet-access.rpi-employee-id.update', $employee) }}">
@@ -26,9 +27,9 @@
     @endif
     @foreach(['rfid' => 'Request RFID enrollment', 'face' => 'Request face enrollment'] as $method => $label)
         <form method="POST" action="{{ route('admin.cabinet-access.enroll', [$employee, $method]) }}">@csrf<button class="button quiet" type="submit" @disabled(! $employee->is_active || ! $access?->is_active || $access->{$method.'_enrollment_status'} !== 'not_started')>{{ $label }}</button></form>
-    @endforeach</div></article>
+    @endforeach</div></div></details>
 @empty
     <div class="empty-state"><strong>No employees found</strong><p>Try another name or email.</p></div>
 @endforelse
-<div class="pagination">{{ $employees->links() }}</div></section>
+@if($employees->hasPages())<div class="pagination">{{ $employees->links() }}</div>@endif</section>
 @endsection

@@ -9,7 +9,7 @@ window.unlockTermsIfAtBottom = function () {
         checkbox.disabled = false;
 
         if (notice) {
-            notice.textContent = '✅ Nabasa mo na ang lahat ng tuntunin — maaari nang magpatuloy';
+            notice.textContent = ' Nabasa mo na ang lahat ng tuntunin — maaari nang magpatuloy';
             notice.style.background = '#d1fae5';
             notice.style.borderColor = '#6ee7b7';
             notice.style.color = '#065f46';

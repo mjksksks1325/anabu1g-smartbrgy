@@ -8,11 +8,32 @@ test('portal home shows community content without the document request form', fu
     $this->get(route('home'))
         ->assertOk()
         ->assertViewIs('portal.index')
+        ->assertSee('images/barangay-hall-anabu-1g.jpg')
+        ->assertSee('Mabilis. Malinaw. Maaasahang serbisyo.')
+        ->assertSee('Check status')
+        ->assertSee('Government-secured resident portal')
+        ->assertSee('GOVPH')
+        ->assertSee('css/figma-portal.css')
+        ->assertSee('<body class="has-hero-header">', false)
+        ->assertSee('data-resident-theme aria-pressed="false" aria-label="Dark mode"', false)
+        ->assertSee('theme-icon-moon', false)
+        ->assertSee('theme-icon-sun', false)
+        ->assertDontSee('class="dark-mode', false)
+        ->assertDontSee('Staff portal')
         ->assertSee(route('portal.request.create'), false)
         ->assertSee('Request a document')
         ->assertDontSee('id="request-flow"', false)
         ->assertDontSee('id="screen-terms"', false)
         ->assertDontSee('id="resident-details-form"', false);
+});
+
+test('guest hero status opens resident sign in and signed in status opens request history', function () {
+    $this->get(route('home'))
+        ->assertSee('href="'.route('portal.login').'">Check status', false);
+
+    $this->actingAs(User::factory()->resident()->create(), 'resident')
+        ->get(route('home'))
+        ->assertSee('href="'.route('portal.account').'">Check status', false);
 });
 
 test('public portal shows community information and usable service links', function () {
@@ -226,4 +247,13 @@ test('simultaneous employee access does not widen resident request status access
     Auth::shouldUse('web');
     $this->get(route('admin.document-requests.show', $otherRequest))
         ->assertOk()->assertSee('REQ-OTHER-RESIDENT');
+});
+
+it('overlays the header on the home hero photo and restores it after scrolling', function () {
+    $this->get(route('home'))->assertOk()
+        ->assertSee('has-hero-header', false)
+        ->assertSee("classList.toggle('hero-header-scrolled'", false);
+
+    $this->get(route('portal.information'))->assertOk()
+        ->assertDontSee('has-hero-header', false);
 });

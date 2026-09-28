@@ -1,18 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document Request Details</title>
-    <link rel="icon" type="image/jpeg" href="{{ asset('images/anabu-logo.jpg') }}">
-    <link rel="stylesheet" href="{{ asset('css/admin.css') }}">
-<link rel="stylesheet" href="{{ asset('css/government.css') }}">
-</head>
-
-<body class="light-mode standalone-page">
-@include('partials.civic-header')
-
-<main id="main-content" tabindex="-1" class="civic-main">
+@extends('layouts.admin-iot')
+@section('title', 'Document Request Details')
+@section('content')
+<div class="document-request-detail">
+    <div class="eyebrow">Records / Document Requests</div>
 
     {{-- Page Header --}}
     <div class="page-header-row" style="margin-bottom:20px;">
@@ -30,10 +20,9 @@
 
     {{-- Success Message --}}
     @if (session('success'))
-        <div class="card"
-             style="padding:12px 16px; margin-bottom:16px; border-color:var(--border-green);">
-            <span style="color:var(--green-500);">
-                ✓ {{ session('success') }}
+        <div class="card request-success" role="status">
+            <span>
+                 {{ session('success') }}
             </span>
         </div>
     @endif
@@ -48,7 +37,7 @@
 
         <div class="card-header">
             <div>
-                <div class="card-title">📄 Request Information</div>
+                <div class="card-title"> Request Information</div>
                 <div class="card-sub">
                     Reference: {{ $documentRequest->reference_code }}
                 </div>
@@ -59,12 +48,7 @@
             </span>
         </div>
 
-        <div style="
-            display:grid;
-            grid-template-columns:repeat(2, minmax(0, 1fr));
-            gap:18px;
-            padding:18px;
-        ">
+        <div class="request-detail-grid">
 
             <div>
                 <div class="stat-label">Reference Code</div>
@@ -131,7 +115,7 @@
 
         <div class="card-header">
             <div>
-                <div class="card-title">⚙️ Request Status</div>
+                <div class="card-title"> Request Status</div>
                 <div class="card-sub">
                     Update the processing status and staff remarks
                 </div>
@@ -205,7 +189,7 @@
                 </a>
 
                 <button type="submit" class="btn btn-green">
-                    ✓ Update Request
+                     Update Request
                 </button>
 
             </div>
@@ -214,7 +198,5 @@
 
     </div>
 
-</main>
-@include('partials.civic-footer')
-</body>
-</html>
+</div>
+@endsection

@@ -36,15 +36,15 @@ let RESIDENT_TOTAL = 0;
 const BASE_POPULATION = 0;
 const BASE_RESIDENT_SAMPLE_COUNT = RESIDENTS.length;
 const SPECIAL_GROUP_META = {
-  'Senior Citizen': { icon: '👴', label: 'Senior Citizens', color: 'var(--senior-color)', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.2)', sub: '(60+)' },
-  'PWD': { icon: '♿', label: 'Persons w/ Disability', color: '#A78BFA', bg: 'rgba(139,92,246,0.08)', border: 'rgba(139,92,246,0.2)', sub: 'PWD registered' },
-  'Solo Parent': { icon: '👪', label: 'Solo Parents', color: 'var(--blue-400)', bg: 'rgba(42,126,211,0.08)', border: 'rgba(42,126,211,0.2)', sub: 'With solo parent ID' },
-  'Indigenous People': { icon: '🌿', label: 'Indigenous People', color: 'var(--green-500)', bg: 'rgba(0,255,106,0.06)', border: 'rgba(0,255,106,0.15)', sub: 'Registered IP' },
-  '4Ps Beneficiary': { icon: '💰', label: '4Ps Beneficiaries', color: '#EF4444', bg: 'rgba(239,68,68,0.07)', border: 'rgba(239,68,68,0.18)', sub: 'DSWD-registered' },
-  'Teenage Mother': { icon: '👶', label: 'Teenage Mothers', color: '#F472B6', bg: 'rgba(244,114,182,0.07)', border: 'rgba(244,114,182,0.2)', sub: 'Ages 13-19' },
-  'Out-of-School Youth': { icon: '🎓', label: 'Out-of-School Youth', color: '#34D399', bg: 'rgba(52,211,153,0.07)', border: 'rgba(52,211,153,0.18)', sub: 'Ages 15-30' },
-  'Unemployed Adult': { icon: '💼', label: 'Unemployed Adults', color: '#FB923C', bg: 'rgba(251,146,60,0.07)', border: 'rgba(251,146,60,0.18)', sub: 'Ages 18-60' },
-  'Malnourished Child': { icon: '🏥', label: 'Malnourished Children', color: '#F87171', bg: 'rgba(248,113,113,0.07)', border: 'rgba(248,113,113,0.2)', sub: 'Under 13 years old' },
+  'Senior Citizen': { icon: '', label: 'Senior Citizens', color: 'var(--senior-color)', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.2)', sub: '(60+)' },
+  'PWD': { icon: '', label: 'Persons w/ Disability', color: '#A78BFA', bg: 'rgba(139,92,246,0.08)', border: 'rgba(139,92,246,0.2)', sub: 'PWD registered' },
+  'Solo Parent': { icon: '', label: 'Solo Parents', color: 'var(--blue-400)', bg: 'rgba(42,126,211,0.08)', border: 'rgba(42,126,211,0.2)', sub: 'With solo parent ID' },
+  'Indigenous People': { icon: '', label: 'Indigenous People', color: 'var(--green-500)', bg: 'rgba(0,255,106,0.06)', border: 'rgba(0,255,106,0.15)', sub: 'Registered IP' },
+  '4Ps Beneficiary': { icon: '', label: '4Ps Beneficiaries', color: '#EF4444', bg: 'rgba(239,68,68,0.07)', border: 'rgba(239,68,68,0.18)', sub: 'DSWD-registered' },
+  'Teenage Mother': { icon: '', label: 'Teenage Mothers', color: '#F472B6', bg: 'rgba(244,114,182,0.07)', border: 'rgba(244,114,182,0.2)', sub: 'Ages 13-19' },
+  'Out-of-School Youth': { icon: '', label: 'Out-of-School Youth', color: '#34D399', bg: 'rgba(52,211,153,0.07)', border: 'rgba(52,211,153,0.18)', sub: 'Ages 15-30' },
+  'Unemployed Adult': { icon: '', label: 'Unemployed Adults', color: '#FB923C', bg: 'rgba(251,146,60,0.07)', border: 'rgba(251,146,60,0.18)', sub: 'Ages 18-60' },
+  'Malnourished Child': { icon: '', label: 'Malnourished Children', color: '#F87171', bg: 'rgba(248,113,113,0.07)', border: 'rgba(248,113,113,0.2)', sub: 'Under 13 years old' },
 };
 
 function totalPopulation() {
@@ -96,7 +96,7 @@ async function refreshDashboardStats() {
         ? '<div style="text-align:center;color:var(--text-muted);font-size:11px;padding:18px 0;">No recent activity.</div>'
         : activity.map(item => `
           <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
-            <span style="font-size:16px;flex-shrink:0;">${item.type === 'incident' ? '🚨' : '📋'}</span>
+            <span style="font-size:16px;flex-shrink:0;">${item.type === 'incident' ? '' : ''}</span>
             <div style="flex:1;min-width:0;">
               <div style="font-size:12px;font-weight:600;color:var(--text-primary);">${escapeText(item.title)}</div>
               <div style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeText(item.detail)}</div>
@@ -229,9 +229,9 @@ function openAddPurok() {
   if (labelEl) { labelEl.value = ''; labelEl.disabled = false; }
   if (colorEl) colorEl.value = '#22C55E';
   const title = modal?.querySelector('.modal-title');
-  if (title) title.textContent = '🏘️ Add Purok';
+  if (title) title.textContent = ' Add Purok';
   const saveBtn = modal?.querySelector('button.btn-green');
-  if (saveBtn) saveBtn.textContent = '💾 Save Purok';
+  if (saveBtn) saveBtn.textContent = ' Save Purok';
   openModal('modal-purok');
 }
 
@@ -309,12 +309,12 @@ loadCustomPuroks();
 // CERTIFICATE TYPES
 // ═══════════════════════════════════════
 const CERTIFICATE_TYPES = [
-  { id: 'BC',   label: 'Barangay Clearance',        icon: '📄', fee: 'PHP 50.00',  days: '1 day' },
-  { id: 'CR',   label: 'Certificate of Residency',  icon: '🏠', fee: 'PHP 50.00',  days: '1 day' },
-  { id: 'CI',   label: 'Certificate of Indigency',  icon: '📋', fee: 'Free',       days: '1 day' },
-  { id: 'BID',  label: 'Barangay ID',               icon: '🪪', fee: 'PHP 100.00', days: '3-5 days' },
-  { id: 'CTFJ', label: 'First Time Jobseeker',      icon: '💼', fee: 'Free',       days: '1 day' },
-  { id: 'BBC',  label: 'Business Clearance',        icon: '🏪', fee: 'PHP 200.00+',days: '3-5 days' },
+  { id: 'BC',   label: 'Barangay Clearance',        icon: '', fee: 'PHP 50.00',  days: '1 day' },
+  { id: 'CR',   label: 'Certificate of Residency',  icon: '', fee: 'PHP 50.00',  days: '1 day' },
+  { id: 'CI',   label: 'Certificate of Indigency',  icon: '', fee: 'Free',       days: '1 day' },
+  { id: 'BID',  label: 'Barangay ID',               icon: '', fee: 'PHP 100.00', days: '3-5 days' },
+  { id: 'CTFJ', label: 'First Time Jobseeker',      icon: '', fee: 'Free',       days: '1 day' },
+  { id: 'BBC',  label: 'Business Clearance',        icon: '', fee: 'PHP 200.00+',days: '3-5 days' },
 ];
 
 // ═══════════════════════════════════════
@@ -350,17 +350,15 @@ const ELIGIBILITY_RULES = {
 // ═══════════════════════════════════════
 // THEME TOGGLE (Light / Dark Mode)
 // ═══════════════════════════════════════
-let isLightMode = true;
+let isLightMode = document.body?.classList?.contains('light-mode') ?? true;
 
 function toggleTheme() {
   isLightMode = !isLightMode;
   document.body.classList.toggle('light-mode', isLightMode);
-  const icon = document.getElementById('theme-icon');
   const label = document.getElementById('theme-label');
-  if (icon)  icon.textContent  = isLightMode ? '🌙' : '☀️';
   if (label) label.textContent = isLightMode ? 'Dark Mode' : 'Light Mode';
   try { localStorage.setItem('smartbrgy_theme', isLightMode ? 'light' : 'dark'); } catch (_) {}
-  showToast(isLightMode ? '☀️ Light Mode na!' : '🌙 Dark Mode na!', 'green');
+  showToast(isLightMode ? 'Light mode na!' : 'Dark mode na!', 'green');
 }
 
 function changeFontSize(dir) {
@@ -395,7 +393,7 @@ function showScreen(id, el) {
   const needed = screenPermMap[id];
   const allowed = ACCESS_PERMS[currentUserAccess] || ACCESS_PERMS['View Only'];
   if (needed && !allowed.includes(needed)) {
-    showToast(`🚫 Walang access sa "${needed}". Makipag-ugnayan sa Admin.`, 'red');
+    showToast(`Walang access sa "${needed}". Makipag-ugnayan sa Admin.`, 'red');
     return;
   }
   const screen = document.getElementById('screen-' + id);
@@ -403,6 +401,8 @@ function showScreen(id, el) {
   document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   screen.classList.add('active');
+  const topbarScreenName = document.getElementById('topbar-screen-name');
+  if (topbarScreenName) topbarScreenName.textContent = screen.querySelector?.('.page-header h1')?.textContent?.trim() || 'Dashboard';
   if (el) el.classList.add('active');
   try { localStorage.setItem('smartbrgy_active_screen', id); } catch (_) {}
   if (screen) { screen.setAttribute('tabindex', '-1'); screen.focus({ preventScroll: true }); }
@@ -804,10 +804,10 @@ function legacyRenderPurokCards() {
     const seniorCount = seniorByPurok[p.key] || 0;
     grid.innerHTML += `
       <div class="demo-purok-card">
-        <div class="demo-purok-name">📍 ${escapeText(p.label)}</div>
+        <div class="demo-purok-name"> ${escapeText(p.label)}</div>
         <div class="demo-purok-pop">${count.toLocaleString()}</div>
         <div class="demo-purok-pct">${pct}% ng total population</div>
-        ${seniorCount > 0 ? `<div class="demo-purok-senior">👴 ${seniorCount} Senior Citizen${seniorCount > 1 ? 's' : ''}</div>` : ''}
+        ${seniorCount > 0 ? `<div class="demo-purok-senior"> ${seniorCount} Senior Citizen${seniorCount > 1 ? 's' : ''}</div>` : ''}
         <div class="demo-purok-bar">
           <div class="progress-bar"><div class="progress-fill" style="width:${barPct}%;background:${p.color}"></div></div>
         </div>
@@ -871,7 +871,7 @@ function legacyRenderSeniorList() {
           <td style="font-size:11.5px;">${r.dob}</td>
           <td>${r.purok}</td>
           <td><span class="badge ${r.status === 'Active' ? 'badge-green' : 'badge-red'}">${r.status}</span></td>
-          <td><span class="badge badge-senior">👴 Senior Citizen</span></td>
+          <td><span class="badge badge-senior"> Senior Citizen</span></td>
         </tr>`;
       }).join('')}</tbody>
     </table>`;
@@ -901,7 +901,7 @@ function legacyRenderResidentsTable(filter = '', statusFilter = '') {
         <td><span style="font-family:var(--font-mono);font-size:10.5px;color:var(--blue-400);">${r.id}</span></td>
         <td>
           <strong style="color:var(--text-primary);">${r.name}</strong>
-          ${senior ? '<span class="badge badge-senior" style="margin-left:5px;font-size:9px;">👴 Senior</span>' : ''}
+          ${senior ? '<span class="badge badge-senior" style="margin-left:5px;font-size:9px;"> Senior</span>' : ''}
         </td>
         <td><span style="font-weight:700;color:${senior ? 'var(--senior-color)' : 'var(--text-primary)'};">${age}</span></td>
         <td>${r.purok}</td>
@@ -909,9 +909,9 @@ function legacyRenderResidentsTable(filter = '', statusFilter = '') {
         <td>${r.civil}</td>
         <td><span class="badge ${r.status === 'Active' ? 'badge-green' : 'badge-red'}">${r.status}</span></td>
         <td>
-          <button class="btn btn-xs btn-primary" onclick="openViewResident('${r.id}')">👁 View</button>
-          <button class="btn btn-xs" onclick="openEditResident('${r.id}')">✏️ Edit</button>
-          <button class="btn btn-xs btn-danger" style="margin-left:8px;" onclick="deleteResident('${r.id}')">🗑 Delete</button>
+          <button class="btn btn-xs btn-primary" onclick="openViewResident('${r.id}')"> View</button>
+          <button class="btn btn-xs" onclick="openEditResident('${r.id}')"> Edit</button>
+          <button class="btn btn-xs btn-danger" style="margin-left:8px;" onclick="deleteResident('${r.id}')"> Delete</button>
         </td>`;
       tbody.appendChild(tr);
     });
@@ -932,7 +932,7 @@ function legacyDeleteResident(id) {
   for (let i = REQUEST_RECORDS.length - 1; i >= 0; i--) {
     if (REQUEST_RECORDS[i].residentId === id) REQUEST_RECORDS.splice(i, 1);
   }
-  addLiveAuditEntry('🗑️', 'record', 'Resident Record Deleted', `${id} — ${name}`, currentUserName || 'Staff');
+  addLiveAuditEntry('', 'record', 'Resident Record Deleted', `${id} — ${name}`, currentUserName || 'Staff');
   showToast(`Resident record ni ${name} ay natanggal.`, '');
   renderResidentsTable();
   renderDashPurokBreakdown();
@@ -952,7 +952,7 @@ function legacyOpenEditResident(id) {
 
   // Set modal title
   const titleEl = document.getElementById('modal-resident-title');
-  if (titleEl) titleEl.innerHTML = '✏️ <span>I-edit ang Resident Record</span>';
+  if (titleEl) titleEl.innerHTML = ' <span>I-edit ang Resident Record</span>';
 
   // Populate fields
   const nameParts = r.name.split(' ');
@@ -986,7 +986,7 @@ function legacyBrowserOpenAddResident() {
   syncPurokSelects();
   // Reset title and fields for adding a new resident
   const titleEl = document.getElementById('modal-resident-title');
-  if (titleEl) titleEl.innerHTML = '➕ <span>I-register ang Bagong Resident</span>';
+  if (titleEl) titleEl.innerHTML = ' <span>I-register ang Bagong Resident</span>';
   ['res-lastname','res-name','res-dob','res-contact','res-address','res-edit-id'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
@@ -1019,7 +1019,7 @@ function legacySaveResident() {
       RESIDENTS[idx].civil = civil;
       RESIDENTS[idx].purok = purok;
       RESIDENTS[idx].type = type;
-      showToast('✅ Record updated successfully: ' + fullName, 'green');
+      showToast(' Record updated successfully: ' + fullName, 'green');
       renderResidentsTable();
     }
   } else {
@@ -1027,7 +1027,7 @@ function legacySaveResident() {
     const newId = 'ANB-' + String(RESIDENTS.length + 1).padStart(4, '0');
     RESIDENTS.push({ id: newId, name: fullName, purok, dob: dob || '2000-01-01', gender, civil, contact, status: 'Active', household: 'HH-NEW', type });
     RESIDENT_STATUS[newId] = { blotter: false, blotterDetails: [], goodStanding: true, notes: '' };
-    showToast('✅ Resident registered: ' + fullName + ' (' + newId + ')', 'green');
+    showToast(' Resident registered: ' + fullName + ' (' + newId + ')', 'green');
     renderResidentsTable();
   }
   closeModal('modal-resident');
@@ -1045,14 +1045,14 @@ function legacyOpenViewResident(id) {
   const age = calcAge(r.dob);
   const senior = age >= 60;
   const blotterHtml = rs?.blotter
-    ? `<div style="grid-column:1/-1;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;"><strong style="color:#FCA5A5;">⚠️ Blotter Record:</strong><div style="color:var(--text-muted);margin-top:4px;">${rs.blotterDetails.join('<br>')}</div></div>`
-    : `<div style="grid-column:1/-1;background:var(--green-dim);border:1px solid var(--border-green);border-radius:var(--radius-sm);padding:8px 12px;font-size:12px;color:var(--green-500);">✅ Walang blotter — Good Standing</div>`;
+    ? `<div style="grid-column:1/-1;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;"><strong style="color:#FCA5A5;"> Blotter Record:</strong><div style="color:var(--text-muted);margin-top:4px;">${rs.blotterDetails.join('<br>')}</div></div>`
+    : `<div style="grid-column:1/-1;background:var(--green-dim);border:1px solid var(--border-green);border-radius:var(--radius-sm);padding:8px 12px;font-size:12px;color:var(--green-500);"> Walang blotter — Good Standing</div>`;
   document.getElementById('view-resident-content').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
       <div class="form-group"><div class="form-label">Resident ID</div><div style="font-family:var(--font-mono);color:var(--blue-400);">${r.id}</div></div>
       <div class="form-group"><div class="form-label">Status</div>
         <span class="badge ${r.status === 'Active' ? 'badge-green' : 'badge-red'}">${r.status}</span>
-        ${senior ? '<span class="badge badge-senior" style="margin-left:5px;">👴 Senior Citizen</span>' : ''}
+        ${senior ? '<span class="badge badge-senior" style="margin-left:5px;"> Senior Citizen</span>' : ''}
       </div>
       <div class="form-group"><div class="form-label">Full Name</div><div style="color:var(--text-primary);font-weight:600;">${r.name}</div></div>
       <div class="form-group"><div class="form-label">Date of Birth</div><div>${r.dob}</div></div>
@@ -1132,7 +1132,7 @@ async function issueManualCertificate(event) {
   if (submitButton) {
     submitButton.disabled = true;
     submitButton.dataset.originalText = submitButton.innerHTML;
-    submitButton.innerHTML = '⏳ Issuing...';
+    submitButton.innerHTML = 'Issuing...';
   }
 
   try {
@@ -1166,7 +1166,7 @@ async function issueManualCertificate(event) {
     document.getElementById('manual-certificate-form')?.reset();
     updateManualCertificateFee();
     await refreshIssuedCertificates();
-    showToast('✅ Certificate issued successfully.', 'green');
+    showToast(' Certificate issued successfully.', 'green');
 
     if (data.print_url) {
       if (printWindow) {
@@ -1183,7 +1183,7 @@ async function issueManualCertificate(event) {
   } finally {
     if (submitButton) {
       submitButton.disabled = false;
-      submitButton.innerHTML = submitButton.dataset.originalText || '🖨️ Issue & Print';
+      submitButton.innerHTML = submitButton.dataset.originalText || ' Issue & Print';
     }
   }
 }
@@ -1237,7 +1237,7 @@ function renderIssuedCertificates(certificates) {
       <td>${escapeText(fee)}</td>
       <td>${escapeText(issuedDate)}</td>
       <td>${escapeText(certificate.issued_by || 'Barangay Staff')}</td>
-      <td><div style="display:flex;gap:5px;"><button class="btn btn-xs btn-green issued-reprint">🖨️ Reprint</button><button class="btn btn-xs issued-verify">🔍 Verify</button></div></td>`;
+      <td><div style="display:flex;gap:5px;"><button class="btn btn-xs btn-green issued-reprint"> Reprint</button><button class="btn btn-xs issued-verify"> Verify</button></div></td>`;
 
     row.querySelector('.issued-reprint')?.addEventListener('click', () => {
       window.open(certificate.print_url, '_blank');
@@ -1256,7 +1256,7 @@ function legacyRenderAuditLog() {
   AUDIT_LOGS.forEach(log => {
     const div = document.createElement('div');
     div.className = 'log-item';
-    div.innerHTML = `<div class="log-icon-box">${escapeText(log.icon)}</div><div style="flex:1;"><div class="log-action">${escapeText(log.action)}</div><div class="log-detail">${escapeText(log.detail)}</div><div class="log-time">🕐 ${escapeText(log.time)}</div></div>`;
+    div.innerHTML = `<div class="log-icon-box">${escapeText(log.icon)}</div><div style="flex:1;"><div class="log-action">${escapeText(log.action)}</div><div class="log-detail">${escapeText(log.detail)}</div><div class="log-time"> ${escapeText(log.time)}</div></div>`;
     container.appendChild(div);
   });
 }
@@ -1275,7 +1275,7 @@ function legacyRenderUsers() {
       <td><strong style="color:var(--text-primary);">${u.name}</strong></td>
       <td>${u.role}</td>
       <td>${u.access}</td>
-      <td>${u.face ? '<span class="badge badge-green">✓ Enrolled</span>' : '<span class="badge badge-gray">Not Enrolled</span>'}</td>
+      <td>${u.face ? '<span class="badge badge-green"> Enrolled</span>' : '<span class="badge badge-gray">Not Enrolled</span>'}</td>
       <td><span class="badge ${u.status === 'Active' ? 'badge-green' : 'badge-red'}">${u.status}</span></td>
       <td style="font-size:11px;">${u.last}</td>
       <td><button class="btn btn-xs btn-primary" onclick="showToast('Managing user ${u.name}', '')">Manage</button></td>`;
@@ -1360,8 +1360,8 @@ function showToast(msg, type) {
   if (!wrap) return;
   const toast = document.createElement('div');
   toast.className = 'toast' + (type ? ' ' + type : '');
-  const icons = { green: '✅', red: '❌', '': 'ℹ️' };
-  toast.innerHTML = `<span style="font-size:15px;">${icons[type] || 'ℹ️'}</span><span>${escapeText(msg)}</span>`;
+  const icons = { green: '', red: '', '': 'ℹ' };
+  toast.innerHTML = `<span style="font-size:15px;">${icons[type] || 'ℹ'}</span><span>${escapeText(msg)}</span>`;
   wrap.appendChild(toast);
   setTimeout(() => {
     toast.style.opacity = '0';
@@ -1470,9 +1470,9 @@ function legacyRenderRequestRecords(nameFilter = '', statusFilter = '') {
     const hasBlotter = rs?.blotter || incidentBlotter.length > 0;
     const hasIneligible = requests.some(r => !r.eligible || r.status === 'Blocked');
     const statusBadge = hasBlotter
-      ? '<span class="badge badge-red">⚠️ May Blotter</span>'
-      : hasIneligible ? '<span class="badge badge-amber">🚫 May Blocked</span>'
-      : '<span class="badge badge-green">✅ Good Standing</span>';
+      ? '<span class="badge badge-red"> May Blotter</span>'
+      : hasIneligible ? '<span class="badge badge-amber"> May Blocked</span>'
+      : '<span class="badge badge-green"> Good Standing</span>';
     const age = calcAge(resident.dob);
     const senior = age >= 60;
     const card = document.createElement('div');
@@ -1482,7 +1482,7 @@ function legacyRenderRequestRecords(nameFilter = '', statusFilter = '') {
       ? '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:12px 0;">Wala pang request records.</td></tr>'
       : requests.map(req => {
           const sc = req.status === 'Completed' ? 'badge-green' : req.status === 'Ready to Print' ? 'badge-blue' : req.status === 'Blocked' ? 'badge-red' : 'badge-amber';
-          const eligBadge = req.eligible ? '<span class="badge badge-green" style="font-size:10px;">✅ Eligible</span>' : '<span class="badge badge-red" style="font-size:10px;">🚫 Ineligible</span>';
+          const eligBadge = req.eligible ? '<span class="badge badge-green" style="font-size:10px;"> Eligible</span>' : '<span class="badge badge-red" style="font-size:10px;"> Ineligible</span>';
           const nextStatus = req.status === 'Processing' ? 'Ready to Print' : req.status === 'Ready to Print' ? 'Completed' : '';
           const proceedBtn = nextStatus ? `<button class="btn btn-xs btn-green" style="margin-left:6px;" onclick="event.stopPropagation();advanceRequestRecord('${req.code}','${nextStatus}')">Proceed</button>` : '';
           return `<tr>
@@ -1500,7 +1500,7 @@ function legacyRenderRequestRecords(nameFilter = '', statusFilter = '') {
           <div class="rr-avatar" style="background:${hasBlotter ? 'rgba(239,68,68,0.18)' : 'var(--green-dim)'};color:${hasBlotter ? '#FCA5A5' : 'var(--green-500)'};">${resident.name.charAt(0)}</div>
           <div>
             <div style="font-weight:700;color:var(--text-primary);font-size:13.5px;">${resident.name}
-              ${senior ? '<span class="badge badge-senior" style="font-size:9px;margin-left:5px;">👴 Senior</span>' : ''}
+              ${senior ? '<span class="badge badge-senior" style="font-size:9px;margin-left:5px;"> Senior</span>' : ''}
             </div>
             <div style="font-size:11px;color:var(--text-muted);">${resident.id} &nbsp;•&nbsp; ${resident.purok} &nbsp;•&nbsp; ${age} yrs old</div>
           </div>
@@ -1508,12 +1508,12 @@ function legacyRenderRequestRecords(nameFilter = '', statusFilter = '') {
         <div style="display:flex;align-items:center;gap:8px;">
           ${statusBadge}
           <span class="badge badge-gray" style="font-size:10px;">${requests.length} req</span>
-          <button class="btn btn-xs btn-primary" onclick="event.stopPropagation();openEligibilityForResident('${resident.id}')">🔍 Check</button>
+          <button class="btn btn-xs btn-primary" onclick="event.stopPropagation();openEligibilityForResident('${resident.id}')"> Check</button>
           <span class="rr-chevron" style="color:var(--text-muted);font-size:12px;">▼</span>
         </div>
       </div>
-      ${rs?.blotter ? `<div style="background:rgba(239,68,68,0.07);border-left:3px solid #EF4444;padding:8px 12px;font-size:11.5px;color:#FCA5A5;">⚠️ <strong>Blotter:</strong> ${rs.blotterDetails.join('; ')}</div>` : ''}
-      ${incidentBlotter.length > 0 ? `<div style="background:rgba(239,68,68,0.07);border-left:3px solid #EF4444;padding:8px 12px;font-size:11.5px;color:#FCA5A5;">🚨 <strong>Incident Reports (Ine-reklamo):</strong> ${incidentBlotter.map(i => `${i.type} — ${i.date} (${i.id})`).join('; ')}</div>` : ''}
+      ${rs?.blotter ? `<div style="background:rgba(239,68,68,0.07);border-left:3px solid #EF4444;padding:8px 12px;font-size:11.5px;color:#FCA5A5;"> <strong>Blotter:</strong> ${rs.blotterDetails.join('; ')}</div>` : ''}
+      ${incidentBlotter.length > 0 ? `<div style="background:rgba(239,68,68,0.07);border-left:3px solid #EF4444;padding:8px 12px;font-size:11.5px;color:#FCA5A5;"> <strong>Incident Reports (Ine-reklamo):</strong> ${incidentBlotter.map(i => `${i.type} — ${i.date} (${i.id})`).join('; ')}</div>` : ''}
       <div class="rr-requests-panel" style="display:none;">
         <div style="overflow-x:auto;"><table class="tbl" style="margin-top:4px;"><thead><tr><th>Code</th><th>Dokumento</th><th>Petsa</th><th>Channel</th><th>Status</th><th>Eligibility</th></tr></thead><tbody>${requestRows}</tbody></table></div>
       </div>`;
@@ -1536,7 +1536,7 @@ function advanceRequestRecord(code, nextStatus) {
   req.status = nextStatus;
   const boardReq = CERT_REQUESTS.find(r => r.code === code);
   if (boardReq) boardReq.status = nextStatus;
-  addLiveAuditEntry('📋', 'cert', 'Request Proceeded', `${code} - ${nextStatus}`, currentUserName || 'Staff');
+  addLiveAuditEntry('', 'cert', 'Request Proceeded', `${code} - ${nextStatus}`, currentUserName || 'Staff');
   showToast(`${code} proceeded to ${nextStatus}.`, 'green');
   renderRequestRecords(rrCurrentFilter, rrCurrentStatusFilter);
   renderCertKanban();
@@ -1575,7 +1575,7 @@ function populateEligResidentDropdown(preselect) {
     const opt = document.createElement('option');
     opt.value = r.id;
     const age = calcAge(r.dob);
-    opt.textContent = `${r.name} (${r.id}) — ${age} yrs${age >= 60 ? ' 👴' : ''}`;
+    opt.textContent = `${r.name} (${r.id}) — ${age} yrs${age >= 60 ? ' ' : ''}`;
     if (preselect && r.id === preselect) opt.selected = true;
     sel.appendChild(opt);
   });
@@ -1600,7 +1600,7 @@ function legacyRunEligibilityCheck() {
   const color = result.eligible ? 'var(--green-500)' : '#EF4444';
   const bg = result.eligible ? 'var(--green-dim)' : 'rgba(239,68,68,0.06)';
   const border = result.eligible ? 'var(--border-green)' : 'rgba(239,68,68,0.3)';
-  const headline = result.eligible ? '✅ ELIGIBLE — Maaaring I-issue ang Dokumento' : '🚫 HINDI ELIGIBLE — Blocked ang Request';
+  const headline = result.eligible ? ' ELIGIBLE — Maaaring I-issue ang Dokumento' : ' HINDI ELIGIBLE — Blocked ang Request';
   resultEl.style.display = 'block';
   resultEl.innerHTML = `
     <div style="background:${bg};border:1px solid ${border};border-radius:var(--radius);padding:14px;margin-bottom:12px;">
@@ -1621,7 +1621,7 @@ function legacyCheckEligibility(residentId, certId) {
   const reasons = [];
   let eligible = true;
   if (rule.requiresActive && resident.status !== 'Active') {
-    eligible = false; reasons.push('❌ Hindi active ang residente.');
+    eligible = false; reasons.push(' Hindi active ang residente.');
   }
   if (rule.needsGoodStanding) {
     // Check blotter flag directly (set manually on resident record)
@@ -1630,12 +1630,12 @@ function legacyCheckEligibility(residentId, certId) {
       const blotterList = status.blotterDetails?.length
         ? status.blotterDetails.map(b => `• ${b}`).join('<br>')
         : '(walang detalye)';
-      reasons.push(`❌ Naka-blotter ang residente:<br>${blotterList}`);
+      reasons.push(` Naka-blotter ang residente:<br>${blotterList}`);
     }
     // Check good_standing flag
     if (!status.goodStanding) {
       eligible = false;
-      reasons.push('❌ Hindi nasa mabuting kalagayan (good standing) ang residente.');
+      reasons.push(' Hindi nasa mabuting kalagayan (good standing) ang residente.');
     }
     // Check incident reports where resident is the complainee
     const nameLower = resident.name.trim().toLowerCase();
@@ -1645,15 +1645,15 @@ function legacyCheckEligibility(residentId, certId) {
     if (blotterIncidents.length > 0) {
       eligible = false;
       const list = blotterIncidents.map(i => `• ${i.type} — ${i.date} (${i.id})`).join('<br>');
-      reasons.push(`❌ Nakasangkot sa ${blotterIncidents.length} incident report bilang ine-reklamo:<br>${list}`);
+      reasons.push(` Nakasangkot sa ${blotterIncidents.length} incident report bilang ine-reklamo:<br>${list}`);
     }
-    if (eligible) reasons.push('✅ Nasa mabuting kalagayan sa barangay. Walang blotter records.');
+    if (eligible) reasons.push(' Nasa mabuting kalagayan sa barangay. Walang blotter records.');
   }
   if (rule.oneTimeOnly) {
     const prev = REQUEST_RECORDS.filter(r => r.residentId === residentId && r.certId === certId && r.status === 'Completed');
-    if (prev.length > 0) { eligible = false; reasons.push(`❌ One-time only. Nakuha na noong: ${prev[0].date}.`); }
+    if (prev.length > 0) { eligible = false; reasons.push(` One-time only. Nakuha na noong: ${prev[0].date}.`); }
   }
-  if (resident.status === 'Active') reasons.push('✅ Active resident.');
+  if (resident.status === 'Active') reasons.push(' Active resident.');
   return { eligible, reasons, resident, rule, status };
 }
 
@@ -1675,7 +1675,7 @@ function legacyOpenViewResidentRequests(residentId) {
   if (!residentId) return;
   const r = RESIDENTS.find(x => x.id === residentId);
   const requests = REQUEST_RECORDS.filter(req => req.residentId === residentId);
-  document.getElementById('rr-detail-title').textContent = `📋 ${r?.name} — Request History`;
+  document.getElementById('rr-detail-title').textContent = ` ${r?.name} — Request History`;
   const rows = requests.length === 0
     ? '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:16px;">Wala pang request records.</td></tr>'
     : requests.map(req => {
@@ -1685,7 +1685,7 @@ function legacyOpenViewResidentRequests(residentId) {
           <td style="font-size:12px;">${req.type}</td>
           <td style="font-size:11px;color:var(--text-muted);">${req.date}</td>
           <td><span class="badge ${sc}" style="font-size:10px;">${req.status}</span></td>
-          <td>${req.eligible ? '<span class="badge badge-green" style="font-size:10px;">✅ Eligible</span>' : '<span class="badge badge-red" style="font-size:10px;">🚫 Blocked</span>'}</td>
+          <td>${req.eligible ? '<span class="badge badge-green" style="font-size:10px;"> Eligible</span>' : '<span class="badge badge-red" style="font-size:10px;"> Blocked</span>'}</td>
         </tr>`;
       }).join('');
   document.getElementById('rr-detail-content').innerHTML = `
@@ -1808,14 +1808,14 @@ function renderPurokCards() {
     const bene = Number(p.fourPsCount ?? beneByPurok[p.key] ?? 0);
     grid.innerHTML += `
       <div class="demo-purok-card">
-        <div class="demo-purok-name">📍 ${escapeText(p.label)}</div>
+        <div class="demo-purok-name"> ${escapeText(p.label)}</div>
         <div class="demo-purok-pop" style="color:${p.color};">${count.toLocaleString()}</div>
         <div class="demo-purok-pct">${pct}% of total population</div>
         <div class="demo-purok-bar" style="margin:8px 0 6px;"><div class="progress-bar"><div class="progress-fill" style="width:${barPct}%;background:${p.color};"></div></div></div>
         <div class="sg-tags">
-          ${seniors > 0 ? `<span class="demo-purok-tag" style="color:var(--senior-color);border-color:rgba(245,158,11,0.25);">👴 ${seniors} Seniors</span>` : ''}
-          ${pwd > 0 ? `<span class="demo-purok-tag" style="color:#A78BFA;border-color:rgba(139,92,246,0.25);">♿ ${pwd} PWD</span>` : ''}
-          ${bene > 0 ? `<span class="demo-purok-tag" style="color:#EF4444;border-color:rgba(239,68,68,0.25);">💰 ${bene} 4Ps</span>` : ''}
+          ${seniors > 0 ? `<span class="demo-purok-tag" style="color:var(--senior-color);border-color:rgba(245,158,11,0.25);"> ${seniors} Seniors</span>` : ''}
+          ${pwd > 0 ? `<span class="demo-purok-tag" style="color:#A78BFA;border-color:rgba(139,92,246,0.25);"> ${pwd} PWD</span>` : ''}
+          ${bene > 0 ? `<span class="demo-purok-tag" style="color:#EF4444;border-color:rgba(239,68,68,0.25);"> ${bene} 4Ps</span>` : ''}
         </div>
       </div>`;
   });
@@ -1890,10 +1890,10 @@ function renderDemographics() {
 // CERTIFICATES KANBAN
 // ═══════════════════════════════════════
 const CERT_LANES = [
-  { id: 'online',     label: 'Online Requests', color: '#A78BFA',          icon: '🌐', next: 'In Progress',    nextLabel: '▶ Process',        nextClass: 'btn-primary' },
-  { id: 'processing', label: 'Processing',       color: '#F59E0B',          icon: '⏳', next: 'Ready to Print', nextLabel: '▶ Ready to Print', nextClass: 'btn-primary' },
-  { id: 'ready',      label: 'Ready to Print',   color: 'var(--blue-400)', icon: '🖨️', next: 'Completed',      nextLabel: '✅ Print & Release',nextClass: 'btn-green'   },
-  { id: 'completed',  label: 'Released / Done',  color: 'var(--green-500)',icon: '✅', next: null,              nextLabel: null,               nextClass: ''            },
+  { id: 'online',     label: 'Online Requests', color: '#A78BFA',          icon: '', next: 'In Progress',    nextLabel: '▶ Process',        nextClass: 'btn-primary' },
+  { id: 'processing', label: 'Processing',       color: '#F59E0B',          icon: '', next: 'Ready to Print', nextLabel: '▶ Ready to Print', nextClass: 'btn-primary' },
+  { id: 'ready',      label: 'Ready to Print',   color: 'var(--blue-400)', icon: '', next: 'Completed',      nextLabel: ' Print & Release',nextClass: 'btn-green'   },
+  { id: 'completed',  label: 'Released / Done',  color: 'var(--green-500)',icon: '', next: null,              nextLabel: null,               nextClass: ''            },
 ];
 
 function getLane(status, via) {
@@ -1936,7 +1936,7 @@ async function advanceCertStatus(code, newStatus, event) {
   if (button) {
     button.disabled = true;
     button.dataset.originalText = button.innerHTML;
-    button.innerHTML = '⏳ Updating...';
+    button.innerHTML = 'Updating...';
   }
 
   try {
@@ -1974,11 +1974,11 @@ async function advanceCertStatus(code, newStatus, event) {
 
     await refreshDocumentRequestsLive();
 
-    showToast(`✅ ${code} → ${newStatus}`, 'green');
+    showToast(` ${code} → ${newStatus}`, 'green');
 
     if (typeof addLiveAuditEntry === 'function') {
       addLiveAuditEntry(
-        '📋',
+        '',
         'cert',
         `Request status → ${newStatus}`,
         code,
@@ -2202,7 +2202,7 @@ function renderCertKanban(filter = '') {
                 "
                 onclick="openViewCertReq('${r.code}')"
               >
-                👁 View
+                 View
               </button>
             `;
 
@@ -2245,7 +2245,7 @@ function renderCertKanban(filter = '') {
                 >
 
                   <span style="font-size:15px;">
-                    ${ct?.icon || '📄'}
+                    ${ct?.icon || ''}
                   </span>
 
                   <div class="cert-card-name">
@@ -2357,7 +2357,7 @@ function openViewCertReq(code) {
     const isImg = /\.(png|jpe?g|gif|webp|heic)$/i.test(r.attachment);
     attEl.innerHTML = isImg
       ? `<a href="${API}${r.attachment}" target="_blank"><img src="${API}${r.attachment}" style="max-width:100%;max-height:200px;border-radius:8px;border:1px solid var(--border);object-fit:contain;" /></a>`
-      : `<a href="${API}${r.attachment}" target="_blank" style="font-size:12px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-glass);color:var(--blue-400);">📎 Buksan ang Attachment</a>`;
+      : `<a href="${API}${r.attachment}" target="_blank" style="font-size:12px;padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-glass);color:var(--blue-400);"> Buksan ang Attachment</a>`;
     attWrap.style.display = 'block';
   } else if (attWrap) {
     attWrap.style.display = 'none';
@@ -2422,7 +2422,7 @@ function renderAuditLog() {
     row.className = 'audit-log-row';
     row.style.background = sev;
     row.innerHTML = `
-      <div class="audit-type-icon" style="background:${typeBg};border-color:${typeColor}20;">${escapeText(log.icon)}</div>
+      <div class="audit-type-icon" style="background:${typeBg};border-color:${typeColor}20;color:${typeColor};">${auditTypeSymbol(log.type)}</div>
       <div class="audit-time">${escapeText(log.time)}</div>
       <div>
         <div class="audit-action">${escapeText(log.action)}</div>
@@ -2432,6 +2432,18 @@ function renderAuditLog() {
       <span class="badge" style="background:${typeBg};color:${typeColor};border-color:${typeColor}30;font-size:9.5px;">${log.type.toUpperCase()}</span>`;
     container.appendChild(row);
   });
+}
+
+function auditTypeSymbol(type) {
+  const paths = {
+    auth: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/>',
+    cert: '<path d="M6 3h9l3 3v15H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM14 3v4h4M8 12h8M8 16h8"/>',
+    rfid: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
+    record: '<path d="M6 3h9l3 3v15H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM14 3v4h4M8 12h8M8 16h8"/>',
+    incident: '<path d="m12 3 10 18H2L12 3ZM12 9v5m0 3h.01"/>',
+    security: '<circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M16 3l5 5M16 7l2 2"/>',
+  };
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[type] || paths.record}</svg>`;
 }
 
 function filterAuditType(type, el) {
@@ -2713,13 +2725,13 @@ function renderEligRulesGrid() {
     const ct = CERTIFICATE_TYPES.find(c => c.id === id);
     return `<div style="background:var(--bg-glass);border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px 12px;">
       <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px;">
-        <span style="font-size:15px;">${ct?.icon || '📄'}</span>
+        <span style="font-size:15px;">${ct?.icon || ''}</span>
         <div style="font-size:12px;font-weight:700;color:var(--text-primary);">${rule.label}</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:4px;font-size:11px;">
-        <div style="color:${rule.needsGoodStanding ? '#EF4444' : 'var(--text-muted)'};">${rule.needsGoodStanding ? '⚠️ Requires clean record (no blotter)' : '✅ No clean record required'}</div>
-        <div style="color:${rule.oneTimeOnly ? '#F59E0B' : 'var(--text-muted)'};">${rule.oneTimeOnly ? '🔒 One-time only per resident' : '🔄 Can be requested multiple times'}</div>
-        <div style="color:${rule.requiresActive ? 'var(--green-500)' : 'var(--text-muted)'};">✅ Active resident status required</div>
+        <div style="color:${rule.needsGoodStanding ? '#EF4444' : 'var(--text-muted)'};">${rule.needsGoodStanding ? ' Requires clean record (no blotter)' : ' No clean record required'}</div>
+        <div style="color:${rule.oneTimeOnly ? '#F59E0B' : 'var(--text-muted)'};">${rule.oneTimeOnly ? ' One-time only per resident' : ' Can be requested multiple times'}</div>
+        <div style="color:${rule.requiresActive ? 'var(--green-500)' : 'var(--text-muted)'};"> Active resident status required</div>
         <div style="color:var(--text-muted);margin-top:3px;">Fee: <strong style="color:var(--text-primary);">${ct?.fee || '—'}</strong> | Processing: ${ct?.days || '—'}</div>
       </div>
     </div>`;
@@ -2808,7 +2820,7 @@ function launchApp(name = 'Staff', role = 'Staff') {
   startClock();
   startAuditAutoRefresh();
   populateEligResidentDropdown(null);
-  addLiveAuditEntry('🔐', 'auth', 'Login - Credentials', `System login - ${currentUserRole} access granted`, currentUserName);
+  addLiveAuditEntry('', 'auth', 'Login - Credentials', `System login - ${currentUserRole} access granted`, currentUserName);
   showToast(`Welcome back, ${currentUserName}!`, 'green');
 }
 
@@ -2846,7 +2858,7 @@ function renderSeniorList() {
           <td style="font-size:11.5px;">${r.dob}</td>
           <td>${escapeText(r.purok)}</td>
           <td><span class="badge ${r.status === 'Active' ? 'badge-green' : 'badge-red'}">${escapeText(r.status)}</span></td>
-          <td><span class="badge badge-senior">👴 Senior Citizen</span></td>
+          <td><span class="badge badge-senior"> Senior Citizen</span></td>
         </tr>`;
       }).join('')}</tbody>
     </table>`;
@@ -2861,10 +2873,10 @@ function legacyEnglishOpenViewResident(id) {
   const age = calcAge(r.dob);
   const senior = age >= 60;
   const blotterHtml = rs?.blotter
-    ? `<div style="grid-column:1/-1;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;"><strong style="color:#FCA5A5;">⚠️ Blotter Record:</strong><div style="color:var(--text-muted);margin-top:4px;">${rs.blotterDetails.join('<br>')}</div></div>`
-    : `<div style="grid-column:1/-1;background:var(--green-dim);border:1px solid var(--border-green);border-radius:var(--radius-sm);padding:8px 12px;font-size:12px;color:var(--green-500);">✅ No blotter record — Good Standing</div>`;
+    ? `<div style="grid-column:1/-1;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;"><strong style="color:#FCA5A5;"> Blotter Record:</strong><div style="color:var(--text-muted);margin-top:4px;">${rs.blotterDetails.join('<br>')}</div></div>`
+    : `<div style="grid-column:1/-1;background:var(--green-dim);border:1px solid var(--border-green);border-radius:var(--radius-sm);padding:8px 12px;font-size:12px;color:var(--green-500);"> No blotter record — Good Standing</div>`;
   const sg = [];
-  if (senior) sg.push('<span class="badge badge-senior">👴 Senior Citizen</span>');
+  if (senior) sg.push('<span class="badge badge-senior"> Senior Citizen</span>');
   (r.specialGroups || []).forEach(g => sg.push(`<span class="badge badge-blue">${g}</span>`));
   document.getElementById('view-resident-content').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
@@ -2896,18 +2908,18 @@ function checkEligibility(residentId, certId) {
   if (!resident || !status || !rule) return { eligible: false, reasons: ['Resident or document not found.'] };
   const reasons = [];
   let eligible = true;
-  if (rule.requiresActive && resident.status !== 'Active') { eligible = false; reasons.push('❌ Resident is not active.'); }
+  if (rule.requiresActive && resident.status !== 'Active') { eligible = false; reasons.push(' Resident is not active.'); }
   if (rule.needsGoodStanding) {
     // Check blotter flag on resident record
     if (status.blotter) {
       eligible = false;
       const blotterList = status.blotterDetails?.length ? status.blotterDetails.map(b => `• ${b}`).join('<br>') : '(walang detalye)';
-      reasons.push(`❌ Naka-blotter ang residente:<br>${blotterList}`);
+      reasons.push(` Naka-blotter ang residente:<br>${blotterList}`);
     }
     // Check good_standing flag
     if (!status.goodStanding) {
       eligible = false;
-      reasons.push(`❌ Hindi nasa mabuting kalagayan (good standing) ang residente.`);
+      reasons.push(` Hindi nasa mabuting kalagayan (good standing) ang residente.`);
     }
     // Check incident reports — resident named as complainee (Ine-reklamo)
     const nameLower = resident.name.trim().toLowerCase();
@@ -2917,15 +2929,15 @@ function checkEligibility(residentId, certId) {
     if (blotterIncidents.length > 0) {
       eligible = false;
       const list = blotterIncidents.map(i => `• ${i.type} — ${i.date} (${i.id})`).join('<br>');
-      reasons.push(`❌ Nakasangkot sa ${blotterIncidents.length} incident report bilang ine-reklamo:<br>${list}`);
+      reasons.push(` Nakasangkot sa ${blotterIncidents.length} incident report bilang ine-reklamo:<br>${list}`);
     }
-    if (eligible) reasons.push('✅ Nasa mabuting kalagayan. Walang blotter records.');
+    if (eligible) reasons.push(' Nasa mabuting kalagayan. Walang blotter records.');
   }
   if (rule.oneTimeOnly) {
     const prev = REQUEST_RECORDS.filter(r => r.residentId === residentId && r.certId === certId && r.status === 'Completed');
-    if (prev.length > 0) { eligible = false; reasons.push(`❌ One-time only. Previously obtained on: ${prev[0].date}.`); }
+    if (prev.length > 0) { eligible = false; reasons.push(` One-time only. Previously obtained on: ${prev[0].date}.`); }
   }
-  if (resident.status === 'Active') reasons.push('✅ Active resident status confirmed.');
+  if (resident.status === 'Active') reasons.push(' Active resident status confirmed.');
   return { eligible, reasons, resident, rule, status };
 }
 
@@ -2939,7 +2951,7 @@ function legacyEnglishRunEligibilityCheck() {
   const color = result.eligible ? 'var(--green-500)' : '#EF4444';
   const bg = result.eligible ? 'var(--green-dim)' : 'rgba(239,68,68,0.06)';
   const border = result.eligible ? 'var(--border-green)' : 'rgba(239,68,68,0.3)';
-  const headline = result.eligible ? '✅ ELIGIBLE — Document can be issued' : '🚫 NOT ELIGIBLE — Request is blocked';
+  const headline = result.eligible ? ' ELIGIBLE — Document can be issued' : ' NOT ELIGIBLE — Request is blocked';
   resultEl.style.display = 'block';
   resultEl.innerHTML = `
     <div style="background:${bg};border:1px solid ${border};border-radius:var(--radius);padding:14px;margin-bottom:12px;">
@@ -2950,7 +2962,7 @@ function legacyEnglishRunEligibilityCheck() {
     </div>`;
   proceedBtn.style.display = result.eligible ? 'block' : 'none';
   currentEligResidentId = residentId;
-  addLiveAuditEntry('🔍', 'cert', 'Eligibility Check', `${result.resident?.name} — ${result.rule?.label} — ${result.eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE'}`, currentUserName || 'Staff');
+  addLiveAuditEntry('', 'cert', 'Eligibility Check', `${result.resident?.name} — ${result.rule?.label} — ${result.eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE'}`, currentUserName || 'Staff');
 }
 
 // Real-time audit log integration for key actions
@@ -2981,7 +2993,7 @@ function legacyEnglishSaveResident() {
       if (oldZone && oldZone.total > 0) oldZone.total -= 1;
       if (newZone) newZone.total += 1;
     }
-    addLiveAuditEntry('🧑', 'record', 'Resident Record Updated', `${fullName} - ${editId}`, currentUserName || 'Staff');
+    addLiveAuditEntry('', 'record', 'Resident Record Updated', `${fullName} - ${editId}`, currentUserName || 'Staff');
     showToast(`Resident updated: ${fullName}`, 'green');
   } else {
     const newId = 'ANB-' + String(RESIDENTS.length + 1).padStart(4, '0');
@@ -2990,7 +3002,7 @@ function legacyEnglishSaveResident() {
     RESIDENT_STATUS[newId] = { blotter: false, blotterDetails: [], goodStanding: true, notes: '' };
     const zone = PUROK_DATA.find(p => p.key === purok);
     if (zone) zone.total += 1;
-    addLiveAuditEntry('🧑', 'record', 'New Resident Registered', `${newId} - ${fullName}`, currentUserName || 'Staff');
+    addLiveAuditEntry('', 'record', 'New Resident Registered', `${newId} - ${fullName}`, currentUserName || 'Staff');
     showToast(`Resident registered: ${fullName} (${newId})`, 'green');
   }
   closeModal('modal-resident');
@@ -3375,7 +3387,7 @@ async function confirmPrintRelease() {
   if (submitButton) {
     submitButton.disabled = true;
     submitButton.dataset.originalText = submitButton.innerHTML;
-    submitButton.innerHTML = '⏳ Issuing...';
+    submitButton.innerHTML = 'Issuing...';
   }
 
   try {
@@ -3403,7 +3415,7 @@ async function confirmPrintRelease() {
     closeModal('modal-print-release');
 
     showToast(
-      '✅ Certificate issued successfully.',
+      ' Certificate issued successfully.',
       'green'
     );
 
@@ -3435,7 +3447,7 @@ async function confirmPrintRelease() {
   } finally {
     if (submitButton) {
       submitButton.disabled = false;
-      submitButton.innerHTML = submitButton.dataset.originalText || '🖨️ Issue & Print';
+      submitButton.innerHTML = submitButton.dataset.originalText || ' Issue & Print';
     }
   }
 }
@@ -4065,7 +4077,8 @@ document.addEventListener('keydown', event => {
 });
 
 document.addEventListener('DOMContentLoaded', () => {
-  try { if (localStorage.getItem('smartbrgy_theme') === 'dark') toggleTheme(); } catch (_) {}
+  const themeLabel = document.getElementById('theme-label');
+  if (themeLabel) themeLabel.textContent = isLightMode ? 'Dark Mode' : 'Light Mode';
   document.querySelectorAll('.nav-item[onclick], .dark-mode-toggle, .topbar-avatar:not(button), .notif-badge-wrap, .modal-close:not(button)').forEach(element => {
     element.tabIndex = 0;
     element.setAttribute('role', 'button');

@@ -15,7 +15,7 @@
 <main id="main-content" tabindex="-1" class="civic-verification civic-surface">
 
     <div class="status">
-        <div class="status-icon">✅</div>
+        <div class="status-icon"></div>
 
         <div class="status-title">
             Authentic Barangay Document

@@ -51,13 +51,29 @@ try {
 } catch (_) {}
 const residentThemeButton = document.querySelector('[data-resident-theme]');
 if (residentThemeButton) {
-    residentThemeButton.setAttribute('aria-pressed', String(document.body.classList.contains('dark-mode')));
+    const updateResidentThemeButton = () => {
+        const dark = document.body.classList.contains('dark-mode');
+        residentThemeButton.setAttribute('aria-pressed', String(dark));
+        residentThemeButton.setAttribute('aria-label', dark ? 'Light mode' : 'Dark mode');
+        residentThemeButton.setAttribute('title', dark ? 'Light mode' : 'Dark mode');
+    };
+    updateResidentThemeButton();
     residentThemeButton.addEventListener('click', () => {
         const dark = document.body.classList.toggle('dark-mode');
-        residentThemeButton.setAttribute('aria-pressed', String(dark));
+        updateResidentThemeButton();
         try { sessionStorage.setItem('smartbrgy_portal_theme', dark ? 'dark' : 'light'); } catch (_) {}
     });
 }
+document.querySelectorAll('[data-password-toggle]').forEach(button => {
+    const field = document.getElementById(button.dataset.passwordToggle);
+    if (!field) return;
+    button.addEventListener('click', () => {
+        const isVisible = field.type === 'password';
+        field.type = isVisible ? 'text' : 'password';
+        button.textContent = isVisible ? 'Hide' : 'Show';
+        button.setAttribute('aria-pressed', String(isVisible));
+    });
+});
 const residentMenuButton = document.querySelector('[data-menu-toggle]');
 const residentNavigation = document.getElementById('site-nav');
 if (residentMenuButton && residentNavigation) {

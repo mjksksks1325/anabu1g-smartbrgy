@@ -26,6 +26,13 @@ async function client() {
   return { context, fields };
 }
 
+test('audit event symbols use SVG paths for known and unexpected types', async () => {
+  const { context } = await client();
+  assert.match(context.auditTypeSymbol('security'), /<svg.*<circle/);
+  assert.match(context.auditTypeSymbol('unknown'), /<svg.*<path/);
+  assert.doesNotMatch(context.auditTypeSymbol('<script>'), /<script>/);
+});
+
 test('cancelling resident restoration does not send an administrative mutation', async () => {
   const { context } = await client();
   context.confirm = () => false;
@@ -61,6 +68,7 @@ test('failed account save keeps the form open and releases the submit button', a
     'adduser-role': 'staff', 'adduser-status': 'active', 'adduser-password': 'secure-password',
   })) fields.set(id, { value });
   fields.set('adduser-save-btn', { disabled: false });
+  fields.set('adduser-cabinet-access', { checked: false });
   context.fetch = async () => ({ ok: false, json: async () => ({ errors: { email: ['This email is already in use.'] } }) });
   context.closed = false;
   vm.runInContext('closeModal = () => { closed = true; };', context);

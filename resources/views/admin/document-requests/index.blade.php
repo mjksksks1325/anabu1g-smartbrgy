@@ -1,22 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Document Requests</title>
-
-    <link rel="icon" type="image/jpeg" href="{{ asset('images/anabu-logo.jpg') }}">
-    <link rel="stylesheet" href="{{ asset('css/government.css') }}">
-</head>
-
-<body class="civic-page">
-@include('partials.civic-header')
-
-<main class="civic-main" id="main-content" tabindex="-1">
-
-    <h1 class="civic-page-title">Document Requests</h1>
-<p class="civic-lead">Review resident submissions and follow each request through to release.</p>
+@extends('layouts.admin-iot')
+@section('title', 'Document Requests')
+@section('content')
+<div class="document-requests-index">
+    <div class="eyebrow">Records / Document Requests</div>
+    <div class="page-heading"><div><h1>Document Requests</h1><p>Review resident submissions and follow each request through to release.</p></div></div>
 
     <div class="civic-table-wrap"><table class="civic-table">
 
@@ -42,9 +29,7 @@
 
                 <td>{{ $request->document_type }}</td>
 
-                <td class="civic-status">
-                    {{ str_replace('_', ' ', $request->status) }}
-                </td>
+                <td><span class="civic-status">{{ str_replace('_', ' ', $request->status) }}</span></td>
 
                 <td>
                     {{ $request->created_at->format('M d, Y h:i A') }}
@@ -75,7 +60,5 @@
     </table></div>
 <div style="margin-top:24px;">{{ $requests->links() }}</div>
 
-</main>
-@include('partials.civic-footer')
-</body>
-</html>
+</div>
+@endsection

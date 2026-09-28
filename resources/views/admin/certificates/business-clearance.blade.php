@@ -122,7 +122,7 @@
 <nav class="certificate-navigation" aria-label="Certificate navigation"><a href="{{ route('admin.dashboard', ['screen' => 'certificates']) }}">Back to certificates</a><span>Barangay Anabu I-G / Print preview</span></nav>
 
 <button class="print-btn" onclick="window.print()">
-    🖨️ Print Business Clearance
+     Print Business Clearance
 </button>
 
 <div class="page">

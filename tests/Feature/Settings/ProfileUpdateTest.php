@@ -10,6 +10,85 @@ test('profile page is displayed', function () {
     $this->get('/settings/profile')->assertOk();
 });
 
+test('staff settings returns to the admin dashboard through a full page link', function () {
+    $admin = User::factory()->superAdmin()->create();
+
+    $response = $this->actingAs($admin)->get(route('profile.edit'));
+
+    $response->assertSeeInOrder([
+        'js/staff-settings-theme.js',
+        'window.Flux.applyAppearance',
+        'Dashboard',
+        'Demographics',
+        'Resident Records',
+        'Voter Registry',
+        'Certificates &amp; Clearances',
+        'Request Eligibility',
+        'Incident Reports',
+        'RFID File Tracking',
+        'Smart Cabinet',
+        'Employee Cabinet Access',
+        'Audit Log',
+        'User Management',
+        'My profile',
+        'Account security',
+        'Portal ng Residente',
+    ], false)->assertSee(route('admin.dashboard', ['screen' => 'users']), false)
+        ->assertSee('class="staff-settings-topbar"', false);
+    $document = new DOMDocument;
+    $document->loadHTML($response->getContent(), LIBXML_NOERROR | LIBXML_NOWARNING);
+    $dashboardLinks = (new DOMXPath($document))->query('//a[@href="'.route('admin.dashboard').'"]');
+    expect($dashboardLinks->length)->toBeGreaterThan(0);
+    foreach ($dashboardLinks as $dashboardLink) {
+        expect($dashboardLink->hasAttribute('wire:navigate'))->toBeFalse();
+    }
+});
+
+test('profile and security use the dashboard style sidebar with the same navigation icons', function (string $route, string $activeLabel) {
+    $response = $this->actingAs(User::factory()->superAdmin()->create())
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->get(route($route))->assertOk();
+    $document = new DOMDocument;
+    $document->loadHTML($response->getContent(), LIBXML_NOERROR | LIBXML_NOWARNING);
+    $xpath = new DOMXPath($document);
+    $navigation = $xpath->query('//nav[contains(concat(" ", normalize-space(@class), " "), " staff-settings-navigation ")]');
+    $links = $xpath->query('.//a[contains(concat(" ", normalize-space(@class), " "), " nav-item ")]', $navigation->item(0));
+
+    expect($navigation->length)->toBe(1)
+        ->and($links->length)->toBe(16);
+
+    foreach ($links as $link) {
+        expect($xpath->query('./svg/*', $link)->length)->toBeGreaterThan(0);
+    }
+
+    $activeLink = $xpath->query('.//a[@aria-current="page"]', $navigation->item(0))->item(0);
+    expect(trim($activeLink->textContent))->toBe($activeLabel);
+})->with([
+    ['profile.edit', 'My profile'],
+    ['security.edit', 'Account security'],
+]);
+
+test('staff appearance offers explicit light and dark choices', function () {
+    $admin = User::factory()->superAdmin()->create();
+
+    $response = $this->actingAs($admin)->get(route('appearance.edit'));
+
+    $response->assertSee('Light')
+        ->assertSee('Dark')
+        ->assertSee('smartbrgy_theme', false)
+        ->assertDontSee('System');
+});
+
+test('staff settings hides super admin navigation from other employees', function () {
+    $staff = User::factory()->create();
+
+    $response = $this->actingAs($staff)->get(route('profile.edit'));
+
+    $response->assertSee('RFID File Tracking')
+        ->assertSee('Incident Reports')
+        ->assertDontSee('Employee Cabinet Access');
+});
+
 test('profile information can be updated', function () {
     $user = User::factory()->create();
 

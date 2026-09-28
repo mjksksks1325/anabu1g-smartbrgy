@@ -1,49 +1,51 @@
 @extends('layouts.portal')
 @section('title', 'Resident Portal')
+@section('hero-header', 'true')
 @php($residentSignedIn = auth('resident')->check())
 
 @section('band')
-<div class="portal-band" style="--hall-photo:url('{{ asset('images/barangay-hall-anabu-1g.jpg') }}')">
+<div class="portal-band">
     <div class="portal-band-inner">
         <section class="portal-hero" aria-labelledby="portal-title">
-            <h1 id="portal-title">Resident services</h1>
-            <p>Mag-request ng barangay document online, tapos kunin ito sa Barangay Hall kapag Ready for release na. Dito rin makikita ang status ng bawat request ninyo.</p>
+            <p class="eyebrow">E-government resident services</p>
+            <h1 id="portal-title">Mabilis. Malinaw. Maaasahang serbisyo.</h1>
+            <p>Isang opisyal at ligtas na portal para mag-request ng dokumento, subaybayan ang status, at makakuha ng impormasyon mula sa Barangay Anabu I-G.</p>
+            <div class="portal-hero-actions">
+                <a class="btn btn-green" href="{{ route('portal.request.create') }}">Request a document <span aria-hidden="true">&#8594;</span></a>
+                <a class="btn btn-hero-outline" href="{{ $residentSignedIn ? route('portal.account') : route('portal.login') }}">Check status</a>
+            </div>
             @unless($residentSignedIn)
-                <p class="portal-hero-account">Wala pang account? <a href="{{ route('portal.register') }}">Create account</a> gamit ang record ninyo sa barangay.</p>
+                <p class="portal-hero-account">Government-secured resident portal &middot; Wala pang account? <a href="{{ route('portal.register') }}">Create one</a></p>
             @endunless
         </section>
-
-        <section class="portal-tasks" aria-labelledby="tasks-title">
-            <h2 id="tasks-title" class="sr-only">Ano ang gusto ninyong gawin?</h2>
-            <div class="portal-service-grid">
-                <a class="portal-service-card portal-service-primary" href="{{ route('portal.request.create') }}">
-                    <strong>Request a document</strong>
-                    <span>Barangay Clearance, Certificate of Residency, Certificate of Indigency, Barangay ID, First Time Jobseeker, at Business Clearance.</span>
-                    <span class="service-start" aria-hidden="true">Magsimula</span>
-                </a>
-                <a class="portal-service-card" href="{{ $residentSignedIn ? route('portal.account') : route('portal.login') }}">
-                    <strong>Check my requests</strong>
-                    <span>Status ng request at kung puwede nang kunin.</span>
-                </a>
-                <a class="portal-service-card" href="{{ route('portal.information') }}#requirements">
-                    <strong>Requirements and fees</strong>
-                    <span>Fee ng bawat dokumento at ang dapat dalhin.</span>
-                </a>
-                <a class="portal-service-card" href="{{ route('portal.information') }}#help">
-                    <strong>Get help</strong>
-                    <span>Problema sa account o maling detalye sa record.</span>
-                </a>
-            </div>
-        </section>
+        <figure class="portal-hero-photo"><img src="{{ asset('images/barangay-hall-anabu-1g.jpg') }}" width="1536" height="1024" alt="Barangay Hall ng Anabu I-G"><figcaption>Barangay Anabu I-G Hall</figcaption></figure>
     </div>
-    <p class="portal-band-caption">Barangay Hall ng Anabu I-G, Lungsod ng Imus</p>
 </div>
 @endsection
 
 @section('content')
+<section class="digital-services" aria-labelledby="tasks-title">
+    <h2 id="tasks-title" class="sr-only">Online services</h2>
+    <div class="portal-service-grid">
+        <a class="portal-service-card" href="{{ $residentSignedIn ? route('portal.account') : route('portal.login') }}">
+            <span class="service-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3.5 2"/></svg></span>
+            <strong>My requests</strong><span>Tingnan ang status at release date</span>
+        </a>
+        <a class="portal-service-card" href="{{ route('portal.information') }}#requirements">
+            <span class="service-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h4"/></svg></span>
+            <strong>Requirements &amp; fees</strong><span>Alamin ang kailangan at bayarin</span>
+        </a>
+        <a class="portal-service-card" href="{{ route('portal.information') }}#help">
+            <span class="service-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 2-2.5 2-2.5 4M12 16.5h.01"/></svg></span>
+            <strong>Get help</strong><span>Account at resident record support</span>
+        </a>
+    </div>
+</section>
 <div class="service-info">
     <section class="howto" aria-labelledby="howto-title">
+        <p class="eyebrow">Madaling proseso</p>
         <h2 id="howto-title">Paano mag-request</h2>
+        <p>Apat na simpleng hakbang mula online request hanggang pagkuha ng dokumento.</p>
         <ol class="howto-steps">
             @if($residentSignedIn)
                 <li><strong>Naka-log in na kayo.</strong> Puwede nang mag-request ng dokumento.</li>
@@ -58,6 +60,7 @@
     </section>
 
     <section class="doc-rates" aria-labelledby="doc-rates-title">
+        <p class="eyebrow">Transparent na bayarin</p>
         <div class="doc-rates-head">
             <h2 id="doc-rates-title">Mga dokumento at fee</h2>
             <span class="tag-unconfirmed">Hindi pa kumpirmado</span>
@@ -75,8 +78,8 @@
     </section>
 </div>
 
-<section class="home-section" id="announcements" aria-labelledby="announcements-title">
-    <h2 id="announcements-title">Announcements</h2>
+<section class="home-section announcements-section" id="announcements" aria-labelledby="announcements-title">
+    <div class="announcements-intro"><p class="eyebrow">Public information</p><h2 id="announcements-title">Announcements</h2><p>Mga opisyal na update mula sa barangay at Lungsod ng Imus.</p></div>
     <div class="notice-row">
         <article class="notice-callout">
             <h3>Barangay Anabu I-G</h3>

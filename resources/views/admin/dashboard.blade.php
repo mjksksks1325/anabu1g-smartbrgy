@@ -7,9 +7,12 @@
 <title>Barangay Anabu I-G — Staff Workspace</title>
 <link rel="icon" type="image/jpeg" href="{{ asset('images/anabu-logo.jpg') }}">
 <link rel="stylesheet" href="{{ asset('css/admin.css') }}?v={{ filemtime(public_path('css/admin.css')) }}">
-<link rel="stylesheet" href="{{ asset('css/government.css') }}">
+<link rel="stylesheet" href="{{ asset('css/government.css') }}?v={{ filemtime(public_path('css/government.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/figma-tokens.css') }}?v={{ filemtime(public_path('css/figma-tokens.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/figma-admin.css') }}?v={{ filemtime(public_path('css/figma-admin.css')) }}">
 </head>
 <body class="light-mode">
+<script>try { if (localStorage.getItem('smartbrgy_theme') === 'dark') document.body.classList.remove('light-mode'); } catch (_) {}</script>
 <div id="loading-bar"></div>
 <a href="#screen-dashboard" class="skip-link">Skip to main content</a>
 <div id="toast-wrap" role="status" aria-live="polite"></div>
@@ -23,18 +26,17 @@
     <button class="mobile-menu-button" type="button" aria-controls="admin-navigation" aria-expanded="false" onclick="toggleNavigation()">Menu</button>
     <div class="topbar-logo">
       <div class="topbar-logo-box"><img src="{{ asset('images/anabu-logo.jpg') }}" alt="Barangay Anabu I-G logo"/></div>
-      <div class="topbar-brand">Barangay Anabu I-G <span>RESIDENT INFORMATION &amp; SERVICES</span></div>
+      <div class="topbar-brand">Barangay Anabu I-G <span>STAFF WORKSPACE</span></div>
     </div>
     <div class="topbar-sep"></div>
-    <div class="topbar-status">Staff workspace</div>
+    <div class="topbar-status"><span>Staff workspace</span><strong id="topbar-screen-name">Dashboard</strong></div>
     <div class="topbar-right">
       <div class="dark-mode-toggle" id="theme-toggle" onclick="toggleTheme()">
-        <span id="theme-icon">🌙</span>
         <span id="theme-label">Dark Mode</span>
       </div>
-      <div class="topbar-chip">IoT Not Connected</div>
-      <div class="topbar-chip notif-badge-wrap" onclick="toggleNotifPanel()" id="notif-chip" style="cursor:pointer;position:relative;">Notifications <span class="notif-count" id="notif-count">0</span></div>
-      <div class="topbar-chip" id="clock-display">--:--:--</div>
+      <a class="topbar-chip" href="{{ auth()->user()->isSuperAdmin() ? route('admin.smart-cabinet.index') : route('admin.rfid-files.index') }}">IoT status</a>
+      <button type="button" class="topbar-chip notif-badge-wrap" onclick="toggleNotifPanel()" id="notif-chip" aria-label="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></svg><span class="notif-count" id="notif-count">0</span></button>
+      <div class="topbar-chip" id="clock-display" hidden>--:--:--</div>
       <button type="button" class="topbar-avatar" onclick="doLogout()" title="Log out" aria-label="Log out" aria-haspopup="dialog" aria-controls="logout-dialog">JC</button>
     </div>
   </div>
@@ -42,6 +44,7 @@
   <div class="app-body">
     <!-- SIDEBAR -->
     <nav class="sidebar" id="admin-navigation" aria-label="Staff navigation">
+      <div class="sidebar-scroll">
       <div class="sidebar-sec">
         <div class="sidebar-label">Overview</div>
         <div class="nav-item active" data-perm="Dashboard" onclick="showScreen('dashboard',this)">
@@ -88,8 +91,8 @@
       @if(auth()->user()->isSuperAdmin())
       <div class="sidebar-sec">
         <div class="sidebar-label">Administration</div>
-        <a class="nav-item" href="{{ route('admin.smart-cabinet.index') }}">Smart Cabinet</a>
-        <a class="nav-item" href="{{ route('admin.cabinet-access.index') }}">Employee Cabinet Access</a>
+        <a class="nav-item" href="{{ route('admin.smart-cabinet.index') }}"><x-staff-icon name="cabinet" />Smart Cabinet</a>
+        <a class="nav-item" href="{{ route('admin.cabinet-access.index') }}"><x-staff-icon name="key" />Employee Cabinet Access</a>
         <div class="nav-item" data-perm="Audit" onclick="showScreen('audit',this)">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
           Audit Log
@@ -105,12 +108,13 @@
       </div>
       @endif
       <div class="sidebar-sec">
-        <a class="nav-item" href="{{ route('profile.edit') }}">My profile</a>
-        <a class="nav-item" href="{{ route('security.edit') }}">Account security</a>
+        <a class="nav-item" href="{{ route('profile.edit') }}"><x-staff-icon name="people" />My profile</a>
+        <a class="nav-item" href="{{ route('security.edit') }}"><x-staff-icon name="shield" />Account security</a>
         <div class="nav-item" onclick="window.open('{{ route('home') }}','_blank')" style="margin-top:8px;border-top:1px solid var(--border-color);padding-top:8px;">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
           Portal ng Residente
         </div>
+      </div>
       </div>
       <div class="sidebar-footer">
         <div class="su-card">
@@ -129,10 +133,10 @@
         </div>
       </div>
       <div class="stats-grid">
-        <div class="stat-card blue"><div class="stat-label">Active Residents</div><div class="stat-value" id="dash-stat-residents">0</div><div class="stat-sub" id="dash-sub-residents">Database records</div><div class="stat-icon">👥</div></div>
-        <div class="stat-card green"><div class="stat-label">Issued Certificates</div><div class="stat-value" id="dash-stat-issued">0</div><div class="stat-sub">Verified official records</div><div class="stat-icon">📄</div></div>
-        <div class="stat-card amber"><div class="stat-label">Pending Requests</div><div class="stat-value" id="dash-stat-pending">0</div><div class="stat-sub" id="dash-sub-pending">No pending requests</div><div class="stat-icon">📋</div></div>
-        <div class="stat-card red"><div class="stat-label">Incident Reports</div><div class="stat-value" id="dash-stat-incidents">0</div><div class="stat-sub" id="dash-sub-incidents">No incidents filed</div><div class="stat-icon">🚨</div></div>
+        <div class="stat-card blue"><div class="stat-label">Active Residents</div><div class="stat-value" id="dash-stat-residents">0</div><div class="stat-sub" id="dash-sub-residents">Database records</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6m2 3a5 5 0 0 1 2 4v2"/></svg></div></div>
+        <div class="stat-card green"><div class="stat-label">Issued Certificates</div><div class="stat-value" id="dash-stat-issued">0</div><div class="stat-sub">Verified official records</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h9l3 3v15H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM14 3v4h4M8 12h8M8 16h8"/></svg></div></div>
+        <div class="stat-card amber"><div class="stat-label">Pending Requests</div><div class="stat-value" id="dash-stat-pending">0</div><div class="stat-sub" id="dash-sub-pending">No pending requests</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div></div>
+        <div class="stat-card red"><div class="stat-label">Incident Reports</div><div class="stat-value" id="dash-stat-incidents">0</div><div class="stat-sub" id="dash-sub-incidents">No incidents filed</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m12 3 10 18H2L12 3ZM12 9v5m0 3h.01"/></svg></div></div>
       </div>
       <div class="two-col">
         <div class="card">
@@ -155,14 +159,14 @@
           <div class="card-header"><div class="card-title">System Status</div></div>
           <div class="sys-row"><div class="sys-name">Document services</div><a class="btn btn-xs" href="{{ route('admin.document-requests.index') }}">View requests</a></div>
           <div class="sys-row"><div class="sys-name">Account security</div><a class="btn btn-xs" href="{{ route('security.edit') }}">Manage</a></div>
-          <div class="sys-row"><div class="sys-name">Hardware integrations</div><span class="badge badge-gray">Not connected</span></div>
+          <div class="sys-row"><div class="sys-name">Hardware integrations</div><a class="btn btn-xs" href="{{ auth()->user()->isSuperAdmin() ? route('admin.smart-cabinet.index') : route('admin.rfid-files.index') }}">View status</a></div>
         </div>
         <div class="card">
           <div class="card-header"><div class="card-title">Quick Actions</div></div>
           <div style="display:flex;flex-direction:column;gap:7px;">
-            <button class="btn btn-green btn-full" onclick="showScreen('records',findNavItem('records'));openAddResident()">➕ Register New Resident</button>
-            <button class="btn btn-primary btn-full" onclick="showScreen('certificates',findNavItem('certificates'))">📄 Issue Certificate</button>
-            <button class="btn btn-full" onclick="showScreen('incidents',findNavItem('incidents'))">🚨 File Incident Report</button>
+            <button class="btn btn-green btn-full" onclick="showScreen('records',findNavItem('records'));openAddResident()"><x-staff-icon name="plus" />Register New Resident</button>
+            <button class="btn btn-primary btn-full" onclick="showScreen('certificates',findNavItem('certificates'))"><x-staff-icon name="document" />Issue Certificate</button>
+            <button class="btn btn-full" onclick="showScreen('incidents',findNavItem('incidents'))"><x-staff-icon name="alert" />File Incident Report</button>
           </div>
         </div>
       </div>
@@ -174,15 +178,15 @@
         <div class="page-header"><h1>Population <span>Demographics</span></h1><p>Census data — Barangay Anabu I-G, Imus City</p></div>
         <div style="display:flex;gap:8px;">
           <button class="btn btn-sm" onclick="refreshDemographics()">⟳ Refresh</button>
-          <button class="btn btn-green btn-sm" onclick="window.location.href='{{ route('admin.residents.export') }}'">📥 Export Census</button>
+          <button class="btn btn-green btn-sm" onclick="window.location.href='{{ route('admin.residents.export') }}'"> Export Census</button>
         </div>
       </div>
 
       <div class="stats-grid">
-        <div class="stat-card blue"><div class="stat-label">Total Population</div><div class="stat-value counter" id="demo-stat-total" data-target="0">0</div><div class="stat-sub">Based on registered residents</div><div class="stat-icon">🏘️</div></div>
-        <div class="stat-card green"><div class="stat-label">Male</div><div class="stat-value counter" id="demo-stat-male" data-target="0">0</div><div class="stat-sub" id="demo-sub-male">—</div><div class="stat-icon">👨</div></div>
-        <div class="stat-card blue"><div class="stat-label">Female</div><div class="stat-value counter" id="demo-stat-female" data-target="0">0</div><div class="stat-sub" id="demo-sub-female">—</div><div class="stat-icon">👩</div></div>
-        <div class="stat-card amber"><div class="stat-label">Senior Citizens</div><div class="stat-value counter" id="demo-stat-households" data-target="0">0</div><div class="stat-sub" id="demo-sub-households">Age 60 and above</div><div class="stat-icon">👴</div></div>
+        <div class="stat-card blue"><div class="stat-label">Total Population</div><div class="stat-value counter" id="demo-stat-total" data-target="0">0</div><div class="stat-sub">Based on registered residents</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6m2 3a5 5 0 0 1 2 4v2"/></svg></div></div>
+        <div class="stat-card green"><div class="stat-label">Male</div><div class="stat-value counter" id="demo-stat-male" data-target="0">0</div><div class="stat-sub" id="demo-sub-male">—</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="7" r="4"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></svg></div></div>
+        <div class="stat-card blue"><div class="stat-label">Female</div><div class="stat-value counter" id="demo-stat-female" data-target="0">0</div><div class="stat-sub" id="demo-sub-female">—</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="7" r="4"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></svg></div></div>
+        <div class="stat-card amber"><div class="stat-label">Senior Citizens</div><div class="stat-value counter" id="demo-stat-households" data-target="0">0</div><div class="stat-sub" id="demo-sub-households">Age 60 and above</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div></div>
       </div>
 
       <!-- Purok Population Cards -->
@@ -195,7 +199,7 @@
           </div>
         </div>
         <div class="demo-purok-grid" id="demo-purok-grid"></div>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">💡 Counts include all registered residents. Special groups (Senior Citizens, PWD, Solo Parents, etc.) are automatically tagged per zone.</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;"> Counts include all registered residents. Special groups (Senior Citizens, PWD, Solo Parents, etc.) are automatically tagged per zone.</div>
       </div>
 
       <div class="two-col">
@@ -216,11 +220,11 @@
       <div class="card">
         <div class="card-header">
           <div><div class="card-title">Senior Citizens Register (60+)</div><div class="card-sub">Auto-updated when a resident reaches age 60 based on date of birth</div></div>
-          <span class="badge badge-senior">🔄 Auto-Updated</span>
+          <span class="badge badge-senior"> Auto-Updated</span>
         </div>
         <div id="senior-citizens-list"></div>
         <div style="margin-top:10px;padding:10px;background:var(--senior-bg);border:1px solid var(--senior-border);border-radius:var(--radius-sm);font-size:11.5px;color:var(--senior-color);">
-          ℹ️ <strong>Automated Process:</strong> The system checks each resident's date of birth. Upon reaching age 60, they are automatically added to this register and receive a Senior Citizen badge on their profile.
+          ℹ <strong>Automated Process:</strong> The system checks each resident's date of birth. Upon reaching age 60, they are automatically added to this register and receive a Senior Citizen badge on their profile.
         </div>
       </div>
     </div>
@@ -229,17 +233,17 @@
     <div class="content" id="screen-records">
       <div class="page-header-row">
         <div class="page-header"><h1>Resident <span>Records</span></h1><p>All registered residents — Barangay Anabu I-G</p></div>
-        <button class="btn btn-green" onclick="openAddResident()">➕ New Resident</button>
+        <button class="btn btn-green" onclick="openAddResident()"> New Resident</button>
       </div>
       <div class="search-row">
-        <div class="search-wrap"><span class="si">🔍</span><input class="search-input" id="residents-search" placeholder="Search resident by name, ID, or purok..." oninput="filterResidents()"/></div>
+        <div class="search-wrap"><span class="si"></span><input class="search-input" id="residents-search" placeholder="Search resident by name, ID, or purok..." oninput="filterResidents()"/></div>
         <button class="btn btn-primary btn-sm" onclick="exportResidents()">Export CSV</button>
       </div>
       <div class="status-bar">
         <div class="status-pill active" onclick="filterResidentStatus('',this)">All</div>
         <div class="status-pill" onclick="filterResidentStatus('Active',this)">Active</div>
         <div class="status-pill" onclick="filterResidentStatus('Inactive',this)">Inactive</div>
-        <div class="status-pill" onclick="filterResidentStatus('Senior',this)">👴 Senior Citizens</div>
+        <div class="status-pill" onclick="filterResidentStatus('Senior',this)"> Senior Citizens</div>
         <div class="status-pill" onclick="filterResidentStatus('Archived',this)">Archived</div>
       </div>
       <div class="card">
@@ -266,14 +270,14 @@
       </div>
 
       <div class="stats-grid stats-grid-4 voter-stats">
-        <div class="stat-card blue"><div class="stat-label">Lahat ng Botante</div><div class="stat-value" id="voter-stat-total">0</div><div class="stat-sub">Aktibong rehistrado</div><div class="stat-icon">🗳️</div></div>
-        <div class="stat-card amber"><div class="stat-label">SK Lamang</div><div class="stat-value" id="voter-stat-sk-only">0</div><div class="stat-sub">Edad 15–17</div><div class="stat-icon">🧑</div></div>
-        <div class="stat-card green"><div class="stat-label">SK at Regular</div><div class="stat-value" id="voter-stat-sk-regular">0</div><div class="stat-sub">Edad 18–30</div><div class="stat-icon">✅</div></div>
-        <div class="stat-card blue"><div class="stat-label">Regular Lamang</div><div class="stat-value" id="voter-stat-regular-only">0</div><div class="stat-sub">Edad 31 pataas</div><div class="stat-icon">👥</div></div>
+        <div class="stat-card blue"><div class="stat-label">Lahat ng Botante</div><div class="stat-value" id="voter-stat-total">0</div><div class="stat-sub">Aktibong rehistrado</div><div class="stat-icon"><x-staff-icon name="people" /></div></div>
+        <div class="stat-card amber"><div class="stat-label">SK Lamang</div><div class="stat-value" id="voter-stat-sk-only">0</div><div class="stat-sub">Edad 15–17</div><div class="stat-icon"><x-staff-icon name="people" /></div></div>
+        <div class="stat-card green"><div class="stat-label">SK at Regular</div><div class="stat-value" id="voter-stat-sk-regular">0</div><div class="stat-sub">Edad 18–30</div><div class="stat-icon"><x-staff-icon name="people" /></div></div>
+        <div class="stat-card blue"><div class="stat-label">Regular Lamang</div><div class="stat-value" id="voter-stat-regular-only">0</div><div class="stat-sub">Edad 31 pataas</div><div class="stat-icon"><x-staff-icon name="people" /></div></div>
       </div>
 
       <div class="search-row voter-search-row">
-        <div class="search-wrap"><span class="si">🔍</span><input class="search-input" id="voter-search" placeholder="Maghanap ng pangalan o resident ID..." oninput="filterVoterRegistry()"/></div>
+        <div class="search-wrap"><span class="si"></span><input class="search-input" id="voter-search" placeholder="Maghanap ng pangalan o resident ID..." oninput="filterVoterRegistry()"/></div>
         <select class="form-input voter-purok-filter" id="voter-purok-filter" onchange="filterVoterPurok(this.value)"><option value="">Lahat ng Purok</option></select>
       </div>
       <div class="status-pills voter-filter-pills">
@@ -297,8 +301,8 @@
       <div class="page-header-row">
         <div class="page-header"><h1>Certificates &amp; <span>Clearances</span></h1><p>Issue and track official barangay documents</p></div>
         <div style="display:flex;gap:8px;">
-          <button class="btn btn-primary btn-sm" onclick="showPublicPortal()">🌐 Public Portal</button>
-          <button class="btn btn-green btn-sm" onclick="openModal('modal-cert-issue')">📄 Issue Certificate</button>
+          <button class="btn btn-primary btn-sm" onclick="showPublicPortal()"> Public Portal</button>
+          <button class="btn btn-green btn-sm" onclick="openModal('modal-cert-issue')"> Issue Certificate</button>
         </div>
       </div>
 
@@ -316,10 +320,10 @@
 
       <!-- Summary Stats -->
       <div class="stats-grid stats-grid-4" style="margin-bottom:16px;">
-        <div class="stat-card green"><div class="stat-label">Released Requests</div><div class="stat-value" id="cert-today">0</div><div class="stat-sub">Released / Completed</div><div class="stat-icon">📄</div></div>
-        <div class="stat-card amber"><div class="stat-label">Pending / Processing</div><div class="stat-value" id="cert-pending">0</div><div class="stat-sub">In progress</div><div class="stat-icon">⏳</div></div>
-        <div class="stat-card blue"><div class="stat-label">Ready to Print</div><div class="stat-value" id="cert-ready">0</div><div class="stat-sub">Awaiting release</div><div class="stat-icon">🖨️</div></div>
-        <div class="stat-card green"><div class="stat-label">Online Requests</div><div class="stat-value" id="cert-online">0</div><div class="stat-sub">Via public portal</div><div class="stat-icon">🌐</div></div>
+        <div class="stat-card green"><div class="stat-label">Released Requests</div><div class="stat-value" id="cert-today">0</div><div class="stat-sub">Released / Completed</div><div class="stat-icon"><x-staff-icon name="check" /></div></div>
+        <div class="stat-card amber"><div class="stat-label">Pending / Processing</div><div class="stat-value" id="cert-pending">0</div><div class="stat-sub">In progress</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div></div>
+        <div class="stat-card blue"><div class="stat-label">Ready to Print</div><div class="stat-value" id="cert-ready">0</div><div class="stat-sub">Awaiting release</div><div class="stat-icon"><x-staff-icon name="document" /></div></div>
+        <div class="stat-card green"><div class="stat-label">Online Requests</div><div class="stat-value" id="cert-online">0</div><div class="stat-sub">Via public portal</div><div class="stat-icon"><x-staff-icon name="globe" /></div></div>
       </div>
 
       <!-- Kanban Board -->
@@ -327,7 +331,7 @@
         <div class="card-header">
           <div><div class="card-title">Request Board</div><div class="card-sub">Status tracking for document requests</div></div>
           <div style="display:flex;gap:6px;">
-            <div class="search-wrap" style="width:200px;"><span class="si">🔍</span><input class="search-input" id="cert-search" placeholder="Search requests..." oninput="filterCertBoard(this.value)"/></div>
+            <div class="search-wrap" style="width:200px;"><span class="si"></span><input class="search-input" id="cert-search" placeholder="Search requests..." oninput="filterCertBoard(this.value)"/></div>
           </div>
         </div>
         <div class="cert-kanban" id="cert-kanban-board"></div>
@@ -360,15 +364,15 @@
     <div class="content" id="screen-incidents">
       <div class="page-header-row">
         <div class="page-header"><h1>Incident <span>Reports</span></h1><p>Complaints and incidents in the barangay</p></div>
-        <button class="btn btn-danger" onclick="openAddIncident()">🚨 File Incident</button>
+        <button class="btn btn-danger" onclick="openAddIncident()"> File Incident</button>
       </div>
       <div class="stats-grid stats-grid-3">
-        <div class="stat-card red"><div class="stat-label">Pending</div><div class="stat-value" id="inc-stat-pending">0</div><div class="stat-icon">⏳</div></div>
-        <div class="stat-card green"><div class="stat-label">Resolved This Month</div><div class="stat-value" id="inc-stat-resolved">0</div><div class="stat-icon">✅</div></div>
-        <div class="stat-card amber"><div class="stat-label">High Severity</div><div class="stat-value" id="inc-stat-high">0</div><div class="stat-icon">⚠️</div></div>
+        <div class="stat-card red"><div class="stat-label">Pending</div><div class="stat-value" id="inc-stat-pending">0</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div></div>
+        <div class="stat-card green"><div class="stat-label">Resolved This Month</div><div class="stat-value" id="inc-stat-resolved">0</div><div class="stat-icon"><x-staff-icon name="check" /></div></div>
+        <div class="stat-card amber"><div class="stat-label">High Severity</div><div class="stat-value" id="inc-stat-high">0</div><div class="stat-icon"><x-staff-icon name="alert" /></div></div>
       </div>
       <div class="search-row voter-search-row">
-        <div class="search-wrap"><span class="si">🔍</span><input class="search-input" id="incident-search" placeholder="Search ID, uri, lokasyon, o pangalan..." oninput="filterIncidents()"/></div>
+        <div class="search-wrap"><span class="si"></span><input class="search-input" id="incident-search" placeholder="Search ID, uri, lokasyon, o pangalan..." oninput="filterIncidents()"/></div>
         <select class="form-input voter-purok-filter" id="incident-status-filter" onchange="filterIncidents()"><option value="">Lahat ng Status</option><option value="pending">Pending</option><option value="under_investigation">Under Investigation</option><option value="resolved">Resolved</option><option value="dismissed">Dismissed</option></select>
         <select class="form-input voter-purok-filter" id="incident-severity-filter" onchange="filterIncidents()"><option value="">Lahat ng Severity</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select>
       </div>
@@ -386,17 +390,17 @@
       <div class="page-header-row">
         <div class="page-header"><h1>Request <span>Eligibility</span></h1><p>Complete document request history per resident — eligibility tracking & audit trail</p></div>
         <div style="display:flex;gap:8px;">
-          <button class="btn btn-primary btn-sm" onclick="openModal('modal-eligibility-check')">🔍 Check Eligibility</button>
-          <a class="btn btn-green btn-sm" href="{{ route('admin.request-records.export') }}">📥 Export</a>
+          <button class="btn btn-primary btn-sm" onclick="openModal('modal-eligibility-check')"> Check Eligibility</button>
+          <a class="btn btn-green btn-sm" href="{{ route('admin.request-records.export') }}"> Export</a>
         </div>
       </div>
 
       <!-- Stats -->
       <div class="stats-grid stats-grid-4" style="margin-bottom:16px;">
-        <div class="stat-card green"><div class="stat-label">Total Requests</div><div class="stat-value" id="rr-total">0</div><div class="stat-icon">📋</div></div>
-        <div class="stat-card blue"><div class="stat-label">Completed</div><div class="stat-value" id="rr-completed">0</div><div class="stat-icon">✅</div></div>
-        <div class="stat-card amber"><div class="stat-label">Ineligible / Blocked</div><div class="stat-value" id="rr-blocked">0</div><div class="stat-icon">🚫</div></div>
-        <div class="stat-card red"><div class="stat-label">Needs Standing Review</div><div class="stat-value" id="rr-review">0</div><div class="stat-icon">⚠️</div></div>
+        <div class="stat-card green"><div class="stat-label">Total Requests</div><div class="stat-value" id="rr-total">0</div><div class="stat-icon"><x-staff-icon name="document" /></div></div>
+        <div class="stat-card blue"><div class="stat-label">Completed</div><div class="stat-value" id="rr-completed">0</div><div class="stat-icon"><x-staff-icon name="check" /></div></div>
+        <div class="stat-card amber"><div class="stat-label">Ineligible / Blocked</div><div class="stat-value" id="rr-blocked">0</div><div class="stat-icon"><x-staff-icon name="shield" /></div></div>
+        <div class="stat-card red"><div class="stat-label">Needs Standing Review</div><div class="stat-value" id="rr-review">0</div><div class="stat-icon"><x-staff-icon name="alert" /></div></div>
       </div>
 
       <!-- Eligibility Rules Reference -->
@@ -412,11 +416,11 @@
 
       <!-- Search & Filter -->
       <div class="search-row">
-        <div class="search-wrap"><span class="si">🔍</span><input class="search-input" id="rr-search" placeholder="Search resident by name or ID..." oninput="filterRequestRecords()"/></div>
+        <div class="search-wrap"><span class="si"></span><input class="search-input" id="rr-search" placeholder="Search resident by name or ID..." oninput="filterRequestRecords()"/></div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;">
           <button class="btn btn-sm rr-filter-btn active" onclick="filterRRStatus('',this)">All</button>
-          <button class="btn btn-sm rr-filter-btn" onclick="filterRRStatus('eligible',this)">✅ Eligible</button>
-          <button class="btn btn-sm rr-filter-btn" onclick="filterRRStatus('ineligible',this)">🚫 Needs Review</button>
+          <button class="btn btn-sm rr-filter-btn" onclick="filterRRStatus('eligible',this)"> Eligible</button>
+          <button class="btn btn-sm rr-filter-btn" onclick="filterRRStatus('ineligible',this)"> Needs Review</button>
         </div>
       </div>
       <div id="rr-resident-list" style="display:flex;flex-direction:column;gap:10px;margin-top:4px;"></div>
@@ -445,13 +449,13 @@
         <div class="card-header">
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
             <input class="form-input" type="date" id="audit-date-filter" aria-label="Filter audit events by date" onchange="renderAuditLog()" style="width:165px;">
-            <div class="search-wrap" style="width:220px;"><span class="si">🔍</span><input class="search-input" id="audit-search" placeholder="Search logs..." oninput="filterAuditLog()"/></div>
+            <div class="search-wrap" style="width:220px;"><span class="si"></span><input class="search-input" id="audit-search" placeholder="Search logs..." oninput="filterAuditLog()"/></div>
             <div class="audit-filter-bar" style="margin-bottom:0;">
               <button class="audit-type-btn active" onclick="filterAuditType('all',this)">All</button>
-              <button class="audit-type-btn" onclick="filterAuditType('cert',this)">📄 Certificates</button>
-              <button class="audit-type-btn" onclick="filterAuditType('record',this)">🧑 Records</button>
-              <button class="audit-type-btn" onclick="filterAuditType('incident',this)">🚨 Incidents</button>
-              <button class="audit-type-btn" onclick="filterAuditType('security',this)">⚠️ Security</button>
+              <button class="audit-type-btn" onclick="filterAuditType('cert',this)"> Certificates</button>
+              <button class="audit-type-btn" onclick="filterAuditType('record',this)"> Records</button>
+              <button class="audit-type-btn" onclick="filterAuditType('incident',this)"> Incidents</button>
+              <button class="audit-type-btn" onclick="filterAuditType('security',this)"> Security</button>
             </div>
           </div>
         </div>
@@ -462,7 +466,7 @@
         <div id="audit-log-list" style="max-height:520px;overflow-y:auto;"></div>
         <div style="padding:10px 14px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted);display:flex;justify-content:space-between;">
           <span id="audit-showing-count">Showing all events</span>
-          <span>🔄 Auto-refreshes every 15 seconds</span>
+          <span> Auto-refreshes every 15 seconds</span>
         </div>
       </div>
     </div>
@@ -472,19 +476,19 @@
       <div class="page-header-row">
         <div class="page-header"><h1>User <span>Management</span></h1><p>Manage authorized accounts and access to barangay records.</p></div>
         <div style="display:flex;gap:8px;">
-          <button class="btn btn-primary btn-sm" onclick="exportUsers()">📥 Export</button>
-          <button class="btn btn-green" onclick="openAddUser()">➕ Add New User</button>
+          <button class="btn btn-primary btn-sm" onclick="exportUsers()"><x-staff-icon name="download" />Export</button>
+          <button class="btn btn-green" onclick="openAddUser()"><x-staff-icon name="plus" />Add New User</button>
         </div>
       </div>
 
       <div class="card"><div class="card-title">Authorized personnel only</div><p class="card-sub">Administrators manage accounts. Staff can manage records and services. View-only accounts have no access to administrative records. Suspend an account to revoke access while preserving its history.</p></div>
       <div class="stats-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));">
-        <div class="stat-card green"><div class="stat-label">Active users</div><div class="stat-value" id="usr-active">0</div></div>
-        <div class="stat-card amber"><div class="stat-label">Suspended users</div><div class="stat-value" id="usr-suspended">0</div></div>
+        <div class="stat-card green"><div class="stat-label">Active users</div><div class="stat-value" id="usr-active">0</div><div class="stat-icon"><x-staff-icon name="people" /></div></div>
+        <div class="stat-card amber"><div class="stat-label">Suspended users</div><div class="stat-value" id="usr-suspended">0</div><div class="stat-icon"><x-staff-icon name="shield" /></div></div>
       </div>
       <!-- Search & Filter -->
       <div class="search-row" style="margin-bottom:12px;">
-        <div class="search-wrap"><span class="si">🔍</span><input class="search-input" id="user-search" placeholder="Search users by name or role..." oninput="filterUsers()"/></div>
+        <div class="search-wrap"><span class="si"></span><input class="search-input" id="user-search" placeholder="Search users by name or role..." oninput="filterUsers()"/></div>
         <div style="display:flex;gap:6px;">
           <button class="btn btn-sm user-role-filter active" onclick="filterUserRole('all',this)">All</button>
           <button class="btn btn-sm user-role-filter" onclick="filterUserRole('admin',this)">Admins</button>
@@ -510,7 +514,7 @@
         <div class="card"><div class="card-header"><div class="card-title">Barangay services</div></div>
           <div class="setting-row"><div><div class="setting-label">Barangay Anabu I-G</div><div class="setting-sub">City of Imus, Cavite</div></div></div>
           <div class="setting-row"><div><div class="setting-label">Online document requests</div><div class="setting-sub">Submit requests and track their progress.</div></div><a class="btn" href="{{ route('home') }}">Open portal</a></div>
-          <div class="setting-row"><div><div class="setting-label">Hardware integrations</div><div class="setting-sub">RFID, smart cabinet, and facial recognition are not connected.</div></div><span class="badge badge-gray">Not connected</span></div>
+          <div class="setting-row"><div><div class="setting-label">Hardware integrations</div><div class="setting-sub">Review verified RFID activity and cabinet reports.</div></div><a class="btn" href="{{ route('admin.smart-cabinet.index') }}">View status</a></div>
         </div>
       </div>
     </div>
@@ -519,10 +523,10 @@
   <!-- NOTIFICATION PANEL -->
   <div class="notif-panel" id="notif-panel">
     <div class="notif-panel-header">
-      <div class="notif-panel-title">🔔 Notifications</div>
+      <div class="notif-panel-title"> Notifications</div>
       <div style="display:flex;gap:8px;align-items:center;">
         <button class="btn btn-xs btn-green" onclick="markAllNotifsRead()">Mark all read</button>
-        <span style="font-size:18px;cursor:pointer;color:var(--text-muted);" onclick="toggleNotifPanel()">✕</span>
+        <span style="font-size:18px;cursor:pointer;color:var(--text-muted);" onclick="toggleNotifPanel()">×</span>
       </div>
     </div>
     <div id="notif-list"></div>
@@ -554,13 +558,13 @@
 <!-- Add/Edit Purok -->
 <div class="modal-overlay" id="modal-purok">
   <div class="modal">
-    <div class="modal-header"><div class="modal-title">🏘️ Add Purok</div><div class="modal-close" onclick="closeModal('modal-purok')">x</div></div>
+    <div class="modal-header"><div class="modal-title"> Add Purok</div><div class="modal-close" onclick="closeModal('modal-purok')">x</div></div>
     <div class="form-group"><div class="form-label">Purok ID / Key *</div><input class="form-input" id="purok-name" placeholder="Example: purok1"/><div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Unique ID — hindi na mababago pagkatapos ma-save.</div></div>
     <div class="form-group"><div class="form-label">Display Name *</div><input class="form-input" id="purok-label" placeholder="Example: Purok 1 - Sampaguita"/></div>
     <div class="form-group"><div class="form-label">Display Color</div><input class="form-input" type="color" id="purok-color" value="#22C55E"/></div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('modal-purok')">Cancel</button>
-      <button class="btn btn-green" onclick="savePurok()">💾 Save Purok</button>
+      <button class="btn btn-green" onclick="savePurok()"> Save Purok</button>
     </div>
   </div>
 </div>
@@ -571,7 +575,7 @@
 
     <div class="modal-header">
       <div>
-        <div class="modal-title">🖨️ Print & Release Certificate</div>
+        <div class="modal-title"> Print & Release Certificate</div>
         <div class="modal-sub">Review certificate details before issuance.</div>
       </div>
 
@@ -621,7 +625,7 @@
     </div>
 
     <div style="background:var(--green-dim);border:1px solid var(--border-green);border-radius:var(--radius-sm);padding:10px;font-size:11.5px;color:var(--text-secondary);margin-bottom:14px;">
-      ✅ QR verification code will be generated automatically after issuance.
+       QR verification code will be generated automatically after issuance.
     </div>
 
     <div class="modal-footer">
@@ -639,7 +643,7 @@
         id="print-release-submit"
         onclick="confirmPrintRelease()"
       >
-        🖨️ Issue & Print
+         Issue & Print
       </button>
     </div>
 
@@ -648,7 +652,7 @@
 <!-- Add/Edit Resident -->
 <div class="modal-overlay" id="modal-resident">
   <div class="modal">
-    <div class="modal-header"><div class="modal-title" id="modal-resident-title">➕ <span>I-register ang Bagong Resident</span></div><div class="modal-close" onclick="closeModal('modal-resident')">✕</div></div>
+    <div class="modal-header"><div class="modal-title" id="modal-resident-title"> <span>I-register ang Bagong Resident</span></div><div class="modal-close" onclick="closeModal('modal-resident')">×</div></div>
     <div class="form-row">
       <div class="form-group"><div class="form-label">Last Name *</div><input class="form-input" id="res-lastname" placeholder="Santos"/></div>
       <div class="form-group"><div class="form-label">First Name *</div><input class="form-input" id="res-name" placeholder="Maria"/></div>
@@ -690,7 +694,7 @@
     <input type="hidden" id="res-edit-id" value=""/>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('modal-resident')">Cancel</button>
-      <button class="btn btn-green" onclick="saveResident()">💾 Save Record</button>
+      <button class="btn btn-green" onclick="saveResident()"> Save Record</button>
     </div>
   </div>
 </div>
@@ -698,12 +702,12 @@
 <!-- View Resident -->
 <div class="modal-overlay" id="modal-view-resident">
   <div class="modal">
-    <div class="modal-header"><div class="modal-title">👤 <span>Resident Details</span></div><div class="modal-close" onclick="closeModal('modal-view-resident')">✕</div></div>
+    <div class="modal-header"><div class="modal-title"> <span>Resident Details</span></div><div class="modal-close" onclick="closeModal('modal-view-resident')">×</div></div>
     <div id="view-resident-content"></div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('modal-view-resident')">Close</button>
-      <button class="btn btn-primary" onclick="openViewResidentRequests(currentViewResidentId)">📋 View Requests</button>
-      <button class="btn btn-green" onclick="openEligibilityForResident(currentViewResidentId)">🔍 Check Eligibility</button>
+      <button class="btn btn-primary" onclick="openViewResidentRequests(currentViewResidentId)"> View Requests</button>
+      <button class="btn btn-green" onclick="openEligibilityForResident(currentViewResidentId)"> Check Eligibility</button>
     </div>
   </div>
 </div>
@@ -751,8 +755,8 @@
 <div class="modal-overlay" id="modal-view-certreq">
   <div class="modal" style="max-width:480px;">
     <div class="modal-header">
-      <div class="modal-title">📋 Detalye ng Request</div>
-      <div class="modal-close" onclick="closeModal('modal-view-certreq')">✕</div>
+      <div class="modal-title"> Detalye ng Request</div>
+      <div class="modal-close" onclick="closeModal('modal-view-certreq')">×</div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border);">
       <span style="font-size:13px;font-family:var(--font-mono);color:var(--blue-400);font-weight:700;" id="vreq-code">—</span>
@@ -797,7 +801,7 @@
 
 <div class="modal-overlay" id="modal-cert-issue">
   <div class="modal">
-    <div class="modal-header"><div class="modal-title">📄 <span>Issue Certificate</span></div><div class="modal-close" onclick="closeModal('modal-cert-issue')">✕</div></div>
+    <div class="modal-header"><div class="modal-title"> <span>Issue Certificate</span></div><div class="modal-close" onclick="closeModal('modal-cert-issue')">×</div></div>
     <form id="manual-certificate-form" onsubmit="issueManualCertificate(event)">
       <div class="form-group"><div class="form-label">Certificate Type</div>
         <select class="form-input" id="manual-certificate-type" required onchange="updateManualCertificateFee()">
@@ -816,10 +820,10 @@
       <div class="form-group"><div class="form-label">Address ng Resident</div><input class="form-input" id="manual-resident-address" maxlength="1000" row="2" required placeholder="Type the resident's address..."/></div>
       <div class="form-group"><div class="form-label">Purpose / Reason</div><input class="form-input" id="manual-certificate-purpose" maxlength="500" placeholder="Employment, Loan, Scholarship..."/></div>
       <div class="form-group"><div class="form-label">Payment</div><input class="form-input" id="manual-certificate-fee" value="PHP 50.00" readonly/></div>
-      <div style="background:var(--green-dim);border:1px solid var(--border-green);border-radius:var(--radius-sm);padding:10px;font-size:11.5px;color:var(--text-secondary);margin-bottom:14px;">✅ The official fee is set by the server. A unique QR verification code is generated automatically.</div>
+      <div style="background:var(--green-dim);border:1px solid var(--border-green);border-radius:var(--radius-sm);padding:10px;font-size:11.5px;color:var(--text-secondary);margin-bottom:14px;"> The official fee is set by the server. A unique QR verification code is generated automatically.</div>
       <div class="modal-footer">
         <button type="button" class="btn" onclick="closeModal('modal-cert-issue')">Cancel</button>
-        <button type="submit" class="btn btn-green" id="manual-certificate-submit">🖨️ Issue & Print</button>
+        <button type="submit" class="btn btn-green" id="manual-certificate-submit"> Issue & Print</button>
       </div>
     </form>
   </div>
@@ -828,7 +832,7 @@
 <!-- Incident Report -->
 <div class="modal-overlay" id="modal-incident">
   <div class="modal">
-    <div class="modal-header"><div class="modal-title" id="inc-modal-title">🚨 File Incident Report</div><div class="modal-close" onclick="closeModal('modal-incident')">✕</div></div>
+    <div class="modal-header"><div class="modal-title" id="inc-modal-title"> File Incident Report</div><div class="modal-close" onclick="closeModal('modal-incident')">×</div></div>
     <div class="form-group"><div class="form-label">Incident Type *</div>
       <select class="form-input" id="inc-type"><option value="">Select type...</option><option>Noise Complaint</option><option>Property Dispute</option><option>Domestic Dispute</option><option>Vandalism</option><option>Theft</option><option>Physical Assault</option><option>Iba pa</option></select>
     </div>
@@ -851,7 +855,7 @@
     <input type="hidden" id="inc-edit-id" value=""/>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('modal-incident')">Cancel</button>
-      <button class="btn btn-danger" onclick="saveIncident()">🚨 File Report</button>
+      <button class="btn btn-danger" onclick="saveIncident()"> File Report</button>
     </div>
   </div>
 </div>
@@ -860,8 +864,8 @@
 <div class="modal-overlay" id="modal-view-incident">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title">🚨 Detalye ng Incident Report</div>
-      <div class="modal-close" onclick="closeModal('modal-view-incident')">✕</div>
+      <div class="modal-title"> Detalye ng Incident Report</div>
+      <div class="modal-close" onclick="closeModal('modal-view-incident')">×</div>
     </div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border);">
       <span style="font-family:var(--font-mono);font-size:13px;color:var(--blue-400);font-weight:700;" id="view-inc-id">—</span>
@@ -897,7 +901,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('modal-view-incident')">Isara</button>
-      <button class="btn btn-primary" id="view-inc-edit-btn">✏️ I-edit ang Report</button>
+      <button class="btn btn-primary" id="view-inc-edit-btn"> I-edit ang Report</button>
     </div>
   </div>
 </div>
@@ -991,21 +995,21 @@
 <!-- Eligibility Checker Modal -->
 <div class="modal-overlay" id="modal-eligibility-check">
   <div class="modal" style="max-width:540px;">
-    <div class="modal-header"><div class="modal-title">🔍 <span>Eligibility Checker</span></div><div class="modal-close" onclick="closeModal('modal-eligibility-check')">✕</div></div>
+    <div class="modal-header"><div class="modal-title"> <span>Eligibility Checker</span></div><div class="modal-close" onclick="closeModal('modal-eligibility-check')">×</div></div>
     <div class="form-group"><div class="form-label">Full Name ng Residente *</div><select class="form-input" id="elig-resident-select" onchange="elig_onResidentChange()"><option value="">— Select Resident —</option></select></div>
     <div class="form-group"><div class="form-label">Document Type *</div>
       <select class="form-input" id="elig-doc-select">
         <option value="">— Select Document —</option>
-        <option value="BC">📄 Barangay Clearance</option><option value="CR">🏠 Certificate of Residency</option>
-        <option value="CI">📋 Certificate of Indigency</option><option value="BID">🪪 Barangay ID</option>
-        <option value="CTFJ">💼 First Time Jobseeker Certificate</option><option value="BBC">🏪 Business Clearance</option>
+        <option value="BC"> Barangay Clearance</option><option value="CR"> Certificate of Residency</option>
+        <option value="CI"> Certificate of Indigency</option><option value="BID"> Barangay ID</option>
+        <option value="CTFJ"> First Time Jobseeker Certificate</option><option value="BBC"> Business Clearance</option>
       </select>
     </div>
-    <button class="btn btn-green btn-full" style="margin-bottom:14px;" onclick="runEligibilityCheck()">🔍 Check Eligibility</button>
+    <button class="btn btn-green btn-full" style="margin-bottom:14px;" onclick="runEligibilityCheck()"> Check Eligibility</button>
     <div id="elig-result" style="display:none;"></div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('modal-eligibility-check')">Close</button>
-      <button class="btn btn-green" id="elig-proceed-btn" style="display:none;" onclick="elig_proceedRequest()">📨 Issue Document</button>
+      <button class="btn btn-green" id="elig-proceed-btn" style="display:none;" onclick="elig_proceedRequest()"> Issue Document</button>
     </div>
   </div>
 </div>
@@ -1013,11 +1017,11 @@
 <!-- Request Record Detail Modal -->
 <div class="modal-overlay" id="modal-rr-detail">
   <div class="modal" style="max-width:620px;">
-    <div class="modal-header"><div class="modal-title">📋 <span id="rr-detail-title">Request History</span></div><div class="modal-close" onclick="closeModal('modal-rr-detail')">✕</div></div>
+    <div class="modal-header"><div class="modal-title"> <span id="rr-detail-title">Request History</span></div><div class="modal-close" onclick="closeModal('modal-rr-detail')">×</div></div>
     <div id="rr-detail-content"></div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('modal-rr-detail')">Close</button>
-      <button class="btn btn-green" onclick="closeModal('modal-rr-detail');openModal('modal-eligibility-check')">🔍 Check Eligibility</button>
+      <button class="btn btn-green" onclick="closeModal('modal-rr-detail');openModal('modal-eligibility-check')"> Check Eligibility</button>
     </div>
   </div>
 </div>

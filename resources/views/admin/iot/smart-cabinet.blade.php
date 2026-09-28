@@ -7,7 +7,18 @@
 <section class="panel"><div class="panel-heading"><h2>Registered cabinets</h2><span>{{ $cabinets->total() }} registered</span></div>
 @forelse($cabinets as $cabinet)
     <article class="device-card"><div><h3>{{ $cabinet->name }}</h3><p>{{ $cabinet->identifier }}</p></div><span class="pill {{ $cabinet->connectionStatus() === 'online' ? 'success' : 'neutral' }}">{{ ucfirst($cabinet->connectionStatus()) }}</span>
-        <dl class="detail-grid"><div><dt>Last seen</dt><dd>{{ $cabinet->last_seen_at?->format('M j, Y g:i A') ?? 'Never reported' }}</dd></div><div><dt>Software</dt><dd>{{ $cabinet->software_version ?? 'Not reported' }}</dd></div><div><dt>Component health</dt><dd>{{ $cabinet->component_health ? json_encode($cabinet->component_health, JSON_UNESCAPED_SLASHES) : 'Not reported' }}</dd></div><div><dt>Cabinet state</dt><dd>{{ $cabinet->cabinet_state ? json_encode($cabinet->cabinet_state, JSON_UNESCAPED_SLASHES) : 'Not reported' }}</dd></div><div><dt>Last error</dt><dd>{{ $cabinet->last_error ?? 'None reported' }}</dd></div></dl></article>
+        <dl class="detail-grid"><div><dt>Last seen</dt><dd>{{ $cabinet->last_seen_at?->format('M j, Y g:i A') ?? 'Never reported' }}</dd></div><div><dt>Software</dt><dd>{{ $cabinet->software_version ?? 'Not reported' }}</dd></div><div class="component-health-field"><dt>Component health</dt><dd>@php $healthItems = $cabinet->componentHealthItems(); @endphp
+            @if ($healthItems)
+                <p class="component-health-summary">{{ collect($healthItems)->where('tone', 'success')->count() }} of {{ count($healthItems) }} components healthy</p>
+                <ul class="component-health-list">
+                    @foreach ($healthItems as $item)
+                        <li class="component-health-item is-{{ $item['tone'] }}"><span class="component-health-dot" aria-hidden="true"></span><strong>{{ $item['label'] }}</strong><span class="pill {{ $item['tone'] }}">{{ $item['status'] }}</span></li>
+                    @endforeach
+                </ul>
+            @else
+                Not reported
+            @endif
+        </dd></div><div><dt>Cabinet state</dt><dd>{{ $cabinet->cabinet_state ? json_encode($cabinet->cabinet_state, JSON_UNESCAPED_SLASHES) : 'Not reported' }}</dd></div><div><dt>Last error</dt><dd>{{ $cabinet->last_error ?? 'None reported' }}</dd></div></dl></article>
 @empty
     <div class="empty-state"><strong>No cabinets registered</strong><p>Device details will appear after an administrator registers the Raspberry Pi integration.</p></div>
 @endforelse

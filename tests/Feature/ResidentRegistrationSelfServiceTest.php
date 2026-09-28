@@ -35,7 +35,8 @@ test('existing record reaches email step after normalized name and official-deta
     $this->post(route('portal.register.confirm-record'), [
         'date_of_birth' => '1990-02-03', 'contact_last_four' => '4567',
     ])->assertRedirect(route('portal.register'));
-    $this->get(route('portal.register'))->assertSee('Na-verify na ang resident record')->assertSee('Send activation code');
+    $this->get(route('portal.register'))->assertSee('Na-verify na ang resident record')->assertSee('Send activation code')
+        ->assertSee('Email verification')->assertSee('name="email"', false);
     $this->assertDatabaseCount('residents', 1);
     $this->assertDatabaseEmpty('users');
 });
@@ -47,6 +48,7 @@ test('unavailable email delivery offers staff activation without an unusable sen
 
     $this->get(route('portal.register'))->assertOk()
         ->assertSee('Hindi makapagpadala ng activation code sa email ngayon')
+        ->assertSee('Email verification')
         ->assertSee('Verify activation code')
         ->assertDontSee('Send activation code')
         ->assertDontSee('name="email"', false);

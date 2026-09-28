@@ -16,12 +16,45 @@ it('rejects a viewer before disclosing records in the dashboard html', function 
 it('renders account links and a labeled mobile navigation in the workspace', function () {
     $this->actingAs(User::factory()->create())->get(route('admin.dashboard'))
         ->assertOk()->assertSee('aria-controls="admin-navigation"', false)
+        ->assertSee('css/figma-admin.css')
+        ->assertSee('IoT status')
+        ->assertDontSee('IoT Not Connected')
+        ->assertDontSee('RFID, smart cabinet, and facial recognition are not connected.')
         ->assertSee('aria-controls="logout-dialog"', false)
         ->assertSee('aria-labelledby="logout-title"', false)
         ->assertSee('Log out of SmartBrgy?')
         ->assertSee('data-logout-url="'.route('logout').'"', false)
         ->assertSee(route('profile.edit'))->assertSee(route('security.edit'))
         ->assertDontSee('All users are verified with biometric authentication');
+
+    $this->actingAs(User::factory()->superAdmin()->create())->get(route('admin.dashboard'))
+        ->assertSee('Review verified RFID activity and cabinet reports.')
+        ->assertDontSee('RFID, smart cabinet, and facial recognition are not connected.');
+});
+
+it('keeps super admin navigation and vector symbols across workspace pages', function () {
+    $superAdmin = User::factory()->superAdmin()->create();
+
+    foreach (['admin.dashboard', 'admin.smart-cabinet.index', 'admin.cabinet-access.index', 'profile.edit'] as $route) {
+        $response = $this->actingAs($superAdmin)->get(route($route))->assertOk();
+        $response->assertSee('Dashboard')->assertSee('Smart Cabinet')->assertSee('Employee Cabinet Access')
+            ->assertSee('My profile')->assertSee('<svg', false);
+    }
+
+    $this->actingAs(User::factory()->create(['role' => 'staff']))->get(route('admin.dashboard'))
+        ->assertOk()->assertDontSee('Employee Cabinet Access');
+});
+
+it('scrolls the dashboard menu inside the sidebar while keeping the account footer separate', function () {
+    $response = $this->actingAs(User::factory()->superAdmin()->create())
+        ->get(route('admin.dashboard'))->assertOk();
+    $document = new DOMDocument;
+    @$document->loadHTML($response->getContent());
+    $xpath = new DOMXPath($document);
+
+    expect($xpath->query('//nav[@id="admin-navigation"]/div[contains(@class, "sidebar-scroll")]')->length)->toBe(1)
+        ->and($xpath->query('//nav[@id="admin-navigation"]/div[contains(@class, "sidebar-footer")]')->length)->toBe(1)
+        ->and($xpath->query('//nav[@id="admin-navigation"]/div[contains(@class, "sidebar-scroll")]//a[contains(normalize-space(.), "My profile")]')->length)->toBe(1);
 });
 
 it('renders a paginated request list and rejection reason on its detail page', function () {
@@ -34,8 +67,23 @@ it('renders a paginated request list and rejection reason on its detail page', f
     $this->actingAs($staff)->get(route('admin.document-requests.index'))
         ->assertSee('REQ-PAGE-001')->assertSee('&lt;script&gt;', false)->assertDontSee('<script>alert(1)</script>', false);
     $this->get(route('admin.document-requests.show', $request))
-        ->assertSee('name="rejection_reason"', false)->assertSee('standalone-page')
+        ->assertSee('name="rejection_reason"', false)->assertSee('class="side-nav"', false)
         ->assertDontSee('<option value="released"', false);
+});
+
+it('keeps document request pages inside the staff workspace', function () {
+    $staff = User::factory()->create(['role' => 'staff']);
+    $request = DocumentRequest::create([
+        'reference_code' => 'REQ-SHELL-001', 'document_type' => 'Barangay Clearance',
+        'full_name' => 'Shell Test', 'address' => 'Anabu I-G', 'status' => 'pending',
+    ]);
+
+    foreach (['admin.document-requests.index', 'admin.document-requests.show'] as $route) {
+        $url = $route === 'admin.document-requests.show' ? route($route, $request) : route($route);
+        $this->actingAs($staff)->get($url)->assertOk()
+            ->assertSee('Staff workspace')->assertSee('class="side-nav"', false)
+            ->assertSee('css/figma-iot.css')->assertDontSee('class="civic-masthead"', false);
+    }
 });
 
 it('provides branded recovery links for unknown certificate codes', function () {
@@ -55,12 +103,12 @@ it('provides mobile input controls and accessible feedback throughout the reside
         ->assertSee('id="resident-details-form"', false);
 });
 
-it('keeps staff sign in out of the public resident portal', function () {
+it('keeps staff sign in available without promoting it in the resident header', function () {
     $this->get(route('home'))
-        ->assertDontSee('Staff sign in')
+        ->assertDontSee('Staff portal')
         ->assertDontSee('href="'.route('login').'"', false);
 
-    $this->get(route('login'))->assertOk();
+    $this->get(route('login'))->assertOk()->assertSee('Authorized personnel only');
 });
 
 it('keeps settings content beside the sidebar in the Flux layout', function (string $route) {

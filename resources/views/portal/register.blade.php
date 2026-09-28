@@ -1,14 +1,15 @@
 @extends('layouts.portal')
 @section('title', 'Create account')
 @section('band')
-<x-portal.page-band title="Create account" title-id="register-title">
-    <p>Ikonekta ang online account sa record ninyo sa Resident Records ng barangay.</p>
+<x-portal.page-band title="Create your resident account" title-id="register-title">
+    <p>Ikonekta ang inyong online account sa verified Resident Records ng barangay.</p>
 </x-portal.page-band>
 @endsection
 @section('content')
 @php
     $stepNumber = ['name' => 1, 'details' => 2, 'email' => 3, 'code' => 3, 'account' => 4][$stage] ?? 1;
-    $stepLabels = ['Hanapin ang record', 'Kumpirmahin ang details', 'Activation code', 'Gumawa ng password'];
+    $stepLabels = ['Find resident record', 'Verify identity', 'Email verification', 'Create account'];
+    $stepTitles = ['Hanapin ang record', 'Kumpirmahin ang details', 'Activation code', 'Gumawa ng password'];
 @endphp
 <div class="auth-layout">
     <section class="card card-accent" aria-labelledby="register-title">
@@ -18,7 +19,9 @@
                     <li @class(['done' => $index + 1 < $stepNumber]) @if($index + 1 === $stepNumber) aria-current="step" @endif><span>{{ $label }}</span></li>
                 @endforeach
             </ol>
-            <p class="step-count">Step {{ $stepNumber }} of 4: {{ $stepLabels[$stepNumber - 1] }}</p>
+            <p class="step-count">Step {{ $stepNumber }} of 4</p>
+            <h2 class="registration-step-title">{{ $stepTitles[$stepNumber - 1] }}</h2>
+            <p class="step-guidance">{{ [1 => 'Ilagay ang pangalang nasa opisyal na resident record.', 2 => 'Kumpirmahin ang pribadong detalye ng record ninyo.', 3 => $emailDeliveryAvailable ? 'Gamitin ang email na mabubuksan ninyo para sa activation code.' : 'Humingi ng activation code sa barangay staff matapos ma-verify ang identity ninyo.', 4 => 'Gumawa ng ligtas na password para sa account.'][$stepNumber] }}</p>
 
             @if($stage === 'account')
                 <p class="alert alert-green" role="status">Na-verify na ang resident record. Tapusin ang pag-create ng account sa loob ng 10 minuto.</p>
@@ -127,6 +130,10 @@
         <section>
             <h2>Hindi mahanap ang record?</h2>
             <p>Kung bagong lipat kayo o iba ang details sa record, pumunta sa Barangay Hall para magpa-register o magpa-update. Dalhin ang valid ID.</p>
+        </section>
+        <section>
+            <h2>Data Privacy Notice</h2>
+            <p>Gagamitin lamang ang inyong impormasyon para i-verify at gawin ang resident portal account.</p>
         </section>
     </aside>
 </div>

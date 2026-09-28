@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 /**
  * @property string $identifier
@@ -43,6 +44,31 @@ class CabinetDevice extends Model
         }
 
         return $this->reported_status;
+    }
+
+    /**
+     * Readable component health entries for the staff dashboard.
+     *
+     * @return list<array{label: string, status: string, tone: string}>
+     */
+    public function componentHealthItems(): array
+    {
+        return collect($this->component_health ?? [])
+            ->map(function (mixed $status, string $component): array {
+                $statusText = is_scalar($status) ? (string) $status : json_encode($status, JSON_UNESCAPED_SLASHES);
+
+                return [
+                    'label' => (string) Str::of($component)->replace('facelock', 'face lock')->headline()->replace('Rfid', 'RFID'),
+                    'status' => Str::headline($statusText),
+                    'tone' => match (strtolower($statusText)) {
+                        'connected', 'healthy', 'ok', 'online', 'ready' => 'success',
+                        'disconnected', 'unhealthy', 'error', 'offline', 'failed' => 'warning',
+                        default => 'neutral',
+                    },
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     /** @return array<string, string> */

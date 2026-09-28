@@ -7,7 +7,7 @@
      ) }}">
 
     <div class="request-card-name">
-        👤 {{ $request->full_name }}
+         {{ $request->full_name }}
     </div>
 
     <div class="request-card-type">
@@ -88,7 +88,7 @@
      ) }}">
 
     <div class="request-card-name">
-        👤 {{ $request->full_name }}
+         {{ $request->full_name }}
     </div>
 
     <div class="request-card-type">

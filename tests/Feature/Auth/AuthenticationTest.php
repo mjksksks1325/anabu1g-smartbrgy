@@ -6,7 +6,12 @@ use Laravel\Fortify\Features;
 test('login screen can be rendered', function () {
     $response = $this->get(route('login'));
 
-    $response->assertOk();
+    $response->assertOk()
+        ->assertSee('Barangay Operations Portal')
+        ->assertSee('Staff email address')
+        ->assertSee('Sign in to staff portal')
+        ->assertSee('Contact barangay office')
+        ->assertSee('css/figma-auth.css');
 });
 
 test('users can authenticate using the login screen', function () {
