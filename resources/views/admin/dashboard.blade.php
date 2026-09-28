@@ -456,6 +456,7 @@
               <button class="audit-type-btn" onclick="filterAuditType('record',this)"> Records</button>
               <button class="audit-type-btn" onclick="filterAuditType('incident',this)"> Incidents</button>
               <button class="audit-type-btn" onclick="filterAuditType('security',this)"> Security</button>
+              <button class="audit-type-btn" onclick="filterAuditType('cabinet',this)"> Cabinet Access</button>
             </div>
           </div>
         </div>

@@ -2406,7 +2406,7 @@ function renderAuditLog() {
   setEl('astat-auth', LIVE_AUDIT_LOGS.filter(l => l.type === 'auth').length);
   setEl('astat-records', LIVE_AUDIT_LOGS.filter(l => l.type === 'record').length);
   setEl('astat-certs', LIVE_AUDIT_LOGS.filter(l => l.type === 'cert').length);
-  setEl('astat-security', LIVE_AUDIT_LOGS.filter(l => l.type === 'security').length);
+  setEl('astat-security', LIVE_AUDIT_LOGS.filter(l => l.type === 'security' || l.type === 'cabinet').length);
   const showCount = document.getElementById('audit-showing-count');
   if (showCount) showCount.textContent = `Showing ${logs.length} of ${LIVE_AUDIT_LOGS.length} events`;
   container.innerHTML = '';
@@ -2416,8 +2416,8 @@ function renderAuditLog() {
   }
   logs.forEach(log => {
     const sev = log.severity === 'danger' ? 'rgba(239,68,68,0.07)' : log.severity === 'warn' ? 'rgba(245,158,11,0.06)' : '';
-    const typeColor = { auth: 'var(--green-500)', cert: '#F59E0B', rfid: 'var(--blue-400)', record: '#A78BFA', incident: '#FB923C', security: '#EF4444' }[log.type] || 'var(--text-muted)';
-    const typeBg = { auth: 'rgba(0,255,106,0.08)', cert: 'rgba(245,158,11,0.08)', rfid: 'rgba(42,126,211,0.08)', record: 'rgba(139,92,246,0.08)', incident: 'rgba(251,146,60,0.08)', security: 'rgba(239,68,68,0.08)' }[log.type] || 'var(--bg-glass)';
+    const typeColor = { auth: 'var(--green-500)', cert: '#F59E0B', rfid: 'var(--blue-400)', cabinet: 'var(--blue-400)', record: '#A78BFA', incident: '#FB923C', security: '#EF4444' }[log.type] || 'var(--text-muted)';
+    const typeBg = { auth: 'rgba(0,255,106,0.08)', cert: 'rgba(245,158,11,0.08)', rfid: 'rgba(42,126,211,0.08)', cabinet: 'rgba(42,126,211,0.08)', record: 'rgba(139,92,246,0.08)', incident: 'rgba(251,146,60,0.08)', security: 'rgba(239,68,68,0.08)' }[log.type] || 'var(--bg-glass)';
     const row = document.createElement('div');
     row.className = 'audit-log-row';
     row.style.background = sev;
@@ -2439,6 +2439,7 @@ function auditTypeSymbol(type) {
     auth: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/>',
     cert: '<path d="M6 3h9l3 3v15H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM14 3v4h4M8 12h8M8 16h8"/>',
     rfid: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
+    cabinet: '<rect x="3" y="2" width="18" height="20" rx="2"/><path d="M12 2v20M16 11v2"/>',
     record: '<path d="M6 3h9l3 3v15H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM14 3v4h4M8 12h8M8 16h8"/>',
     incident: '<path d="m12 3 10 18H2L12 3ZM12 9v5m0 3h.01"/>',
     security: '<circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M16 3l5 5M16 7l2 2"/>',

@@ -17,17 +17,36 @@ class AuditLogController extends Controller
     {
         abort_unless($request->user()->isSuperAdmin(), 403);
 
-        $events = DB::table('administrative_audits')->latest('id')->limit(500)->get()
+        $events = DB::table('administrative_audits')
+            ->where(fn ($query) => $query->where('action', '!=', 'auth.login')->orWhere('record', '!=', 'resident_portal')->orWhereNull('record'))
+            ->latest('id')->limit(500)->get()
             ->map(fn (object $event): array => [
                 'id' => $event->id,
                 'type' => $event->type,
-                'action' => $event->action === 'auth.login' ? 'Login' : str_replace(['admin.', '-', '.'], ['', ' ', ' / '], $event->action),
-                'detail' => $event->action === 'auth.login'
-                    ? ($event->record === 'resident_portal' ? 'Resident portal sign in' : 'Successful sign in')
-                    : ($event->action === 'portal.account.registered' ? 'Resident portal account created' : ($event->record ? 'Record ID: '.$event->record : 'Administrative operation')),
+                'action' => $event->type === 'cabinet'
+                    ? match ($event->access_result) {
+                        'attempted' => 'Cabinet access attempted',
+                        'denied' => 'Cabinet access denied',
+                        'granted' => 'Cabinet access granted',
+                        'opened' => 'Cabinet door opened (sensor confirmed)',
+                        default => 'Cabinet access event',
+                    }
+                    : ($event->action === 'auth.login' ? 'Login' : str_replace(['admin.', '-', '.'], ['', ' ', ' / '], $event->action)),
+                'detail' => $event->type === 'cabinet'
+                    ? implode(' · ', array_filter([
+                        'Cabinet: '.$event->cabinet_identifier,
+                        $event->user_id ? 'Employee ID: '.$event->user_id : null,
+                        $event->rpi_employee_id ? 'RPi ID: '.$event->rpi_employee_id : null,
+                        $event->access_result === 'granted' ? 'Opening not confirmed' : null,
+                        $event->access_result === 'opened' ? 'Door sensor reported open' : null,
+                        $event->authentication_method ? 'Device-reported verified authentication: '.str_replace('_', ' + ', strtoupper($event->authentication_method)) : null,
+                    ]))
+                    : ($event->action === 'auth.login'
+                        ? 'Successful sign in'
+                        : ($event->action === 'portal.account.registered' ? 'Resident portal account created' : ($event->record ? 'Record ID: '.$event->record : 'Administrative operation'))),
                 'user' => $event->actor,
-                'date' => Carbon::parse($event->created_at)->toDateString(),
-                'time' => Carbon::parse($event->created_at)->format('M d, Y H:i'),
+                'date' => ($event->type === 'cabinet' ? Carbon::parse($event->created_at, 'UTC')->setTimezone(config('app.timezone')) : Carbon::parse($event->created_at))->toDateString(),
+                'time' => ($event->type === 'cabinet' ? Carbon::parse($event->created_at, 'UTC')->setTimezone(config('app.timezone')) : Carbon::parse($event->created_at))->format('M d, Y H:i'),
                 'icon' => '•',
                 'severity' => 'ok',
             ]);

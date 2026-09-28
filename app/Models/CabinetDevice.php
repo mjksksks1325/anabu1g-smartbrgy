@@ -53,9 +53,9 @@ class CabinetDevice extends Model
      */
     public function componentHealthItems(): array
     {
-        return collect($this->component_health ?? [])
+        return array_values(collect($this->component_health ?? [])
             ->map(function (mixed $status, string $component): array {
-                $statusText = is_scalar($status) ? (string) $status : json_encode($status, JSON_UNESCAPED_SLASHES);
+                $statusText = is_scalar($status) ? (string) $status : (json_encode($status, JSON_UNESCAPED_SLASHES) ?: 'unavailable');
 
                 return [
                     'label' => (string) Str::of($component)->replace('facelock', 'face lock')->headline()->replace('Rfid', 'RFID'),
@@ -68,7 +68,7 @@ class CabinetDevice extends Model
                 ];
             })
             ->values()
-            ->all();
+            ->all());
     }
 
     /** @return array<string, string> */

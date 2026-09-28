@@ -208,6 +208,14 @@ it('shows smart cabinet component health as readable labels instead of raw json'
         ->assertDontSee('"camera":"connected"', false);
 });
 
+it('renders structured cabinet health reports as readable text', function () {
+    CabinetDevice::factory()->create(['component_health' => ['camera' => ['state' => 'connected']]]);
+
+    $this->actingAs(User::factory()->superAdmin()->create())
+        ->get(route('admin.smart-cabinet.index'))->assertOk()
+        ->assertSee('Camera')->assertSee('{&quot;State&quot;:&quot;Connected&quot;}', false);
+});
+
 it('uses the same sidebar icons as the staff dashboard on super admin pages', function () {
     $this->actingAs(User::factory()->superAdmin()->create())
         ->get(route('admin.smart-cabinet.index'))->assertOk()

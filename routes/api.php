@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\CabinetAccessEventController;
 use App\Http\Controllers\Api\CabinetEventController;
 use App\Http\Middleware\AuthenticateCabinetDevice;
 use Illuminate\Support\Facades\Route;
@@ -9,6 +10,7 @@ Route::prefix('iot/cabinets/{cabinet:identifier}')
     ->group(function (): void {
         Route::post('/heartbeat', [CabinetEventController::class, 'heartbeat'])->name('api.iot.cabinets.heartbeat');
         Route::post('/movements', [CabinetEventController::class, 'movement'])->name('api.iot.cabinets.movements');
+        Route::post('/access-events', CabinetAccessEventController::class)->name('api.iot.cabinets.access-events');
 
         Route::get('/employee-enrollment/pending', [CabinetEventController::class, 'pendingEmployeeEnrollment'])
             ->name('api.iot.cabinets.employee-enrollment.pending');
