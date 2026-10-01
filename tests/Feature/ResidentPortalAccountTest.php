@@ -204,6 +204,64 @@ test('request history and status are scoped to the authenticated resident', func
     $this->getJson(route('portal.request.status', $other->reference_code))->assertNotFound();
 });
 
+test('request history polling returns only visible requests owned by the resident', function () {
+    $user = User::factory()->resident()->create();
+    $visible = portalRequestFor($user->resident, 'REQ-VISIBLE');
+    $otherPage = portalRequestFor($user->resident, 'REQ-OTHER-PAGE');
+    $otherResident = portalRequestFor(Resident::factory()->create(), 'REQ-PRIVATE');
+
+    $response = $this->actingAs($user, 'resident')->getJson(route('portal.account.statuses', [
+        'ids' => [$visible->id, $otherResident->id], 'page' => 2,
+    ]));
+
+    $response->assertOk()->assertJsonPath("items.{$visible->id}.version", $visible->historyVersion())
+        ->assertJsonMissingPath("items.{$otherResident->id}")
+        ->assertJsonMissingPath("items.{$otherPage->id}");
+    expect($response->json("items.{$visible->id}.html"))->toContain('REQ-VISIBLE', 'Received');
+});
+
+test('request history keeps its second page while exposing only that page to polling', function () {
+    $user = User::factory()->resident()->create();
+    for ($number = 1; $number <= 16; $number++) {
+        portalRequestFor($user->resident, "REQ-PAGE-{$number}");
+    }
+
+    $response = $this->actingAs($user, 'resident')->get(route('portal.account', ['page' => 2]));
+
+    $response->assertOk()->assertSee(route('portal.account.statuses'))
+        ->assertSee(route('portal.account', ['page' => 1]));
+    expect(substr_count($response->getContent(), 'data-request-id='))->toBe(1);
+});
+
+test('request history polling reflects administrative status changes and escapes private remarks', function () {
+    $user = User::factory()->resident()->create();
+    $documentRequest = portalRequestFor($user->resident, 'REQ-CHANGED');
+    $staff = User::factory()->create(['role' => 'staff']);
+    $this->actingAs($staff)->patchJson(route('admin.document-requests.update-status', $documentRequest), [
+        'status' => 'approved', 'remarks' => '<script>unsafe()</script>',
+    ])->assertOk();
+
+    $response = $this->actingAs($user, 'resident')->getJson(route('portal.account.statuses', ['ids' => [$documentRequest->id]]));
+
+    $response->assertOk()->assertJsonPath("items.{$documentRequest->id}.version", $documentRequest->fresh()->historyVersion());
+    expect($response->json("items.{$documentRequest->id}.html"))
+        ->toContain('Approved', '&lt;script&gt;unsafe()&lt;/script&gt;')
+        ->not->toContain('<script>unsafe()</script>');
+});
+
+test('request history polling requires an eligible resident account and a bounded set of ids', function () {
+    $user = User::factory()->resident()->create();
+    $documentRequest = portalRequestFor($user->resident, 'REQ-BOUND');
+    $url = route('portal.account.statuses', ['ids' => [$documentRequest->id]]);
+
+    $this->getJson($url)->assertUnauthorized();
+    $this->actingAs(User::factory()->create(['role' => 'staff']))->getJson($url)->assertUnauthorized();
+    $this->actingAs($user, 'resident')->getJson(route('portal.account.statuses', ['ids' => range(1, 16)]))
+        ->assertUnprocessable()->assertJsonValidationErrors('ids');
+    $user->resident->update(['status' => 'inactive']);
+    $this->getJson($url)->assertForbidden();
+});
+
 test('request history explains each status, rejection reason, and collection steps', function () {
     $user = User::factory()->resident()->create();
     portalRequestFor($user->resident, 'REQ-READY')->update(['status' => 'ready_for_release']);

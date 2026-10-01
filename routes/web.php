@@ -68,6 +68,9 @@ Route::post('/portal/logout', [ResidentSessionController::class, 'destroy'])->mi
 Route::post('/logout', [EmployeeSessionController::class, 'destroy'])->middleware('auth:web')->name('logout');
 Route::middleware(EnsureResidentAccount::class)->group(function () {
     Route::get('/portal/account', [ResidentPortalController::class, 'account'])->name('portal.account');
+    Route::get('/portal/account/statuses', [ResidentPortalController::class, 'requestStatuses'])
+        ->middleware('throttle:30,1')
+        ->name('portal.account.statuses');
     Route::get('/portal/profile', [ResidentPortalController::class, 'profile'])->name('portal.profile');
     Route::get('/portal/identity', [ResidentPortalController::class, 'identity'])->name('portal.identity');
 });

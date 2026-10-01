@@ -8,10 +8,12 @@ use App\Http\Requests\Admin\StoreResidentRequest;
 use App\Http\Requests\Admin\UpdateResidentRequest;
 use App\Models\DocumentRequest;
 use App\Models\Resident;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
@@ -80,9 +82,12 @@ class ResidentController extends Controller
     public function store(StoreResidentRequest $request): JsonResponse
     {
         $validated = $request->validated();
-        $this->rejectDuplicate($validated, $request->boolean('confirm_duplicate'));
+        $validated['date_of_birth'] = Carbon::parse($validated['date_of_birth'])->toDateString();
+        $resident = Cache::lock($this->residentIdentityLockKey($validated), 15)->block(5, function () use ($request, $validated): Resident {
+            $this->rejectDuplicate($validated, $request->boolean('confirm_duplicate'));
 
-        $resident = Resident::query()->create(Arr::except($validated, 'confirm_duplicate'));
+            return Resident::query()->create(Arr::except($validated, 'confirm_duplicate'));
+        });
 
         return response()->json([
             'message' => 'Resident registered successfully.',
@@ -120,9 +125,11 @@ class ResidentController extends Controller
     public function update(UpdateResidentRequest $request, Resident $resident): JsonResponse
     {
         $validated = $request->validated();
-        $this->rejectDuplicate($validated, $request->boolean('confirm_duplicate'), $resident);
-
-        $resident->update(Arr::except($validated, 'confirm_duplicate'));
+        $validated['date_of_birth'] = Carbon::parse($validated['date_of_birth'])->toDateString();
+        Cache::lock($this->residentIdentityLockKey($validated), 15)->block(5, function () use ($request, $resident, $validated): void {
+            $this->rejectDuplicate($validated, $request->boolean('confirm_duplicate'), $resident);
+            $resident->update(Arr::except($validated, 'confirm_duplicate'));
+        });
 
         return response()->json([
             'message' => 'Resident record updated successfully.',
@@ -246,22 +253,43 @@ class ResidentController extends Controller
         bool $duplicateConfirmed,
         ?Resident $ignoredResident = null,
     ): void {
-        if ($duplicateConfirmed) {
-            return;
-        }
-
-        $duplicate = Resident::query()
-            ->whereRaw('LOWER(first_name) = ?', [mb_strtolower($attributes['first_name'])])
-            ->whereRaw('LOWER(last_name) = ?', [mb_strtolower($attributes['last_name'])])
+        $matches = Resident::query()->withTrashed()
             ->whereDate('date_of_birth', $attributes['date_of_birth'])
             ->when($ignoredResident !== null, fn (Builder $query) => $query->whereKeyNot($ignoredResident->getKey()))
-            ->first();
+            ->get()
+            ->filter(fn (Resident $resident): bool => $this->normalizedName($resident->first_name) === $this->normalizedName($attributes['first_name'])
+                && $this->normalizedName($resident->last_name) === $this->normalizedName($attributes['last_name']));
 
-        if ($duplicate !== null) {
+        $exactMatch = $matches->first(fn (Resident $resident): bool => $this->normalizedName($resident->middle_name) === $this->normalizedName($attributes['middle_name'] ?? null)
+            && $this->normalizedName($resident->suffix) === $this->normalizedName($attributes['suffix'] ?? null));
+
+        if ($exactMatch !== null) {
             throw ValidationException::withMessages([
-                'duplicate' => "Possible duplicate: {$duplicate->full_name} ({$duplicate->resident_number}). Review the existing record or confirm the duplicate.",
+                'first_name' => "An exact resident record already exists: {$exactMatch->full_name} ({$exactMatch->resident_number}). Review the existing record".($exactMatch->trashed() ? ' or restore it.' : '.'),
             ]);
         }
+
+        $possibleMatch = $matches->first();
+        if ($possibleMatch !== null && ! $duplicateConfirmed) {
+            throw ValidationException::withMessages([
+                'duplicate' => "Possible duplicate: {$possibleMatch->full_name} ({$possibleMatch->resident_number}). Review the existing record or confirm this is a separate resident.",
+            ]);
+        }
+    }
+
+    /** @param array<string, mixed> $attributes */
+    private function residentIdentityLockKey(array $attributes): string
+    {
+        return 'resident-identity:'.hash('sha256', serialize([
+            $this->normalizedName($attributes['first_name']),
+            $this->normalizedName($attributes['last_name']),
+            $attributes['date_of_birth'],
+        ]));
+    }
+
+    private function normalizedName(?string $name): string
+    {
+        return Str::lower(Str::squish((string) $name));
     }
 
     /** @return Builder<Resident> */

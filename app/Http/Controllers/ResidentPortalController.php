@@ -50,6 +50,25 @@ class ResidentPortalController extends Controller
         return view('portal.account', ['resident' => $resident, 'requests' => $resident->documentRequests()->latest()->paginate(15)]);
     }
 
+    public function requestStatuses(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1', 'max:15'],
+            'ids.*' => ['required', 'integer', 'distinct', 'min:1'],
+        ]);
+
+        $requests = $request->user()->resident->documentRequests()
+            ->whereIn('id', $validated['ids'])
+            ->get(['id', 'reference_code', 'document_type', 'created_at', 'status', 'remarks', 'rejection_reason']);
+
+        return response()->json(['items' => $requests->mapWithKeys(fn ($item): array => [
+            $item->id => [
+                'version' => $item->historyVersion(),
+                'html' => view('portal.partials.request-history-item', ['item' => $item])->render(),
+            ],
+        ])]);
+    }
+
     public function profile(Request $request): View
     {
         return view('portal.profile', ['resident' => $request->user()->resident]);

@@ -8,6 +8,11 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class DocumentRequest extends Model
 {
+    public function historyVersion(): string
+    {
+        return hash('sha256', serialize([$this->status, $this->remarks, $this->rejection_reason]));
+    }
+
     protected $fillable = [
         'reference_code',
         'resident_id',

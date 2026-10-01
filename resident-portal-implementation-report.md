@@ -127,3 +127,43 @@ Current officials, documentary requirements, contact numbers, processing times a
 5. Suspend/reactivate the account as Admin and archive/restore the resident as authorized staff; check access is denied/restored without losing history.
 6. Log out, use Back, refresh, and switch accounts; verify no previous resident identity, request content or attachment preview remains visible.
 7. Check mobile widths, light/dark mode, keyboard navigation, form errors and logout cancellation in a real browser.
+
+## 21. Remaining issue fixes (2026-10-02, local working tree)
+
+The Request History page previously rendered database statuses only at page load. It now polls a resident-authenticated, rate-limited endpoint every five seconds for the IDs on the current page. The endpoint reads only that resident's requests and returns the existing Blade card markup. The browser replaces a card only when its status, remarks, or rejection reason changes. Polling pauses in hidden tabs, prevents overlapping calls, retries network failures after 15 seconds, and reloads if account access is revoked. The existing pagination and status workflow are retained.
+
+Administrative resident creation and update previously used a first-name, last-name, and birth-date warning that staff could override even for an exact duplicate. The approved rule now rejects an exact match on normalized first, middle, and last name, suffix, and birth date, including archived records. A same first/last name and birth date with a different middle name or suffix still presents the existing staff confirmation path. A cache lock serializes matching create and update operations when the configured cache store is shared. No migration, dependency, notification feature, or existing resident row was changed.
+
+### Test record
+
+The affected PHP feature run passed 144 tests and 859 assertions. The JavaScript run passed 53 tests. The individual new or changed behavior checks are recorded below; `ResidentPortalAccountTest.php` and `ResidentControllerTest.php` are under `tests/Feature`, and `RequestHistoryClient.test.js` is under `tests/Unit`.
+
+| Test ID | Test date | Expected result | Actual result | PASS/FAIL | Supporting evidence |
+| --- | --- | --- | --- | --- | --- |
+| AT-16-01 | 2026-10-02 | Polling returns own selected requests only. | Other resident and unselected request absent. | PASS | `ResidentPortalAccountTest.php`: request history polling returns only visible requests owned by the resident. |
+| AT-16-02 | 2026-10-02 | Page 2 renders one of 16 requests with polling available. | Page 2 and one request card rendered. | PASS | `ResidentPortalAccountTest.php`: request history keeps its second page while exposing only that page to polling. |
+| AT-16-03 | 2026-10-02 | Admin approval appears with escaped remarks. | Approved card and escaped text returned. | PASS | `ResidentPortalAccountTest.php`: request history polling reflects administrative status changes and escapes private remarks. |
+| AT-16-04 | 2026-10-02 | Guests, staff, ineligible accounts, and oversized ID lists are rejected. | 401, 403, and 422 paths passed. | PASS | `ResidentPortalAccountTest.php`: request history polling requires an eligible resident account and a bounded set of ids. |
+| AT-16-05 | 2026-10-02 | Poll every five seconds and update changed rows only. | Unchanged row untouched; changed row updated. | PASS | `RequestHistoryClient.test.js`: polls visible request ids and changes only rows with a new version. |
+| AT-16-06 | 2026-10-02 | Hidden tabs pause and requests do not overlap. | No hidden timer or overlapping fetch. | PASS | `RequestHistoryClient.test.js`: pauses in hidden tabs and prevents overlapping requests. |
+| AT-16-07 | 2026-10-02 | Network error backs off; navigation stops polling. | 15-second retry scheduled, then canceled. | PASS | `RequestHistoryClient.test.js`: retries network failures slowly and stops after navigation. |
+| AT-16-08 | 2026-10-02 | Revoked access stops polling and reloads authorization. | One reload and no next timer. | PASS | `RequestHistoryClient.test.js`: reloads when resident access is revoked and does not keep polling. |
+| AT-22-01 | 2026-10-02 | Exact duplicate is rejected even with confirmation. | 422 and one resident retained. | PASS | `ResidentControllerTest.php`: rejects an exact resident duplicate even when staff confirms it. |
+| AT-22-02 | 2026-10-02 | Similar resident requires confirmation; a distinct middle name can be saved. | Warning then successful confirmed save. | PASS | `ResidentControllerTest.php`: requires staff confirmation for a similar resident but permits a distinct middle name. |
+| AT-22-03 | 2026-10-02 | Different birth date can be saved. | Second resident created. | PASS | `ResidentControllerTest.php`: allows the same first and last name when the birth date differs. |
+| AT-22-04 | 2026-10-02 | Case and whitespace variants of an exact match are rejected. | 422 and one resident retained. | PASS | `ResidentControllerTest.php`: detects a matching identity despite case and whitespace differences. |
+| AT-22-05 | 2026-10-02 | Archived exact match is rejected with restore guidance. | 422 and archived row retained. | PASS | `ResidentControllerTest.php`: does not permit a new record to replace an archived exact match. |
+| AT-22-06 | 2026-10-02 | An update cannot duplicate another identity. | 422 and both original rows unchanged. | PASS | `ResidentControllerTest.php`: rejects a resident update that would duplicate another exact identity. |
+| TC-16 | 2026-10-02 | A resident sees an administrator's status change on Request History within about five seconds without refreshing, including on a paginated page. | Two-session localhost browser retest has not been performed; prior failed classification is retained. | FAILED | No manual browser evidence yet; automated evidence is AT-16-01 through AT-16-08. |
+| TC-22 | 2026-10-02 | Staff cannot create an exact duplicate, can confirm a distinct similar resident, and sees clear messages. | Staff browser retest has not been performed; prior failed classification is retained. | FAILED | No manual browser evidence yet; automated evidence is AT-22-01 through AT-22-06. |
+| TC-23: Resident Notifications | 2026-10-02 | N/A, excluded from the approved capstone scope. | No notification functionality was implemented or tested. | N/A (Out of Scope) | Approved scope in the 2026-10-02 task; this is not a software defect. |
+
+### Manual localhost retest instructions
+
+1. In separate browser profiles, sign in as an administrator and as a resident with at least one document request. Open the resident's My Requests page; leave it visible without refreshing.
+2. In the administrator profile, change that request from Pending to Approved. Record both timestamps and capture the resident card changing to Approved, including its explanatory text. Repeat with Ready for release or Rejected to check the callout and reason.
+3. Check a resident history page with more than 15 requests. Stay on page 2, change one of its visible requests as administrator, and confirm that the page number and other cards remain in place. Check the browser Network panel for one status request about every five seconds, no overlapping calls, and no calls while the tab is hidden.
+4. Temporarily disable the resident browser network, restore it, and confirm polling resumes. Sign out or suspend the account and confirm protected history is no longer shown.
+5. In the staff resident form, try an exact match (including Confirm Duplicate), an archived exact match, a similar name with a different middle name, and a different birth date. Capture validation or confirmation messages and verify existing rows are unchanged. Use test records only in a local test environment.
+
+The PHP tests used in-memory SQLite; no localhost browser session or simultaneous multi-process registration test was performed. The cache lock needs a shared lock-capable cache store across application workers; without a database uniqueness constraint, it does not protect writes that bypass the application. The approved exact-match rule can also reject two real people who share the same full name and birth date; staff must investigate such a case. This task intentionally made no restrictive schema change. The full PHP suite remains for the project owner to run with `php artisan test --compact`.

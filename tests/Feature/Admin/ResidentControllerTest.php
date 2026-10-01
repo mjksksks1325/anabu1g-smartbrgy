@@ -94,19 +94,78 @@ it('rejects invalid and future resident data', function () {
     expect(Resident::query()->count())->toBe(0);
 });
 
-it('blocks an exact duplicate unless staff explicitly confirms it', function () {
+it('rejects an exact resident duplicate even when staff confirms it', function () {
     $staff = User::factory()->create();
-    Resident::factory()->create(residentPayload());
+    $existing = Resident::factory()->create(residentPayload());
 
     $this->actingAs($staff)->postJson(route('admin.residents.store'), residentPayload())
         ->assertUnprocessable()
-        ->assertJsonValidationErrors('duplicate');
+        ->assertJsonValidationErrors('first_name')
+        ->assertJsonPath('errors.first_name.0', "An exact resident record already exists: {$existing->full_name} ({$existing->resident_number}). Review the existing record.");
 
     $this->actingAs($staff)->postJson(route('admin.residents.store'), residentPayload([
         'confirm_duplicate' => true,
+    ]))->assertUnprocessable()->assertJsonValidationErrors('first_name');
+
+    expect(Resident::query()->count())->toBe(1);
+});
+
+it('requires staff confirmation for a similar resident but permits a distinct middle name', function () {
+    $staff = User::factory()->create();
+    $existing = Resident::factory()->create(residentPayload());
+    $similar = residentPayload(['middle_name' => 'Garcia']);
+
+    $this->actingAs($staff)->postJson(route('admin.residents.store'), $similar)
+        ->assertUnprocessable()->assertJsonPath('errors.duplicate.0', "Possible duplicate: {$existing->full_name} ({$existing->resident_number}). Review the existing record or confirm this is a separate resident.");
+    $this->postJson(route('admin.residents.store'), [...$similar, 'confirm_duplicate' => true])->assertCreated();
+
+    expect(Resident::query()->count())->toBe(2);
+    expect($existing->fresh()->middle_name)->toBe('Reyes');
+});
+
+it('allows the same first and last name when the birth date differs', function () {
+    $staff = User::factory()->create();
+    Resident::factory()->create(residentPayload());
+
+    $this->actingAs($staff)->postJson(route('admin.residents.store'), residentPayload([
+        'date_of_birth' => '1991-05-14',
     ]))->assertCreated();
 
     expect(Resident::query()->count())->toBe(2);
+});
+
+it('detects a matching identity despite case and whitespace differences', function () {
+    $staff = User::factory()->create();
+    Resident::factory()->create(residentPayload(['first_name' => 'Maria  Elena', 'last_name' => 'Santos']));
+
+    $this->actingAs($staff)->postJson(route('admin.residents.store'), residentPayload([
+        'first_name' => ' MARIA Elena ', 'last_name' => 'SANTOS', 'confirm_duplicate' => true,
+    ]))->assertUnprocessable()->assertJsonValidationErrors('first_name');
+
+    expect(Resident::query()->count())->toBe(1);
+});
+
+it('does not permit a new record to replace an archived exact match', function () {
+    $staff = User::factory()->create();
+    $existing = Resident::factory()->create(residentPayload());
+    $existing->delete();
+
+    $this->actingAs($staff)->postJson(route('admin.residents.store'), residentPayload())
+        ->assertUnprocessable()->assertJsonPath('errors.first_name.0', "An exact resident record already exists: {$existing->full_name} ({$existing->resident_number}). Review the existing record or restore it.");
+
+    $this->assertDatabaseCount('residents', 1);
+});
+
+it('rejects a resident update that would duplicate another exact identity', function () {
+    $staff = User::factory()->create();
+    $existing = Resident::factory()->create(residentPayload());
+    $other = Resident::factory()->create(residentPayload(['first_name' => 'Ana']));
+
+    $this->actingAs($staff)->patchJson(route('admin.residents.update', $other), residentPayload(['confirm_duplicate' => true]))
+        ->assertUnprocessable()->assertJsonValidationErrors('first_name');
+
+    expect($other->fresh()->first_name)->toBe('Ana');
+    expect($existing->fresh()->first_name)->toBe('Maria');
 });
 
 it('searches and combines resident status filters with pagination', function () {
