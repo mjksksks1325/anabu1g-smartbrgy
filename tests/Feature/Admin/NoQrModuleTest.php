@@ -6,6 +6,8 @@ it('does not render the QR verification module for any employee role', function 
     $employee = $role === 'super' ? User::factory()->superAdmin()->create() : User::factory()->create(['role' => $role]);
 
     $this->actingAs($employee)->get(route('admin.dashboard', ['screen' => 'qr']))
+        ->assertRedirect(route('admin.dashboard'));
+    $this->get(route('admin.dashboard'))
         ->assertOk()
         ->assertDontSee('data-perm="QR"', false)
         ->assertDontSee('id="screen-qr"', false)

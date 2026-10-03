@@ -72,6 +72,7 @@
             <h2 id="quick-links-title">Government websites</h2>
             <ul>
                 <li><a href="https://cityofimus.gov.ph/" target="_blank" rel="noopener noreferrer">City Government of Imus</a></li>
+                <li><a href="https://cavite.gov.ph/" target="_blank" rel="noopener noreferrer">Provincial Government of Cavite</a></li>
                 <li><a href="https://psa.gov.ph/" target="_blank" rel="noopener noreferrer">Philippine Statistics Authority</a></li>
                 <li><a href="https://www.officialgazette.gov.ph/" target="_blank" rel="noopener noreferrer">Official Gazette</a></li>
             </ul>

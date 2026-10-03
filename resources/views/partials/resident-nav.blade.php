@@ -7,6 +7,7 @@
             <li><a href="{{ $residentSignedIn ? route('portal.account') : route('portal.login') }}" @if(request()->routeIs('portal.account')) aria-current="page" @endif>My requests</a></li>
             <li><a href="{{ route('portal.information') }}#requirements" @if(request()->routeIs('portal.information')) aria-current="page" @endif>Requirements and fees</a></li>
             <li><a href="{{ route('portal.information') }}#help">Get help</a></li>
+            <li><a href="{{ route('portal.officials') }}" @if(request()->routeIs('portal.officials')) aria-current="page" @endif>Officials</a></li>
         </ul>
         <ul class="site-nav-account">
             @if($residentSignedIn)

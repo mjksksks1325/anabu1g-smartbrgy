@@ -28,7 +28,7 @@
           <h4>Purpose</h4>
           <p>The SmartBrgy Online Portal allows residents to submit initial requests for barangay documents online. Submission through this portal does not automatically release a document; barangay staff must still verify the request and supporting information.</p>
           <h4>Available Services</h4>
-          <ol><li>Barangay Clearance</li><li>Certificate of Residency</li><li>Certificate of Indigency</li><li>Barangay ID</li><li>First Time Jobseeker Certificate</li><li>Business Clearance</li></ol>
+          <ol>@foreach ($services as $service)<li>{{ $service->value }}</li>@endforeach</ol>
           <h4>Eligibility and Verification</h4>
           <p>You must be a resident of Barangay Anabu I-G, provide accurate information, and personally visit the Barangay Hall when required. Some documents may require good standing or additional validation before release.</p>
           <h4>Data Privacy</h4>
@@ -62,7 +62,7 @@
         <p>Isang dokumento bawat request.</p>
       </div>
       <div class="card-body">
-        <p class="unconfirmed small" style="margin-bottom:16px;"><strong>Hindi pa kumpirmado:</strong> Ang fees ay mula sa system at kailangan pang kumpirmahin ng barangay. Hindi pa rin kumpirmado ang processing time. Sa Barangay Hall babayaran ang fee.</p>
+        <p class="unconfirmed small" style="margin-bottom:16px;"><strong>Hindi pa kumpirmado:</strong> Business Clearance fee at processing time. Regular Barangay ID ang fee na nakalista. Sa Barangay Hall babayaran ang fee.</p>
         <div class="cert-grid" id="cert-type-grid">
           @foreach($services as $service)
           <button type="button" class="cert-btn" aria-pressed="false" onclick="selectDoc('{{ $service->portalCode() }}',this)"><span class="label">{{ $service->value }}</span><span class="fee">Fee: {{ $service->feeLabel() }}</span><span class="cert-selected">Napili</span><span class="cert-check" aria-hidden="true"></span></button>

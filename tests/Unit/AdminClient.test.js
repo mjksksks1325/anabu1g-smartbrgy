@@ -7,14 +7,15 @@ const script = readFileSync(new URL('../../public/js/admin.js', import.meta.url)
 
 async function client() {
   const fields = new Map();
+  const windowEvents = new Map();
   const context = vm.createContext({
-    console, URLSearchParams, Blob, URL,
+    console, URLSearchParams, Blob, URL, FormData,
     document: {
       cookie: '', hidden: false,
       getElementById: id => fields.get(id) ?? null,
       querySelector: () => null, querySelectorAll: () => [], addEventListener() {},
     },
-    window: { AUTHENTICATED_USER: { id: 1, name: 'Admin', role: 'admin' }, addEventListener() {} },
+    window: { AUTHENTICATED_USER: { id: 1, name: 'Admin', role: 'admin' }, addEventListener(type, handler) { windowEvents.set(type, handler); } },
     localStorage: { removeItem() {}, setItem() {}, getItem() { return null; } },
     setInterval() { return 1; }, clearInterval() {}, setTimeout() {}, clearTimeout() {},
     fetch: async () => ({ ok: true, json: async () => [] }),
@@ -23,8 +24,127 @@ async function client() {
   await new Promise(resolve => setImmediate(resolve));
   context.messages = [];
   vm.runInContext('showToast = (message, type) => messages.push({ message, type });', context);
-  return { context, fields };
+  return { context, fields, windowEvents };
 }
+
+test('workspace screen switching records clean URLs and back navigation restores the active screen', async () => {
+  const { context, fields, windowEvents } = await client();
+  const pushed = [];
+  context.window.ADMIN_SCREEN_ROUTES = { dashboard: 'http://localhost/admin', records: 'http://localhost/admin/residents' };
+  context.window.location = { href: 'http://localhost/admin', pathname: '/admin' };
+  context.window.history = { pushState(state, title, url) {
+    pushed.push({ state, url });
+    context.window.location.href = url;
+    context.window.location.pathname = new URL(url).pathname;
+  } };
+  const screens = ['dashboard', 'records'].map(id => {
+    const classes = new Set(id === 'dashboard' ? ['active'] : []);
+    const element = { classes, classList: { add: name => classes.add(name), remove: name => classes.delete(name) }, setAttribute() {}, focus() {}, querySelector: () => null };
+    fields.set('screen-' + id, element);
+    return element;
+  });
+  const navigation = ['dashboard', 'records'].map(id => {
+    const classes = new Set();
+    return { classes, current: '', getAttribute: name => name === 'data-screen' ? id : null,
+      setAttribute(name, value) { if (name === 'aria-current') this.current = value; },
+      classList: { add: name => classes.add(name), remove: name => classes.delete(name) } };
+  });
+  context.document.querySelectorAll = selector => selector === '.content' ? screens : selector === '.nav-item' ? navigation : [];
+  vm.runInContext('currentUserAccess = "Staff Access"; showLoadingBar = () => {}; toggleNavigation = () => {}; refreshDashboardStats = () => {};', context);
+
+  context.showScreen('records', navigation[1]);
+  assert.equal(pushed[0].url, 'http://localhost/admin/residents');
+  assert.equal(navigation[1].current, 'page');
+  assert.equal(screens[1].classes.has('active'), true);
+  context.window.location.pathname = '/admin';
+  context.window.location.href = 'http://localhost/admin';
+  windowEvents.get('popstate')();
+  assert.equal(pushed.length, 1);
+  assert.equal(navigation[0].current, 'page');
+  assert.equal(screens[0].classes.has('active'), true);
+  assert.equal(screens[1].classes.has('active'), false);
+  context.window.location.pathname = '/admin/residents';
+  context.window.location.href = 'http://localhost/admin/residents';
+  windowEvents.get('popstate')();
+  assert.equal(navigation[1].current, 'page');
+  assert.equal(pushed.length, 1);
+});
+
+test('workspace URL filter parameters initialize resident pagination and audit filters', async () => {
+  const { context, fields } = await client();
+  fields.set('residents-search', { value: '' });
+  fields.set('audit-search', { value: '' });
+  fields.set('audit-date-filter', { value: '' });
+  context.window.ADMIN_ACTIVE_SCREEN = 'records';
+  context.window.location = { search: '?search=Santos&status=archived&page=2' };
+  context.restoreAdminFiltersFromUrl();
+  assert.equal(fields.get('residents-search').value, 'Santos');
+  assert.equal(vm.runInContext('residentCurrentPage', context), 2);
+  assert.equal(vm.runInContext('residentStatusFilter', context), 'archived');
+  context.window.ADMIN_ACTIVE_SCREEN = 'audit';
+  context.window.location.search = '?search=Juan&date=2026-10-01';
+  context.restoreAdminFiltersFromUrl();
+  assert.equal(fields.get('audit-search').value, 'Juan');
+  assert.equal(fields.get('audit-date-filter').value, '2026-10-01');
+  assert.equal(vm.runInContext('auditCurrentSearch', context), 'juan');
+});
+
+test('manual issuance displays the confirmed clearance and residency fees', async () => {
+  const { context, fields } = await client();
+  const typeField = { value: 'Barangay Clearance' };
+  const feeField = { value: '' };
+  fields.set('manual-certificate-type', typeField);
+  fields.set('manual-certificate-fee', feeField);
+
+  context.updateManualCertificateFee();
+  assert.equal(feeField.value, 'PHP 25.00');
+  typeField.value = 'Certificate of Residency';
+  context.updateManualCertificateFee();
+  assert.equal(feeField.value, 'PHP 25.00');
+  typeField.value = 'Registered Voter Certification';
+  context.updateManualCertificateFee();
+  assert.equal(feeField.value, 'PHP 25.00');
+});
+
+test('resident editing only supplies explicit nationality and indigency verification', async () => {
+  const { context, fields } = await client();
+  let payload = context.residentFormPayload();
+  assert.equal(payload.nationality, null);
+  assert.equal(payload.is_verified_indigent, false);
+  fields.set('res-nationality', { value: '  Test nationality  ' });
+  fields.set('res-verified-indigent', { checked: true });
+  payload = context.residentFormPayload();
+  assert.equal(payload.nationality, 'Test nationality');
+  assert.equal(payload.is_verified_indigent, true);
+});
+
+test('online release resets expiration between requests and displays the voter certification fee', async () => {
+  const { context, fields } = await client();
+  for (const id of ['print-document-request-id', 'print-certificate-type', 'print-resident-name', 'print-purpose', 'print-amount-paid', 'print-expiry']) fields.set(id, { value: '2026-12-31' });
+  vm.runInContext("CERT_REQUESTS.push({ code: 'TEST', id: 2, type: 'Registered Voter Certification' }); openModal = () => {};", context);
+  context.printCert('TEST');
+  assert.equal(fields.get('print-expiry').value, '');
+  assert.equal(fields.get('print-amount-paid').value, 'PHP 25.00');
+});
+
+test('a failed photo upload retries the saved resident instead of creating a duplicate', async () => {
+  const { context, fields } = await client();
+  fields.set('res-edit-id', { value: '' });
+  fields.set('res-photo', { files: [new Blob(['image'], { type: 'image/png' })] });
+  const requests = [];
+  context.fetch = async (url, options) => {
+    requests.push({ url, options });
+    if (url.endsWith('/photo')) return { ok: false, json: async () => ({ message: 'Photo upload failed.' }) };
+    return { ok: true, json: async () => ({ resident: { id: 12, resident_number: 'TEST-12', status: 'active' } }) };
+  };
+  await context.saveResident();
+  await context.saveResident();
+  assert.equal(requests[0].options.method, 'POST');
+  assert.equal(requests[2].url, '/admin/residents/12');
+  assert.equal(requests[2].options.method, 'PATCH');
+  assert.ok(requests[1].options.body instanceof FormData);
+  assert.equal(requests[1].options.headers['Content-Type'], undefined);
+});
 
 test('audit event symbols use SVG paths for known and unexpected types', async () => {
   const { context } = await client();
@@ -221,4 +341,45 @@ test('a network failure lets the user retry logout', async () => {
   context.fetch = async () => ({ ok: true });
   await context.confirmLogout();
   assert.equal(context.window.location.href, '/login');
+});
+
+
+test('voters csv import prevents duplicate submits and renders validation errors as text', async () => {
+  const { context, fields } = await client();
+  const button = { disabled: false };
+  const output = { textContent: '', hidden: true };
+  fields.set('voters-import-button', button);
+  fields.set('voters-import-result', output);
+  fields.set('voters-import-file', { files: [new Blob(['resident_number'])], value: 'voters.csv' });
+  const requests = [];
+  let resolve;
+  context.fetch = (url, options) => {
+    requests.push({ url, options });
+    return new Promise(done => { resolve = done; });
+  };
+  const pending = context.importVotersCsv();
+  await context.importVotersCsv();
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].url, '/admin/voter-registrations-import');
+  assert.equal(requests[0].options.method, 'POST');
+  assert.equal(requests[0].options.body instanceof FormData, true);
+  resolve({ ok: false, json: async () => ({ errors: { file: ['CSV row 2: <script>invalid</script>'] } }) });
+  await pending;
+  assert.equal(output.textContent, 'CSV row 2: <script>invalid</script>');
+  assert.equal(button.disabled, false);
+});
+
+test('successful voters csv import clears the file and refreshes the list', async () => {
+  const { context, fields } = await client();
+  fields.set('voters-import-button', { disabled: false });
+  const output = { textContent: '', hidden: true };
+  fields.set('voters-import-result', output);
+  const file = { files: [new Blob(['csv'])], value: 'voters.csv' };
+  fields.set('voters-import-file', file);
+  context.fetch = async () => ({ ok: true, json: async () => ({ imported: 2 }) });
+  vm.runInContext('loadVoterRegistry = async page => { window.importRefreshPage = page; };', context);
+  await context.importVotersCsv();
+  assert.equal(file.value, '');
+  assert.equal(context.window.importRefreshPage, 1);
+  assert.equal(output.textContent, 'Na-import ang 2 voter records.');
 });

@@ -14,7 +14,7 @@
             <p>Hindi ma-verify ang impormasyon ninyo sa kasalukuyang Resident Records ng Barangay Anabu I-G. Posibleng dahilan:</p>
             <ul class="plain-list">
                 <li>Bagong lipat kayo at wala pa ang record ninyo sa database.</li>
-                <li>Iba ang pagkakasulat ng pangalan o contact number sa barangay record.</li>
+                <li>Iba ang pagkakasulat ng pangalan o petsa ng kapanganakan sa barangay record.</li>
                 <li>Kailangan pang i-verify o i-update ng barangay staff ang record ninyo.</li>
             </ul>
             <h2 class="fieldset-title">Ano ang gagawin</h2>

@@ -7,7 +7,7 @@
         <nav class="jump-links" aria-label="Sa page na ito">
             <a href="#requirements">Mga dokumento</a>
             <a href="#help">Get help</a>
-            <a href="#officials">Barangay officials</a>
+            <a href="{{ route('portal.officials') }}">Barangay officials</a>
         </nav>
     </x-slot:below>
 </x-portal.page-band>
@@ -25,7 +25,7 @@
                 <li>Sa Barangay Hall babayaran ang fee. Valid ang online request nang 30 araw mula sa pag-submit.</li>
             </ul>
         </div>
-        <p class="unconfirmed"><strong>Hindi pa kumpirmado:</strong> Ang fees sa ibaba ay mula sa system. Hindi pa rin kumpirmado ng barangay ang eksaktong requirements at processing time ng bawat dokumento. Magtanong sa Barangay Hall bago kumuha.</p>
+        <p class="unconfirmed"><strong>Hindi pa kumpirmado:</strong> Business Clearance fee, eksaktong requirements, at processing time. Regular Barangay ID ang fee na nakalista. Magtanong sa Barangay Hall bago kumuha.</p>
     </div>
     <div class="service-table">
     <div class="service-list-head" aria-hidden="true"><span>Dokumento</span><span>Fee</span><span></span></div>
@@ -67,8 +67,16 @@
     </div>
 </section>
 
-<section class="section" id="officials" aria-labelledby="officials-title">
-    <div class="section-head"><h2 id="officials-title">Barangay officials</h2></div>
-    <p class="unconfirmed"><strong>Hindi pa kumpirmado:</strong> Hinihintay pa ang opisyal na listahan mula sa barangay. Magtanong sa Barangay Hall para sa kasalukuyang mga opisyal.</p>
+<section class="section" aria-labelledby="resources-title">
+    <div class="section-head"><h2 id="resources-title">Official resources and assistance</h2></div>
+    <div class="two-column">
+        @foreach($resources as $resource)
+            <article class="panel">
+                <h3>{{ $resource['title'] }}</h3>
+                <p>{{ $resource['description'] }}</p>
+                <p class="next-note"><a class="btn btn-outline btn-small" href="{{ $resource['url'] }}" target="_blank" rel="noopener noreferrer">{{ $resource['link_label'] }} <span class="sr-only">(opens in a new tab)</span></a></p>
+            </article>
+        @endforeach
+    </div>
 </section>
 @endsection

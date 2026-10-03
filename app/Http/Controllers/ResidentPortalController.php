@@ -40,7 +40,15 @@ class ResidentPortalController extends Controller
 
     public function information(): View
     {
-        return view('portal.information', ['services' => CertificateType::cases()]);
+        return view('portal.information', [
+            'services' => CertificateType::cases(),
+            'resources' => config('portal.resources', []),
+        ]);
+    }
+
+    public function officials(): View
+    {
+        return view('portal.officials', ['officials' => config('portal.officials', [])]);
     }
 
     public function account(Request $request): View

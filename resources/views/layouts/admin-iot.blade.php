@@ -26,15 +26,15 @@
             <div class="sidebar-sec">
                 <div class="sidebar-label">Overview</div>
                 <a class="nav-item" href="{{ route('admin.dashboard') }}"><x-staff-icon name="dashboard" />Dashboard</a>
-                <a class="nav-item" href="{{ route('admin.dashboard', ['screen' => 'demographics']) }}"><x-staff-icon name="people" />Demographics</a>
+                <a class="nav-item" href="{{ route('admin.demographics') }}"><x-staff-icon name="people" />Demographics</a>
             </div>
             <div class="sidebar-sec">
                 <div class="sidebar-label">Records</div>
-                <a class="nav-item" href="{{ route('admin.dashboard', ['screen' => 'records']) }}"><x-staff-icon name="document" />Resident Records</a>
-                <a class="nav-item" href="{{ route('admin.dashboard', ['screen' => 'voters']) }}"><x-staff-icon name="voters" />Voter Registry</a>
-                <a class="nav-item" href="{{ route('admin.dashboard', ['screen' => 'certificates']) }}"><x-staff-icon name="certificate" />Certificates &amp; Clearances</a>
-                <a class="nav-item" href="{{ route('admin.dashboard', ['screen' => 'request-records']) }}"><x-staff-icon name="clipboard" />Request Eligibility</a>
-                <a class="nav-item" href="{{ route('admin.dashboard', ['screen' => 'incidents']) }}"><x-staff-icon name="alert" />Incident Reports</a>
+                <a class="nav-item" href="{{ route('admin.residents.index') }}"><x-staff-icon name="document" />Resident Records</a>
+                <a class="nav-item" href="{{ route('admin.voters') }}"><x-staff-icon name="voters" />Voters</a>
+                <a class="nav-item" href="{{ route('admin.document-requests.index') }}"><x-staff-icon name="certificate" />Certificates &amp; Clearances</a>
+                <a class="nav-item" href="{{ route('admin.request-eligibility') }}"><x-staff-icon name="clipboard" />Request Eligibility</a>
+                <a class="nav-item" href="{{ route('admin.incidents.index') }}"><x-staff-icon name="alert" />Incident Reports</a>
             </div>
         @endif
             <div class="sidebar-sec">
@@ -46,9 +46,9 @@
                 <div class="sidebar-label">Administration</div>
                 <a @class(['nav-item', 'current active' => request()->routeIs('admin.smart-cabinet.*')]) href="{{ route('admin.smart-cabinet.index') }}"><x-staff-icon name="cabinet" />Smart Cabinet</a>
                 <a @class(['nav-item', 'current active' => request()->routeIs('admin.cabinet-access.*')]) href="{{ route('admin.cabinet-access.index') }}"><x-staff-icon name="key" />Employee Cabinet Access</a>
-                <a class="nav-item" href="{{ route('admin.dashboard', ['screen' => 'audit']) }}"><x-staff-icon name="audit" />Audit Log</a>
-                <a class="nav-item" href="{{ route('admin.dashboard', ['screen' => 'users']) }}"><x-staff-icon name="user" />User Management</a>
-                <a class="nav-item" href="{{ route('admin.dashboard', ['screen' => 'settings']) }}"><x-staff-icon name="settings" />Settings</a>
+                <a class="nav-item" href="{{ route('admin.audit') }}"><x-staff-icon name="audit" />Audit Log</a>
+                <a class="nav-item" href="{{ route('admin.users.index') }}"><x-staff-icon name="user" />User Management</a>
+                <a class="nav-item" href="{{ route('admin.settings') }}"><x-staff-icon name="settings" />Settings</a>
             </div>
         @endif
             <div class="sidebar-sec">

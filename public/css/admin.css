@@ -190,8 +190,13 @@ body.light-mode .badge-blue   { color: #1565A8; background: rgba(21,101,168,0.10
 .resident-pagination { display:flex; align-items:center; justify-content:flex-end; gap:8px; padding-top:14px; }
 .resident-standing { display:flex; align-items:center; gap:8px; color:var(--text-secondary); font-size:12px; padding-top:24px; }
 .resident-standing input { accent-color:var(--green-500); }
+#household-member-relationship { display:flex; flex-direction:column; gap:6px; }
+#household-member-relationship .form-label { margin-bottom:0; }
+#household-member-relationship .resident-standing { padding-top:0; margin:0; }
+.household-save-actions { padding-top:20px; }
 .resident-table-message { text-align:center; color:var(--text-muted); padding:24px !important; }
 .resident-table-error { color:#ef4444; }
+#modal-household-import .btn:disabled { opacity: .45; cursor: not-allowed; }
 .resident-number { font-family:var(--font-mono); color:var(--blue-400); font-size:10.5px; }
 .resident-actions { display:flex; gap:6px; white-space:nowrap; }
 .resident-detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
@@ -695,6 +700,8 @@ body.light-mode .cabinet-body { background: linear-gradient(180deg, #cdd9ea 0%, 
 .demo-purok-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-bottom: 14px; }
 .demo-purok-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; transition: border-color 0.2s; display: flex; flex-direction: column; }
 .demo-purok-card:hover { border-color: var(--border-hover); }
+.demo-purok-card[role="button"] { cursor: pointer; }
+.demo-purok-card[role="button"]:focus-visible { outline: 2px solid var(--blue-400); outline-offset: 3px; }
 .demo-purok-name { font-size: 12px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
 .demo-purok-pop { font-size: 26px; font-weight: 800; color: var(--green-500); line-height: 1; }
 .demo-purok-senior { font-size: 10.5px; color: var(--senior-color); margin-top: 3px; font-weight: 600; }
@@ -1682,3 +1689,30 @@ html:has(.standalone-page) { height:auto; overflow:auto; }
 
 .resident-account-panel { margin-top:22px; padding:18px; border:1px solid var(--border); border-radius:8px; background:var(--bg-glass); }
 .resident-account-panel p { margin:10px 0; overflow-wrap:anywhere; }
+
+#modal-purok-households .purok-households-modal { width:820px; max-width:calc(100vw - 32px); border-top:4px solid var(--blue-500); }
+#modal-purok-households .modal-header { align-items:flex-start; gap:20px; padding-bottom:20px; border-bottom:1px solid var(--border); }
+.purok-households-eyebrow { margin:0 0 8px; color:var(--blue-400); font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; }
+.purok-households-description { margin:10px 0 0; color:var(--text-secondary); font-size:13px; line-height:1.6; }
+.purok-households-search { display:flex; align-items:flex-end; gap:10px; padding:16px; background:var(--bg-glass); border:1px solid var(--border); border-radius:var(--radius); }
+.purok-households-search-field { flex:1; min-width:0; }
+.purok-households-search .form-label { display:block; margin-bottom:8px; }
+.purok-households-search .btn { min-height:44px; }
+.purok-households-results { margin:18px 0 12px; color:var(--text-secondary); font-size:12px; }
+#modal-purok-households .table-scroll { border:1px solid var(--border); border-radius:var(--radius); }
+#modal-purok-households .tbl { width:100%; min-width:620px; }
+#modal-purok-households .tbl td { vertical-align:middle; line-height:1.6; }
+#modal-purok-households .tbl th:first-child { width:28%; }
+#modal-purok-households .tbl th:last-child, #modal-purok-households .tbl td:last-child { text-align:center; }
+#modal-purok-households .tbl tbody tr:hover { background:var(--table-row-hover); }
+.purok-household-link { border:0; background:transparent; padding:0; text-align:left; color:var(--blue-400); font:inherit; font-weight:700; line-height:1.5; cursor:pointer; }
+.purok-household-link:hover { text-decoration:underline; }
+.purok-household-link:focus-visible { outline:2px solid var(--blue-400); outline-offset:4px; border-radius:2px; }
+.purok-household-number { display:block; margin-top:5px; font-family:var(--font-mono); font-size:11px; color:var(--text-secondary); }
+.purok-household-members { display:inline-flex; align-items:center; justify-content:center; min-width:32px; height:32px; padding:0 8px; border-radius:8px; background:var(--bg-glass); color:var(--blue-400); font-weight:700; }
+@media (max-width:600px) {
+  .purok-households-search { flex-wrap:wrap; }
+  .purok-households-search-field { flex-basis:100%; }
+  .purok-households-search .btn { flex:1; justify-content:center; }
+  #modal-purok-households .modal-title { font-size:17px; line-height:1.5; }
+}

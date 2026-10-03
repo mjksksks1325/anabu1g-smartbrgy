@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\ManageHouseholds;
+use App\Actions\ResidentIdentity;
 use App\CertificateType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreResidentRequest;
@@ -12,17 +14,17 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ResidentController extends Controller
 {
+    public function __construct(private ManageHouseholds $households, private ResidentIdentity $identities) {}
+
     /**
      * Display a listing of the resource.
      */
@@ -53,9 +55,10 @@ class ResidentController extends Controller
             fputcsv($output, [
                 'Resident ID', 'Full Name', 'Date of Birth', 'Gender', 'Civil Status',
                 'Purok', 'Address', 'Contact Number', 'Residency Type', 'Status',
+                'Household Number', 'Household Head', 'Relationship to Household Head',
             ]);
 
-            foreach ($residents->cursor() as $resident) {
+            foreach ($residents->lazy(500) as $resident) {
                 fputcsv($output, array_map($this->csvValue(...), [
                     $resident->resident_number,
                     $resident->full_name,
@@ -67,6 +70,9 @@ class ResidentController extends Controller
                     $resident->contact_number,
                     $resident->residency_type,
                     $resident->trashed() ? 'archived' : $resident->status,
+                    $resident->household?->household_number,
+                    $resident->household?->head?->full_name,
+                    $resident->relationship_to_household_head,
                 ]));
             }
 
@@ -86,7 +92,7 @@ class ResidentController extends Controller
         $resident = Cache::lock($this->residentIdentityLockKey($validated), 15)->block(5, function () use ($request, $validated): Resident {
             $this->rejectDuplicate($validated, $request->boolean('confirm_duplicate'));
 
-            return Resident::query()->create(Arr::except($validated, 'confirm_duplicate'));
+            return $this->households->saveResident($validated);
         });
 
         return response()->json([
@@ -103,6 +109,9 @@ class ResidentController extends Controller
         Gate::authorize('view', $resident);
 
         $account = $resident->portalAccount()->first();
+        $resident->load('household');
+        $resident->setAttribute('household_information', $resident->household?->details());
+        $resident->unsetRelation('household');
         $resident->setAttribute('portal_account', $account ? [
             'registered' => true,
             'is_active' => $account->is_active,
@@ -128,7 +137,7 @@ class ResidentController extends Controller
         $validated['date_of_birth'] = Carbon::parse($validated['date_of_birth'])->toDateString();
         Cache::lock($this->residentIdentityLockKey($validated), 15)->block(5, function () use ($request, $resident, $validated): void {
             $this->rejectDuplicate($validated, $request->boolean('confirm_duplicate'), $resident);
-            $resident->update(Arr::except($validated, 'confirm_duplicate'));
+            $this->households->saveResident($validated, $resident);
         });
 
         return response()->json([
@@ -143,7 +152,7 @@ class ResidentController extends Controller
     public function destroy(Resident $resident): JsonResponse
     {
         Gate::authorize('delete', $resident);
-        $resident->delete();
+        $this->households->archive($resident);
 
         return response()->json(['message' => 'Resident record archived successfully.']);
     }
@@ -248,48 +257,15 @@ class ResidentController extends Controller
     }
 
     /** @param array<string, mixed> $attributes */
-    private function rejectDuplicate(
-        array $attributes,
-        bool $duplicateConfirmed,
-        ?Resident $ignoredResident = null,
-    ): void {
-        $matches = Resident::query()->withTrashed()
-            ->whereDate('date_of_birth', $attributes['date_of_birth'])
-            ->when($ignoredResident !== null, fn (Builder $query) => $query->whereKeyNot($ignoredResident->getKey()))
-            ->get()
-            ->filter(fn (Resident $resident): bool => $this->normalizedName($resident->first_name) === $this->normalizedName($attributes['first_name'])
-                && $this->normalizedName($resident->last_name) === $this->normalizedName($attributes['last_name']));
-
-        $exactMatch = $matches->first(fn (Resident $resident): bool => $this->normalizedName($resident->middle_name) === $this->normalizedName($attributes['middle_name'] ?? null)
-            && $this->normalizedName($resident->suffix) === $this->normalizedName($attributes['suffix'] ?? null));
-
-        if ($exactMatch !== null) {
-            throw ValidationException::withMessages([
-                'first_name' => "An exact resident record already exists: {$exactMatch->full_name} ({$exactMatch->resident_number}). Review the existing record".($exactMatch->trashed() ? ' or restore it.' : '.'),
-            ]);
-        }
-
-        $possibleMatch = $matches->first();
-        if ($possibleMatch !== null && ! $duplicateConfirmed) {
-            throw ValidationException::withMessages([
-                'duplicate' => "Possible duplicate: {$possibleMatch->full_name} ({$possibleMatch->resident_number}). Review the existing record or confirm this is a separate resident.",
-            ]);
-        }
+    private function rejectDuplicate(array $attributes, bool $duplicateConfirmed, ?Resident $ignoredResident = null): void
+    {
+        $this->identities->rejectDuplicate($attributes, $duplicateConfirmed, $ignoredResident);
     }
 
     /** @param array<string, mixed> $attributes */
     private function residentIdentityLockKey(array $attributes): string
     {
-        return 'resident-identity:'.hash('sha256', serialize([
-            $this->normalizedName($attributes['first_name']),
-            $this->normalizedName($attributes['last_name']),
-            $attributes['date_of_birth'],
-        ]));
-    }
-
-    private function normalizedName(?string $name): string
-    {
-        return Str::lower(Str::squish((string) $name));
+        return $this->identities->residentIdentityLockKey($attributes);
     }
 
     /** @return Builder<Resident> */
@@ -300,7 +276,7 @@ class ResidentController extends Controller
             ? Resident::query()->onlyTrashed()
             : Resident::query();
 
-        return $query
+        return $query->with('household.head')
             ->when($request->filled('search'), function (Builder $query) use ($request): void {
                 $search = '%'.$request->string('search')->trim()->toString().'%';
 

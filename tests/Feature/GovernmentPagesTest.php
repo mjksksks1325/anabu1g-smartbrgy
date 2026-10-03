@@ -64,7 +64,7 @@ it('renders a paginated request list and rejection reason on its detail page', f
         'full_name' => '<script>alert(1)</script>', 'address' => 'Anabu I-G', 'status' => 'pending',
     ]);
 
-    $this->actingAs($staff)->get(route('admin.document-requests.index'))
+    $this->actingAs($staff)->get(route('admin.document-requests.list'))
         ->assertSee('REQ-PAGE-001')->assertSee('&lt;script&gt;', false)->assertDontSee('<script>alert(1)</script>', false);
     $this->get(route('admin.document-requests.show', $request))
         ->assertSee('name="rejection_reason"', false)->assertSee('class="side-nav"', false)
@@ -78,7 +78,12 @@ it('keeps document request pages inside the staff workspace', function () {
         'full_name' => 'Shell Test', 'address' => 'Anabu I-G', 'status' => 'pending',
     ]);
 
-    foreach (['admin.document-requests.index', 'admin.document-requests.show'] as $route) {
+    $this->actingAs($staff)->get(route('admin.document-requests.index'))->assertOk()
+        ->assertSee('Staff workspace')->assertSee('id="admin-navigation"', false)
+        ->assertSee('css/figma-admin.css')->assertSee("window.ADMIN_ACTIVE_SCREEN = 'certificates';", false)
+        ->assertDontSee('class="civic-masthead"', false);
+
+    foreach (['admin.document-requests.list', 'admin.document-requests.show'] as $route) {
         $url = $route === 'admin.document-requests.show' ? route($route, $request) : route($route);
         $this->actingAs($staff)->get($url)->assertOk()
             ->assertSee('Staff workspace')->assertSee('class="side-nav"', false)

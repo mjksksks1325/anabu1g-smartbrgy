@@ -31,6 +31,8 @@ class StoreResidentRequest extends FormRequest
             'suffix' => ['nullable', 'string', 'max:20', 'regex:/^[\pL .]+$/u'],
             'date_of_birth' => ['required', 'date', 'before_or_equal:today'],
             'gender' => ['required', Rule::in(['Male', 'Female'])],
+            'nationality' => ['nullable', 'string', 'max:100'],
+            'is_verified_indigent' => ['sometimes', 'boolean'],
             'civil_status' => ['required', Rule::in(['Single', 'Married', 'Widowed', 'Separated'])],
             'purok' => ['required', 'string', 'max:100', Rule::exists('puroks', 'name')->where('is_active', true)],
             'address' => ['required', 'string', 'max:1000'],
@@ -44,6 +46,12 @@ class StoreResidentRequest extends FormRequest
             'status' => ['sometimes', Rule::in(['active', 'inactive'])],
             'is_in_good_standing' => ['sometimes', 'boolean'],
             'confirm_duplicate' => ['sometimes', 'boolean'],
+            'household_id' => ['sometimes', 'nullable', 'integer', Rule::exists('households', 'id')],
+            'relationship_to_household_head' => ['nullable', 'string', 'max:100'],
+            'is_household_head' => ['sometimes', 'boolean'],
+            'new_household' => ['sometimes', 'array:address,purok_id'],
+            'new_household.address' => ['required_with:new_household', 'string', 'max:1000'],
+            'new_household.purok_id' => ['nullable', 'integer', Rule::exists('puroks', 'id')->where('is_active', true)],
         ];
     }
 

@@ -6,6 +6,7 @@ use Database\Factories\IncidentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -17,6 +18,8 @@ use Illuminate\Support\Str;
  */
 class Incident extends Model
 {
+    public const STATUSES = ['open', 'under_review', 'referred', 'resolved', 'closed', 'pending', 'under_investigation', 'dismissed'];
+
     /** @use HasFactory<IncidentFactory> */
     use HasFactory, SoftDeletes;
 
@@ -24,13 +27,13 @@ class Incident extends Model
         'incident_type', 'occurred_at', 'location', 'complainant_name',
         'respondent_name', 'severity', 'details', 'status',
         'resolution_notes', 'attachments', 'reported_by', 'assigned_to',
-        'resolved_at',
+        'resolved_at', 'complainant_resident_id', 'respondent_resident_id', 'updated_by', 'remarks',
     ];
 
     protected static function booted(): void
     {
         static::creating(function (Incident $incident): void {
-            $incident->incident_number ??= 'INC-'.now()->format('Y').'-'.Str::upper(Str::random(10));
+            $incident->incident_number ??= 'INC-'.now()->format('Y').'-'.Str::ulid();
         });
     }
 
@@ -44,6 +47,24 @@ class Incident extends Model
     public function assignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    /** @return HasMany<IncidentEvent, $this> */
+    public function events(): HasMany
+    {
+        return $this->hasMany(IncidentEvent::class);
+    }
+
+    /** @return BelongsTo<Resident, $this> */
+    public function complainant(): BelongsTo
+    {
+        return $this->belongsTo(Resident::class, 'complainant_resident_id');
+    }
+
+    /** @return BelongsTo<Resident, $this> */
+    public function respondent(): BelongsTo
+    {
+        return $this->belongsTo(Resident::class, 'respondent_resident_id');
     }
 
     /** @return array<string, string> */

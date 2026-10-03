@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Actions\CheckRequestRestrictions;
 use App\CertificateType;
 use Carbon\CarbonInterface;
 use Database\Factories\ResidentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -18,6 +20,10 @@ use Illuminate\Support\Str;
  * @property CarbonInterface|null $portal_registration_expires_at
  * @property CarbonInterface|null $portal_registration_sent_at
  * @property string|null $portal_registration_email
+ * @property int|null $household_id
+ * @property string|null $relationship_to_household_head
+ * @property bool $is_household_head
+ * @property-read Household|null $household
  */
 class Resident extends Model
 {
@@ -27,17 +33,24 @@ class Resident extends Model
     protected $fillable = [
         'first_name', 'middle_name', 'last_name', 'suffix', 'date_of_birth',
         'gender', 'civil_status', 'purok', 'address', 'contact_number',
+        'nationality', 'photo_path', 'is_verified_indigent',
         'residency_type', 'special_groups', 'status', 'is_in_good_standing',
     ];
 
-    protected $appends = ['full_name', 'age'];
+    protected $appends = ['full_name', 'age', 'has_photo'];
 
-    protected $hidden = ['portal_registration_hash', 'portal_registration_expires_at', 'portal_registration_email', 'portal_registration_sent_at'];
+    protected $hidden = ['photo_path', 'portal_registration_hash', 'portal_registration_expires_at', 'portal_registration_email', 'portal_registration_sent_at'];
 
     /** @return HasOne<User, $this> */
     public function portalAccount(): HasOne
     {
         return $this->hasOne(User::class);
+    }
+
+    /** @return BelongsTo<Household, $this> */
+    public function household(): BelongsTo
+    {
+        return $this->belongsTo(Household::class);
     }
 
     protected static function booted(): void
@@ -52,6 +65,11 @@ class Resident extends Model
         return collect([$this->first_name, $this->middle_name, $this->last_name, $this->suffix])
             ->filter()
             ->implode(' ');
+    }
+
+    public function getHasPhotoAttribute(): bool
+    {
+        return $this->photo_path !== null;
     }
 
     public function getAgeAttribute(): int
@@ -86,14 +104,29 @@ class Resident extends Model
             $reasons[] = 'Resident record is inactive.';
         }
 
-        if (in_array($certificateType, [CertificateType::BarangayClearance, CertificateType::BusinessClearance], true)
+        if (in_array($certificateType, [CertificateType::BarangayClearance, CertificateType::BusinessClearance, CertificateType::RegisteredVoterCertification, CertificateType::CertificateOfIndigency], true)
             && ! $this->is_in_good_standing) {
             $reasons[] = 'Resident is not in good standing.';
+        }
+
+        if (in_array($certificateType, [CertificateType::RegisteredVoterCertification, CertificateType::CertificateOfIndigency], true)) {
+            $registration = $this->voterRegistration;
+            if ($registration === null || $registration->status !== 'active' || ! $registration->integrity_valid) {
+                $reasons[] = 'An active verified voter registration is required for the official certificate wording.';
+            }
+        }
+
+        if ($certificateType === CertificateType::CertificateOfIndigency && ! $this->is_verified_indigent) {
+            $reasons[] = 'Indigency must be verified by authorized barangay staff.';
         }
 
         if ($certificateType === CertificateType::FirstTimeJobseeker
             && $this->issuedCertificates()->where('certificate_type', $certificateType->value)->exists()) {
             $reasons[] = 'A First Time Jobseeker certificate has already been issued to this resident.';
+        }
+
+        if (app(CheckRequestRestrictions::class)->active($this, $certificateType) !== null) {
+            $reasons[] = ResidentRequestRestriction::MESSAGE;
         }
 
         return [
@@ -106,12 +139,14 @@ class Resident extends Model
     protected function casts(): array
     {
         return [
-            'date_of_birth' => 'date',
+            'date_of_birth' => 'date:Y-m-d',
             'portal_registration_expires_at' => 'datetime',
             'portal_registration_email' => 'encrypted',
             'portal_registration_sent_at' => 'datetime',
             'special_groups' => 'array',
             'is_in_good_standing' => 'boolean',
+            'is_verified_indigent' => 'boolean',
+            'is_household_head' => 'boolean',
         ];
     }
 }

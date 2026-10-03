@@ -63,7 +63,7 @@
         <p class="eyebrow">Transparent na bayarin</p>
         <div class="doc-rates-head">
             <h2 id="doc-rates-title">Mga dokumento at fee</h2>
-            <span class="tag-unconfirmed">Hindi pa kumpirmado</span>
+            <span class="tag-unconfirmed">Business Clearance fee: To be confirmed</span>
         </div>
         <table class="doc-rates-table">
             <caption class="sr-only">Fee ng bawat dokumento ayon sa system</caption>
@@ -74,7 +74,7 @@
                 @endforeach
             </tbody>
         </table>
-        <p class="doc-rates-note">Galing sa system ang fees. Hinihintay pa ang kumpirmasyon ng barangay sa fees, requirements, at processing time. <a href="{{ route('portal.information') }}#requirements">Buong requirements at fees</a></p>
+        <p class="doc-rates-note">PHP 25 ang barangay clearance at certificate of residency. Libre ang indigency at first-time jobseeker. Regular Barangay ID: PHP 100. Hinihintay pa ang kumpirmasyon sa Business Clearance fee, requirements, at processing time. <a href="{{ route('portal.information') }}#requirements">Buong requirements at fees</a></p>
     </section>
 </div>
 
@@ -100,6 +100,7 @@
             <div><dt>Address</dt><dd>Barangay Anabu I-G, Lungsod ng Imus, Cavite</dd></div>
             <div><dt>Telepono</dt><dd><span class="tag-unconfirmed">Hindi pa kumpirmado</span></dd></div>
             <div><dt>Office hours</dt><dd><span class="tag-unconfirmed">Hindi pa kumpirmado</span></dd></div>
+            <div><dt>Land Area</dt><dd><span class="tag-unconfirmed">To be confirmed</span></dd></div>
             <div id="population"><dt>Populasyon</dt><dd>2,345 na residente ayon sa 2024 Census of Population ng PSA. <a href="https://psa.gov.ph/classification/psgc/barangays/0402109000" target="_blank" rel="noopener noreferrer">PSA data</a></dd></div>
         </dl>
         <p class="office-note">Habang wala pang kumpirmadong numero at oras, pumunta nang personal sa Barangay Hall.</p>

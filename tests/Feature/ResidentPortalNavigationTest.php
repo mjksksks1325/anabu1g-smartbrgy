@@ -2,7 +2,9 @@
 
 use App\Models\Resident;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 test('portal home shows community content without the document request form', function () {
     $this->get(route('home'))
@@ -25,6 +27,21 @@ test('portal home shows community content without the document request form', fu
         ->assertDontSee('id="request-flow"', false)
         ->assertDontSee('id="screen-terms"', false)
         ->assertDontSee('id="resident-details-form"', false);
+});
+
+test('officials navigation is available to guests and residents and marks its current page', function () {
+    $officialsLink = 'href="'.route('portal.officials').'"';
+
+    $this->get(route('home'))->assertSee($officialsLink, false);
+    $response = $this->get(route('portal.officials'));
+    $document = new DOMDocument;
+    @$document->loadHTML($response->getContent());
+    $xpath = new DOMXPath($document);
+    expect($xpath->query('//nav[@id="site-nav"]//a[@href="'.route('portal.officials').'"][@aria-current="page"]'))->toHaveCount(1);
+
+    $this->actingAs(User::factory()->resident()->create(), 'resident')
+        ->get(route('portal.account'))
+        ->assertSee($officialsLink, false);
 });
 
 test('guest hero status opens resident sign in and signed in status opens request history', function () {
@@ -54,10 +71,10 @@ test('public portal shows community information and usable service links', funct
         ->assertSee(route('portal.information').'#requirements', false);
 });
 
-test('portal home lists every document fee and flags it as awaiting confirmation', function () {
+test('portal home lists confirmed document fees and flags the business clearance fee for confirmation', function () {
     $this->get(route('home'))
         ->assertOk()
-        ->assertSeeInOrder(['Mga dokumento at fee', 'Hindi pa kumpirmado', 'Barangay Clearance', 'PHP 50.00', 'Certificate of Indigency', 'Walang bayad', 'Business Clearance', 'PHP 200.00']);
+        ->assertSeeInOrder(['Mga dokumento at fee', 'Business Clearance fee: To be confirmed', 'Barangay Clearance', 'PHP 25.00', 'Certificate of Residency', 'PHP 25.00', 'Certificate of Indigency', 'Walang bayad', 'Business Clearance', 'PHP 200.00']);
 });
 
 test('document request page renders the terms when a resident is signed in', function () {
@@ -145,6 +162,7 @@ test('ineligible resident cannot open the document request page', function () {
 });
 
 test('authenticated employees can use resident registration without ending their employee session', function () {
+    Storage::fake('local');
     $employee = User::factory()->create(['role' => 'staff']);
     $resident = Resident::factory()->create([
         'portal_registration_hash' => hash('sha256', 'private-test-activation-code'),
@@ -159,6 +177,7 @@ test('authenticated employees can use resident registration without ending their
         'email' => 'resident@example.test',
         'password' => 'ResidentPassword123!',
         'password_confirmation' => 'ResidentPassword123!',
+        'photo' => UploadedFile::fake()->image('resident.jpg'),
     ])->assertRedirect(route('portal.login'));
 
     $this->assertAuthenticatedAs($employee);

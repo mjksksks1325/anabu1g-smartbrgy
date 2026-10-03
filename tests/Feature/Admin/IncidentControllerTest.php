@@ -49,7 +49,7 @@ it('files a validated incident with a private attachment', function () {
 
     $response->assertCreated()
         ->assertJsonPath('incident.incident_type', 'Noise Complaint')
-        ->assertJsonPath('incident.status', 'pending')
+        ->assertJsonPath('incident.status', 'open')
         ->assertJsonPath('incident.reporter_name', $staff->name)
         ->assertJsonPath('incident.attachments.0.name', 'evidence.jpg');
 

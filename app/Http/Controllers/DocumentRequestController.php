@@ -2,14 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\CheckRequestRestrictions;
 use App\CertificateType;
 use App\Http\Middleware\EnsureResidentAccount;
 use App\Models\DocumentRequest;
+use App\Models\Resident;
+use App\Models\ResidentRequestRestriction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class DocumentRequestController extends Controller
 {
@@ -29,32 +34,37 @@ class DocumentRequestController extends Controller
             'attachment' => 'nullable|file|mimes:jpg,jpeg,png,webp|max:5120',
         ]);
 
-        $referenceCode = 'REQ-'.now()->format('Y').'-'.strtoupper(Str::random(6));
-        $attachmentPath = $request->file('attachment')?->store(
-            'document-request-attachments',
-            'local'
-        );
-        $resident = $request->user()->resident;
+        return DB::transaction(function () use ($request, $validated): JsonResponse {
+            $resident = Resident::query()->whereKey($request->user()->resident_id)->lockForUpdate()->firstOrFail();
+            if (app(CheckRequestRestrictions::class)->active($resident, CertificateType::from($validated['document_type'])) !== null) {
+                throw ValidationException::withMessages(['document_type' => ResidentRequestRestriction::MESSAGE]);
+            }
+            $referenceCode = 'REQ-'.now()->format('Y').'-'.strtoupper(Str::random(6));
+            $attachmentPath = $request->file('attachment')?->store(
+                'document-request-attachments',
+                'local'
+            );
 
-        $documentRequest = DocumentRequest::create([
-            ...Arr::except($validated, ['attachment']),
-            'resident_id' => $resident->id,
-            'full_name' => $resident->full_name,
-            'date_of_birth' => $resident->date_of_birth->toDateString(),
-            'address' => $resident->address,
-            'email' => $request->user()->email,
-            'reference_code' => $referenceCode,
-            'source' => 'online',
-            'private_attachment_path' => $attachmentPath,
-            'status' => 'pending',
-        ]);
+            $documentRequest = DocumentRequest::create([
+                ...Arr::except($validated, ['attachment']),
+                'resident_id' => $resident->id,
+                'full_name' => $resident->full_name,
+                'date_of_birth' => $resident->date_of_birth->toDateString(),
+                'address' => $resident->address,
+                'email' => $request->user()->email,
+                'reference_code' => $referenceCode,
+                'source' => 'online',
+                'private_attachment_path' => $attachmentPath,
+                'status' => 'pending',
+            ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Document request submitted successfully.',
-            'reference_code' => $documentRequest->reference_code,
-            'status' => $documentRequest->status,
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Document request submitted successfully.',
+                'reference_code' => $documentRequest->reference_code,
+                'status' => $documentRequest->status,
+            ]);
+        });
     }
 
     public function status(Request $request, string $referenceCode): JsonResponse

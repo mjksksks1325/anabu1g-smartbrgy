@@ -47,7 +47,7 @@ class DashboardController extends Controller
                 'active_residents' => Resident::query()->where('status', 'active')->count(),
                 'issued_certificates' => IssuedCertificate::query()->count(),
                 'pending_requests' => DocumentRequest::query()->whereIn('status', ['pending', 'processing', 'ready_for_release'])->count(),
-                'open_incidents' => Incident::query()->whereIn('status', ['pending', 'under_investigation'])->count(),
+                'open_incidents' => Incident::query()->whereIn('status', ['open', 'under_review', 'referred', 'pending', 'under_investigation'])->count(),
             ],
             'certificate_requests' => DocumentRequest::query()
                 ->select('document_type')

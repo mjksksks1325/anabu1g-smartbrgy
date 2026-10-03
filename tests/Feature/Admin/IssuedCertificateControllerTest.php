@@ -5,6 +5,7 @@ use App\Models\DocumentRequest;
 use App\Models\IssuedCertificate;
 use App\Models\Resident;
 use App\Models\User;
+use App\Models\VoterRegistration;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Filesystem\FilesystemManager;
 use Illuminate\Support\Facades\Storage;
@@ -13,9 +14,10 @@ use Illuminate\Support\Str;
 use function Pest\Laravel\mock;
 
 dataset('certificate types', [
-    'barangay clearance' => [CertificateType::BarangayClearance, 50, 'admin.certificates.barangay-clearance'],
-    'residency' => [CertificateType::CertificateOfResidency, 50, 'admin.certificates.residency'],
+    'barangay clearance' => [CertificateType::BarangayClearance, 25, 'admin.certificates.barangay-clearance'],
+    'residency' => [CertificateType::CertificateOfResidency, 25, 'admin.certificates.residency'],
     'indigency' => [CertificateType::CertificateOfIndigency, 0, 'admin.certificates.indigency'],
+    'registered voter' => [CertificateType::RegisteredVoterCertification, 25, 'admin.certificates.registered-voter'],
     'barangay ID' => [CertificateType::BarangayId, 100, 'admin.certificates.barangay-id'],
     'first-time jobseeker' => [CertificateType::FirstTimeJobseeker, 0, 'admin.certificates.first-time-jobseeker'],
     'business clearance' => [CertificateType::BusinessClearance, 200, 'admin.certificates.business-clearance'],
@@ -73,7 +75,13 @@ it('issues every supported online request with the server fee and a real QR file
 ) {
     Storage::fake('public');
     $user = User::factory()->create(['name' => 'Records Officer']);
+    $resident = null;
+    if (in_array($certificateType, [CertificateType::CertificateOfIndigency, CertificateType::RegisteredVoterCertification], true)) {
+        $resident = Resident::factory()->create(['is_verified_indigent' => true, 'is_in_good_standing' => true]);
+        VoterRegistration::factory()->create(['resident_id' => $resident->id]);
+    }
     $documentRequest = DocumentRequest::query()->create([
+        'resident_id' => $resident?->id,
         'reference_code' => 'REQ-'.Str::upper(Str::random(12)),
         'document_type' => $certificateType->value,
         'full_name' => 'Maria Santos',
@@ -292,12 +300,20 @@ it('renders the matching print template for every certificate type', function (
         'qr_code_path' => '/storage/qrcodes/test.svg',
     ]);
 
-    $this->actingAs($user)
+    $response = $this->actingAs($user)
         ->get(route('admin.issued-certificates.print', $certificate))
         ->assertOk()
-        ->assertSee('Back to certificates')->assertSee('css/certificates.css')->assertViewIs($expectedView)
-        ->assertSeeText('Maria Santos')
-        ->assertSeeText($certificate->certificate_number);
+        ->assertSee('Back to certificates')->assertViewIs($expectedView)
+        ->assertSeeText('Maria Santos');
+
+    $response->assertSee('OFFICE OF THE SANGGUNIANG BARANGAY')->assertSee('City of Imus footer logo')
+        ->assertSee(asset($certificate->qr_code_path))->assertDontSeeText($certificate->verification_code);
+
+    if ($certificateType === CertificateType::BarangayId) {
+        $response->assertSeeText($certificate->certificate_number);
+    } else {
+        $response->assertDontSeeText($certificate->certificate_number)->assertDontSeeText('Certificate No.:');
+    }
 })->with('certificate types');
 
 it('publicly verifies a real code through HTML and JSON regardless of letter case', function () {

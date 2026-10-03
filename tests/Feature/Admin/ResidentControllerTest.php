@@ -60,6 +60,31 @@ it('registers a validated resident with a server-generated number', function () 
     ]);
 });
 
+it('allows staff to record nullable nationality and explicitly verified indigency', function () {
+    $this->actingAs(User::factory()->create())->postJson(route('admin.residents.store'), residentPayload())
+        ->assertCreated()->assertJsonPath('resident.nationality', null)->assertJsonPath('resident.is_verified_indigent', false);
+    $resident = Resident::query()->sole();
+    $this->patchJson(route('admin.residents.update', $resident), residentPayload(['nationality' => 'Test nationality', 'is_verified_indigent' => true]))
+        ->assertOk()->assertJsonPath('resident.nationality', 'Test nationality')->assertJsonPath('resident.is_verified_indigent', true);
+    $this->patchJson(route('admin.residents.update', $resident), residentPayload(['nationality' => str_repeat('x', 101), 'is_verified_indigent' => 'unverified']))
+        ->assertUnprocessable()->assertJsonValidationErrors(['nationality', 'is_verified_indigent']);
+});
+
+it('returns birthdays as calendar dates and preserves them when saving the edit form', function () {
+    $resident = Resident::factory()->create(residentPayload(['date_of_birth' => '1990-05-14']));
+    $this->actingAs(User::factory()->create());
+
+    $response = $this->getJson(route('admin.residents.index'))
+        ->assertOk()->assertJsonPath('data.0.date_of_birth', '1990-05-14');
+    $this->getJson(route('admin.residents.show', $resident))
+        ->assertOk()->assertJsonPath('date_of_birth', '1990-05-14');
+    $this->patchJson(route('admin.residents.update', $resident), residentPayload([
+        'date_of_birth' => $response->json('data.0.date_of_birth'),
+    ]))->assertOk()->assertJsonPath('resident.date_of_birth', '1990-05-14');
+
+    expect($resident->fresh()->date_of_birth->toDateString())->toBe('1990-05-14');
+});
+
 it('includes a newly registered active resident in the latest demographics', function () {
     $staff = User::factory()->create();
 

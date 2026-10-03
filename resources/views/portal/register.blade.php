@@ -25,13 +25,19 @@
 
             @if($stage === 'account')
                 <p class="alert alert-green" role="status">Na-verify na ang resident record. Tapusin ang pag-create ng account sa loob ng 10 minuto.</p>
-                <form method="POST" action="{{ route('portal.register.store') }}" data-resident-form autocomplete="off">
+                <form method="POST" action="{{ route('portal.register.store') }}" enctype="multipart/form-data" data-resident-form autocomplete="off">
                     @csrf
                     <div class="form-group">
                         <label class="form-label" for="registration-email">Email address</label>
                         <input class="form-input" id="registration-email" name="email" type="email" value="{{ $registrationEmail ?? old('email') }}" @if($registrationEmail) readonly aria-describedby="registration-email-help" @endif required maxlength="255" autocomplete="off" inputmode="email" autocapitalize="none" spellcheck="false" @error('email') aria-invalid="true" @enderror>
                         @error('email')<p class="field-error">{{ $message }}</p>@enderror
                         @if($registrationEmail)<p class="form-note" id="registration-email-help">Ito ang email na pinadalhan ng activation code. Ito rin ang gagamitin ninyo sa pag-log in.</p>@endif
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="registration-photo">Resident photo *</label>
+                        <input class="form-input" id="registration-photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" required aria-describedby="registration-photo-help" @error('photo') aria-invalid="true" @enderror>
+                        @error('photo')<p class="field-error">{{ $message }}</p>@enderror
+                        <p class="form-note" id="registration-photo-help">Mag-upload ng malinaw na larawan ng inyong mukha. JPG, PNG, o WebP; hanggang 5 MB. Piliin ulit ang larawan kung may kailangang itama sa form.</p>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="registration-password">Password</label>
@@ -81,14 +87,8 @@
                     @csrf
                     <div class="form-group">
                         <label class="form-label" for="registration-birth-date">Date of birth</label>
-                        <input class="form-input" id="registration-birth-date" name="date_of_birth" type="date" required max="{{ now()->toDateString() }}" @error('date_of_birth') aria-invalid="true" @enderror>
+                        <input class="form-input" id="registration-birth-date" name="date_of_birth" type="date" value="{{ old('date_of_birth') }}" required max="{{ now()->toDateString() }}" @error('date_of_birth') aria-invalid="true" @enderror>
                         @error('date_of_birth')<p class="field-error">{{ $message }}</p>@enderror
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="registration-contact-last-four">Huling 4 na digit ng contact number na nasa record</label>
-                        <input class="form-input" id="registration-contact-last-four" name="contact_last_four" type="text" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" required autocomplete="off" aria-describedby="contact-last-four-help" @error('contact_last_four') aria-invalid="true" @enderror>
-                        @error('contact_last_four')<p class="field-error">{{ $message }}</p>@enderror
-                        <p class="form-note" id="contact-last-four-help">Halimbawa: kung 0917 123 4567 ang number, ilagay ang 4567. Kung luma o wala ang contact number sa record, puwede itong i-update ng barangay staff.</p>
                     </div>
                     <button class="btn btn-green btn-full" type="submit">Confirm my record</button>
                 </form>
@@ -104,7 +104,7 @@
                     </div>
                     <button class="btn btn-green btn-full" type="submit">Find my record</button>
                 </form>
-                <p class="next-note"><strong>Susunod:</strong> kukumpirmahin ninyo ang petsa ng kapanganakan at ang huling 4 na digit ng contact number na nasa record.</p>
+                <p class="next-note"><strong>Susunod:</strong> kukumpirmahin ninyo ang petsa ng kapanganakan na nasa barangay record.</p>
             @endif
 
             @if($stage !== 'account' && $stage !== 'code' && ($stage !== 'email' || $emailDeliveryAvailable))
@@ -123,8 +123,8 @@
             <ul class="plain-list">
                 <li>Buong pangalan tulad ng nasa barangay record</li>
                 <li>Petsa ng kapanganakan</li>
-                <li>Huling 4 na digit ng contact number na nasa record</li>
                 <li>Email address na nabubuksan ninyo</li>
+                <li>Malinaw na resident photo (JPG, PNG, o WebP; hanggang 5 MB)</li>
             </ul>
         </section>
         <section>

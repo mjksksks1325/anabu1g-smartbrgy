@@ -8,6 +8,9 @@ use Illuminate\Support\Carbon;
 
 /**
  * @property Carbon|null $issued_at
+ * @property Carbon|null $expires_on
+ * @property array<string, string|null>|null $resident_snapshot
+ * @property string|null $photo_path
  */
 class IssuedCertificate extends Model
 {
@@ -23,7 +26,12 @@ class IssuedCertificate extends Model
         'issued_at',
         'issued_by',
         'qr_code_path',
+        'resident_snapshot',
+        'expires_on',
+        'photo_path',
     ];
+
+    protected $hidden = ['resident_snapshot', 'photo_path'];
 
     /**
      * @return BelongsTo<DocumentRequest, $this>
@@ -46,6 +54,8 @@ class IssuedCertificate extends Model
     {
         return [
             'issued_at' => 'datetime',
+            'expires_on' => 'date',
+            'resident_snapshot' => 'array',
             'amount_paid' => 'decimal:2',
         ];
     }

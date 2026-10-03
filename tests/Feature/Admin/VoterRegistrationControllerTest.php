@@ -22,13 +22,14 @@ test('guests cannot access the voter registry', function () {
     $this->getJson(route('admin.voter-registrations.index'))->assertUnauthorized();
 });
 
-test('staff can securely register an eligible resident', function () {
+test('barangay personnel can add an existing voter without a resident portal account', function () {
     $user = User::factory()->create();
     $resident = Resident::factory()->create(['date_of_birth' => '1990-01-01']);
 
     $this->actingAs($user)
         ->postJson(route('admin.voter-registrations.store'), voterPayload($resident))
         ->assertCreated()
+        ->assertJsonPath('message', 'Voter record added securely.')
         ->assertJsonPath('registration.resident_id', $resident->id)
         ->assertJsonPath('registration.masked_comelec_voter_number', '••••••••••9012')
         ->assertJsonPath('registration.integrity_valid', true)
@@ -201,4 +202,25 @@ test('registry export omits the private comelec number', function () {
         ->assertOk()
         ->assertDownload()
         ->assertDontSee('5555-4444-3333');
+});
+
+test('residents cannot add themselves to the personnel-managed voters list', function () {
+    $resident = Resident::factory()->create(['date_of_birth' => '1990-01-01']);
+    $account = User::factory()->resident()->create(['resident_id' => $resident->id]);
+
+    $this->actingAs($account)
+        ->postJson(route('admin.voter-registrations.store'), voterPayload($resident))
+        ->assertForbidden();
+
+    $this->assertDatabaseCount('voter_registrations', 0);
+});
+
+test('voters page describes personnel recording existing voter information', function () {
+    $staff = User::factory()->create();
+
+    $this->actingAs($staff)->get(route('admin.voters'))
+        ->assertSee('<h1>Voters</h1>', false)
+        ->assertSee('Para sa barangay personnel:')
+        ->assertSee('hindi ito pagpaparehistro sa COMELEC')
+        ->assertDontSee('Voter Registry');
 });

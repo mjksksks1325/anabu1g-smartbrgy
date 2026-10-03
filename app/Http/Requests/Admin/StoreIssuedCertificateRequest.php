@@ -35,11 +35,12 @@ class StoreIssuedCertificateRequest extends FormRequest
             'resident_name' => ['required', 'string', 'max:255'],
             'address' => ['required', 'string', 'max:1000'],
             'purpose' => ['nullable', 'string', 'max:500'],
+            'expires_on' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:today'],
         ];
     }
 
     /**
-     * @return array{certificate_type: string, resident_id: int|null, resident_name: string, address: string, purpose: string|null}
+     * @return array{certificate_type: string, resident_id: int|null, resident_name: string, address: string, purpose: string|null, expires_on: string|null}
      */
     public function certificateAttributes(): array
     {
@@ -48,6 +49,7 @@ class StoreIssuedCertificateRequest extends FormRequest
             'resident_id' => $this->integer('resident_id') ?: null,
             'resident_name' => $this->string('resident_name')->toString(),
             'address' => $this->string('address')->toString(),
+            'expires_on' => $this->filled('expires_on') ? $this->string('expires_on')->toString() : null,
             'purpose' => $this->filled('purpose')
                 ? $this->string('purpose')->toString()
                 : null,

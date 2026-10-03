@@ -26,6 +26,7 @@ class IssueCertificate
      *     resident_id?: int|null,
      *     resident_name: string,
      *     address?: string,
+     *     expires_on?: string|null,
      *     purpose?: string|null
      * }  $attributes
      */
@@ -36,6 +37,7 @@ class IssueCertificate
         bool $requestMustBeReady = false,
     ): IssuedCertificate {
         $qrStoragePath = null;
+        $photoStoragePath = null;
 
         try {
             return DB::transaction(function () use (
@@ -44,6 +46,7 @@ class IssueCertificate
                 $issuedBy,
                 $requestMustBeReady,
                 &$qrStoragePath,
+                &$photoStoragePath,
             ): IssuedCertificate {
                 $certificateType = CertificateType::tryFromLabel($attributes['certificate_type'])
                     ?? throw CertificateIssuanceException::unsupportedCertificateType();
@@ -54,6 +57,10 @@ class IssueCertificate
                 $resident = $residentId === null
                     ? null
                     : Resident::query()->lockForUpdate()->find($residentId);
+
+                if ($resident !== null && in_array($certificateType, [CertificateType::RegisteredVoterCertification, CertificateType::CertificateOfIndigency], true)) {
+                    $resident->setRelation('voterRegistration', $resident->voterRegistration()->lockForUpdate()->first());
+                }
 
                 $this->ensureResidentIsEligible($resident, $certificateType);
 
@@ -95,6 +102,13 @@ class IssueCertificate
                     throw CertificateIssuanceException::qrCodeCouldNotBeSaved();
                 }
 
+                if ($resident?->photo_path !== null && $this->filesystem->disk('local')->exists($resident->photo_path)) {
+                    $photoStoragePath = 'certificate-photos/'.$certificateNumber.'.'.pathinfo($resident->photo_path, PATHINFO_EXTENSION);
+                    if (! $this->filesystem->disk('local')->copy($resident->photo_path, $photoStoragePath)) {
+                        throw new \RuntimeException('Certificate photo could not be saved.');
+                    }
+                }
+
                 $certificate = IssuedCertificate::query()->create([
                     'document_request_id' => $lockedRequest->id,
                     'resident_id' => $resident?->id,
@@ -105,6 +119,16 @@ class IssueCertificate
                     'purpose' => $attributes['purpose'] ?? null,
                     'amount_paid' => $certificateType->fee(),
                     'issued_at' => now(),
+                    'expires_on' => $attributes['expires_on'] ?? null,
+                    'photo_path' => $photoStoragePath,
+                    'resident_snapshot' => [
+                        'full_name' => $resident === null ? $attributes['resident_name'] : $resident->full_name,
+                        'address' => $resident === null ? $lockedRequest->address : $resident->address,
+                        'date_of_birth' => $resident?->date_of_birth?->format('Y-m-d'),
+                        'gender' => $resident?->gender,
+                        'civil_status' => $resident?->civil_status,
+                        'nationality' => $resident?->nationality,
+                    ],
                     'issued_by' => $issuedBy,
                     'qr_code_path' => '/storage/'.$qrStoragePath,
                 ]);
@@ -121,6 +145,10 @@ class IssueCertificate
                 $this->filesystem->disk('public')->delete($qrStoragePath);
             }
 
+            if ($photoStoragePath !== null) {
+                $this->filesystem->disk('local')->delete($photoStoragePath);
+            }
+
             throw $exception;
         }
     }
@@ -128,6 +156,10 @@ class IssueCertificate
     private function ensureResidentIsEligible(?Resident $resident, CertificateType $certificateType): void
     {
         if ($resident === null) {
+            if (in_array($certificateType, [CertificateType::RegisteredVoterCertification, CertificateType::CertificateOfIndigency], true)) {
+                throw CertificateIssuanceException::residentIsNotEligible('Select a verified resident record for this certificate.');
+            }
+
             return;
         }
 

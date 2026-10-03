@@ -18,7 +18,7 @@ class RecordAdministrativeAction
     public function handle(Request $request, Closure $next): Response
     {
         if ($request->isMethodSafe()) {
-            return $next($request);
+            return $this->privateCaseResponse($request, $next($request));
         }
 
         return DB::transaction(function () use ($request, $next): Response {
@@ -26,6 +26,9 @@ class RecordAdministrativeAction
 
             if ($response->getStatusCode() < 400 && ! $request->session()->has('errors')) {
                 $name = $request->route()->getName();
+                if (str_starts_with($name, 'admin.incidents.') || str_starts_with($name, 'admin.protection-orders.') || str_starts_with($name, 'admin.request-restrictions.')) {
+                    return $this->privateCaseResponse($request, $response);
+                }
                 if ($name === 'admin.residents.portal-account') {
                     $name .= $request->boolean('is_active') ? '.reactivated' : '.suspended';
                 }
@@ -58,5 +61,14 @@ class RecordAdministrativeAction
 
             return $response;
         });
+    }
+
+    private function privateCaseResponse(Request $request, Response $response): Response
+    {
+        if ($request->routeIs('admin.incidents.*', 'admin.protection-orders.*', 'admin.request-restrictions.*')) {
+            $response->headers->set('Cache-Control', 'no-store, private');
+        }
+
+        return $response;
     }
 }

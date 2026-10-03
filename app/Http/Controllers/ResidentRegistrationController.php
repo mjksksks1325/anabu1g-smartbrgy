@@ -11,12 +11,15 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
+use Throwable;
 
 class ResidentRegistrationController extends Controller
 {
@@ -95,18 +98,21 @@ class ResidentRegistrationController extends Controller
         }
         $validated = $request->validate([
             'date_of_birth' => ['required', 'date_format:Y-m-d'],
-            'contact_last_four' => ['required', 'digits:4'],
         ]);
-        $matches = $this->matchingResidents($name)->filter(function (Resident $resident) use ($validated): bool {
-            $contact = preg_replace('/\D+/', '', (string) $resident->contact_number);
-
-            return $resident->date_of_birth->toDateString() === $validated['date_of_birth']
-                && strlen($contact) >= 4
-                && hash_equals(substr($contact, -4), $validated['contact_last_four']);
-        });
+        $matches = $this->matchingResidents($name)->filter(
+            fn (Resident $resident): bool => $resident->date_of_birth->toDateString() === $validated['date_of_birth'],
+        );
+        if ($matches->isEmpty()) {
+            throw ValidationException::withMessages([
+                'date_of_birth' => 'Hindi tugma ang petsa ng kapanganakan sa barangay record. Suriin ang buwan, araw, at taon, o magpatulong sa barangay staff.',
+            ]);
+        }
         $request->session()->forget('resident_name_check');
-        if ($matches->count() !== 1 || $matches->first()->portalAccount()->exists()) {
+        if ($matches->count() !== 1) {
             return redirect()->route('portal.registration.denied');
+        }
+        if ($matches->first()->portalAccount()->exists()) {
+            return redirect()->route('portal.registration.denied')->with('existing_account', true);
         }
         $request->session()->regenerate();
         $request->session()->put('resident_identity', [
@@ -195,8 +201,10 @@ class ResidentRegistrationController extends Controller
 
     public function store(RegisterResidentAccountRequest $request): RedirectResponse
     {
+        $photoPath = null;
+        $oldPhotoPath = null;
         try {
-            $account = DB::transaction(function () use ($request): ?User {
+            $account = DB::transaction(function () use ($request, &$photoPath, &$oldPhotoPath): ?User {
                 $resident = $this->verifiedResident($request, true);
                 if (! $resident || $resident->portalAccount()->exists()) {
                     return null;
@@ -208,6 +216,15 @@ class ResidentRegistrationController extends Controller
                 if (User::query()->whereRaw('LOWER(email) = ?', [$email])->exists()) {
                     throw ValidationException::withMessages(['email' => 'This email cannot be used. Sign in or use account recovery if you already have an account.']);
                 }
+                /** @var UploadedFile $photo */
+                $photo = $request->file('photo');
+                $storedPath = $photo->store('resident-photos', 'local');
+                if ($storedPath === false) {
+                    throw ValidationException::withMessages(['photo' => 'Hindi ma-save ang larawan. Pakisubukan ulit.']);
+                }
+                $photoPath = $storedPath;
+                $oldPhotoPath = $resident->photo_path;
+                $resident->photo_path = $photoPath;
                 $account = new User(['name' => $resident->full_name, 'email' => $email, 'password' => $request->validated('password')]);
                 $account->role = 'resident';
                 $account->resident()->associate($resident);
@@ -222,11 +239,22 @@ class ResidentRegistrationController extends Controller
                 return $account;
             });
         } catch (UniqueConstraintViolationException) {
+            if ($photoPath !== null) {
+                Storage::disk('local')->delete($photoPath);
+            }
             $account = null;
+        } catch (Throwable $exception) {
+            if ($photoPath !== null) {
+                Storage::disk('local')->delete($photoPath);
+            }
+            throw $exception;
         }
         $request->session()->forget('resident_verification');
         if (! $account) {
             return redirect()->route('portal.registration.denied');
+        }
+        if ($oldPhotoPath !== null) {
+            DB::afterCommit(fn () => Storage::disk('local')->delete($oldPhotoPath));
         }
 
         return redirect()->route('portal.login')->with('status', 'Your resident account is ready. Sign in to request documents.');
@@ -280,7 +308,7 @@ class ResidentRegistrationController extends Controller
             $query->whereRaw('LOWER(TRIM(first_name)) LIKE ?', [$firstWord.'%']);
         }
 
-        return $query->get(['id', 'first_name', 'middle_name', 'last_name', 'suffix', 'date_of_birth', 'contact_number'])
+        return $query->get(['id', 'first_name', 'middle_name', 'last_name', 'suffix', 'date_of_birth'])
             ->filter(fn (Resident $resident): bool => Str::lower(Str::squish($resident->full_name)) === $name);
     }
 }

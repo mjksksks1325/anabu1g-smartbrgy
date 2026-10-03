@@ -21,7 +21,7 @@ test('staff settings returns to the admin dashboard through a full page link', f
         'Dashboard',
         'Demographics',
         'Resident Records',
-        'Voter Registry',
+        'Voters',
         'Certificates &amp; Clearances',
         'Request Eligibility',
         'Incident Reports',
@@ -33,7 +33,7 @@ test('staff settings returns to the admin dashboard through a full page link', f
         'My profile',
         'Account security',
         'Portal ng Residente',
-    ], false)->assertSee(route('admin.dashboard', ['screen' => 'users']), false)
+    ], false)->assertSee(route('admin.users.index'), false)
         ->assertSee('class="staff-settings-topbar"', false);
     $document = new DOMDocument;
     $document->loadHTML($response->getContent(), LIBXML_NOERROR | LIBXML_NOWARNING);

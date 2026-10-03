@@ -3,8 +3,10 @@
 use App\Models\Resident;
 use App\Models\User;
 use App\Notifications\ResidentPortalActivationNotification;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Mailer\Exception\TransportException;
 use Tests\TestCase;
 
@@ -21,7 +23,7 @@ function confirmSelfServiceRecord(TestCase $test): void
 {
     $test->post(route('portal.register.name'), ['full_name' => '  jAnE   A   SANTOS  '])->assertRedirect(route('portal.register'));
     $test->post(route('portal.register.confirm-record'), [
-        'date_of_birth' => '1990-02-03', 'contact_last_four' => '4567',
+        'date_of_birth' => '1990-02-03',
     ])->assertRedirect(route('portal.register'));
 }
 
@@ -31,9 +33,11 @@ test('existing record reaches email step after normalized name and official-deta
 
     $this->get(route('portal.register'))->assertOk()->assertSee('Full name')->assertDontSee('name="email"', false);
     $this->post(route('portal.register.name'), ['full_name' => '  jAnE   A   SANTOS  '])->assertRedirect(route('portal.register'));
-    $this->get(route('portal.register'))->assertSee('May nakitang record na posibleng sa inyo')->assertDontSee($resident->resident_number);
+    $this->get(route('portal.register'))->assertSee('May nakitang record na posibleng sa inyo')->assertDontSee($resident->resident_number)
+        ->assertSee('name="date_of_birth"', false)->assertDontSee('name="contact_last_four"', false)
+        ->assertDontSee('Huling 4 na digit');
     $this->post(route('portal.register.confirm-record'), [
-        'date_of_birth' => '1990-02-03', 'contact_last_four' => '4567',
+        'date_of_birth' => '1990-02-03',
     ])->assertRedirect(route('portal.register'));
     $this->get(route('portal.register'))->assertSee('Na-verify na ang resident record')->assertSee('Send activation code')
         ->assertSee('Email verification')->assertSee('name="email"', false);
@@ -62,6 +66,7 @@ test('Unicode name case variants still match the official record', function () {
 });
 
 test('eligible resident receives a bound activation email and creates an account linked to the existing record', function () {
+    Storage::fake('local');
     $resident = selfServiceResident();
     Notification::fake();
     config()->set('mail.default', 'smtp');
@@ -73,12 +78,12 @@ test('eligible resident receives a bound activation email and creates an account
     Notification::assertSentOnDemand(ResidentPortalActivationNotification::class, function ($notification, $channels, AnonymousNotifiable $notifiable) use ($resident, &$code): bool {
         $code = $notification->activationCode;
 
-        $lines = $notification->toMail($notifiable)->introLines;
+        $mail = $notification->toMail($notifiable);
 
         return $notifiable->routeNotificationFor('mail') === 'jane@example.test'
             && $notification->residentNumber === $resident->resident_number
-            && in_array('Resident Number: '.$resident->resident_number, $lines, true)
-            && in_array('Activation Code: '.$notification->activationCode, $lines, true)
+            && $mail->viewData['residentNumber'] === $resident->resident_number
+            && $mail->viewData['activationCode'] === $notification->activationCode
             && in_array('mail', $channels, true);
     });
     expect($code)->toBeString()->toHaveLength(32);
@@ -92,7 +97,7 @@ test('eligible resident receives a bound activation email and creates an account
     $this->get(route('portal.register'))->assertSee('Step 4 of 4')->assertSee('jane@example.test');
     $this->post(route('portal.register.store'), [
         'email' => 'jane@example.test', 'password' => 'ResidentPassword123!',
-        'password_confirmation' => 'ResidentPassword123!',
+        'password_confirmation' => 'ResidentPassword123!', 'photo' => UploadedFile::fake()->image('resident.jpg'),
     ])->assertRedirect(route('portal.login'));
 
     $this->assertDatabaseCount('residents', 1);
@@ -173,7 +178,7 @@ test('refreshing the account creation step removes the pending registration proo
         ->assertSessionMissing('resident_verification');
     $this->post(route('portal.register.store'), [
         'email' => 'jane@example.test', 'password' => 'ResidentPassword123!',
-        'password_confirmation' => 'ResidentPassword123!',
+        'password_confirmation' => 'ResidentPassword123!', 'photo' => UploadedFile::fake()->image('resident.jpg'),
     ])->assertRedirect(route('portal.registration.denied'));
     $this->assertDatabaseEmpty('users');
 });
@@ -231,7 +236,7 @@ test('an expired name confirmation cannot advance to email', function () {
     selfServiceResident();
     $this->post(route('portal.register.name'), ['full_name' => 'Jane A Santos'])->assertRedirect(route('portal.register'));
     $this->travel(11)->minutes();
-    $this->post(route('portal.register.confirm-record'), ['date_of_birth' => '1990-02-03', 'contact_last_four' => '4567'])
+    $this->post(route('portal.register.confirm-record'), ['date_of_birth' => '1990-02-03'])
         ->assertRedirect(route('portal.register'));
     $this->get(route('portal.register'))->assertSee('Full name')->assertDontSee('Send activation code');
 });
@@ -252,16 +257,35 @@ test('inactive and archived residents cannot pass the public name check', functi
 test('wrong official details and identical records cannot select a resident arbitrarily', function (string $condition) {
     selfServiceResident();
     if ($condition === 'ambiguous') {
-        selfServiceResident();
+        selfServiceResident(['contact_number' => '0999-888-1111']);
     }
     $this->post(route('portal.register.name'), ['full_name' => 'Jane A Santos'])->assertRedirect(route('portal.register'));
-    $this->post(route('portal.register.confirm-record'), [
-        'date_of_birth' => '1990-02-03', 'contact_last_four' => $condition === 'wrong' ? '0000' : '4567',
-    ])->assertRedirect(route('portal.registration.denied'));
+    $response = $this->from(route('portal.register'))->post(route('portal.register.confirm-record'), [
+        'date_of_birth' => $condition === 'wrong' ? '1990-02-04' : '1990-02-03',
+    ]);
+    if ($condition === 'wrong') {
+        $response->assertRedirect(route('portal.register'))->assertSessionHasErrors('date_of_birth');
+    } else {
+        $response->assertRedirect(route('portal.registration.denied'));
+    }
     $this->post(route('portal.register.send-code'), ['email' => 'jane@example.test'])
         ->assertRedirect(route('portal.registration.denied'));
     $this->assertDatabaseEmpty('users');
 })->with(['wrong', 'ambiguous']);
+
+test('a mismatched birthday stays on confirmation and can be corrected without repeating the name', function () {
+    selfServiceResident();
+    config()->set('mail.default', 'smtp');
+    $this->post(route('portal.register.name'), ['full_name' => 'Jane A Santos'])->assertRedirect(route('portal.register'));
+    $this->from(route('portal.register'))->post(route('portal.register.confirm-record'), ['date_of_birth' => '1990-02-04'])
+        ->assertRedirect(route('portal.register'))->assertSessionHasErrors([
+            'date_of_birth' => 'Hindi tugma ang petsa ng kapanganakan sa barangay record. Suriin ang buwan, araw, at taon, o magpatulong sa barangay staff.',
+        ]);
+    $this->get(route('portal.register'))->assertSee('Kumpirmahin ang details')->assertSee('value="1990-02-04"', false);
+    $this->post(route('portal.register.confirm-record'), ['date_of_birth' => '1990-02-03'])
+        ->assertRedirect(route('portal.register'));
+    $this->get(route('portal.register'))->assertSee('Na-verify na ang resident record')->assertSee('Send activation code');
+});
 
 test('same-name residents can be distinguished without disclosing matching records', function () {
     $resident = selfServiceResident();
@@ -272,21 +296,37 @@ test('same-name residents can be distinguished without disclosing matching recor
         ->assertDontSee($resident->resident_number)->assertDontSee($resident->contact_number);
 });
 
-test('records without a usable contact number are directed to barangay assistance', function () {
-    selfServiceResident(['contact_number' => null]);
-    $this->post(route('portal.register.name'), ['full_name' => 'Jane A Santos'])->assertRedirect(route('portal.register'));
-    $this->post(route('portal.register.confirm-record'), ['date_of_birth' => '1990-02-03', 'contact_last_four' => '4567'])
-        ->assertRedirect(route('portal.registration.denied'));
-    $this->get(route('portal.registration.denied'))->assertSee('Barangay Anabu I-G Hall');
+test('records without a contact number can confirm their birthday and reach email verification', function () {
+    $resident = selfServiceResident(['contact_number' => null]);
+    config()->set('mail.default', 'smtp');
+    confirmSelfServiceRecord($this);
+
+    $this->get(route('portal.register'))->assertSee('Na-verify na ang resident record')->assertSee('Send activation code')
+        ->assertSessionHas('resident_identity.resident_id', $resident->id);
+    $this->assertDatabaseEmpty('users');
 });
+
+test('birthday confirmation requires a valid date before email verification', function (array $details) {
+    selfServiceResident();
+    $this->post(route('portal.register.name'), ['full_name' => 'Jane A Santos'])->assertRedirect(route('portal.register'));
+    $this->post(route('portal.register.confirm-record'), $details)->assertSessionHasErrors('date_of_birth');
+    $this->post(route('portal.register.send-code'), ['email' => 'jane@example.test'])
+        ->assertRedirect(route('portal.registration.denied'));
+    $this->assertDatabaseEmpty('users');
+})->with([
+    'missing birthday' => [[]],
+    'invalid birthday' => [['date_of_birth' => 'not-a-date']],
+]);
 
 test('already linked residents and duplicate email addresses cannot receive a self-service code', function (string $condition) {
     $resident = selfServiceResident();
     if ($condition === 'account') {
         User::factory()->resident()->create(['resident_id' => $resident->id]);
         $this->post(route('portal.register.name'), ['full_name' => 'Jane A Santos'])->assertRedirect(route('portal.register'));
-        $this->post(route('portal.register.confirm-record'), ['date_of_birth' => '1990-02-03', 'contact_last_four' => '4567'])
-            ->assertRedirect(route('portal.registration.denied'));
+        $this->post(route('portal.register.confirm-record'), ['date_of_birth' => '1990-02-03'])
+            ->assertRedirect(route('portal.registration.denied'))->assertSessionHas('existing_account', true);
+        $this->get(route('portal.registration.denied'))->assertSee('May online account na')
+            ->assertDontSee('Bagong lipat kayo at wala pa ang record');
     } else {
         User::factory()->create(['email' => 'JANE@example.test']);
         Notification::fake();
@@ -359,14 +399,14 @@ test('publicly issued codes remain bound to the receiving email and expire', fun
         ->assertRedirect(route('portal.register'));
     $this->post(route('portal.register.store'), [
         'email' => 'other@example.test', 'password' => 'ResidentPassword123!',
-        'password_confirmation' => 'ResidentPassword123!',
+        'password_confirmation' => 'ResidentPassword123!', 'photo' => UploadedFile::fake()->image('resident.jpg'),
     ])->assertSessionHasErrors('email');
     $this->assertDatabaseEmpty('users');
 
     $resident->forceFill(['portal_registration_expires_at' => now()->subMinute()])->save();
     $this->post(route('portal.register.store'), [
         'email' => 'jane@example.test', 'password' => 'ResidentPassword123!',
-        'password_confirmation' => 'ResidentPassword123!',
+        'password_confirmation' => 'ResidentPassword123!', 'photo' => UploadedFile::fake()->image('resident.jpg'),
     ])->assertRedirect(route('portal.registration.denied'));
     $this->assertDatabaseEmpty('users');
 });

@@ -5,8 +5,10 @@ use App\Models\Resident;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 
 function portalRegistrationResident(array $attributes = []): Resident
 {
@@ -19,7 +21,7 @@ function portalRegistrationResident(array $attributes = []): Resident
 
 function portalAccountInput(array $attributes = []): array
 {
-    return ['email' => 'resident@example.test', 'password' => 'ResidentPassword123!', 'password_confirmation' => 'ResidentPassword123!', ...$attributes];
+    return ['email' => 'resident@example.test', 'password' => 'ResidentPassword123!', 'password_confirmation' => 'ResidentPassword123!', 'photo' => UploadedFile::fake()->image('resident.jpg'), ...$attributes];
 }
 
 function portalRequestFor(Resident $resident, string $code): DocumentRequest
@@ -31,10 +33,13 @@ function portalRequestFor(Resident $resident, string $code): DocumentRequest
 }
 
 test('registration links an existing resident without changing their record or trusting account privileges', function () {
+    Storage::fake('local');
+    Storage::fake('public');
     $resident = portalRegistrationResident();
     $this->post(route('portal.register.verify'), ['resident_number' => strtolower($resident->resident_number), 'activation_code' => 'private-test-activation-code'])
         ->assertRedirect(route('portal.register'));
-    $this->get(route('portal.register'))->assertSee('Step 4 of 4');
+    $this->get(route('portal.register'))->assertSee('Step 4 of 4')->assertSee('name="photo"', false)
+        ->assertSee('enctype="multipart/form-data"', false);
 
     $this->post(route('portal.register.store'), portalAccountInput(['role' => 'admin', 'resident_id' => 999, 'name' => 'Someone else', 'is_active' => false]))
         ->assertRedirect(route('portal.login'));
@@ -47,15 +52,42 @@ test('registration links an existing resident without changing their record or t
     expect(Hash::check('ResidentPassword123!', $account->password))->toBeTrue();
     $this->assertDatabaseHas('administrative_audits', ['user_id' => $account->id, 'action' => 'portal.account.registered', 'record' => null]);
     $this->assertGuest();
+    $photoPath = $resident->fresh()->photo_path;
+    expect($photoPath)->toStartWith('resident-photos/');
+    Storage::disk('local')->assertExists($photoPath);
+    Storage::disk('public')->assertMissing($photoPath);
 });
 
 test('unverified clients cannot create an account or choose a resident id', function () {
+    Storage::fake('local');
     $resident = portalRegistrationResident();
     $this->post(route('portal.register.store'), portalAccountInput(['resident_id' => $resident->id]))
         ->assertRedirect(route('portal.registration.denied'));
     $this->assertDatabaseEmpty('users');
     $this->assertDatabaseCount('residents', 1);
+    expect(Storage::disk('local')->allFiles())->toBeEmpty();
 });
+
+test('account creation requires a valid resident photo and preserves the existing photo on rejection', function (string $kind) {
+    Storage::fake('local');
+    Storage::disk('local')->put('resident-photos/existing.jpg', 'existing-photo');
+    $resident = portalRegistrationResident(['photo_path' => 'resident-photos/existing.jpg']);
+    $this->post(route('portal.register.verify'), ['resident_number' => $resident->resident_number, 'activation_code' => 'private-test-activation-code'])
+        ->assertRedirect(route('portal.register'));
+    $photo = match ($kind) {
+        'missing' => null,
+        'type' => UploadedFile::fake()->create('document.pdf', 1, 'application/pdf'),
+        'size' => UploadedFile::fake()->image('large.jpg')->size(5121),
+        'dimensions' => UploadedFile::fake()->image('wide.jpg', 6001, 1),
+    };
+
+    $this->post(route('portal.register.store'), portalAccountInput(['photo' => $photo]))
+        ->assertSessionHasErrors('photo');
+
+    $this->assertDatabaseEmpty('users');
+    expect($resident->fresh()->photo_path)->toBe('resident-photos/existing.jpg');
+    expect(Storage::disk('local')->allFiles())->toBe(['resident-photos/existing.jpg']);
+})->with(['missing', 'type', 'size', 'dimensions']);
 
 test('verification denies unknown inactive archived expired and incorrect codes without revealing identity', function (string $condition) {
     $resident = portalRegistrationResident();
@@ -105,6 +137,7 @@ test('registration rechecks eligibility expiration and code rotation after verif
 })->with(['archived', 'inactive', 'rotated', 'expired']);
 
 test('an already linked record offers login and recovery without exposing its email', function () {
+    Storage::fake('local');
     $resident = portalRegistrationResident();
     $this->post(route('portal.register.verify'), ['resident_number' => $resident->resident_number, 'activation_code' => 'private-test-activation-code']);
     $this->post(route('portal.register.store'), portalAccountInput())->assertRedirect(route('portal.login'));
@@ -124,6 +157,7 @@ test('the database rejects a second account even when application checks are byp
 });
 
 test('verification proof cannot be reused after a successful registration', function () {
+    Storage::fake('local');
     $resident = portalRegistrationResident();
     $this->post(route('portal.register.verify'), ['resident_number' => $resident->resident_number, 'activation_code' => 'private-test-activation-code']);
     $proof = session('resident_verification');
@@ -352,7 +386,7 @@ test('logout invalidates resident access and private pages cannot be cached', fu
 });
 
 test('public services derive supported fees from CertificateType and request links lead to resident login', function () {
-    $this->get(route('portal.information'))->assertOk()->assertSee('Barangay officials')->assertSee('Hinihintay pa ang opisyal na listahan');
+    $this->get(route('portal.information'))->assertOk()->assertSee('Barangay officials')->assertSee(route('portal.officials'), false);
     $this->get(route('portal.request.create', ['service' => 'BC']))->assertRedirect(route('portal.login', ['next' => 'request', 'service' => 'BC']));
 });
 

@@ -26,6 +26,12 @@ class Purok extends Model
         return $this->hasMany(Resident::class, 'purok', 'name');
     }
 
+    /** @return HasMany<Household, $this> */
+    public function households(): HasMany
+    {
+        return $this->hasMany(Household::class);
+    }
+
     /** @return array<string, string> */
     protected function casts(): array
     {

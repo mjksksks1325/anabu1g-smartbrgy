@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StorePurokRequest;
+use App\Models\Household;
 use App\Models\Purok;
 use App\Models\Resident;
 use Illuminate\Http\JsonResponse;
@@ -16,6 +17,7 @@ class PurokController extends Controller
         Gate::authorize('viewAny', Purok::class);
 
         $puroks = Purok::query()
+            ->withCount('households')
             ->where('is_active', true)
             ->orderBy('name')
             ->get();
@@ -76,11 +78,13 @@ class PurokController extends Controller
                 'name' => $purok->name,
                 'color' => $purok->color,
                 'residents_count' => $purokBreakdown[$purok->name]['residents'],
+                'households_count' => $purok->households_count,
                 'senior_count' => $purokBreakdown[$purok->name]['seniors'],
                 'pwd_count' => $purokBreakdown[$purok->name]['pwd'],
                 'four_ps_count' => $purokBreakdown[$purok->name]['four_ps'],
             ]),
             'demographics' => [
+                'households' => Household::demographics(),
                 'total' => $activeResidents->count(),
                 'male' => $activeResidents->where('gender', 'Male')->count(),
                 'female' => $activeResidents->where('gender', 'Female')->count(),

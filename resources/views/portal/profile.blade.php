@@ -2,9 +2,10 @@
 @section('title', 'Profile')
 @section('band')
 <x-portal.page-band title="Profile">
-    <p>Galing ang impormasyong ito sa Resident Records ng Barangay Anabu I-G. Barangay staff lang ang puwedeng magbago nito.</p>
+    <p>Galing ang impormasyong ito sa Resident Records ng Barangay Anabu I-G. Puwede ninyong i-update ang inyong photo dito; barangay staff ang mag-aayos ng ibang detalye.</p>
     <x-slot:actions>
         <a class="btn btn-outline" href="#corrections">Paano magpa-correct</a>
+        <a class="btn btn-green" href="#resident-photo">Upload/Update Photo</a>
     </x-slot:actions>
 </x-portal.page-band>
 @endsection
@@ -23,6 +24,25 @@
         </dl>
     </section>
     <div class="stack">
+        <section class="panel" id="resident-photo" aria-labelledby="resident-photo-title" data-resident-private>
+            <h2 id="resident-photo-title">Resident photo</h2>
+            @if($resident->has_photo)
+                <p><img src="{{ route('portal.profile.photo') }}" width="150" height="180" style="object-fit: cover" alt="Inyong kasalukuyang resident photo"></p>
+            @else
+                <p>Wala pang resident photo. Mag-upload ng malinaw na larawan ng inyong mukha.</p>
+            @endif
+            <p>Ito ang larawan sa inyong Resident Record na ginagamit para sa mga susunod na certificate at clearance.</p>
+            <form method="POST" action="{{ route('portal.profile.photo.store') }}" enctype="multipart/form-data" data-resident-form>
+                @csrf
+                <div class="form-group">
+                    <label class="form-label" for="profile-photo">Piliin ang larawan</label>
+                    <input class="form-input" id="profile-photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" required aria-describedby="profile-photo-help" @error('photo') aria-invalid="true" @enderror>
+                    @error('photo')<p class="field-error">{{ $message }}</p>@enderror
+                    <p class="form-note" id="profile-photo-help">JPG, PNG, o WebP; hanggang 5 MB. Piliin ulit ang larawan kung may error sa upload.</p>
+                </div>
+                <button class="btn btn-green" type="submit">{{ $resident->has_photo ? 'Update Photo' : 'Upload Photo' }}</button>
+            </form>
+        </section>
         <section class="panel panel-tint corrections-panel" id="corrections" aria-labelledby="corrections-title">
             <h2 id="corrections-title">May mali sa details?</h2>
             <p>Hindi mae-edit online ang resident record at account email. Para magpa-correct:</p>

@@ -1,0 +1,19 @@
+﻿household_group,household_number,household_name,is_household_head,relationship_to_household_head,first_name,middle_name,last_name,suffix,date_of_birth,gender,civil_status,purok,address,contact_number,residency_type
+CSV-DEMO-01,,Malaya Demo Household,1,Head,Amando,Cruz,Malaya,,1982-04-12,Male,Married,Purok 1 - Sampaguita,"Block 1, Lot 99, CSV Demo Street, Anabu 1-G",,Homeowner
+CSV-DEMO-01,,Malaya Demo Household,0,Spouse,Elena,Santos,Malaya,,1985-08-23,Female,Married,Purok 1 - Sampaguita,"Block 1, Lot 99, CSV Demo Street, Anabu 1-G",,Homeowner
+CSV-DEMO-01,,Malaya Demo Household,0,Child,Carlo,Santos,Malaya,,2010-06-15,Male,Single,Purok 1 - Sampaguita,"Block 1, Lot 99, CSV Demo Street, Anabu 1-G",,Homeowner
+CSV-DEMO-02,,Mapayapa Demo Household,1,Head,Rafael,Lim,Mapayapa,,1978-11-09,Male,Married,Purok 2 - Rosal,"Block 2, Lot 99, CSV Demo Street, Anabu 1-G",,Renter
+CSV-DEMO-02,,Mapayapa Demo Household,0,Spouse,Teresa,Garcia,Mapayapa,,1981-02-17,Female,Married,Purok 2 - Rosal,"Block 2, Lot 99, CSV Demo Street, Anabu 1-G",,Renter
+CSV-DEMO-02,,Mapayapa Demo Household,0,Child,Bianca,Garcia,Mapayapa,,2006-09-28,Female,Single,Purok 2 - Rosal,"Block 2, Lot 99, CSV Demo Street, Anabu 1-G",,Renter
+CSV-DEMO-03,,Masagana Demo Household,1,Head,Leonora,Ramos,Masagana,,1955-03-05,Female,Widowed,Purok 3 - Camia,"Block 3, Lot 99, CSV Demo Street, Anabu 1-G",,Homeowner
+CSV-DEMO-03,,Masagana Demo Household,0,Child,Gabriel,Flores,Masagana,,1980-07-21,Male,Single,Purok 3 - Camia,"Block 3, Lot 99, CSV Demo Street, Anabu 1-G",,Homeowner
+CSV-DEMO-03,,Masagana Demo Household,0,Grandchild,Paolo,,Masagana,,2015-12-03,Male,Single,Purok 3 - Camia,"Block 3, Lot 99, CSV Demo Street, Anabu 1-G",,Homeowner
+CSV-DEMO-04,,Mabunyi Demo Household,1,Head,Dante,Navarro,Mabunyi,,1990-10-19,Male,Married,Purok 4 - Ilang-Ilang,"Block 4, Lot 99, CSV Demo Street, Anabu 1-G",,Boarder
+CSV-DEMO-04,,Mabunyi Demo Household,0,Spouse,Isabel,Torres,Mabunyi,,1992-01-26,Female,Married,Purok 4 - Ilang-Ilang,"Block 4, Lot 99, CSV Demo Street, Anabu 1-G",,Boarder
+CSV-DEMO-04,,Mabunyi Demo Household,0,Child,Mika,Torres,Mabunyi,,2018-05-07,Female,Single,Purok 4 - Ilang-Ilang,"Block 4, Lot 99, CSV Demo Street, Anabu 1-G",,Boarder
+CSV-DEMO-05,,Matiyaga Demo Household,1,Head,Lourdes,Villanueva,Matiyaga,,1975-06-30,Female,Separated,Purok 5 - Mabini,"Block 5, Lot 99, CSV Demo Street, Anabu 1-G",,Renter
+CSV-DEMO-05,,Matiyaga Demo Household,0,Child,Adrian,Reyes,Matiyaga,,2000-03-14,Male,Single,Purok 5 - Mabini,"Block 5, Lot 99, CSV Demo Street, Anabu 1-G",,Renter
+CSV-DEMO-05,,Matiyaga Demo Household,0,Child,Sofia,,Matiyaga,,2008-08-11,Female,Single,Purok 5 - Mabini,"Block 5, Lot 99, CSV Demo Street, Anabu 1-G",,Renter
+CSV-DEMO-06,,Marilag Demo Household,1,Head,Ernesto,Aquino,Marilag,Jr.,1960-12-24,Male,Married,Purok 6 - Marquez,"Block 6, Lot 99, CSV Demo Street, Anabu 1-G",,Homeowner
+CSV-DEMO-06,,Marilag Demo Household,0,Spouse,Corazon,Bautista,Marilag,,1963-04-08,Female,Married,Purok 6 - Marquez,"Block 6, Lot 99, CSV Demo Street, Anabu 1-G",,Homeowner
+CSV-DEMO-06,,Marilag Demo Household,0,Child,Nina,Bautista,Marilag,,1995-02-20,Female,Single,Purok 6 - Marquez,"Block 6, Lot 99, CSV Demo Street, Anabu 1-G",,Homeowner

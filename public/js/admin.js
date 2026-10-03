@@ -112,7 +112,7 @@ async function refreshDashboardStats() {
 
 function refreshPopulationStats() {
   const total = totalPopulation();
-  const households = Math.max(1, Math.ceil(total / 4));
+  const households = Number(DEMOGRAPHIC_SUMMARY?.households?.total_households || 0);
   document.querySelectorAll('[data-target="4812"]').forEach(el => {
     el.dataset.target = total;
     el.textContent = total.toLocaleString();
@@ -275,10 +275,12 @@ async function loadPuroks() {
     if (!response.ok) throw new Error(payload?.message || 'Unable to load demographics.');
 
     PUROK_DATA.splice(0, PUROK_DATA.length, ...payload.data.map(purok => ({
+      databaseId: purok.id,
       key: purok.name,
       label: purok.name,
       color: purok.color,
       residentsCount: Number(purok.residents_count || 0),
+      householdsCount: Number(purok.households_count || 0),
       seniorCount: Number(purok.senior_count || 0),
       pwdCount: Number(purok.pwd_count || 0),
       fourPsCount: Number(purok.four_ps_count || 0)
@@ -309,8 +311,9 @@ loadCustomPuroks();
 // CERTIFICATE TYPES
 // ═══════════════════════════════════════
 const CERTIFICATE_TYPES = [
-  { id: 'BC',   label: 'Barangay Clearance',        icon: '', fee: 'PHP 50.00',  days: '1 day' },
-  { id: 'CR',   label: 'Certificate of Residency',  icon: '', fee: 'PHP 50.00',  days: '1 day' },
+  { id: 'RVC', label: 'Registered Voter Certification', icon: '', fee: 'PHP 25.00', days: 'Confirm with barangay' },
+  { id: 'BC',   label: 'Barangay Clearance',        icon: '', fee: 'PHP 25.00',  days: '1 day' },
+  { id: 'CR',   label: 'Certificate of Residency',  icon: '', fee: 'PHP 25.00',  days: '1 day' },
   { id: 'CI',   label: 'Certificate of Indigency',  icon: '', fee: 'Free',       days: '1 day' },
   { id: 'BID',  label: 'Barangay ID',               icon: '', fee: 'PHP 100.00', days: '3-5 days' },
   { id: 'CTFJ', label: 'First Time Jobseeker',      icon: '', fee: 'Free',       days: '1 day' },
@@ -339,9 +342,10 @@ const RESIDENT_STATUS = {};
 const REQUEST_RECORDS = [];
 
 const ELIGIBILITY_RULES = {
+  'RVC':  { label: 'Registered Voter Certification', needsGoodStanding: true, oneTimeOnly: false, requiresActive: true },
   'BC':   { label: 'Barangay Clearance',       needsGoodStanding: true,  oneTimeOnly: false, requiresActive: true },
   'CR':   { label: 'Certificate of Residency', needsGoodStanding: false, oneTimeOnly: false, requiresActive: true },
-  'CI':   { label: 'Certificate of Indigency', needsGoodStanding: false, oneTimeOnly: false, requiresActive: true },
+  'CI':   { label: 'Certificate of Indigency', needsGoodStanding: true, oneTimeOnly: false, requiresActive: true },
   'BID':  { label: 'Barangay ID',              needsGoodStanding: false, oneTimeOnly: false, requiresActive: true },
   'CTFJ': { label: 'First Time Jobseeker',     needsGoodStanding: false, oneTimeOnly: true,  requiresActive: true },
   'BBC':  { label: 'Business Clearance',       needsGoodStanding: true,  oneTimeOnly: false, requiresActive: true },
@@ -379,10 +383,10 @@ let currentUserName   = '';
 // ═══════════════════════════════════════
 function findNavItem(screenId) {
   return [...document.querySelectorAll('.nav-item')]
-    .find(item => item.getAttribute('onclick')?.includes(`showScreen('${screenId}'`)) || null;
+    .find(item => item.getAttribute('data-screen') === screenId || item.getAttribute('onclick')?.includes(`showScreen('${screenId}'`)) || null;
 }
 
-function showScreen(id, el) {
+function showScreen(id, el, updateHistory = true) {
   // Role-based guard
   const screenPermMap = {
     'dashboard': 'Dashboard', 'demographics': 'Records',
@@ -398,6 +402,11 @@ function showScreen(id, el) {
   }
   const screen = document.getElementById('screen-' + id);
   if (!screen) return;
+  const screenUrl = window.ADMIN_SCREEN_ROUTES?.[id];
+  if (updateHistory && screenUrl && window.history?.pushState) {
+    const destination = new URL(screenUrl, window.location.href);
+    if (destination.pathname !== window.location.pathname) window.history.pushState({ adminScreen: id }, '', screenUrl);
+  }
   document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   screen.classList.add('active');
@@ -416,6 +425,7 @@ function showScreen(id, el) {
   if (id === 'users') void reloadUsers();
   toggleNavigation(false);
   if (id === 'request-records') void loadRequestRecords(1);
+  if (id === 'request-records' && typeof loadRestrictions === 'function') void loadRestrictions(1);
   if (id === 'certificates') {
     renderCertKanban();
     const badge = document.getElementById('cert-nav-badge');
@@ -587,7 +597,7 @@ if (userRoleEl) userRoleEl.textContent = role || '';
 
 startClock();
 
-showScreen('dashboard');
+showScreen(window.ADMIN_ACTIVE_SCREEN || 'dashboard', findNavItem(window.ADMIN_ACTIVE_SCREEN || 'dashboard'), false);
 
 }
 let logoutPending = false;
@@ -1076,8 +1086,9 @@ function printCert(code) {
   if (!req) return;
 
   const priceMap = {
-    'barangay clearance': 50,
-    'certificate of residency': 50,
+    'registered voter certification': 25,
+    'barangay clearance': 25,
+    'certificate of residency': 25,
     'certificate of indigency': 0,
     'barangay id': 100,
     'first time jobseeker': 0,
@@ -1095,6 +1106,8 @@ function printCert(code) {
   const amount = priceMap[requestType] ?? 0;
 
   document.getElementById('print-document-request-id').value = req.id || '';
+  const expiry = document.getElementById('print-expiry');
+  if (expiry) expiry.value = '';
   document.getElementById('print-certificate-type').value = req.type || '';
   document.getElementById('print-resident-name').value = req.name || '';
   document.getElementById('print-purpose').value = req.purpose || '';
@@ -1105,8 +1118,9 @@ function printCert(code) {
 }
 
 const MANUAL_CERTIFICATE_FEES = {
-  'Barangay Clearance': 50,
-  'Certificate of Residency': 50,
+  'Registered Voter Certification': 25,
+  'Barangay Clearance': 25,
+  'Certificate of Residency': 25,
   'Certificate of Indigency': 0,
   'Barangay ID': 100,
   'First Time Jobseeker': 0,
@@ -1149,7 +1163,8 @@ async function issueManualCertificate(event) {
         resident_id: Number(document.getElementById('manual-resident-id')?.value) || null,
         resident_name: document.getElementById('manual-resident-name')?.value.trim(),
         address: document.getElementById('manual-resident-address')?.value.trim() || null,
-        purpose: document.getElementById('manual-certificate-purpose')?.value.trim() || null
+        purpose: document.getElementById('manual-certificate-purpose')?.value.trim() || null,
+        expires_on: document.getElementById('manual-certificate-expiry')?.value || null
       })
     });
     const data = await response.json();
@@ -1807,10 +1822,11 @@ function renderPurokCards() {
     const pwd = Number(p.pwdCount ?? pwdByPurok[p.key] ?? 0);
     const bene = Number(p.fourPsCount ?? beneByPurok[p.key] ?? 0);
     grid.innerHTML += `
-      <div class="demo-purok-card">
+      <div class="demo-purok-card" role="button" tabindex="0" onclick="openPurokHouseholds(${Number(p.databaseId)})" onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openPurokHouseholds(${Number(p.databaseId)}); }" aria-label="${escapeText(p.label)}: ${Number(p.householdsCount || 0)} households">
         <div class="demo-purok-name"> ${escapeText(p.label)}</div>
         <div class="demo-purok-pop" style="color:${p.color};">${count.toLocaleString()}</div>
         <div class="demo-purok-pct">${pct}% of total population</div>
+        <div class="demo-purok-pct">${Number(p.householdsCount || 0)} households</div>
         <div class="demo-purok-bar" style="margin:8px 0 6px;"><div class="progress-bar"><div class="progress-fill" style="width:${barPct}%;background:${p.color};"></div></div></div>
         <div class="sg-tags">
           ${seniors > 0 ? `<span class="demo-purok-tag" style="color:var(--senior-color);border-color:rgba(245,158,11,0.25);"> ${seniors} Seniors</span>` : ''}
@@ -1861,9 +1877,9 @@ function renderAgeDistribution() {
 
 function renderDemographicsStats() {
   const active = RESIDENTS.filter(r => r.status === 'Active');
-  const total  = Number(DEMOGRAPHIC_SUMMARY?.total ?? active.length);
-  const male   = Number(DEMOGRAPHIC_SUMMARY?.male ?? active.filter(r => r.gender === 'Male').length);
-  const female = Number(DEMOGRAPHIC_SUMMARY?.female ?? active.filter(r => r.gender === 'Female').length);
+  const total  = Number(DEMOGRAPHIC_SUMMARY?.households?.total_residents ?? DEMOGRAPHIC_SUMMARY?.total ?? active.length);
+  const male   = Number(DEMOGRAPHIC_SUMMARY?.households?.male ?? DEMOGRAPHIC_SUMMARY?.male ?? active.filter(r => r.gender === 'Male').length);
+  const female = Number(DEMOGRAPHIC_SUMMARY?.households?.female ?? DEMOGRAPHIC_SUMMARY?.female ?? active.filter(r => r.gender === 'Female').length);
   const seniors = Number(DEMOGRAPHIC_SUMMARY?.seniors ?? active.filter(r => isSenior(r.dob)).length);
 
   const setEl = (id, val) => { const el = document.getElementById(id); if (el) { el.textContent = val.toLocaleString(); el.dataset.target = val; } };
@@ -1872,10 +1888,12 @@ function renderDemographicsStats() {
   setEl('demo-stat-total',      total);
   setEl('demo-stat-male',       male);
   setEl('demo-stat-female',     female);
-  setEl('demo-stat-households', seniors);
+  setEl('demo-stat-seniors', seniors);
+  setEl('demo-stat-households', Number(DEMOGRAPHIC_SUMMARY?.households?.total_households || 0));
+  setEl('demo-stat-voters', Number(DEMOGRAPHIC_SUMMARY?.households?.registered_voters || 0));
   setSub('demo-sub-male',       total > 0 ? `${((male   / total) * 100).toFixed(1)}% ng populasyon` : '—');
   setSub('demo-sub-female',     total > 0 ? `${((female / total) * 100).toFixed(1)}% ng populasyon` : '—');
-  setSub('demo-sub-households', 'Age 60 and above');
+  setSub('demo-sub-seniors', 'Age 60 and above');
 }
 
 function renderDemographics() {
@@ -3025,6 +3043,10 @@ async function loadIncidents(page = 1) {
   if (search) query.set('search', search);
   if (status) query.set('status', status);
   if (severity) query.set('severity', severity);
+  for (const [id, parameter] of [['incident-category-filter', 'incident_type'], ['incident-date-from', 'date_from'], ['incident-date-to', 'date_to'], ['incident-assignee-filter', 'assigned_to']]) {
+    const value = document.getElementById(id)?.value;
+    if (value) query.set(parameter, value);
+  }
 
   try {
     const response = await fetch(`/admin/incidents?${query}`, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
@@ -3118,6 +3140,7 @@ function openViewIncident(id) {
     attachmentWrapper.style.display = attachments.length ? 'block' : 'none';
   }
   openModal('modal-view-incident');
+  if (typeof loadCaseHistory === 'function') void loadCaseHistory(id);
 }
 
 function openEditIncident(id) {
@@ -3141,6 +3164,7 @@ function openEditIncident(id) {
   document.getElementById('inc-modal-title').textContent = 'Edit Incident Report';
   document.querySelector('#modal-incident .btn-danger').textContent = 'Save Changes';
   toggleIncidentResolution();
+  if (typeof prepareIncidentLinks === 'function') prepareIncidentLinks(incident);
   openModal('modal-incident');
 }
 
@@ -3151,13 +3175,14 @@ function openAddIncident() {
   });
   document.getElementById('inc-date').value = new Date().toISOString().slice(0, 10);
   document.getElementById('inc-severity').value = 'medium';
-  document.getElementById('inc-status').value = 'pending';
+  document.getElementById('inc-status').value = 'open';
   document.getElementById('inc-status-group').style.display = 'none';
   document.getElementById('inc-resolution-group').style.display = 'none';
   document.getElementById('inc-attachments').value = '';
   document.getElementById('inc-attachments-preview').innerHTML = '';
   document.getElementById('inc-modal-title').textContent = 'File Incident Report';
   document.querySelector('#modal-incident .btn-danger').textContent = 'File Report';
+  if (typeof prepareIncidentLinks === 'function') prepareIncidentLinks();
   openModal('modal-incident');
 }
 
@@ -3177,6 +3202,10 @@ async function saveIncident() {
   formData.append('respondent_name', document.getElementById('inc-complainee')?.value.trim() || '');
   formData.append('severity', document.getElementById('inc-severity')?.value.toLowerCase() || 'medium');
   formData.append('details', document.getElementById('inc-details')?.value.trim() || '');
+  formData.append('complainant_resident_id', document.getElementById('inc-complainant-resident')?.value || '');
+  formData.append('respondent_resident_id', document.getElementById('inc-respondent-resident')?.value || '');
+  formData.append('assigned_to', document.getElementById('inc-assigned-to')?.value || '');
+  formData.append('remarks', document.getElementById('inc-remarks')?.value || '');
   if (incidentId) {
     formData.append('_method', 'PATCH');
     formData.append('status', document.getElementById('inc-status')?.value || 'pending');
@@ -3397,6 +3426,7 @@ async function confirmPrintRelease() {
       {
         method: 'POST',
         credentials: 'same-origin',
+        body: JSON.stringify({ expires_on: document.getElementById('print-expiry')?.value || null }),
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
@@ -3473,6 +3503,9 @@ function residentFromApi(resident) {
     dob: String(resident.date_of_birth || '').slice(0, 10),
     gender: resident.gender,
     civil: resident.civil_status,
+    nationality: resident.nationality || '',
+    verifiedIndigent: Boolean(resident.is_verified_indigent),
+    hasPhoto: Boolean(resident.has_photo),
     contact: resident.contact_number || '',
     status: resident.status === 'active' ? 'Active' : 'Inactive',
     type: resident.residency_type,
@@ -3482,13 +3515,17 @@ function residentFromApi(resident) {
     archived: Boolean(resident.deleted_at),
     archivedAt: resident.deleted_at,
     documentRequestsCount: resident.document_requests_count || 0,
-    issuedCertificatesCount: resident.issued_certificates_count || 0
+    issuedCertificatesCount: resident.issued_certificates_count || 0,
+    household: resident.household || null,
+    householdId: resident.household_id,
+    relationshipToHead: resident.relationship_to_household_head || '',
+    isHouseholdHead: Boolean(resident.is_household_head)
   };
 }
 
 async function loadResidents(page = 1) {
   const tbody = document.getElementById('records-tbody');
-  if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="resident-table-message">Loading resident records...</td></tr>';
+  if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="resident-table-message">Loading resident records...</td></tr>';
 
   const query = new URLSearchParams({ page: String(page), per_page: '15' });
   const search = document.getElementById('residents-search')?.value.trim();
@@ -3514,7 +3551,7 @@ async function loadResidents(page = 1) {
     renderDashPurokBreakdown();
     populateEligResidentDropdown(null);
   } catch (error) {
-    if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="resident-table-message resident-table-error">${escapeText(error.message)}</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="9" class="resident-table-message resident-table-error">${escapeText(error.message)}</td></tr>`;
   }
 }
 
@@ -3524,7 +3561,7 @@ function renderResidentsTable() {
   tbody.innerHTML = '';
 
   if (RESIDENTS.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" class="resident-table-message">No resident records found.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="resident-table-message">No resident records found.</td></tr>';
     return;
   }
 
@@ -3545,6 +3582,7 @@ function renderResidentsTable() {
       <td>${escapeText(resident.gender)}</td>
       <td>${escapeText(resident.civil)}</td>
       <td>${archivedBadge}</td>
+      <td><span class="resident-number">${escapeText(resident.household?.household_name || resident.household?.household_number || 'Unassigned')}</span></td>
       <td><div class="resident-actions">${actions}</div></td>`;
     tbody.appendChild(row);
   });
@@ -3583,13 +3621,17 @@ function exportResidents() {
 function openAddResident() {
   syncPurokSelects();
   document.querySelector('#modal-resident-title span').textContent = 'Register New Resident';
-  ['res-lastname', 'res-name', 'res-middlename', 'res-suffix', 'res-dob', 'res-contact', 'res-address', 'res-edit-id'].forEach(id => {
+  ['res-lastname', 'res-name', 'res-middlename', 'res-suffix', 'res-dob', 'res-contact', 'res-address', 'res-edit-id', 'res-nationality', 'res-photo'].forEach(id => {
     const element = document.getElementById(id);
     if (element) element.value = '';
   });
   document.getElementById('res-status').value = 'active';
   document.getElementById('res-good-standing').checked = true;
+  const indigency = document.getElementById('res-verified-indigent');
+  if (indigency) indigency.checked = false;
+  setResidentPhotoPreview(null);
   setCheckedSpecialGroups([]);
+  resetResidentHouseholdFields();
   openModal('modal-resident');
 }
 
@@ -3604,6 +3646,7 @@ function openEditResident(residentNumber) {
     'res-dob': resident.dob, 'res-contact': resident.contact,
     'res-address': resident.address, 'res-edit-id': resident.id,
     'res-gender': resident.gender, 'res-civil': resident.civil,
+    'res-nationality': resident.nationality, 'res-photo': '',
     'res-purok': resident.purok, 'res-type': resident.type,
     'res-status': resident.status.toLowerCase()
   };
@@ -3612,7 +3655,11 @@ function openEditResident(residentNumber) {
     if (element) element.value = value || '';
   });
   document.getElementById('res-good-standing').checked = resident.goodStanding;
+  const indigency = document.getElementById('res-verified-indigent');
+  if (indigency) indigency.checked = resident.verifiedIndigent;
+  setResidentPhotoPreview(resident.hasPhoto ? resident.databaseId : null);
   setCheckedSpecialGroups(resident.specialGroups);
+  resetResidentHouseholdFields(resident);
   openModal('modal-resident');
 }
 
@@ -3625,6 +3672,8 @@ function residentFormPayload(confirmDuplicate = false) {
     date_of_birth: document.getElementById('res-dob')?.value,
     gender: document.getElementById('res-gender')?.value,
     civil_status: document.getElementById('res-civil')?.value,
+    nationality: document.getElementById('res-nationality')?.value.trim() || null,
+    is_verified_indigent: Boolean(document.getElementById('res-verified-indigent')?.checked),
     purok: document.getElementById('res-purok')?.value,
     address: document.getElementById('res-address')?.value.trim(),
     contact_number: document.getElementById('res-contact')?.value.trim() || null,
@@ -3632,8 +3681,23 @@ function residentFormPayload(confirmDuplicate = false) {
     special_groups: getCheckedSpecialGroups(),
     status: document.getElementById('res-status')?.value,
     is_in_good_standing: document.getElementById('res-good-standing')?.checked,
-    confirm_duplicate: confirmDuplicate
+    confirm_duplicate: confirmDuplicate,
+    household_id: Number(document.getElementById('res-household-id')?.value) || null,
+    relationship_to_household_head: document.getElementById('res-household-relationship')?.value.trim() || null,
+    is_household_head: Boolean(document.getElementById('res-household-head')?.checked),
+    ...(document.getElementById('res-create-household')?.checked ? { new_household: {
+      address: document.getElementById('res-household-address')?.value.trim(),
+      purok_id: Number(document.getElementById('res-household-purok')?.value) || null
+    }} : {})
   };
+}
+
+function setResidentPhotoPreview(residentId) {
+  const preview = document.getElementById('res-photo-preview');
+  if (!preview) return;
+  preview.style.display = residentId ? 'block' : 'none';
+  if (residentId) preview.src = `/admin/residents/${residentId}/photo`;
+  else preview.removeAttribute('src');
 }
 
 async function saveResident(confirmDuplicate = false) {
@@ -3657,6 +3721,20 @@ async function saveResident(confirmDuplicate = false) {
     if (!response.ok) {
       const message = payload?.errors ? Object.values(payload.errors).flat()[0] : payload?.message;
       throw new Error(message || 'Unable to save the resident record.');
+    }
+    const photo = document.getElementById('res-photo')?.files?.[0];
+    if (photo) {
+      const saved = payload.resident;
+      // Keep retries linked to the saved record if a photo upload fails.
+      const index = RESIDENTS.findIndex(item => item.databaseId === saved.id);
+      if (index >= 0) RESIDENTS[index] = residentFromApi(saved);
+      else RESIDENTS.push(residentFromApi(saved));
+      document.getElementById('res-edit-id').value = saved.resident_number;
+      const form = new FormData();
+      form.append('photo', photo);
+      const photoResponse = await fetch(`/admin/residents/${saved.id}/photo`, { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', ...csrfRequestHeaders() }, body: form });
+      const photoPayload = await photoResponse.json();
+      if (!photoResponse.ok) throw new Error(Object.values(photoPayload.errors || {}).flat()[0] || photoPayload.message || 'Resident saved; photo upload failed. Retry the photo.');
     }
     closeModal('modal-resident');
     showToast(payload.message, 'green');
@@ -3718,8 +3796,362 @@ function openViewResident(residentNumber) {
       <div class="resident-detail-wide"><span>Eligibility</span><strong>${resident.goodStanding ? 'In good standing' : 'Not in good standing'}</strong></div>
     </div>`;
   document.getElementById('view-resident-content').insertAdjacentHTML('beforeend', '<section id="resident-portal-account" class="resident-account-panel" aria-live="polite">Loading portal account...</section>');
+  document.getElementById('view-resident-content').insertAdjacentHTML('beforeend', '<section id="resident-household-information" class="resident-account-panel" aria-live="polite">Loading household information...</section>');
   openModal('modal-view-resident');
   void loadResidentPortalAccount(resident.databaseId);
+  void loadResidentHouseholdInformation(resident.databaseId);
+}
+
+let householdLookupTimer = null;
+let householdManagementTimer = null;
+let householdResidentTimer = null;
+let householdLookupVersion = 0;
+let householdListVersion = 0;
+let householdMemberLookupVersion = 0;
+let householdDetailVersion = 0;
+let demographicHouseholdVersion = 0;
+const draftHouseholdMembers = new Map();
+const householdResidentOptions = new Map();
+
+async function viewDemographicHousehold(id) {
+  const version = ++demographicHouseholdVersion;
+  const container = document.getElementById('household-readonly-content');
+  container.textContent = 'Loading household members...';
+  closeModal('modal-purok-households');
+  openModal('modal-household-readonly');
+  try {
+    const household = await householdApi(`/admin/households/${id}`);
+    if (version !== demographicHouseholdVersion) return;
+    container.innerHTML = `<h3>${escapeText(household.household_name || household.household_number)}</h3><p>${escapeText(household.household_number)}</p><p>${escapeText(household.address)} — ${escapeText(household.purok || 'None')}</p><p>Head: ${escapeText(household.head?.full_name || 'No household head assigned')}</p>${householdMembersMarkup(household)}`;
+  } catch (error) { if (version === demographicHouseholdVersion) container.textContent = error.message; }
+}
+
+async function refreshHouseholdDemographics() {
+  await loadPuroks();
+}
+
+async function householdApi(url, method = 'GET', body) {
+  const response = await fetch(url, {
+    method, credentials: 'same-origin',
+    headers: { 'Accept': 'application/json', ...(method !== 'GET' ? { 'Content-Type': 'application/json', ...csrfRequestHeaders() } : {}) },
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {})
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.errors ? Object.values(payload.errors).flat()[0] : payload.message || 'Unable to load household records.');
+  return payload;
+}
+
+function syncHouseholdPuroks(selectId, selectedId = '') {
+  const select = document.getElementById(selectId);
+  select.replaceChildren(new Option('None', ''));
+  PUROK_DATA.forEach(purok => {
+    if (purok.databaseId) select.add(new Option(purok.label, String(purok.databaseId)));
+  });
+  select.value = String(selectedId || '');
+}
+
+function resetResidentHouseholdFields(resident = null) {
+  clearTimeout(householdLookupTimer);
+  householdLookupVersion++;
+  ['res-household-search', 'res-household-address'].forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('res-household-relationship').value = resident?.relationshipToHead || '';
+  document.getElementById('res-household-head').checked = resident?.isHouseholdHead || false;
+  document.getElementById('res-create-household').checked = false;
+  document.getElementById('res-new-household-section').open = false;
+  const select = document.getElementById('res-household-id');
+  select.disabled = false;
+  select.replaceChildren(new Option('No household assigned', ''));
+  if (resident?.household) {
+    select.add(new Option(`${resident.household.household_name || resident.household.household_number} — ${resident.household.address}`, String(resident.householdId), true, true));
+  }
+  syncHouseholdPuroks('res-household-purok');
+  void loadResidentHouseholds();
+}
+
+function toggleNewHousehold() {
+  const creating = document.getElementById('res-create-household').checked;
+  const select = document.getElementById('res-household-id');
+  select.disabled = creating;
+  if (creating) {
+    select.value = '';
+    document.getElementById('res-household-address').value ||= document.getElementById('res-address').value;
+    const purok = PUROK_DATA.find(item => item.key === document.getElementById('res-purok').value);
+    document.getElementById('res-household-purok').value = String(purok?.databaseId || '');
+  }
+}
+
+function searchResidentHouseholds() {
+  clearTimeout(householdLookupTimer);
+  householdLookupVersion++;
+  householdLookupTimer = setTimeout(() => loadResidentHouseholds(1), 250);
+}
+
+function householdPagination(containerId, payload, callback) {
+  document.getElementById(containerId).innerHTML = `
+    <button class="btn btn-xs" ${payload.current_page <= 1 ? 'disabled' : ''} onclick="${callback}(${payload.current_page - 1})">Previous</button>
+    <span>Page ${Number(payload.current_page)} of ${Number(payload.last_page)}</span>
+    <button class="btn btn-xs" ${payload.current_page >= payload.last_page ? 'disabled' : ''} onclick="${callback}(${payload.current_page + 1})">Next</button>`;
+}
+
+async function loadResidentHouseholds(page = 1) {
+  const version = ++householdLookupVersion;
+  const query = new URLSearchParams({ search: document.getElementById('res-household-search').value.trim(), page, per_page: 20 });
+  try {
+    const payload = await householdApi(`/admin/households?${query}`);
+    if (version !== householdLookupVersion) return;
+    const select = document.getElementById('res-household-id');
+    const selected = select.selectedOptions[0];
+    const selectedId = select.value;
+    select.replaceChildren(new Option('No household assigned', ''));
+    if (selectedId && !payload.data.some(item => String(item.id) === selectedId)) select.add(selected);
+    payload.data.forEach(item => select.add(new Option(`${item.household_name || item.household_number} — ${item.household_number} — ${item.head?.full_name || 'No household head assigned'} — ${item.address}`, String(item.id))));
+    select.value = selectedId;
+    householdPagination('res-household-pagination', payload, 'loadResidentHouseholds');
+  } catch (error) {
+    if (version === householdLookupVersion) showToast(error.message, 'red');
+  }
+}
+
+function householdMembersMarkup(household, manageable = false) {
+  if (!household.members.length) return '<p>No household members assigned.</p>';
+  return `<div class="table-scroll"><table class="tbl"><thead><tr><th>Name</th><th>Relationship</th><th>Gender</th><th>Registered voter</th>${manageable ? '<th>Actions</th>' : ''}</tr></thead><tbody>${household.members.map(member => `
+    <tr><td>${escapeText(member.full_name)}${member.status !== 'active' ? ' <span class="badge badge-gray">Inactive</span>' : ''}</td>
+    <td>${escapeText(member.relationship_to_household_head || 'Unspecified')}</td><td>${escapeText(member.gender)}</td><td>${member.registered_voter ? 'Yes' : 'No'}</td>
+    ${manageable ? `<td><button class="btn btn-xs btn-danger" onclick="removeManagedHouseholdMember(${Number(household.id)}, ${Number(member.id)})">Remove</button></td>` : ''}</tr>`).join('')}</tbody></table></div>`;
+}
+
+async function loadResidentHouseholdInformation(residentId) {
+  const container = document.getElementById('resident-household-information');
+  try {
+    const payload = await householdApi(`/admin/residents/${residentId}`);
+    if (container !== document.getElementById('resident-household-information')) return;
+    const household = payload.household_information;
+    container.innerHTML = household ? `<h3>Household Information</h3>
+      <div class="resident-detail-grid"><div><span>Household Number</span><strong>${escapeText(household.household_number)}</strong></div>
+      <div><span>Household Head</span><strong>${escapeText(household.head?.full_name || 'No household head assigned')}</strong></div>
+      <div><span>Relationship to Head</span><strong>${escapeText(payload.relationship_to_household_head || 'Unspecified')}</strong></div>
+      <div><span>Address</span><strong>${escapeText(household.address)}</strong></div></div>
+      <h4>Household members (${Number(household.household_size)})</h4>${householdMembersMarkup(household)}` : '<h3>Household Information</h3><p>No household assigned.</p>';
+  } catch (error) {
+    if (container === document.getElementById('resident-household-information')) container.textContent = error.message;
+  }
+}
+
+function openHouseholdManagement() {
+  document.getElementById('household-search').value = '';
+  document.getElementById('household-editor').hidden = true;
+  openModal('modal-households');
+  void loadManagedHouseholds();
+}
+
+function searchHouseholdManagement() {
+  clearTimeout(householdManagementTimer);
+  householdListVersion++;
+  householdManagementTimer = setTimeout(() => loadManagedHouseholds(1), 250);
+}
+
+async function loadManagedHouseholds(page = 1) {
+  const version = ++householdListVersion;
+  const query = new URLSearchParams({ search: document.getElementById('household-search').value.trim(), page, per_page: 15 });
+  try {
+    const payload = await householdApi(`/admin/households?${query}`);
+    if (version !== householdListVersion) return;
+    document.getElementById('household-list').innerHTML = payload.data.length ? `<div class="table-scroll"><table class="tbl"><thead><tr><th>Household</th><th>Head / Address</th><th>Members</th><th>Actions</th></tr></thead><tbody>${payload.data.map(item => `<tr><td>${escapeText(item.household_name || item.household_number)}${item.household_name ? `<br><small>${escapeText(item.household_number)}</small>` : ''}</td><td>${escapeText(item.head?.full_name || 'No household head assigned')}<br>${escapeText(item.address)}</td><td>${Number(item.household_size)}</td><td><button class="btn btn-xs" onclick="editManagedHousehold(${Number(item.id)})">View / Edit</button></td></tr>`).join('')}</tbody></table></div>` : '<p>No households found.</p>';
+    householdPagination('household-pagination', payload, 'loadManagedHouseholds');
+  } catch (error) {
+    if (version === householdListVersion) document.getElementById('household-list').textContent = error.message;
+  }
+}
+
+function newManagedHousehold() {
+  householdDetailVersion++;
+  householdMemberLookupVersion++;
+  document.getElementById('household-editor').hidden = false;
+  document.getElementById('household-editor-title').textContent = 'New household';
+  document.getElementById('household-edit-id').value = '';
+  document.getElementById('household-address').value = '';
+  document.getElementById('household-name').value = '';
+  syncHouseholdPuroks('household-purok');
+  document.getElementById('household-number').value = '';
+  document.getElementById('household-number').readOnly = false;
+  document.getElementById('household-head-field').hidden = false;
+  document.getElementById('household-add-member').hidden = false;
+  document.getElementById('household-draft-help').hidden = false;
+  document.getElementById('household-resident-search').value = '';
+  document.getElementById('household-resident-relationship').value = '';
+  document.getElementById('household-resident-head').checked = false;
+  draftHouseholdMembers.clear();
+  householdResidentOptions.clear();
+  document.getElementById('household-head').replaceChildren(new Option('Select household head', ''));
+  renderDraftHouseholdMembers();
+  void loadHouseholdResidents();
+}
+
+function renderDraftHouseholdMembers(selectedHead = document.getElementById('household-head').value) {
+  const head = document.getElementById('household-head');
+  head.replaceChildren(new Option('Select household head', ''));
+  const members = [...draftHouseholdMembers.values()];
+  const candidates = new Map([...householdResidentOptions, ...draftHouseholdMembers]);
+  [...candidates.values()].filter(member => member.status === 'active').forEach(member => head.add(new Option(member.full_name, String(member.id))));
+  head.value = draftHouseholdMembers.has(Number(selectedHead)) ? String(selectedHead) : '';
+  document.getElementById('household-members').innerHTML = members.length ? `<h4>Selected existing residents</h4><div class="table-scroll"><table class="tbl"><thead><tr><th>Name</th><th>Relationship to head</th><th>Actions</th></tr></thead><tbody>${members.map(member => `<tr><td>${escapeText(member.full_name)}</td><td><input class="form-input" aria-label="Relationship for ${escapeText(member.full_name)}" maxlength="100" value="${escapeText(member.relationship_to_household_head)}" oninput="updateDraftHouseholdRelationship(${Number(member.id)}, this.value)"/></td><td><button class="btn btn-xs btn-danger" onclick="removeDraftHouseholdMember(${Number(member.id)})">Remove</button></td></tr>`).join('')}</tbody></table></div>` : '<p>No residents selected yet.</p>';
+}
+
+function selectManagedHouseholdHead(residentId) {
+  if (document.getElementById('household-edit-id').value) return;
+  const id = Number(residentId);
+  if (!id) return renderDraftHouseholdMembers('');
+  const resident = draftHouseholdMembers.get(id) || householdResidentOptions.get(id);
+  if (!resident || resident.status !== 'active') {
+    renderDraftHouseholdMembers('');
+    return showToast('Select an existing active resident as household head.', 'red');
+  }
+  if (!draftHouseholdMembers.has(id) && resident.household_id && !confirm('Move this resident from their current household? Any previous head designation will be cleared.')) {
+    renderDraftHouseholdMembers('');
+    return;
+  }
+  draftHouseholdMembers.forEach(member => {
+    if (member.id !== id && member.relationship_to_household_head === 'Head') member.relationship_to_household_head = '';
+  });
+  draftHouseholdMembers.set(id, { id, full_name: resident.full_name, status: resident.status, relationship_to_household_head: 'Head' });
+  renderDraftHouseholdMembers(String(id));
+}
+
+function updateDraftHouseholdRelationship(id, relationship) {
+  const member = draftHouseholdMembers.get(id);
+  if (member) member.relationship_to_household_head = relationship;
+}
+
+function removeDraftHouseholdMember(id) {
+  const selectedHead = document.getElementById('household-head').value;
+  draftHouseholdMembers.delete(id);
+  renderDraftHouseholdMembers(Number(selectedHead) === id ? '' : selectedHead);
+}
+
+async function editManagedHousehold(id) {
+  const version = ++householdDetailVersion;
+  try {
+    const household = await householdApi(`/admin/households/${id}`);
+    if (version !== householdDetailVersion) return;
+    document.getElementById('household-editor').hidden = false;
+    document.getElementById('household-editor-title').textContent = household.household_name || household.household_number;
+    document.getElementById('household-name').value = household.household_name || '';
+    document.getElementById('household-edit-id').value = String(household.id);
+    document.getElementById('household-number').value = household.household_number;
+    document.getElementById('household-number').readOnly = true;
+    document.getElementById('household-draft-help').hidden = true;
+    document.getElementById('household-address').value = household.address;
+    syncHouseholdPuroks('household-purok', household.purok_id);
+    document.getElementById('household-head-field').hidden = false;
+    const head = document.getElementById('household-head');
+    head.replaceChildren(new Option('No household head assigned', ''));
+    household.members.filter(member => member.status === 'active').forEach(member => head.add(new Option(member.full_name, String(member.id))));
+    head.value = String(household.head?.id || '');
+    document.getElementById('household-members').innerHTML = `<h4>Household members (${Number(household.household_size)})</h4>${householdMembersMarkup(household, true)}`;
+    document.getElementById('household-add-member').hidden = false;
+    document.getElementById('household-resident-search').value = '';
+    document.getElementById('household-resident-relationship').value = '';
+    document.getElementById('household-resident-head').checked = false;
+    void loadHouseholdResidents();
+  } catch (error) { showToast(error.message, 'red'); }
+}
+
+async function saveManagedHousehold() {
+  const button = document.getElementById('household-save');
+  if (button.disabled) return;
+  button.disabled = true;
+  const id = document.getElementById('household-edit-id').value;
+  const body = { household_name: document.getElementById('household-name').value.trim() || null, address: document.getElementById('household-address').value.trim(), purok_id: Number(document.getElementById('household-purok').value) || null };
+  body.household_head_resident_id = Number(document.getElementById('household-head').value) || null;
+  if (!id) {
+    if (!body.household_head_resident_id) {
+      button.disabled = false;
+      return showToast('Select an existing active resident as household head.', 'red');
+    }
+    body.household_number = document.getElementById('household-number').value.trim() || null;
+    body.members = [...draftHouseholdMembers.values()].filter(member => member.id !== body.household_head_resident_id).map(member => ({ resident_id: member.id, relationship_to_household_head: member.relationship_to_household_head.trim() }));
+    if (body.members.some(member => !member.relationship_to_household_head)) {
+      button.disabled = false;
+      return showToast('Enter the relationship of each member to the household head.', 'red');
+    }
+  }
+  try {
+    const payload = await householdApi(id ? `/admin/households/${id}` : '/admin/households', id ? 'PATCH' : 'POST', body);
+    showToast(payload.message, 'green');
+    await editManagedHousehold(payload.household.id);
+    await loadManagedHouseholds();
+    await loadResidents(residentCurrentPage);
+    await refreshHouseholdDemographics();
+  } catch (error) { showToast(error.message, 'red'); }
+  finally { button.disabled = false; }
+}
+
+function searchHouseholdResidents() {
+  clearTimeout(householdResidentTimer);
+  householdMemberLookupVersion++;
+  householdResidentTimer = setTimeout(() => loadHouseholdResidents(1), 250);
+}
+
+async function loadHouseholdResidents(page = 1) {
+  const version = ++householdMemberLookupVersion;
+  const query = new URLSearchParams({ search: document.getElementById('household-resident-search').value.trim(), page, per_page: 15 });
+  try {
+    const payload = await householdApi(`/admin/residents?${query}`);
+    if (version !== householdMemberLookupVersion) return;
+    const select = document.getElementById('household-resident-id');
+    select.replaceChildren(new Option('Select a resident', ''));
+    householdResidentOptions.clear();
+    const householdId = document.getElementById('household-edit-id').value;
+    payload.data.filter(resident => (!householdId || String(resident.household_id || '') !== householdId) && (householdId || !draftHouseholdMembers.has(resident.id))).forEach(resident => {
+      householdResidentOptions.set(resident.id, resident);
+      select.add(new Option(`${resident.full_name} — ${resident.resident_number}${resident.household ? ` — currently ${resident.household.household_number}` : ''}`, String(resident.id)));
+    });
+    householdPagination('household-resident-pagination', payload, 'loadHouseholdResidents');
+    if (!householdId) renderDraftHouseholdMembers();
+  } catch (error) { if (version === householdMemberLookupVersion) showToast(error.message, 'red'); }
+}
+
+async function addManagedHouseholdMember() {
+  const id = Number(document.getElementById('household-edit-id').value);
+  const residentId = Number(document.getElementById('household-resident-id').value);
+  if (!residentId) return showToast('Select a resident to add.', 'red');
+  const label = document.getElementById('household-resident-id').selectedOptions[0].textContent;
+  if (label.includes(' — currently ') && !confirm('Move this resident from their current household? Any previous head designation will be cleared.')) return;
+  const isHead = document.getElementById('household-resident-head').checked;
+  if (!id) {
+    const resident = householdResidentOptions.get(residentId);
+    if (!resident) return showToast('Search and select the resident again.', 'red');
+    if (isHead && resident.status !== 'active') return showToast('The household head must be active.', 'red');
+    draftHouseholdMembers.set(residentId, { id: residentId, full_name: resident.full_name, status: resident.status, relationship_to_household_head: document.getElementById('household-resident-relationship').value.trim() });
+    renderDraftHouseholdMembers(isHead ? String(residentId) : document.getElementById('household-head').value);
+    document.getElementById('household-resident-relationship').value = '';
+    document.getElementById('household-resident-head').checked = false;
+    void loadHouseholdResidents();
+    return;
+  }
+  try {
+    const payload = await householdApi(`/admin/households/${id}/members/${residentId}`, 'PATCH', {
+      relationship_to_household_head: document.getElementById('household-resident-relationship').value.trim() || null,
+      is_household_head: isHead
+    });
+    showToast(payload.message, 'green');
+    await editManagedHousehold(id);
+    await loadManagedHouseholds();
+    await loadResidents(residentCurrentPage);
+    await refreshHouseholdDemographics();
+  } catch (error) { showToast(error.message, 'red'); }
+}
+
+async function removeManagedHouseholdMember(id, residentId) {
+  if (!confirm('Remove this household membership? The resident record will be kept.')) return;
+  try {
+    const payload = await householdApi(`/admin/households/${id}/members/${residentId}`, 'DELETE');
+    showToast(payload.message, 'green');
+    await editManagedHousehold(id);
+    await loadManagedHouseholds();
+    await loadResidents(residentCurrentPage);
+    await refreshHouseholdDemographics();
+  } catch (error) { showToast(error.message, 'red'); }
 }
 
 async function populateManualResidentDropdown() {
@@ -3841,7 +4273,7 @@ async function loadVoterRegistry(page = 1) {
       headers: { 'Accept': 'application/json' }
     });
     const payload = await response.json();
-    if (!response.ok) throw new Error(payload?.message || 'Unable to load the voter registry.');
+    if (!response.ok) throw new Error(payload?.message || 'Unable to load the voters list.');
 
     voterRegistrations = payload.data || [];
     voterEligibleResidents = payload.eligible_residents || [];
@@ -3951,7 +4383,7 @@ async function openVoterRegistration() {
   document.getElementById('voter-comelec-number').value = '';
   document.getElementById('voter-precinct').value = '';
   document.getElementById('voter-cluster').value = '';
-  document.getElementById('voter-registration-date').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('voter-registration-date').value = '';
   openModal('modal-voter-registration');
 }
 
@@ -3977,14 +4409,14 @@ async function saveVoterRegistration() {
     const result = await response.json();
     if (!response.ok) {
       const message = result?.errors ? Object.values(result.errors).flat()[0] : result?.message;
-      throw new Error(message || 'Hindi ma-save ang voter registration.');
+      throw new Error(message || 'Hindi ma-save ang voter record.');
     }
 
     closeModal('modal-voter-registration');
     showToast('Naidagdag na ang botante.', 'green');
     await loadVoterRegistry(1);
   } catch (error) {
-    showToast(error.message || 'Hindi ma-save ang voter registration.', 'red');
+    showToast(error.message || 'Hindi ma-save ang voter record.', 'red');
   } finally {
     if (button) button.disabled = false;
   }
@@ -4043,17 +4475,45 @@ async function confirmRejectRequest() {
 document.addEventListener('DOMContentLoaded', async () => {
   const authenticatedUser = window.AUTHENTICATED_USER;
   if (authenticatedUser) {
+    restoreAdminFiltersFromUrl();
     await loadPuroks();
     launchApp(authenticatedUser.name, authenticatedUser.role);
-    await loadResidents();
+    await loadResidents(residentCurrentPage);
     populateManualResidentDropdown();
     loadVoterRegistry();
     try {
-      const screen = new URLSearchParams(window.location.search).get('screen') || localStorage.getItem('smartbrgy_active_screen');
+      const screen = window.ADMIN_ACTIVE_SCREEN || 'dashboard';
       const navigation = screen ? findNavItem(screen) : null;
-      if (navigation && navigation.style.display !== 'none') showScreen(screen, navigation);
+      if (navigation && navigation.style.display !== 'none') showScreen(screen, navigation, false);
     } catch (_) {}
   }
+});
+
+function restoreAdminFiltersFromUrl() {
+  const query = new URLSearchParams(window.location?.search || '');
+  if (window.ADMIN_ACTIVE_SCREEN === 'records') {
+    const search = document.getElementById('residents-search');
+    if (search) search.value = query.get('search') || '';
+    residentStatusFilter = ['active', 'inactive', 'senior', 'archived'].includes(query.get('status')) ? query.get('status') : '';
+    const page = Number(query.get('page'));
+    residentCurrentPage = Number.isSafeInteger(page) && page > 0 ? page : 1;
+    document.querySelectorAll('#screen-records .status-pill').forEach(item => {
+      const value = item.getAttribute('onclick')?.match(/filterResidentStatus\('([^']*)'/)?.[1] || '';
+      item.classList.toggle('active', value.toLowerCase() === residentStatusFilter);
+    });
+  }
+  if (window.ADMIN_ACTIVE_SCREEN === 'audit') {
+    const search = document.getElementById('audit-search');
+    if (search) search.value = query.get('search') || '';
+    auditCurrentSearch = (query.get('search') || '').toLowerCase();
+    const date = document.getElementById('audit-date-filter');
+    if (date && /^\d{4}-\d{2}-\d{2}$/.test(query.get('date') || '')) date.value = query.get('date');
+  }
+}
+
+window.addEventListener('popstate', () => {
+  const entry = Object.entries(window.ADMIN_SCREEN_ROUTES || {}).find(([, url]) => new URL(url, window.location.href).pathname === window.location.pathname);
+  if (entry) showScreen(entry[0], findNavItem(entry[0]), false);
 });
 
 function toggleNavigation(force) {
@@ -4130,4 +4590,48 @@ async function changePortalAccountStatus(residentId, active, button) {
     await adminRequest(`/admin/residents/${residentId}/portal-account`, { method: 'PATCH', body: JSON.stringify({ is_active: active }) });
     await loadResidentPortalAccount(residentId);
   } catch (error) { showToast(error.message, 'red'); button.disabled = false; }
+}
+
+
+function openVotersImport() {
+  document.getElementById('voters-import-file').value = '';
+  const result = document.getElementById('voters-import-result');
+  result.textContent = '';
+  result.hidden = true;
+  openModal('modal-voters-import');
+}
+
+async function importVotersCsv() {
+  const button = document.getElementById('voters-import-button');
+  if (!button || button.disabled) return;
+  const file = document.getElementById('voters-import-file')?.files?.[0];
+  const result = document.getElementById('voters-import-result');
+  if (!file) {
+    result.textContent = 'Pumili muna ng CSV file.';
+    result.hidden = false;
+    return;
+  }
+  const data = new FormData();
+  data.append('file', file);
+  button.disabled = true;
+  result.textContent = 'Importing voters...';
+  result.hidden = false;
+  try {
+    const response = await fetch('/admin/voter-registrations-import', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { Accept: 'application/json', ...csrfRequestHeaders() }, body: data
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      const messages = payload.errors ? Object.values(payload.errors).flat() : [payload.message || 'Import failed.'];
+      throw new Error(messages.join(' '));
+    }
+    result.textContent = `Na-import ang ${Number(payload.imported)} voter records.`;
+    document.getElementById('voters-import-file').value = '';
+    await loadVoterRegistry(1);
+  } catch (error) {
+    result.textContent = error.message || 'Hindi natapos ang import. Tingnan ang voters list bago subukan ulit.';
+  } finally {
+    button.disabled = false;
+  }
 }

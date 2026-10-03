@@ -8,6 +8,11 @@ test('voter page supports adding voters and separates the list by purok and age 
     expect($dashboard)
         ->toContain("showScreen('voters',this)")
         ->toContain('id="screen-voters"')
+        ->toContain('<h1>Voters</h1>')
+        ->toContain('Para sa barangay personnel:')
+        ->toContain('Existing Voter Registration Date')
+        ->toContain('hindi ito pagpaparehistro sa COMELEC')
+        ->not->toContain('Voter Registry')
         ->toContain('id="voter-purok-filter"')
         ->toContain('SK Lamang (15–17)')
         ->toContain('SK at Regular (18–30)')
@@ -22,7 +27,8 @@ test('voter page supports adding voters and separates the list by purok and age 
         ->toContain("query.set('purok', voterPurokFilter)")
         ->toContain("fetch('/admin/voter-registrations', {")
         ->toContain("method: 'POST'")
-        ->toContain('registration.voter_eligibility_label');
+        ->toContain('registration.voter_eligibility_label')
+        ->toContain("document.getElementById('voter-registration-date').value = '';");
     expect($adminStyles)
         ->toContain('.voter-table { min-width:860px; }')
         ->toContain('@media (max-width: 700px)')

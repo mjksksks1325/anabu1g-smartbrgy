@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\ReadVotersCsv;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreVoterRegistrationRequest;
 use App\Http\Requests\Admin\UpdateVoterRegistrationRequest;
@@ -10,12 +11,15 @@ use App\Models\Resident;
 use App\Models\VoterRegistration;
 use App\Models\VoterRegistrationAudit;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -94,6 +98,73 @@ class VoterRegistrationController extends Controller
     public function store(StoreVoterRegistrationRequest $request): JsonResponse
     {
         $validated = $request->validated();
+        $registration = $this->createVoter($request, $validated);
+
+        return response()->json([
+            'message' => 'Voter record added securely.',
+            'registration' => $this->registrationData($registration->load('resident')),
+        ], 201);
+    }
+
+    public function template(): Response
+    {
+        Gate::authorize('create', VoterRegistration::class);
+
+        return response(implode(',', ReadVotersCsv::HEADERS)."\r\n", 200, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="voters-import-template.csv"',
+            'Cache-Control' => 'no-store, private',
+        ]);
+    }
+
+    public function import(Request $request, ReadVotersCsv $reader): JsonResponse
+    {
+        Gate::authorize('create', VoterRegistration::class);
+        $request->validate(['file' => ['required', 'file', 'max:5120', 'extensions:csv', 'mimes:csv,txt']]);
+        $rows = $reader->read($request->file('file'));
+        $rowNumber = 0;
+
+        try {
+            DB::transaction(function () use ($request, $rows, &$rowNumber): void {
+                foreach ($rows as $row) {
+                    $rowNumber = $row['row'];
+                    $fields = $row['fields'];
+                    $resident = Resident::query()->where('resident_number', $fields['resident_number'])->first();
+                    if ($resident === null) {
+                        throw ValidationException::withMessages(['resident_number' => 'Resident Number does not match an existing active resident record.']);
+                    }
+                    $data = [
+                        'resident_id' => $resident->id,
+                        'comelec_voter_number' => mb_strtoupper(preg_replace('/\s+/u', '', $fields['comelec_voter_number']) ?? ''),
+                        'precinct_number' => preg_replace('/\s+/u', ' ', $fields['precinct_number']),
+                        'cluster_number' => preg_replace('/\s+/u', ' ', $fields['cluster_number']),
+                        'registration_date' => $fields['registration_date'],
+                        'status' => 'active',
+                    ];
+                    $rules = (new StoreVoterRegistrationRequest)->rules();
+                    $rules['registration_date'] = ['required', 'date_format:Y-m-d', 'before_or_equal:today'];
+                    $validated = Validator::make($data, $rules)->validate();
+                    $this->createVoter($request, $validated);
+                }
+            }, 3);
+        } catch (ValidationException $exception) {
+            $messages = [];
+            foreach ($exception->errors() as $errors) {
+                foreach ($errors as $error) {
+                    $messages[] = "CSV row {$rowNumber}: {$error}";
+                }
+            }
+            throw ValidationException::withMessages(['file' => $messages]);
+        } catch (UniqueConstraintViolationException $exception) {
+            throw ValidationException::withMessages(['file' => "CSV row {$rowNumber}: a voter record already exists. Reload the voters list before retrying."]);
+        }
+
+        return response()->json(['message' => 'Voters imported successfully.', 'imported' => count($rows)], 201);
+    }
+
+    /** @param array<string, mixed> $validated */
+    private function createVoter(Request $request, array $validated): VoterRegistration
+    {
         $identifier = $validated['comelec_voter_number'];
         $identifierHash = VoterRegistration::identifierHash($identifier);
 
@@ -118,7 +189,7 @@ class VoterRegistrationController extends Controller
 
             if ($resident->status !== 'active') {
                 throw ValidationException::withMessages([
-                    'resident_id' => 'Only active residents can be added to the voter registry.',
+                    'resident_id' => 'Only active residents can be added to the voters list.',
                 ]);
             }
 
@@ -139,10 +210,7 @@ class VoterRegistrationController extends Controller
             return $registration;
         });
 
-        return response()->json([
-            'message' => 'Voter registration saved securely.',
-            'registration' => $this->registrationData($registration->load('resident')),
-        ], 201);
+        return $registration;
     }
 
     public function update(
@@ -210,7 +278,7 @@ class VoterRegistrationController extends Controller
         });
 
         return response()->json([
-            'message' => 'Voter registration updated securely.',
+            'message' => 'Voter record updated securely.',
             'registration' => $this->registrationData($registration->load('resident')),
         ]);
     }
@@ -247,7 +315,7 @@ class VoterRegistrationController extends Controller
             }
 
             fclose($output);
-        }, 'voter-registry-'.today()->toDateString().'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+        }, 'voters-'.today()->toDateString().'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     /** @param array<string, mixed> $filters

@@ -7,6 +7,7 @@ enum CertificateType: string
     case BarangayClearance = 'Barangay Clearance';
     case CertificateOfResidency = 'Certificate of Residency';
     case CertificateOfIndigency = 'Certificate of Indigency';
+    case RegisteredVoterCertification = 'Registered Voter Certification';
     case BarangayId = 'Barangay ID';
     case FirstTimeJobseeker = 'First Time Jobseeker';
     case BusinessClearance = 'Business Clearance';
@@ -14,7 +15,7 @@ enum CertificateType: string
     public function portalCode(): string
     {
         return match ($this) {
-            self::BarangayClearance => 'BC', self::CertificateOfResidency => 'CR',
+            self::RegisteredVoterCertification => 'RVC', self::BarangayClearance => 'BC', self::CertificateOfResidency => 'CR',
             self::CertificateOfIndigency => 'CI', self::BarangayId => 'BID',
             self::FirstTimeJobseeker => 'CTFJ', self::BusinessClearance => 'BBC',
         };
@@ -23,7 +24,7 @@ enum CertificateType: string
     public function fee(): int
     {
         return match ($this) {
-            self::BarangayClearance, self::CertificateOfResidency => 50,
+            self::RegisteredVoterCertification, self::BarangayClearance, self::CertificateOfResidency => 25,
             self::CertificateOfIndigency, self::FirstTimeJobseeker => 0,
             self::BarangayId => 100,
             self::BusinessClearance => 200,
@@ -44,6 +45,7 @@ enum CertificateType: string
     public function printView(): string
     {
         return match ($this) {
+            self::RegisteredVoterCertification => 'admin.certificates.registered-voter',
             self::BarangayClearance => 'admin.certificates.barangay-clearance',
             self::CertificateOfResidency => 'admin.certificates.residency',
             self::CertificateOfIndigency => 'admin.certificates.indigency',

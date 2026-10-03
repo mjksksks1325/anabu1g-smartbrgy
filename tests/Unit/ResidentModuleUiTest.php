@@ -2,7 +2,7 @@
 
 test('resident dashboard uses the persistent API and recoverable archive controls', function () {
     $dashboard = file_get_contents(dirname(__DIR__, 2).'/resources/views/admin/dashboard.blade.php');
-    $adminScript = file_get_contents(dirname(__DIR__, 2).'/public/js/admin.js');
+    $adminScript = str_replace("\r\n", "\n", file_get_contents(dirname(__DIR__, 2).'/public/js/admin.js'));
 
     expect($dashboard)
         ->toContain('id="app" class="admin-interface"')

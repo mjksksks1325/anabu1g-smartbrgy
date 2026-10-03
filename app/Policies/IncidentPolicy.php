@@ -9,7 +9,7 @@ class IncidentPolicy
 {
     private function isStaff(User $user): bool
     {
-        return in_array($user->role, ['admin', 'staff'], true);
+        return $user->is_active && $user->resident_id === null && in_array($user->role, ['admin', 'staff'], true);
     }
 
     /**
@@ -49,7 +49,7 @@ class IncidentPolicy
      */
     public function delete(User $user, Incident $incident): bool
     {
-        return $user->role === 'admin';
+        return $this->isStaff($user) && $user->role === 'admin';
     }
 
     /**
@@ -57,7 +57,7 @@ class IncidentPolicy
      */
     public function restore(User $user, Incident $incident): bool
     {
-        return $user->role === 'admin';
+        return $this->isStaff($user) && $user->role === 'admin';
     }
 
     /**

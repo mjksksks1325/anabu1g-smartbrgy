@@ -28,11 +28,15 @@ class ResidentPortalActivationNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Barangay Anabu I-G Resident Portal activation')
-            ->greeting('Continue your Resident Portal registration')
-            ->line('Resident Number: '.$this->residentNumber)
-            ->line('Activation Code: '.$this->activationCode)
-            ->line('Enter both on the Resident Portal registration page. This code expires in 24 hours and is replaced if another code is issued.')
-            ->line('If you did not request this, contact Barangay Anabu I-G. Do not share this code.');
+            ->from(config('mail.from.address'), 'Barangay Anabu I-G')
+            ->subject('Barangay Anabu I-G Resident Portal Activation')
+            ->view([
+                'html' => 'mail.resident-activation',
+                'text' => 'mail.resident-activation-text',
+            ], [
+                'residentNumber' => $this->residentNumber,
+                'activationCode' => $this->activationCode,
+                'registrationUrl' => route('portal.register'),
+            ]);
     }
 }
