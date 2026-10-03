@@ -34,7 +34,7 @@ return new class extends Migration
                 'approved',
                 'ready_for_release',
                 'released',
-                'rejected'
+                'rejected',
             ])->default('pending');
 
             $table->text('remarks')->nullable();
