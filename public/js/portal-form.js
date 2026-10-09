@@ -10,8 +10,8 @@ function selectDoc(id, el) {
 
     const d = DOC_TYPES[id];
 
-    document.getElementById('doc-sel-label').textContent = d.label;
-    document.getElementById('doc-sel-fee').textContent = 'Fee: ' + d.fee;
+    portalSetText(document.getElementById('doc-sel-label'), d.label);
+    portalSetText(document.getElementById('doc-sel-fee'), 'Fee: :fee', { fee: d.fee });
 
     document.getElementById('doc-selected-info').style.display = 'block';
     document.getElementById('btn-proceed-doc').disabled = false;
@@ -23,9 +23,9 @@ async function proceedFromDoc() {
 
     const d = DOC_TYPES[selectedDocId];
 
-    document.getElementById('form-doc-label').textContent = d.label;
+    portalSetText(document.getElementById('form-doc-label'), d.label);
 
-    document.getElementById('form-doc-fee').textContent = 'Fee: ' + d.fee;
+    portalSetText(document.getElementById('form-doc-fee'), 'Fee: :fee', { fee: d.fee });
 
     document.getElementById('business-field').style.display =
         selectedDocId === 'BBC' ? 'block' : 'none';
@@ -37,7 +37,7 @@ function setPortalFieldError(field, invalid, message = '') {
     const errorId = field.id + '-error';
     const inlineError = document.getElementById(errorId);
     if (inlineError) {
-        inlineError.textContent = invalid ? message : '';
+        portalSetText(inlineError, invalid ? message : '');
         inlineError.hidden = !invalid;
     }
     const described = (field.getAttribute('aria-describedby') || '').split(' ').filter(id => id && id !== 'portal-form-error' && id !== errorId);
@@ -69,7 +69,7 @@ function validatePortalForm() {
     }
     if (firstInvalid) {
         showScreen('screen-form');
-        error.textContent = firstInvalid.message;
+        portalSetText(error, firstInvalid.message);
         error.hidden = false;
         firstInvalid.field.focus();
         return false;

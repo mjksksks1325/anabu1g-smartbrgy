@@ -6,12 +6,12 @@ use App\Models\FileMovementEvent;
 use App\Models\User;
 
 it('separates employee RFID access from super admin pages', function () {
-    foreach (['admin.rfid-files.index', 'admin.smart-cabinet.index', 'admin.cabinet-access.index'] as $route) {
+    foreach (['staff.rfid-files.index', 'admin.smart-cabinet.index', 'admin.cabinet-access.index'] as $route) {
         $this->get(route($route))->assertRedirect();
     }
 
-    $staff = User::factory()->create(['role' => 'staff']);
-    $this->actingAs($staff)->get(route('admin.rfid-files.index'))->assertOk()->assertSee('No file movements recorded')
+    $staff = User::factory()->assignedOperations()->create(['role' => 'staff']);
+    $this->actingAs($staff)->get(route('staff.rfid-files.index'))->assertOk()->assertSee('No file movements recorded')
         ->assertSee('css/figma-iot.css')
         ->assertSee('Staff workspace')
         ->assertSee('Physical files, digitally accountable.')
@@ -21,8 +21,8 @@ it('separates employee RFID access from super admin pages', function () {
     $this->getJson(route('admin.audit.index'))->assertForbidden();
     $this->getJson(route('admin.users.index'))->assertForbidden();
 
-    $ordinaryAdmin = User::factory()->create(['role' => 'admin']);
-    $this->actingAs($ordinaryAdmin)->get(route('admin.rfid-files.index'))->assertOk();
+    $ordinaryAdmin = User::factory()->assignedOperations()->create(['role' => 'admin']);
+    $this->actingAs($ordinaryAdmin)->get(route('staff.rfid-files.index'))->assertForbidden();
     $this->get(route('admin.smart-cabinet.index'))->assertForbidden();
 
     $superAdmin = User::factory()->superAdmin()->create();
@@ -74,7 +74,7 @@ it('keeps pagination for a cabinet access list with more than one page', functio
 });
 
 it('uses saved file movements and filters instead of browser simulation', function () {
-    $staff = User::factory()->create(['role' => 'staff']);
+    $staff = User::factory()->assignedOperations()->create(['role' => 'staff']);
     $cabinet = CabinetDevice::factory()->create(['identifier' => 'CAB-01', 'name' => 'Records cabinet']);
     FileMovementEvent::factory()->create(['file_reference' => 'FILE-001', 'file_name' => 'Permit folder', 'user_id' => $staff->id,
         'cabinet_device_id' => $cabinet->id, 'drawer_reference' => 'A-1', 'action' => 'removed', 'occurred_at' => now()->subHour()]);
@@ -83,9 +83,9 @@ it('uses saved file movements and filters instead of browser simulation', functi
     FileMovementEvent::factory()->create(['file_reference' => 'FILE-002', 'file_name' => 'Other folder', 'user_id' => $staff->id,
         'action' => 'removed', 'occurred_at' => now()]);
 
-    $this->actingAs($staff)->get(route('admin.rfid-files.index', ['search' => 'FILE-001', 'action' => 'removed']))
+    $this->actingAs($staff)->get(route('staff.rfid-files.index', ['search' => 'FILE-001', 'action' => 'removed']))
         ->assertOk()->assertSee('Permit folder')->assertSee('In cabinet')->assertDontSee('Other folder');
-    $this->get(route('admin.rfid-files.index', ['action' => 'unlocked']))->assertSessionHasErrors('action');
+    $this->get(route('staff.rfid-files.index', ['action' => 'unlocked']))->assertSessionHasErrors('action');
 });
 
 it('shows unknown cabinet status until a recent device report exists', function () {
@@ -99,7 +99,7 @@ it('shows unknown cabinet status until a recent device report exists', function 
 
 it('keeps cabinet permission separate from website role and enrollment', function () {
     $superAdmin = User::factory()->superAdmin()->create();
-    $employee = User::factory()->create(['role' => 'staff']);
+    $employee = User::factory()->assignedOperations()->create(['role' => 'staff']);
 
     $this->actingAs($superAdmin)->patch(route('admin.cabinet-access.update', $employee), ['is_active' => '1'])
         ->assertRedirect()->assertSessionHas('status');
@@ -117,38 +117,38 @@ it('keeps cabinet permission separate from website role and enrollment', functio
 });
 
 it('rejects cabinet mutations by normal users', function () {
-    $staff = User::factory()->create(['role' => 'staff']);
-    $target = User::factory()->create(['role' => 'staff']);
+    $staff = User::factory()->assignedOperations()->create(['role' => 'staff']);
+    $target = User::factory()->assignedOperations()->create(['role' => 'staff']);
     $this->actingAs($staff)->patch(route('admin.cabinet-access.update', $target), ['is_active' => '1'])->assertForbidden();
     $this->post(route('admin.cabinet-access.enroll', [$target, 'rfid']))->assertForbidden();
     $this->assertDatabaseEmpty('employee_cabinet_access');
 });
 
 it('allows read only employees to view tracking but never administration', function () {
-    $viewer = User::factory()->create(['role' => 'viewer']);
-    $this->actingAs($viewer)->get(route('admin.rfid-files.index'))->assertOk()->assertDontSee('href="'.route('admin.dashboard').'"', false);
+    $viewer = User::factory()->create(['role' => 'staff', 'staff_permissions' => ['rfid.view']]);
+    $this->actingAs($viewer)->get(route('staff.rfid-files.index'))->assertOk()->assertDontSee('href="'.route('staff.dashboard').'"', false);
     $this->get(route('admin.smart-cabinet.index'))->assertForbidden();
     $this->get(route('admin.cabinet-access.index'))->assertForbidden();
 });
 
 it('denies resident accounts access to all employee IoT pages', function () {
     $resident = User::factory()->resident()->create();
-    foreach (['admin.rfid-files.index', 'admin.smart-cabinet.index', 'admin.cabinet-access.index'] as $route) {
-        $this->actingAs($resident, 'resident')->get(route($route))->assertForbidden();
+    foreach (['staff.rfid-files.index', 'admin.smart-cabinet.index', 'admin.cabinet-access.index'] as $route) {
+        $this->actingAs($resident, 'web')->get(route($route))->assertForbidden();
     }
 });
 
 it('paginates file movements without discarding their history', function () {
-    $employee = User::factory()->create(['role' => 'staff']);
+    $employee = User::factory()->assignedOperations()->create(['role' => 'staff']);
     FileMovementEvent::factory()->count(21)->create(['user_id' => $employee->id]);
-    $this->actingAs($employee)->get(route('admin.rfid-files.index'))->assertOk()->assertSee('21 recorded events');
-    $this->get(route('admin.rfid-files.index', ['page' => 2]))->assertOk()->assertSee('Movement history');
+    $this->actingAs($employee)->get(route('staff.rfid-files.index'))->assertOk()->assertSee('21 recorded events');
+    $this->get(route('staff.rfid-files.index', ['page' => 2]))->assertOk()->assertSee('Movement history');
     $this->assertDatabaseCount('file_movement_events', 21);
 });
 
 it('keeps historical movements after cabinet access is deactivated', function () {
     $superAdmin = User::factory()->superAdmin()->create();
-    $employee = User::factory()->create(['role' => 'staff']);
+    $employee = User::factory()->assignedOperations()->create(['role' => 'staff']);
     $access = EmployeeCabinetAccess::factory()->create([
         'user_id' => $employee->id,
         'is_active' => true,
@@ -164,7 +164,7 @@ it('keeps historical movements after cabinet access is deactivated', function ()
 });
 
 it('invalidates effective cabinet access when the website account is suspended', function () {
-    $employee = User::factory()->create(['role' => 'staff']);
+    $employee = User::factory()->assignedOperations()->create(['role' => 'staff']);
     $access = EmployeeCabinetAccess::factory()->create([
         'user_id' => $employee->id,
         'is_active' => true,
@@ -179,19 +179,20 @@ it('invalidates effective cabinet access when the website account is suspended',
 });
 
 it('refuses to grant super admin to a normal employee', function () {
-    $staff = User::factory()->create(['role' => 'staff']);
+    $staff = User::factory()->assignedOperations()->create(['role' => 'staff']);
     $this->artisan('user:grant-super-admin', ['email' => $staff->email])->assertFailed();
     expect($staff->fresh()->is_super_admin)->toBeFalse();
 });
 
 it('does not promote existing administrators automatically', function () {
-    $admin = User::factory()->create(['role' => 'admin']);
+    $admin = User::factory()->assignedOperations()->create(['role' => 'admin']);
     expect($admin->isSuperAdmin())->toBeFalse();
-    $this->actingAs($admin)->get(route('admin.dashboard'))->assertOk()->assertDontSee('Employee Cabinet Access');
+    $this->actingAs($admin)->get(route('staff.dashboard'))->assertRedirect(route('staff.access-pending'));
+    $this->get(route('staff.access-pending'))->assertOk()->assertDontSee('Employee Cabinet Access');
 
     $this->artisan('user:grant-super-admin', ['email' => $admin->email])->assertSuccessful();
     expect($admin->fresh()->isSuperAdmin())->toBeTrue();
-    $this->actingAs($admin->fresh())->get(route('admin.dashboard'))->assertOk()->assertSee('Employee Cabinet Access');
+    $this->actingAs($admin->fresh())->get(route('staff.dashboard'))->assertOk()->assertSee('Employee Cabinet Access');
     $this->assertDatabaseHas('administrative_audits', ['action' => 'security.super-admin.granted', 'user_id' => $admin->id]);
     $this->artisan('user:grant-super-admin', ['email' => $admin->email, '--revoke' => true])->assertFailed();
 });

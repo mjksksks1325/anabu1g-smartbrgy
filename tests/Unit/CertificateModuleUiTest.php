@@ -13,7 +13,7 @@ test('manual certificate modal submits real issuance fields and opens the genera
         ->toContain('id="manual-certificate-submit"')
         ->not->toContain("showToast('Certificate issued!','green');closeModal('modal-cert-issue')");
     expect($adminScript)
-        ->toContain("fetch('/admin/issued-certificates'")
+        ->toContain("fetch('/staff/issued-certificates'")
         ->toContain("resident_id: Number(document.getElementById('manual-resident-id')?.value) || null")
         ->toContain("window.open('about:blank', '_blank')")
         ->toContain('printWindow.location.href = data.print_url;');
@@ -40,7 +40,7 @@ test('issued certificate history supports reprinting and verification after issu
         ->toContain('Issued Certificate History')
         ->toContain('id="issued-certificates-tbody"');
     expect($adminScript)
-        ->toContain("fetch('/admin/issued-certificates'")
+        ->toContain("fetch('/staff/issued-certificates'")
         ->toContain("row.querySelector('.issued-reprint')")
         ->toContain("row.querySelector('.issued-verify')");
 });

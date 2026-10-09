@@ -26,7 +26,7 @@ class ResidentPhotoController extends Controller
     public function store(Request $request, Resident $resident): JsonResponse
     {
         Gate::authorize('update', $resident);
-        $request->validate(['photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120', 'dimensions:max_width=6000,max_height=6000']]);
+        $request->validate(['photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'extensions:jpg,jpeg,png,webp', 'max:5120', 'dimensions:max_width=6000,max_height=6000']]);
         $path = $request->file('photo')->store('resident-photos', 'local');
         abort_if($path === false, 500, 'Photo could not be saved.');
 
@@ -47,6 +47,6 @@ class ResidentPhotoController extends Controller
             DB::afterCommit(fn () => Storage::disk('local')->delete($oldPath));
         }
 
-        return response()->json(['message' => 'Resident photo updated.', 'photo_url' => route('admin.residents.photo', $resident)]);
+        return response()->json(['message' => 'Resident photo updated.', 'photo_url' => route('staff.residents.photo', $resident)]);
     }
 }

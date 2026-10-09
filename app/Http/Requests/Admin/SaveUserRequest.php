@@ -3,10 +3,12 @@
 namespace App\Http\Requests\Admin;
 
 use App\Models\User;
+use App\StaffPermissions;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\Validator;
 
 class SaveUserRequest extends FormRequest
 {
@@ -32,6 +34,8 @@ class SaveUserRequest extends FormRequest
         $cabinetAccess = $target instanceof User ? $target->cabinetAccess : null;
 
         return [
+            'staff_permissions' => ['sometimes', 'array', 'max:100'],
+            'staff_permissions.*' => ['required', 'string', 'distinct', Rule::in(StaffPermissions::keys())],
             'name' => ['required', 'string', 'max:255'],
             'email' => [
                 'required',
@@ -39,7 +43,7 @@ class SaveUserRequest extends FormRequest
                 'max:255',
                 Rule::unique('users')->ignore($this->route('user')),
             ],
-            'role' => ['required', Rule::in(['admin', 'staff', 'viewer'])],
+            'role' => ['required', Rule::in($target instanceof User && in_array($target->role, ['admin', 'viewer'], true) ? ['staff', $target->role] : ['staff'])],
             'is_active' => ['required', 'boolean'],
             'password' => [
                 $this->isMethod('POST') ? 'required' : 'nullable',
@@ -60,6 +64,29 @@ class SaveUserRequest extends FormRequest
                     ->ignore($cabinetAccess?->id),
             ],
         ];
+    }
+
+    /** @return list<\Closure(Validator): void> */
+    public function after(): array
+    {
+        return [function (Validator $validator): void {
+            $permissions = $this->input('staff_permissions', []);
+            if (! is_array($permissions)) {
+                return;
+            }
+            if ($permissions !== [] && $this->input('role') !== 'staff') {
+                $validator->errors()->add('staff_permissions', 'Assignments are only available for Barangay Staff accounts.');
+            }
+            foreach ($permissions as $permission) {
+                if (! is_string($permission) || ! str_contains($permission, '.')) {
+                    continue;
+                }
+                [$module, $action] = explode('.', $permission, 2);
+                if ($action !== 'view' && ! in_array($permission, ['incidents.submit', 'vawc.submit'], true) && ! in_array($module.'.view', $permissions, true)) {
+                    $validator->errors()->add('staff_permissions', 'Select access to '.$module.' before assigning its actions.');
+                }
+            }
+        }];
     }
 
     protected function prepareForValidation(): void

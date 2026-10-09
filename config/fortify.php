@@ -88,6 +88,8 @@ return [
 
     'prefix' => '',
 
+    'paths' => ['login' => '/staff/login'],
+
     'domain' => null,
 
     /*

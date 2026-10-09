@@ -28,25 +28,25 @@ function residentPayload(array $overrides = []): array
 it('requires authentication for every resident endpoint', function () {
     $resident = Resident::factory()->create();
 
-    $this->getJson(route('admin.residents.index'))->assertUnauthorized();
-    $this->get(route('admin.residents.export'))->assertRedirect(route('login'));
-    $this->postJson(route('admin.residents.store'), [])->assertUnauthorized();
-    $this->getJson(route('admin.residents.show', $resident))->assertUnauthorized();
-    $this->patchJson(route('admin.residents.update', $resident), [])->assertUnauthorized();
-    $this->deleteJson(route('admin.residents.destroy', $resident))->assertUnauthorized();
+    $this->getJson(route('staff.residents.index'))->assertUnauthorized();
+    $this->get(route('staff.residents.export'))->assertRedirect(route('login'));
+    $this->postJson(route('staff.residents.store'), [])->assertUnauthorized();
+    $this->getJson(route('staff.residents.show', $resident))->assertUnauthorized();
+    $this->patchJson(route('staff.residents.update', $resident), [])->assertUnauthorized();
+    $this->deleteJson(route('staff.residents.destroy', $resident))->assertUnauthorized();
 });
 
 it('forbids non-staff users from resident records', function () {
-    $viewer = User::factory()->create(['role' => 'viewer']);
+    $viewer = User::factory()->assignedOperations()->create(['role' => 'viewer']);
 
-    $this->actingAs($viewer)->getJson(route('admin.residents.index'))->assertForbidden();
-    $this->actingAs($viewer)->postJson(route('admin.residents.store'), residentPayload())->assertForbidden();
+    $this->actingAs($viewer)->getJson(route('staff.residents.index'))->assertForbidden();
+    $this->actingAs($viewer)->postJson(route('staff.residents.store'), residentPayload())->assertForbidden();
 });
 
 it('registers a validated resident with a server-generated number', function () {
-    $staff = User::factory()->create();
+    $staff = User::factory()->assignedOperations()->create();
 
-    $response = $this->actingAs($staff)->postJson(route('admin.residents.store'), residentPayload());
+    $response = $this->actingAs($staff)->postJson(route('staff.residents.store'), residentPayload());
 
     $response->assertCreated()
         ->assertJsonPath('resident.full_name', 'Maria Reyes Santos')
@@ -61,24 +61,24 @@ it('registers a validated resident with a server-generated number', function () 
 });
 
 it('allows staff to record nullable nationality and explicitly verified indigency', function () {
-    $this->actingAs(User::factory()->create())->postJson(route('admin.residents.store'), residentPayload())
+    $this->actingAs(User::factory()->assignedOperations()->create())->postJson(route('staff.residents.store'), residentPayload())
         ->assertCreated()->assertJsonPath('resident.nationality', null)->assertJsonPath('resident.is_verified_indigent', false);
     $resident = Resident::query()->sole();
-    $this->patchJson(route('admin.residents.update', $resident), residentPayload(['nationality' => 'Test nationality', 'is_verified_indigent' => true]))
+    $this->patchJson(route('staff.residents.update', $resident), residentPayload(['nationality' => 'Test nationality', 'is_verified_indigent' => true]))
         ->assertOk()->assertJsonPath('resident.nationality', 'Test nationality')->assertJsonPath('resident.is_verified_indigent', true);
-    $this->patchJson(route('admin.residents.update', $resident), residentPayload(['nationality' => str_repeat('x', 101), 'is_verified_indigent' => 'unverified']))
+    $this->patchJson(route('staff.residents.update', $resident), residentPayload(['nationality' => str_repeat('x', 101), 'is_verified_indigent' => 'unverified']))
         ->assertUnprocessable()->assertJsonValidationErrors(['nationality', 'is_verified_indigent']);
 });
 
 it('returns birthdays as calendar dates and preserves them when saving the edit form', function () {
     $resident = Resident::factory()->create(residentPayload(['date_of_birth' => '1990-05-14']));
-    $this->actingAs(User::factory()->create());
+    $this->actingAs(User::factory()->assignedOperations()->create());
 
-    $response = $this->getJson(route('admin.residents.index'))
+    $response = $this->getJson(route('staff.residents.index'))
         ->assertOk()->assertJsonPath('data.0.date_of_birth', '1990-05-14');
-    $this->getJson(route('admin.residents.show', $resident))
+    $this->getJson(route('staff.residents.show', $resident))
         ->assertOk()->assertJsonPath('date_of_birth', '1990-05-14');
-    $this->patchJson(route('admin.residents.update', $resident), residentPayload([
+    $this->patchJson(route('staff.residents.update', $resident), residentPayload([
         'date_of_birth' => $response->json('data.0.date_of_birth'),
     ]))->assertOk()->assertJsonPath('resident.date_of_birth', '1990-05-14');
 
@@ -86,10 +86,10 @@ it('returns birthdays as calendar dates and preserves them when saving the edit 
 });
 
 it('includes a newly registered active resident in the latest demographics', function () {
-    $staff = User::factory()->create();
+    $staff = User::factory()->assignedOperations()->create();
 
     $this->actingAs($staff)
-        ->postJson(route('admin.residents.store'), residentPayload([
+        ->postJson(route('staff.residents.store'), residentPayload([
             'gender' => 'Female',
             'date_of_birth' => now()->subYears(65)->toDateString(),
             'special_groups' => ['PWD'],
@@ -97,7 +97,7 @@ it('includes a newly registered active resident in the latest demographics', fun
         ->assertCreated();
 
     $this->actingAs($staff)
-        ->getJson(route('admin.puroks.index'))
+        ->getJson(route('staff.puroks.index'))
         ->assertOk()
         ->assertJsonPath('demographics.total', 1)
         ->assertJsonPath('demographics.female', 1)
@@ -107,9 +107,9 @@ it('includes a newly registered active resident in the latest demographics', fun
 });
 
 it('rejects invalid and future resident data', function () {
-    $staff = User::factory()->create();
+    $staff = User::factory()->assignedOperations()->create();
 
-    $this->actingAs($staff)->postJson(route('admin.residents.store'), residentPayload([
+    $this->actingAs($staff)->postJson(route('staff.residents.store'), residentPayload([
         'last_name' => '<script>alert(1)</script>',
         'date_of_birth' => now()->addDay()->toDateString(),
         'contact_number' => '12345',
@@ -120,15 +120,15 @@ it('rejects invalid and future resident data', function () {
 });
 
 it('rejects an exact resident duplicate even when staff confirms it', function () {
-    $staff = User::factory()->create();
+    $staff = User::factory()->assignedOperations()->create();
     $existing = Resident::factory()->create(residentPayload());
 
-    $this->actingAs($staff)->postJson(route('admin.residents.store'), residentPayload())
+    $this->actingAs($staff)->postJson(route('staff.residents.store'), residentPayload())
         ->assertUnprocessable()
         ->assertJsonValidationErrors('first_name')
         ->assertJsonPath('errors.first_name.0', "An exact resident record already exists: {$existing->full_name} ({$existing->resident_number}). Review the existing record.");
 
-    $this->actingAs($staff)->postJson(route('admin.residents.store'), residentPayload([
+    $this->actingAs($staff)->postJson(route('staff.residents.store'), residentPayload([
         'confirm_duplicate' => true,
     ]))->assertUnprocessable()->assertJsonValidationErrors('first_name');
 
@@ -136,23 +136,23 @@ it('rejects an exact resident duplicate even when staff confirms it', function (
 });
 
 it('requires staff confirmation for a similar resident but permits a distinct middle name', function () {
-    $staff = User::factory()->create();
+    $staff = User::factory()->assignedOperations()->create();
     $existing = Resident::factory()->create(residentPayload());
     $similar = residentPayload(['middle_name' => 'Garcia']);
 
-    $this->actingAs($staff)->postJson(route('admin.residents.store'), $similar)
+    $this->actingAs($staff)->postJson(route('staff.residents.store'), $similar)
         ->assertUnprocessable()->assertJsonPath('errors.duplicate.0', "Possible duplicate: {$existing->full_name} ({$existing->resident_number}). Review the existing record or confirm this is a separate resident.");
-    $this->postJson(route('admin.residents.store'), [...$similar, 'confirm_duplicate' => true])->assertCreated();
+    $this->postJson(route('staff.residents.store'), [...$similar, 'confirm_duplicate' => true])->assertCreated();
 
     expect(Resident::query()->count())->toBe(2);
     expect($existing->fresh()->middle_name)->toBe('Reyes');
 });
 
 it('allows the same first and last name when the birth date differs', function () {
-    $staff = User::factory()->create();
+    $staff = User::factory()->assignedOperations()->create();
     Resident::factory()->create(residentPayload());
 
-    $this->actingAs($staff)->postJson(route('admin.residents.store'), residentPayload([
+    $this->actingAs($staff)->postJson(route('staff.residents.store'), residentPayload([
         'date_of_birth' => '1991-05-14',
     ]))->assertCreated();
 
@@ -160,10 +160,10 @@ it('allows the same first and last name when the birth date differs', function (
 });
 
 it('detects a matching identity despite case and whitespace differences', function () {
-    $staff = User::factory()->create();
+    $staff = User::factory()->assignedOperations()->create();
     Resident::factory()->create(residentPayload(['first_name' => 'Maria  Elena', 'last_name' => 'Santos']));
 
-    $this->actingAs($staff)->postJson(route('admin.residents.store'), residentPayload([
+    $this->actingAs($staff)->postJson(route('staff.residents.store'), residentPayload([
         'first_name' => ' MARIA Elena ', 'last_name' => 'SANTOS', 'confirm_duplicate' => true,
     ]))->assertUnprocessable()->assertJsonValidationErrors('first_name');
 
@@ -171,22 +171,22 @@ it('detects a matching identity despite case and whitespace differences', functi
 });
 
 it('does not permit a new record to replace an archived exact match', function () {
-    $staff = User::factory()->create();
+    $staff = User::factory()->assignedOperations()->create();
     $existing = Resident::factory()->create(residentPayload());
     $existing->delete();
 
-    $this->actingAs($staff)->postJson(route('admin.residents.store'), residentPayload())
+    $this->actingAs($staff)->postJson(route('staff.residents.store'), residentPayload())
         ->assertUnprocessable()->assertJsonPath('errors.first_name.0', "An exact resident record already exists: {$existing->full_name} ({$existing->resident_number}). Review the existing record or restore it.");
 
     $this->assertDatabaseCount('residents', 1);
 });
 
 it('rejects a resident update that would duplicate another exact identity', function () {
-    $staff = User::factory()->create();
+    $staff = User::factory()->assignedOperations()->create();
     $existing = Resident::factory()->create(residentPayload());
     $other = Resident::factory()->create(residentPayload(['first_name' => 'Ana']));
 
-    $this->actingAs($staff)->patchJson(route('admin.residents.update', $other), residentPayload(['confirm_duplicate' => true]))
+    $this->actingAs($staff)->patchJson(route('staff.residents.update', $other), residentPayload(['confirm_duplicate' => true]))
         ->assertUnprocessable()->assertJsonValidationErrors('first_name');
 
     expect($other->fresh()->first_name)->toBe('Ana');
@@ -194,7 +194,7 @@ it('rejects a resident update that would duplicate another exact identity', func
 });
 
 it('searches and combines resident status filters with pagination', function () {
-    $staff = User::factory()->create();
+    $staff = User::factory()->assignedOperations()->create();
     Resident::factory()->create([
         'first_name' => 'Jose',
         'middle_name' => null,
@@ -210,7 +210,7 @@ it('searches and combines resident status filters with pagination', function () 
         'purok' => 'Purok 2 - Rosal',
     ]);
 
-    $this->actingAs($staff)->getJson(route('admin.residents.index', [
+    $this->actingAs($staff)->getJson(route('staff.residents.index', [
         'search' => 'Jose',
         'status' => 'active',
         'purok' => 'Purok 2 - Rosal',
@@ -223,10 +223,10 @@ it('searches and combines resident status filters with pagination', function () 
 });
 
 it('updates a resident without allowing a client to replace its resident number', function () {
-    $staff = User::factory()->create();
+    $staff = User::factory()->assignedOperations()->create();
     $resident = Resident::factory()->create();
 
-    $this->actingAs($staff)->patchJson(route('admin.residents.update', $resident), residentPayload([
+    $this->actingAs($staff)->patchJson(route('staff.residents.update', $resident), residentPayload([
         'first_name' => 'Updated',
         'resident_number' => 'ATTACKER-CONTROLLED',
         'status' => 'inactive',
@@ -239,7 +239,7 @@ it('updates a resident without allowing a client to replace its resident number'
 });
 
 it('archives and restores a resident without deleting linked request history', function () {
-    $staff = User::factory()->create();
+    $staff = User::factory()->assignedOperations()->create();
     $resident = Resident::factory()->create();
     $request = DocumentRequest::query()->create([
         'resident_id' => $resident->id,
@@ -250,26 +250,26 @@ it('archives and restores a resident without deleting linked request history', f
         'status' => 'pending',
     ]);
 
-    $this->actingAs($staff)->deleteJson(route('admin.residents.destroy', $resident))->assertOk();
+    $this->actingAs($staff)->deleteJson(route('staff.residents.destroy', $resident))->assertOk();
 
     $this->assertSoftDeleted($resident);
     expect($request->fresh()->resident_id)->toBe($resident->id);
-    $this->actingAs($staff)->getJson(route('admin.residents.index', ['status' => 'archived']))
+    $this->actingAs($staff)->getJson(route('staff.residents.index', ['status' => 'archived']))
         ->assertJsonPath('data.0.resident_number', $resident->resident_number);
 
-    $this->actingAs($staff)->patchJson(route('admin.residents.restore', $resident->id))->assertOk();
+    $this->actingAs($staff)->patchJson(route('staff.residents.restore', $resident->id))->assertOk();
 
     $this->assertNotSoftDeleted($resident);
 });
 
 it('returns server-authoritative certificate eligibility', function () {
-    $staff = User::factory()->create();
+    $staff = User::factory()->assignedOperations()->create();
     $resident = Resident::factory()->create([
         'status' => 'active',
         'is_in_good_standing' => false,
     ]);
 
-    $this->actingAs($staff)->getJson(route('admin.residents.eligibility', [
+    $this->actingAs($staff)->getJson(route('staff.residents.eligibility', [
         'resident' => $resident,
         'certificate_type' => 'Barangay Clearance',
     ]))->assertOk()
@@ -278,7 +278,7 @@ it('returns server-authoritative certificate eligibility', function () {
 });
 
 it('returns paginated resident request history with authoritative standing filters', function () {
-    $staff = User::factory()->create();
+    $staff = User::factory()->assignedOperations()->create();
     $eligible = Resident::factory()->create([
         'first_name' => 'Eligible',
         'last_name' => 'Resident',
@@ -308,7 +308,7 @@ it('returns paginated resident request history with authoritative standing filte
         'status' => 'rejected',
     ]);
 
-    $this->actingAs($staff)->getJson(route('admin.request-records.index', [
+    $this->actingAs($staff)->getJson(route('staff.request-records.index', [
         'eligibility' => 'ineligible',
     ]))->assertOk()
         ->assertJsonCount(1, 'data')
@@ -321,7 +321,7 @@ it('returns paginated resident request history with authoritative standing filte
 });
 
 it('exports request history as a formula-safe csv file', function () {
-    $staff = User::factory()->create();
+    $staff = User::factory()->assignedOperations()->create();
     DocumentRequest::query()->create([
         'reference_code' => 'REQ-EXPORT-001',
         'document_type' => 'Barangay Clearance',
@@ -330,7 +330,7 @@ it('exports request history as a formula-safe csv file', function () {
         'status' => 'pending',
     ]);
 
-    $response = $this->actingAs($staff)->get(route('admin.request-records.export'));
+    $response = $this->actingAs($staff)->get(route('staff.request-records.export'));
 
     $response->assertOk()->assertDownload('request-records-'.today()->toDateString().'.csv');
     expect($response->streamedContent())
@@ -339,7 +339,7 @@ it('exports request history as a formula-safe csv file', function () {
 });
 
 it('exports the current resident filters as a formula-safe CSV file', function () {
-    $staff = User::factory()->create();
+    $staff = User::factory()->assignedOperations()->create();
     Resident::factory()->create([
         'first_name' => 'Maria',
         'middle_name' => null,
@@ -353,7 +353,7 @@ it('exports the current resident filters as a formula-safe CSV file', function (
         'status' => 'inactive',
     ]);
 
-    $response = $this->actingAs($staff)->get(route('admin.residents.export', [
+    $response = $this->actingAs($staff)->get(route('staff.residents.export', [
         'search' => 'Maria',
         'status' => 'active',
     ]));

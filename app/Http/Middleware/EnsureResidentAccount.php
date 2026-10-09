@@ -22,13 +22,13 @@ class EnsureResidentAccount
             };
 
             return $request->expectsJson()
-                ? response()->json(['message' => 'Sign in to your resident account to continue.'], 401)
+                ? response()->json(['message' => __('Sign in to your resident account to continue.')], 401)
                 : redirect()->guest(route('portal.login', $loginQuery));
         }
         if (! $user->canUseResidentPortal()) {
             return $request->expectsJson()
-                ? response()->json(['message' => self::ASSISTANCE], 403)
-                : response()->view('portal.assistance', ['message' => self::ASSISTANCE], 403);
+                ? response()->json(['message' => __(self::ASSISTANCE)], 403)
+                : response()->view('portal.assistance', ['message' => __(self::ASSISTANCE)], 403);
         }
 
         $request->setUserResolver(fn () => $user);

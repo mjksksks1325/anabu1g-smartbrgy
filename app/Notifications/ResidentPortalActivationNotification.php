@@ -29,7 +29,7 @@ class ResidentPortalActivationNotification extends Notification
     {
         return (new MailMessage)
             ->from(config('mail.from.address'), 'Barangay Anabu I-G')
-            ->subject('Barangay Anabu I-G Resident Portal Activation')
+            ->subject(__('Barangay Anabu I-G Resident Portal Activation'))
             ->view([
                 'html' => 'mail.resident-activation',
                 'text' => 'mail.resident-activation-text',

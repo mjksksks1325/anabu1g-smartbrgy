@@ -31,7 +31,7 @@ test('admin interface is light first with consistent professional surfaces', fun
     $styles = file_get_contents(dirname(__DIR__, 2).'/public/css/admin.css');
 
     expect($dashboard)
-        ->toContain('<body class="light-mode">')
+        ->toContain('<body class="light-mode" data-personnel-layout="admin"')
         ->toContain('<span id="theme-label">Dark Mode</span>')
         ->toContain('<div class="card-title">Recent Activity</div>')
         ->not->toContain('<div class="card-title">ðŸ”” Recent Activity</div>');
@@ -68,7 +68,7 @@ test('staff sidebars always show the orange scrollbar', function () {
 
     foreach (['public/css/figma-admin.css', 'public/css/figma-iot.css', 'public/css/government.css'] as $path) {
         expect(file_get_contents($root.'/'.$path))
-            ->toContain('scrollbar-color: #d97706 transparent; scrollbar-width: thin;')
+            ->toContain('scrollbar-color: #d97706 rgba(217, 119, 6, .4); scrollbar-width: thin;')
             ->not->toContain('scrollbar-color: transparent transparent');
     }
 
@@ -129,4 +129,30 @@ test('resident portal request flow spans the full content width', function () {
 test('resident portal stacks the unconfirmed notice under the requirements panel', function () {
     expect(file_get_contents(dirname(__DIR__, 2).'/public/css/figma-portal.css'))
         ->toContain('.requirements-intro { grid-template-columns: 1fr; gap: 14px; }');
+});
+
+test('request board centers cards and adapts columns while date fields fit mobile forms', function () {
+    $root = dirname(__DIR__, 2);
+    $staffStyles = file_get_contents($root.'/public/css/figma-admin.css');
+    $portalStyles = file_get_contents($root.'/public/css/figma-portal.css');
+    $login = file_get_contents($root.'/resources/views/portal/login.blade.php');
+
+    expect($staffStyles)->toContain('repeat(4, minmax(0, 1fr))', 'repeat(2, minmax(0, 1fr))', '.cert-kanban { grid-template-columns: 1fr; }', '.cert-card { text-align: center; overflow-wrap: anywhere; }', '#modal-addres input[type="date"] { width: 100%; min-width: 0; max-width: 100%;');
+    expect($portalStyles)->toContain('.auth-layout input[type="date"] { width: 100%; min-width: 0; max-width: 100%;');
+    expect($login)->toContain('data-password-toggle="resident-password"', 'aria-label="Show password"', 'class="password-eye-slash"');
+});
+
+test('user management modal uses the staff theme with a scrolling body and responsive permission cards', function () {
+    $styles = file_get_contents(dirname(__DIR__, 2).'/public/css/figma-admin.css');
+
+    expect($styles)->toContain('#modal-adduser .user-account-modal { display: flex; flex-direction: column;', 'background: var(--staff-card);', '#modal-adduser .user-account-body { min-height: 0; overflow-y: auto;', '#modal-adduser .modal-footer { flex-shrink: 0;', '#modal-adduser .staff-permission-grid { display: grid; align-items: stretch;', '#modal-adduser .user-account-grid, #modal-adduser .staff-permission-grid, #modal-adduser .staff-preset-toolbar { grid-template-columns: minmax(0, 1fr); }');
+});
+
+test('staff permission groups avoid pairing short page cards with long action lists', function () {
+    $root = dirname(__DIR__, 2);
+    $styles = file_get_contents($root.'/public/css/figma-admin.css');
+    $view = file_get_contents($root.'/resources/views/admin/dashboard.blade.php');
+
+    expect($view)->toContain("'title' => 'General pages'", "'title' => 'Records & services'", "'title' => 'Incidents & restricted cases'");
+    expect($styles)->toContain('.staff-permission-grid-pages { grid-template-columns: repeat(3, minmax(0, 1fr)); }', '.staff-permission-grid-services { grid-template-columns: minmax(0, 1fr); }', '.staff-permission-grid-services .staff-permission-options { grid-template-columns: repeat(2, minmax(0, 1fr));', 'align-items: stretch;');
 });

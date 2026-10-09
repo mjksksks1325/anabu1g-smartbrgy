@@ -26,10 +26,10 @@ class EnsureActiveAccount
             $request->session()->regenerateToken();
 
             if ($request->expectsJson()) {
-                return response()->json(['message' => 'Your account is suspended. Contact the barangay administrator.'], 401);
+                return response()->json(['message' => __('Your account is suspended. Contact the barangay administrator.')], 401);
             }
 
-            return redirect()->route($loginRoute)->withErrors(['email' => 'Your account is suspended. Contact the barangay administrator.']);
+            return redirect()->route($loginRoute)->withErrors(['email' => __('Your account is suspended. Contact the barangay administrator.')]);
         }
 
         return $next($request);

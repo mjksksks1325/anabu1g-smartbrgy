@@ -1,3 +1,36 @@
+function hasStaffPermission(permission) {
+  return !Array.isArray(window.PERSONNEL_PERMISSIONS) || window.PERSONNEL_PERMISSIONS.includes(permission);
+}
+function applyStaffActionVisibility(root = document) {
+  root.querySelectorAll('[data-action-permission]').forEach(element => {
+    const allowed = element.dataset.actionPermission.split('|').some(hasStaffPermission);
+    element.hidden = !allowed;
+    if (!allowed) element.style.display = 'none';
+  });
+}
+function toggleStaffAssignmentFields() {
+  const section = document.getElementById('staff-assignment-fields');
+  if (section) section.hidden = document.getElementById('adduser-role').value !== 'staff';
+}
+function setStaffAssignments(keys) {
+  document.querySelectorAll('[data-staff-permission]').forEach(input => { input.checked = keys.includes(input.dataset.staffPermission); });
+}
+function applyStaffPreset(name) {
+  if (name && window.STAFF_PERMISSION_PRESETS?.[name]) setStaffAssignments(window.STAFF_PERMISSION_PRESETS[name]);
+}
+function changeStaffAssignment(input) {
+  const [module, action] = input.dataset.staffPermission.split('.');
+  if (input.checked && action !== 'view' && !['incidents.submit', 'vawc.submit'].includes(input.dataset.staffPermission)) {
+    const view = document.querySelector(`[data-staff-permission="${module}.view"]`);
+    if (view) view.checked = true;
+  }
+  if (!input.checked && action === 'view') {
+    document.querySelectorAll(`[data-staff-permission^="${module}."]`).forEach(other => {
+      if (!['incidents.submit', 'vawc.submit'].includes(other.dataset.staffPermission)) other.checked = false;
+    });
+  }
+  document.getElementById('staff-access-preset').value = '';
+}
 'use strict';
 
 // ── API Configuration ──
@@ -68,8 +101,9 @@ function setCheckedSpecialGroups(groups = []) {
 }
 
 async function refreshDashboardStats() {
+  if (!hasStaffPermission('dashboard.view')) return;
   try {
-    const response = await fetch('/admin/dashboard-summary', { credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
+    const response = await fetch('/staff/dashboard-summary', { credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload?.message || 'Hindi ma-load ang dashboard summary.');
     const summary = payload.summary || {};
@@ -246,7 +280,7 @@ async function savePurok() {
   }
 
   try {
-    const response = await fetch('/admin/puroks', {
+    const response = await fetch('/staff/puroks', {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', ...csrfRequestHeaders() },
@@ -267,7 +301,7 @@ async function savePurok() {
 
 async function loadPuroks() {
   try {
-    const response = await fetch('/admin/puroks', {
+    const response = await fetch('/staff/puroks', {
       credentials: 'same-origin',
       headers: { 'Accept': 'application/json' }
     });
@@ -396,13 +430,17 @@ function showScreen(id, el, updateHistory = true) {
   };
   const needed = screenPermMap[id];
   const allowed = ACCESS_PERMS[currentUserAccess] || ACCESS_PERMS['View Only'];
-  if (needed && !allowed.includes(needed)) {
+  if (window.PERSONNEL_SCREEN_ACCESS ? !window.PERSONNEL_SCREEN_ACCESS[id] : (needed && !allowed.includes(needed))) {
     showToast(`Walang access sa "${needed}". Makipag-ugnayan sa Admin.`, 'red');
     return;
   }
   const screen = document.getElementById('screen-' + id);
   if (!screen) return;
   const screenUrl = window.ADMIN_SCREEN_ROUTES?.[id];
+  if (updateHistory && screenUrl && window.Livewire?.navigate) {
+    window.Livewire.navigate(screenUrl);
+    return;
+  }
   if (updateHistory && screenUrl && window.history?.pushState) {
     const destination = new URL(screenUrl, window.location.href);
     if (destination.pathname !== window.location.pathname) window.history.pushState({ adminScreen: id }, '', screenUrl);
@@ -433,10 +471,16 @@ function showScreen(id, el, updateHistory = true) {
   }
   if (id === 'demographics') void loadPuroks();
   if (id === 'voters') loadVoterRegistry(voterCurrentPage);
+  if (id === 'records' && !hasStaffPermission('records.view') && hasStaffPermission('households.view')) openHouseholdManagement();
   if (id === 'incidents') void loadIncidents(incidentCurrentPage);
 }
 
 function applyAccessControl(access) {
+  applyStaffActionVisibility();
+  if (window.PERSONNEL_SCREEN_ACCESS) {
+    document.querySelectorAll('.nav-item[data-screen]').forEach(item => { item.style.display = window.PERSONNEL_SCREEN_ACCESS[item.dataset.screen] ? '' : 'none'; });
+    return;
+  }
   currentUserAccess = access || 'Full';
   const allowed = ACCESS_PERMS[currentUserAccess] || ACCESS_PERMS['View Only'];
   document.querySelectorAll('.nav-item[data-perm]').forEach(item => {
@@ -920,8 +964,8 @@ function legacyRenderResidentsTable(filter = '', statusFilter = '') {
         <td><span class="badge ${r.status === 'Active' ? 'badge-green' : 'badge-red'}">${r.status}</span></td>
         <td>
           <button class="btn btn-xs btn-primary" onclick="openViewResident('${r.id}')"> View</button>
-          <button class="btn btn-xs" onclick="openEditResident('${r.id}')"> Edit</button>
-          <button class="btn btn-xs btn-danger" style="margin-left:8px;" onclick="deleteResident('${r.id}')"> Delete</button>
+          <button data-action-permission="records.update" class="btn btn-xs" onclick="openEditResident('${r.id}')"> Edit</button>
+          <button data-action-permission="records.archive" class="btn btn-xs btn-danger" style="margin-left:8px;" onclick="deleteResident('${r.id}')"> Delete</button>
         </td>`;
       tbody.appendChild(tr);
     });
@@ -1150,7 +1194,7 @@ async function issueManualCertificate(event) {
   }
 
   try {
-    const response = await fetch('/admin/issued-certificates', {
+    const response = await fetch('/staff/issued-certificates', {
       method: 'POST',
       credentials: 'same-origin',
       headers: {
@@ -1204,11 +1248,12 @@ async function issueManualCertificate(event) {
 }
 
 async function refreshIssuedCertificates() {
+  if (!hasStaffPermission('documents.view')) return;
   const tbody = document.getElementById('issued-certificates-tbody');
   if (!tbody) return;
 
   try {
-    const response = await fetch('/admin/issued-certificates', {
+    const response = await fetch('/staff/issued-certificates', {
       headers: { 'Accept': 'application/json' }
     });
 
@@ -1252,7 +1297,7 @@ function renderIssuedCertificates(certificates) {
       <td>${escapeText(fee)}</td>
       <td>${escapeText(issuedDate)}</td>
       <td>${escapeText(certificate.issued_by || 'Barangay Staff')}</td>
-      <td><div style="display:flex;gap:5px;"><button class="btn btn-xs btn-green issued-reprint"> Reprint</button><button class="btn btn-xs issued-verify"> Verify</button></div></td>`;
+      <td><div style="display:flex;gap:5px;"><button data-action-permission="documents.print" class="btn btn-xs btn-green issued-reprint"> Reprint</button><button class="btn btn-xs issued-verify"> Verify</button></div></td>`;
 
     row.querySelector('.issued-reprint')?.addEventListener('click', () => {
       window.open(certificate.print_url, '_blank');
@@ -1260,6 +1305,7 @@ function renderIssuedCertificates(certificates) {
     row.querySelector('.issued-verify')?.addEventListener('click', () => {
       window.open(certificate.verification_url, '_blank');
     });
+    applyStaffActionVisibility(row);
     tbody.appendChild(row);
   });
 }
@@ -1414,7 +1460,7 @@ document.addEventListener('click', function(e) {
 // ═══════════════════════════════════════
 // GENERATE REPORT / SETTINGS
 // ═══════════════════════════════════════
-function generateReport() { window.location.href = '/admin/residents-export'; closeModal('modal-report'); }
+function generateReport() { window.location.href = '/staff/residents-export'; closeModal('modal-report'); }
 
 
 // ═══════════════════════════════════════
@@ -1959,7 +2005,7 @@ async function advanceCertStatus(code, newStatus, event) {
 
   try {
     const response = await fetch(
-      `/admin/document-requests/${req.id}/status`,
+      `/staff/document-requests/${req.id}/status`,
       {
         method: 'PATCH',
         credentials: 'same-origin',
@@ -2183,7 +2229,7 @@ function renderCertKanban(filter = '') {
               </span>
             `;
 
-            const proceedBtn = lane.next
+            const proceedBtn = lane.next && hasStaffPermission(lane.id === 'ready' ? 'documents.issue' : 'documents.process')
 
               ? `
                 <button
@@ -2224,9 +2270,9 @@ function renderCertKanban(filter = '') {
               </button>
             `;
 
-            const rejectBtn = lane.id !== 'completed' && r.via === 'Online'
+            const rejectBtn = hasStaffPermission('documents.process') && lane.id !== 'completed' && r.via === 'Online'
               ? `
-                <button
+                <button data-action-permission="documents.process"
                   class="btn btn-xs btn-danger"
                   style="flex:1;font-size:9.5px;padding:3px 6px;"
                   onclick="openRejectRequest(${Number(r.id)}, '${r.code}', event)"
@@ -2387,7 +2433,7 @@ function renderCertTypesList() {
   const container = document.getElementById('cert-types-list');
   if (!container) return;
   container.innerHTML = CERTIFICATE_TYPES.map(ct => `
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--bg-glass);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:all 0.15s;" onclick="openModal('modal-cert-issue')" onmouseenter="this.style.borderColor='var(--border-green)'" onmouseleave="this.style.borderColor='var(--border)'">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--bg-glass);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:all 0.15s;" onclick="if(hasStaffPermission('documents.issue')) openModal('modal-cert-issue')" onmouseenter="this.style.borderColor='var(--border-green)'" onmouseleave="this.style.borderColor='var(--border)'">
       <div style="display:flex;align-items:center;gap:10px;">
         <span style="font-size:18px;">${ct.icon}</span>
         <div>
@@ -2498,7 +2544,7 @@ async function reloadAuditLog() {
 
 function addLiveAuditEntry() {
   if (document.getElementById('screen-audit')?.classList.contains('active')) void reloadAuditLog();
-  if (document.getElementById('screen-dashboard')?.classList.contains('active')) void refreshDashboardStats();
+  if (document.getElementById('screen-dashboard')?.classList.contains('active')) if (hasStaffPermission('dashboard.view')) void refreshDashboardStats();
 }
 
 // ═══════════════════════════════════════
@@ -2603,6 +2649,10 @@ function openAddUser() {
 
   toggleUserCabinetFields();
 
+  setStaffAssignments([]);
+  document.getElementById('staff-access-preset').value = '';
+  toggleStaffAssignmentFields();
+  document.getElementById('adduser-role').querySelectorAll('option:not([value=staff])').forEach(option => { option.disabled = true; option.hidden = true; });
   document.getElementById('adduser-modal-title').textContent = 'New user account';
   openModal('modal-adduser');
 }
@@ -2616,7 +2666,11 @@ function openEditUser(id) {
   document.getElementById('adduser-edit-id').value = user.id;
   document.getElementById('adduser-name').value = user.name;
   document.getElementById('adduser-email').value = user.email;
+  document.getElementById('adduser-role').querySelectorAll('option').forEach(option => { option.disabled = option.value !== 'staff' && option.value !== user.role; option.hidden = option.disabled; });
   document.getElementById('adduser-role').value = user.role;
+  setStaffAssignments(user.staff_permissions || []);
+  document.getElementById('staff-access-preset').value = '';
+  toggleStaffAssignmentFields();
   document.getElementById('adduser-status').value = user.is_active ? 'active' : 'suspended';
   document.getElementById('adduser-password').value = '';
   document.getElementById('adduser-password').required = false;
@@ -2667,6 +2721,7 @@ async function saveNewUser() {
       : null,
   };
 
+  if (payload.role === 'staff') payload.staff_permissions = [...document.querySelectorAll('[data-staff-permission]:checked')].map(input => input.dataset.staffPermission);
   const button = document.getElementById('adduser-save-btn');
   button.disabled = true;
 
@@ -2794,6 +2849,12 @@ function startAuditAutoRefresh() {
 // ENHANCED launchApp
 // ═══════════════════════════════════════
 const _origLaunch = launchApp;
+function showPersonnelLoginGreeting() {
+  if (window.PERSONNEL_LOGIN_GREETING !== true) return;
+  window.PERSONNEL_LOGIN_GREETING = false;
+  showToast(`Welcome back, ${currentUserName}!`, 'green');
+}
+
 function launchApp(name = 'Staff', role = 'Staff') {
   currentUserName = name || 'Staff';
   currentUserRole = role || 'Staff';
@@ -2830,8 +2891,8 @@ function launchApp(name = 'Staff', role = 'Staff') {
   renderCertTypesList();
   if (window.AUTHENTICATED_USER?.is_super_admin) renderAuditLog();
   if (window.AUTHENTICATED_USER?.is_super_admin) void reloadUsers();
-  void refreshDashboardStats();
-  void loadIncidents();
+  if (hasStaffPermission('dashboard.view')) void refreshDashboardStats();
+  if (hasStaffPermission('incidents.view') || hasStaffPermission('vawc.view')) void loadIncidents();
   renderDemographics();
   renderDashPurokBreakdown();
   renderNotifications();
@@ -2840,7 +2901,7 @@ function launchApp(name = 'Staff', role = 'Staff') {
   startAuditAutoRefresh();
   populateEligResidentDropdown(null);
   addLiveAuditEntry('', 'auth', 'Login - Credentials', `System login - ${currentUserRole} access granted`, currentUserName);
-  showToast(`Welcome back, ${currentUserName}!`, 'green');
+  showPersonnelLoginGreeting();
 }
 
 // ═══════════════════════════════════════
@@ -3049,7 +3110,7 @@ async function loadIncidents(page = 1) {
   }
 
   try {
-    const response = await fetch(`/admin/incidents?${query}`, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
+    const response = await fetch(`/staff/incidents?${query}`, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload?.message || 'Hindi ma-load ang incident reports.');
     INCIDENTS.splice(0, INCIDENTS.length, ...(payload.data || []));
@@ -3074,8 +3135,8 @@ function renderIncidents(total = 0) {
   INCIDENTS.forEach(incident => {
     const severityClass = incident.severity === 'high' ? 'badge-red' : incident.severity === 'medium' ? 'badge-amber' : 'badge-gray';
     const statusClass = incident.status === 'resolved' ? 'badge-green' : incident.status === 'dismissed' ? 'badge-gray' : 'badge-amber';
-    const archiveButton = window.AUTHENTICATED_USER?.role === 'admin'
-      ? `<button class="btn btn-xs btn-danger" onclick="archiveIncident(${incident.id})">Archive</button>`
+    const archiveButton = incident.can_archive
+      ? `<button data-action-permission="incidents.archive|vawc.archive" class="btn btn-xs btn-danger" onclick="archiveIncident(${incident.id})">Archive</button>`
       : '';
     const row = document.createElement('tr');
     row.innerHTML = `
@@ -3089,9 +3150,10 @@ function renderIncidents(total = 0) {
       <td><span class="badge ${statusClass}">${escapeText(incident.status_label)}</span></td>
       <td class="resident-actions">
         <button class="btn btn-xs" onclick="openViewIncident(${incident.id})">View</button>
-        <button class="btn btn-xs btn-primary" onclick="openEditIncident(${incident.id})">Edit</button>
+        ${incident.can_update ? `<button data-action-permission="incidents.update|vawc.update" class="btn btn-xs btn-primary" onclick="openEditIncident(${incident.id})">Edit</button>` : ''}
         ${archiveButton}
       </td>`;
+    applyStaffActionVisibility(row);
     tbody.appendChild(row);
   });
 
@@ -3131,6 +3193,7 @@ function openViewIncident(id) {
   set('view-inc-severity', incident.severity_label);
   set('view-inc-status', incident.status_label);
   const editButton = document.getElementById('view-inc-edit-btn');
+  if (editButton) editButton.hidden = !incident.can_update;
   if (editButton) editButton.onclick = () => { closeModal('modal-view-incident'); openEditIncident(id); };
   const attachmentWrapper = document.getElementById('view-inc-attachments-wrap');
   const attachmentList = document.getElementById('view-inc-attachments');
@@ -3148,7 +3211,12 @@ function openEditIncident(id) {
   if (!incident) return;
   const set = (elementId, value) => { const element = document.getElementById(elementId); if (element) element.value = value || ''; };
   set('inc-edit-id', incident.id);
+  const typeSelect = document.getElementById('inc-type');
+  if (typeSelect && incident.incident_type && ![...typeSelect.options].some(option => option.value === incident.incident_type)) {
+    typeSelect.add(new Option(incident.incident_type, incident.incident_type));
+  }
   set('inc-type', incident.incident_type);
+  if (document.getElementById('inc-sensitive')) document.getElementById('inc-sensitive').checked = incident.is_sensitive;
   set('inc-date', incident.occurred_date);
   set('inc-time', incident.occurred_time);
   set('inc-location', incident.location);
@@ -3169,6 +3237,7 @@ function openEditIncident(id) {
 }
 
 function openAddIncident() {
+  if (document.getElementById('inc-sensitive')) document.getElementById('inc-sensitive').checked = !hasStaffPermission('incidents.submit');
   ['inc-type','inc-location','inc-reported','inc-complainee','inc-time','inc-details','inc-edit-id','inc-resolution-notes'].forEach(id => {
     const element = document.getElementById(id);
     if (element) element.value = '';
@@ -3194,6 +3263,9 @@ function toggleIncidentResolution() {
 async function saveIncident() {
   const incidentId = document.getElementById('inc-edit-id')?.value;
   const formData = new FormData();
+  if (document.getElementById('inc-sensitive') && (incidentId || hasStaffPermission('vawc.submit'))) {
+    formData.append('is_sensitive', document.getElementById('inc-sensitive').checked ? '1' : '0');
+  }
   formData.append('incident_type', document.getElementById('inc-type')?.value || '');
   formData.append('occurred_date', document.getElementById('inc-date')?.value || '');
   formData.append('occurred_time', document.getElementById('inc-time')?.value || '');
@@ -3216,7 +3288,7 @@ async function saveIncident() {
   if (button) button.disabled = true;
 
   try {
-    const response = await fetch(incidentId ? `/admin/incidents/${incidentId}` : '/admin/incidents', {
+    const response = await fetch(incidentId ? `/staff/incidents/${incidentId}` : '/staff/incidents', {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Accept': 'application/json', ...csrfRequestHeaders() },
@@ -3241,7 +3313,7 @@ async function saveIncident() {
 async function archiveIncident(id) {
   if (!confirm('I-archive ang incident report na ito?')) return;
   try {
-    const response = await fetch(`/admin/incidents/${id}`, { method: 'DELETE', credentials: 'same-origin', headers: { 'Accept': 'application/json', ...csrfRequestHeaders() } });
+    const response = await fetch(`/staff/incidents/${id}`, { method: 'DELETE', credentials: 'same-origin', headers: { 'Accept': 'application/json', ...csrfRequestHeaders() } });
     const result = await response.json();
     if (!response.ok) throw new Error(result?.message || 'Hindi ma-archive ang incident report.');
     showToast(result.message, 'green');
@@ -3261,7 +3333,7 @@ async function loadRequestRecords(page = 1) {
   if (rrCurrentStatusFilter) query.set('eligibility', rrCurrentStatusFilter);
 
   try {
-    const response = await fetch(`/admin/request-records?${query}`, {
+    const response = await fetch(`/staff/request-records?${query}`, {
       credentials: 'same-origin',
       headers: { 'Accept': 'application/json' }
     });
@@ -3364,8 +3436,9 @@ function filterRRStatus(status, element) {
 }
 
 async function refreshDocumentRequestsLive() {
+  if (!hasStaffPermission('documents.view')) return;
   try {
-    const response = await fetch('/admin/document-requests-live', {
+    const response = await fetch('/staff/document-requests-live', {
       headers: { 'Accept': 'application/json' }
     });
 
@@ -3383,6 +3456,7 @@ async function refreshDocumentRequestsLive() {
 let documentRequestLiveTimer = null;
 
 function startDocumentRequestLiveRefresh() {
+  if (!hasStaffPermission('documents.view')) return;
   if (documentRequestLiveTimer) {
     clearInterval(documentRequestLiveTimer);
   }
@@ -3394,11 +3468,8 @@ function startDocumentRequestLiveRefresh() {
   }, 3000);
 }
 
-startDocumentRequestLiveRefresh();
-refreshIssuedCertificates();
-
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) {
+  if (!document.hidden && document.getElementById('app')) {
     refreshDocumentRequestsLive();
   }
 });
@@ -3422,7 +3493,7 @@ async function confirmPrintRelease() {
 
   try {
     const response = await fetch(
-      `/admin/document-requests/${requestId}/issue`,
+      `/staff/document-requests/${requestId}/issue`,
       {
         method: 'POST',
         credentials: 'same-origin',
@@ -3524,6 +3595,7 @@ function residentFromApi(resident) {
 }
 
 async function loadResidents(page = 1) {
+  if (!hasStaffPermission('records.view')) return;
   const tbody = document.getElementById('records-tbody');
   if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="resident-table-message">Loading resident records...</td></tr>';
 
@@ -3533,7 +3605,7 @@ async function loadResidents(page = 1) {
   if (residentStatusFilter) query.set('status', residentStatusFilter.toLowerCase());
 
   try {
-    const response = await fetch(`/admin/residents?${query}`, {
+    const response = await fetch(`/staff/residents?${query}`, {
       credentials: 'same-origin',
       headers: { 'Accept': 'application/json' }
     });
@@ -3569,10 +3641,10 @@ function renderResidentsTable() {
     const row = document.createElement('tr');
     const archivedBadge = resident.archived ? `<span class="badge badge-red">Archived</span><small>${escapeText(String(resident.archivedAt || '').slice(0, 10))}</small>` : `<span class="badge ${resident.status === 'Active' ? 'badge-green' : 'badge-red'}">${escapeText(resident.status)}</span>`;
     const actions = resident.archived
-      ? `<button class="btn btn-xs btn-green" onclick="restoreResident(${resident.databaseId})">Restore</button>`
+      ? `<button data-action-permission="records.archive" class="btn btn-xs btn-green" onclick="restoreResident(${resident.databaseId})">Restore</button>`
       : `<button class="btn btn-xs btn-primary" onclick="openViewResident('${resident.id}')">View</button>
-         <button class="btn btn-xs" onclick="openEditResident('${resident.id}')">Edit</button>
-         <button class="btn btn-xs btn-danger" onclick="deleteResident('${resident.id}')">Archive</button>`;
+         <button data-action-permission="records.update" class="btn btn-xs" onclick="openEditResident('${resident.id}')">Edit</button>
+         <button data-action-permission="records.archive" class="btn btn-xs btn-danger" onclick="deleteResident('${resident.id}')">Archive</button>`;
 
     row.innerHTML = `
       <td><span class="resident-number">${escapeText(resident.id)}</span></td>
@@ -3584,6 +3656,7 @@ function renderResidentsTable() {
       <td>${archivedBadge}</td>
       <td><span class="resident-number">${escapeText(resident.household?.household_name || resident.household?.household_number || 'Unassigned')}</span></td>
       <td><div class="resident-actions">${actions}</div></td>`;
+    applyStaffActionVisibility(row);
     tbody.appendChild(row);
   });
 }
@@ -3615,7 +3688,7 @@ function exportResidents() {
   const search = document.getElementById('residents-search')?.value.trim();
   if (search) query.set('search', search);
   if (residentStatusFilter) query.set('status', residentStatusFilter.toLowerCase());
-  window.location.href = `/admin/residents-export?${query}`;
+  window.location.href = `/staff/residents-export?${query}`;
 }
 
 function openAddResident() {
@@ -3696,14 +3769,32 @@ function setResidentPhotoPreview(residentId) {
   const preview = document.getElementById('res-photo-preview');
   if (!preview) return;
   preview.style.display = residentId ? 'block' : 'none';
-  if (residentId) preview.src = `/admin/residents/${residentId}/photo`;
+  if (residentId) preview.src = `/staff/residents/${residentId}/photo`;
   else preview.removeAttribute('src');
 }
 
+function validateResidentPhoto(input) {
+  const photo = input?.files?.[0];
+  if (!photo) return true;
+  const supportedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+  if ((photo.type && !supportedTypes.includes(photo.type)) || (photo.name && !/\.(jpe?g|png|webp)$/i.test(photo.name))) {
+    input.value = '';
+    showToast('Resident photo: JPG, PNG, or WebP images only.', 'red');
+    return false;
+  }
+  if (photo.size > 5 * 1024 * 1024) {
+    input.value = '';
+    showToast('Resident photo must be 5 MB or smaller.', 'red');
+    return false;
+  }
+  return true;
+}
+
 async function saveResident(confirmDuplicate = false) {
+  if (!validateResidentPhoto(document.getElementById('res-photo'))) return;
   const residentNumber = document.getElementById('res-edit-id')?.value;
   const resident = RESIDENTS.find(item => item.id === residentNumber);
-  const url = resident ? `/admin/residents/${resident.databaseId}` : '/admin/residents';
+  const url = resident ? `/staff/residents/${resident.databaseId}` : '/staff/residents';
   const method = resident ? 'PATCH' : 'POST';
 
   try {
@@ -3732,7 +3823,7 @@ async function saveResident(confirmDuplicate = false) {
       document.getElementById('res-edit-id').value = saved.resident_number;
       const form = new FormData();
       form.append('photo', photo);
-      const photoResponse = await fetch(`/admin/residents/${saved.id}/photo`, { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', ...csrfRequestHeaders() }, body: form });
+      const photoResponse = await fetch(`/staff/residents/${saved.id}/photo`, { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', ...csrfRequestHeaders() }, body: form });
       const photoPayload = await photoResponse.json();
       if (!photoResponse.ok) throw new Error(Object.values(photoPayload.errors || {}).flat()[0] || photoPayload.message || 'Resident saved; photo upload failed. Retry the photo.');
     }
@@ -3749,13 +3840,13 @@ async function saveResident(confirmDuplicate = false) {
 async function deleteResident(residentNumber) {
   const resident = RESIDENTS.find(item => item.id === residentNumber);
   if (!resident || !confirm(`Archive ${resident.name}? The record can be restored later.`)) return;
-  await changeResidentArchiveState(`/admin/residents/${resident.databaseId}`, 'DELETE');
+  await changeResidentArchiveState(`/staff/residents/${resident.databaseId}`, 'DELETE');
 }
 
 async function restoreResident(databaseId) {
   const resident = RESIDENTS.find(item => item.databaseId === databaseId);
   if (!resident || !confirm(`Restore ${resident.name} to the resident records?`)) return;
-  await changeResidentArchiveState(`/admin/residents/${databaseId}/restore`, 'PATCH');
+  await changeResidentArchiveState(`/staff/residents/${databaseId}/restore`, 'PATCH');
 }
 
 async function changeResidentArchiveState(url, method) {
@@ -3791,9 +3882,9 @@ function openViewResident(residentNumber) {
       <div><span>Residency Type</span><strong>${escapeText(resident.type)}</strong></div>
       <div class="resident-detail-wide"><span>Address</span><strong>${escapeText(resident.address)}</strong></div>
       <div class="resident-detail-wide"><span>Special Groups</span><strong>${groups}</strong></div>
-      <div><span>Document Requests</span><strong>${resident.documentRequestsCount}</strong></div>
-      <div><span>Issued Certificates</span><strong>${resident.issuedCertificatesCount}</strong></div>
-      <div class="resident-detail-wide"><span>Eligibility</span><strong>${resident.goodStanding ? 'In good standing' : 'Not in good standing'}</strong></div>
+      ${hasStaffPermission('documents.view') ? `<div><span>Document Requests</span><strong>${resident.documentRequestsCount}</strong></div>
+      <div><span>Issued Certificates</span><strong>${resident.issuedCertificatesCount}</strong></div>` : ''}
+${hasStaffPermission('documents.view') || hasStaffPermission('eligibility.view') ? `<div class="resident-detail-wide"><span>Eligibility</span><strong>${resident.goodStanding ? 'In good standing' : 'Not in good standing'}</strong></div>` : ''}
     </div>`;
   document.getElementById('view-resident-content').insertAdjacentHTML('beforeend', '<section id="resident-portal-account" class="resident-account-panel" aria-live="polite">Loading portal account...</section>');
   document.getElementById('view-resident-content').insertAdjacentHTML('beforeend', '<section id="resident-household-information" class="resident-account-panel" aria-live="polite">Loading household information...</section>');
@@ -3820,7 +3911,7 @@ async function viewDemographicHousehold(id) {
   closeModal('modal-purok-households');
   openModal('modal-household-readonly');
   try {
-    const household = await householdApi(`/admin/households/${id}`);
+    const household = await householdApi(`/staff/households/${id}`);
     if (version !== demographicHouseholdVersion) return;
     container.innerHTML = `<h3>${escapeText(household.household_name || household.household_number)}</h3><p>${escapeText(household.household_number)}</p><p>${escapeText(household.address)} — ${escapeText(household.purok || 'None')}</p><p>Head: ${escapeText(household.head?.full_name || 'No household head assigned')}</p>${householdMembersMarkup(household)}`;
   } catch (error) { if (version === demographicHouseholdVersion) container.textContent = error.message; }
@@ -3897,7 +3988,7 @@ async function loadResidentHouseholds(page = 1) {
   const version = ++householdLookupVersion;
   const query = new URLSearchParams({ search: document.getElementById('res-household-search').value.trim(), page, per_page: 20 });
   try {
-    const payload = await householdApi(`/admin/households?${query}`);
+    const payload = await householdApi(`/staff/households?${query}`);
     if (version !== householdLookupVersion) return;
     const select = document.getElementById('res-household-id');
     const selected = select.selectedOptions[0];
@@ -3912,18 +4003,29 @@ async function loadResidentHouseholds(page = 1) {
   }
 }
 
+async function openDemographicMember(id) {
+  try {
+    const member = await householdApi(`/staff/residents/${Number(id)}`);
+    const details = document.getElementById('view-resident-content');
+    details.textContent = '';
+    ['full_name', 'resident_number', 'date_of_birth', 'age', 'gender', 'civil_status', 'purok', 'address', 'relationship_to_household_head'].forEach(key => {
+      const row = document.createElement('p'); row.textContent = `${key.replaceAll('_', ' ')}: ${member[key] ?? ''}`; details.appendChild(row);
+    });
+    openModal('modal-view-resident');
+  } catch (error) { showToast(error.message, 'red'); }
+}
 function householdMembersMarkup(household, manageable = false) {
   if (!household.members.length) return '<p>No household members assigned.</p>';
   return `<div class="table-scroll"><table class="tbl"><thead><tr><th>Name</th><th>Relationship</th><th>Gender</th><th>Registered voter</th>${manageable ? '<th>Actions</th>' : ''}</tr></thead><tbody>${household.members.map(member => `
-    <tr><td>${escapeText(member.full_name)}${member.status !== 'active' ? ' <span class="badge badge-gray">Inactive</span>' : ''}</td>
+    <tr><td>${hasStaffPermission('demographics.view') || hasStaffPermission('records.view') ? `<button class="btn btn-xs" onclick="openDemographicMember(${Number(member.id)})">${escapeText(member.full_name)}</button>` : escapeText(member.full_name)}${member.status !== 'active' ? ' <span class="badge badge-gray">Inactive</span>' : ''}</td>
     <td>${escapeText(member.relationship_to_household_head || 'Unspecified')}</td><td>${escapeText(member.gender)}</td><td>${member.registered_voter ? 'Yes' : 'No'}</td>
-    ${manageable ? `<td><button class="btn btn-xs btn-danger" onclick="removeManagedHouseholdMember(${Number(household.id)}, ${Number(member.id)})">Remove</button></td>` : ''}</tr>`).join('')}</tbody></table></div>`;
+    ${manageable ? `<td>${hasStaffPermission('households.remove') ? `<button class="btn btn-xs btn-danger" onclick="removeManagedHouseholdMember(${Number(household.id)}, ${Number(member.id)})">Remove</button>` : ''}</td>` : ''}</tr>`).join('')}</tbody></table></div>`;
 }
 
 async function loadResidentHouseholdInformation(residentId) {
   const container = document.getElementById('resident-household-information');
   try {
-    const payload = await householdApi(`/admin/residents/${residentId}`);
+    const payload = await householdApi(`/staff/residents/${residentId}`);
     if (container !== document.getElementById('resident-household-information')) return;
     const household = payload.household_information;
     container.innerHTML = household ? `<h3>Household Information</h3>
@@ -3954,9 +4056,9 @@ async function loadManagedHouseholds(page = 1) {
   const version = ++householdListVersion;
   const query = new URLSearchParams({ search: document.getElementById('household-search').value.trim(), page, per_page: 15 });
   try {
-    const payload = await householdApi(`/admin/households?${query}`);
+    const payload = await householdApi(`/staff/households?${query}`);
     if (version !== householdListVersion) return;
-    document.getElementById('household-list').innerHTML = payload.data.length ? `<div class="table-scroll"><table class="tbl"><thead><tr><th>Household</th><th>Head / Address</th><th>Members</th><th>Actions</th></tr></thead><tbody>${payload.data.map(item => `<tr><td>${escapeText(item.household_name || item.household_number)}${item.household_name ? `<br><small>${escapeText(item.household_number)}</small>` : ''}</td><td>${escapeText(item.head?.full_name || 'No household head assigned')}<br>${escapeText(item.address)}</td><td>${Number(item.household_size)}</td><td><button class="btn btn-xs" onclick="editManagedHousehold(${Number(item.id)})">View / Edit</button></td></tr>`).join('')}</tbody></table></div>` : '<p>No households found.</p>';
+    document.getElementById('household-list').innerHTML = payload.data.length ? `<div class="table-scroll"><table class="tbl"><thead><tr><th>Household</th><th>Head / Address</th><th>Members</th><th>Actions</th></tr></thead><tbody>${payload.data.map(item => `<tr><td>${escapeText(item.household_name || item.household_number)}${item.household_name ? `<br><small>${escapeText(item.household_number)}</small>` : ''}</td><td>${escapeText(item.head?.full_name || 'No household head assigned')}<br>${escapeText(item.address)}</td><td>${Number(item.household_size)}</td><td><button data-action-permission="households.view" class="btn btn-xs" onclick="editManagedHousehold(${Number(item.id)})">View / Edit</button></td></tr>`).join('')}</tbody></table></div>` : '<p>No households found.</p>';
     householdPagination('household-pagination', payload, 'loadManagedHouseholds');
   } catch (error) {
     if (version === householdListVersion) document.getElementById('household-list').textContent = error.message;
@@ -3964,6 +4066,10 @@ async function loadManagedHouseholds(page = 1) {
 }
 
 function newManagedHousehold() {
+  const save = document.getElementById('household-save');
+  save.dataset.actionPermission = 'households.create';
+  save.hidden = !hasStaffPermission('households.create');
+  save.style.display = hasStaffPermission('households.create') ? '' : 'none';
   householdDetailVersion++;
   householdMemberLookupVersion++;
   document.getElementById('household-editor').hidden = false;
@@ -3994,7 +4100,7 @@ function renderDraftHouseholdMembers(selectedHead = document.getElementById('hou
   const candidates = new Map([...householdResidentOptions, ...draftHouseholdMembers]);
   [...candidates.values()].filter(member => member.status === 'active').forEach(member => head.add(new Option(member.full_name, String(member.id))));
   head.value = draftHouseholdMembers.has(Number(selectedHead)) ? String(selectedHead) : '';
-  document.getElementById('household-members').innerHTML = members.length ? `<h4>Selected existing residents</h4><div class="table-scroll"><table class="tbl"><thead><tr><th>Name</th><th>Relationship to head</th><th>Actions</th></tr></thead><tbody>${members.map(member => `<tr><td>${escapeText(member.full_name)}</td><td><input class="form-input" aria-label="Relationship for ${escapeText(member.full_name)}" maxlength="100" value="${escapeText(member.relationship_to_household_head)}" oninput="updateDraftHouseholdRelationship(${Number(member.id)}, this.value)"/></td><td><button class="btn btn-xs btn-danger" onclick="removeDraftHouseholdMember(${Number(member.id)})">Remove</button></td></tr>`).join('')}</tbody></table></div>` : '<p>No residents selected yet.</p>';
+  document.getElementById('household-members').innerHTML = members.length ? `<h4>Selected existing residents</h4><div class="table-scroll"><table class="tbl"><thead><tr><th>Name</th><th>Relationship to head</th><th>Actions</th></tr></thead><tbody>${members.map(member => `<tr><td>${hasStaffPermission('demographics.view') || hasStaffPermission('records.view') ? `<button class="btn btn-xs" onclick="openDemographicMember(${Number(member.id)})">${escapeText(member.full_name)}</button>` : escapeText(member.full_name)}</td><td><input class="form-input" aria-label="Relationship for ${escapeText(member.full_name)}" maxlength="100" value="${escapeText(member.relationship_to_household_head)}" oninput="updateDraftHouseholdRelationship(${Number(member.id)}, this.value)"/></td><td><button class="btn btn-xs btn-danger" onclick="removeDraftHouseholdMember(${Number(member.id)})">Remove</button></td></tr>`).join('')}</tbody></table></div>` : '<p>No residents selected yet.</p>';
 }
 
 function selectManagedHouseholdHead(residentId) {
@@ -4029,9 +4135,13 @@ function removeDraftHouseholdMember(id) {
 }
 
 async function editManagedHousehold(id) {
+  const save = document.getElementById('household-save');
+  save.dataset.actionPermission = 'households.update';
+  save.hidden = !hasStaffPermission('households.update');
+  save.style.display = hasStaffPermission('households.update') ? '' : 'none';
   const version = ++householdDetailVersion;
   try {
-    const household = await householdApi(`/admin/households/${id}`);
+    const household = await householdApi(`/staff/households/${id}`);
     if (version !== householdDetailVersion) return;
     document.getElementById('household-editor').hidden = false;
     document.getElementById('household-editor-title').textContent = household.household_name || household.household_number;
@@ -4076,7 +4186,7 @@ async function saveManagedHousehold() {
     }
   }
   try {
-    const payload = await householdApi(id ? `/admin/households/${id}` : '/admin/households', id ? 'PATCH' : 'POST', body);
+    const payload = await householdApi(id ? `/staff/households/${id}` : '/staff/households', id ? 'PATCH' : 'POST', body);
     showToast(payload.message, 'green');
     await editManagedHousehold(payload.household.id);
     await loadManagedHouseholds();
@@ -4096,7 +4206,7 @@ async function loadHouseholdResidents(page = 1) {
   const version = ++householdMemberLookupVersion;
   const query = new URLSearchParams({ search: document.getElementById('household-resident-search').value.trim(), page, per_page: 15 });
   try {
-    const payload = await householdApi(`/admin/residents?${query}`);
+    const payload = await householdApi(`/staff/case-residents?${query}`);
     if (version !== householdMemberLookupVersion) return;
     const select = document.getElementById('household-resident-id');
     select.replaceChildren(new Option('Select a resident', ''));
@@ -4130,7 +4240,7 @@ async function addManagedHouseholdMember() {
     return;
   }
   try {
-    const payload = await householdApi(`/admin/households/${id}/members/${residentId}`, 'PATCH', {
+    const payload = await householdApi(`/staff/households/${id}/members/${residentId}`, 'PATCH', {
       relationship_to_household_head: document.getElementById('household-resident-relationship').value.trim() || null,
       is_household_head: isHead
     });
@@ -4145,7 +4255,7 @@ async function addManagedHouseholdMember() {
 async function removeManagedHouseholdMember(id, residentId) {
   if (!confirm('Remove this household membership? The resident record will be kept.')) return;
   try {
-    const payload = await householdApi(`/admin/households/${id}/members/${residentId}`, 'DELETE');
+    const payload = await householdApi(`/staff/households/${id}/members/${residentId}`, 'DELETE');
     showToast(payload.message, 'green');
     await editManagedHousehold(id);
     await loadManagedHouseholds();
@@ -4158,7 +4268,7 @@ async function populateManualResidentDropdown() {
   const select = document.getElementById('manual-resident-id');
   if (!select) return;
   try {
-    const response = await fetch('/admin/residents?status=active&per_page=100', { headers: { 'Accept': 'application/json' } });
+    const response = await fetch('/staff/case-residents?per_page=100', { headers: { 'Accept': 'application/json' } });
     if (!response.ok) return;
     const payload = await response.json();
     manualResidentsById.clear();
@@ -4187,7 +4297,7 @@ async function openViewResidentRequests(residentNumber) {
   const resident = RESIDENTS.find(item => item.id === residentNumber);
   if (!resident) return;
   try {
-    const response = await fetch(`/admin/residents/${resident.databaseId}`, { headers: { 'Accept': 'application/json' } });
+    const response = await fetch(`/staff/residents/${resident.databaseId}`, { headers: { 'Accept': 'application/json' } });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload?.message || 'Unable to load request history.');
     const requests = payload.document_requests || [];
@@ -4218,7 +4328,7 @@ async function runEligibilityCheck() {
 
   try {
     const query = new URLSearchParams({ certificate_type: certificateType });
-    const response = await fetch(`/admin/residents/${resident.databaseId}/eligibility?${query}`, { headers: { 'Accept': 'application/json' } });
+    const response = await fetch(`/staff/residents/${resident.databaseId}/eligibility?${query}`, { headers: { 'Accept': 'application/json' } });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload?.message || 'Unable to check eligibility.');
     const result = document.getElementById('elig-result');
@@ -4257,6 +4367,7 @@ let voterRegistrations = [];
 let voterEligibleResidents = [];
 
 async function loadVoterRegistry(page = 1) {
+  if (!hasStaffPermission('voters.view')) return;
   const tbody = document.getElementById('voter-registry-tbody');
   if (!tbody) return;
   tbody.innerHTML = '<tr><td colspan="7" class="resident-table-message">Loading voter list...</td></tr>';
@@ -4268,7 +4379,7 @@ async function loadVoterRegistry(page = 1) {
   if (voterPurokFilter) query.set('purok', voterPurokFilter);
 
   try {
-    const response = await fetch(`/admin/voter-registrations?${query}`, {
+    const response = await fetch(`/staff/voter-registrations?${query}`, {
       credentials: 'same-origin',
       headers: { 'Accept': 'application/json' }
     });
@@ -4400,7 +4511,7 @@ async function saveVoterRegistration() {
   if (button) button.disabled = true;
 
   try {
-    const response = await fetch('/admin/voter-registrations', {
+    const response = await fetch('/staff/voter-registrations', {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', ...csrfRequestHeaders() },
@@ -4428,7 +4539,7 @@ function exportVoterRegistry() {
   if (search) query.set('search', search);
   if (voterEligibilityFilter) query.set('eligibility', voterEligibilityFilter);
   if (voterPurokFilter) query.set('purok', voterPurokFilter);
-  window.location.href = `/admin/voter-registrations-export?${query}`;
+  window.location.href = `/staff/voter-registrations-export?${query}`;
 }
 
 function openRejectRequest(requestId, referenceCode, event) {
@@ -4451,7 +4562,7 @@ async function confirmRejectRequest() {
   if (button) button.disabled = true;
 
   try {
-    const response = await fetch(`/admin/document-requests/${requestId}/status`, {
+    const response = await fetch(`/staff/document-requests/${requestId}/status`, {
       method: 'PATCH',
       credentials: 'same-origin',
       headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', ...csrfRequestHeaders() },
@@ -4472,21 +4583,43 @@ async function confirmRejectRequest() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
+let workspaceInitializationVersion = 0;
+
+async function initializePersonnelWorkspace() {
+  const workspace = document.getElementById('app');
+  if (!workspace) return;
+  const initializationVersion = ++workspaceInitializationVersion;
+  isLightMode = document.body.classList.contains('light-mode');
   const authenticatedUser = window.AUTHENTICATED_USER;
   if (authenticatedUser) {
     restoreAdminFiltersFromUrl();
-    await loadPuroks();
+    if (['demographics.view', 'records.view', 'households.view', 'voters.view', 'documents.view'].some(hasStaffPermission)) await loadPuroks();
+    if (initializationVersion !== workspaceInitializationVersion || document.getElementById('app') !== workspace) return;
     launchApp(authenticatedUser.name, authenticatedUser.role);
-    await loadResidents(residentCurrentPage);
+    if (hasStaffPermission('documents.view')) { startDocumentRequestLiveRefresh(); void refreshIssuedCertificates(); }
+    if (hasStaffPermission('records.view')) await loadResidents(residentCurrentPage);
+    else if (['documents.view', 'voters.view', 'households.view'].some(hasStaffPermission)) {
+      const lookup = await householdApi('/staff/case-residents?per_page=100');
+      RESIDENTS.splice(0, RESIDENTS.length, ...lookup.data.map(residentFromApi));
+    }
+    if (initializationVersion !== workspaceInitializationVersion || document.getElementById('app') !== workspace) return;
     populateManualResidentDropdown();
-    loadVoterRegistry();
+    if (hasStaffPermission('voters.view')) loadVoterRegistry();
     try {
       const screen = window.ADMIN_ACTIVE_SCREEN || 'dashboard';
       const navigation = screen ? findNavItem(screen) : null;
       if (navigation && navigation.style.display !== 'none') showScreen(screen, navigation, false);
     } catch (_) {}
   }
+}
+
+document.addEventListener('livewire:navigated', initializePersonnelWorkspace);
+document.addEventListener('livewire:navigating', () => {
+  workspaceInitializationVersion++;
+  [clockTimer, auditRefreshTimer, documentRequestLiveTimer].forEach(timer => {
+    if (timer !== null) clearInterval(timer);
+  });
+  clockTimer = auditRefreshTimer = documentRequestLiveTimer = null;
 });
 
 function restoreAdminFiltersFromUrl() {
@@ -4511,13 +4644,15 @@ function restoreAdminFiltersFromUrl() {
   }
 }
 
-window.addEventListener('popstate', () => {
+window.addEventListener('popstate', event => {
+  if (event?.state?.alpine) return;
   const entry = Object.entries(window.ADMIN_SCREEN_ROUTES || {}).find(([, url]) => new URL(url, window.location.href).pathname === window.location.pathname);
   if (entry) showScreen(entry[0], findNavItem(entry[0]), false);
 });
 
 function toggleNavigation(force) {
   const sidebar = document.getElementById('admin-navigation');
+  if (!sidebar) return;
   const open = force ?? !sidebar.classList.contains('is-open');
   sidebar.classList.toggle('is-open', open);
   document.querySelector('.mobile-menu-button')?.setAttribute('aria-expanded', String(open));
@@ -4537,13 +4672,13 @@ document.addEventListener('keydown', event => {
   }
 });
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('livewire:navigated', () => {
+  if (!document.getElementById('app')) return;
   const themeLabel = document.getElementById('theme-label');
   if (themeLabel) themeLabel.textContent = isLightMode ? 'Dark Mode' : 'Light Mode';
-  document.querySelectorAll('.nav-item[onclick], .dark-mode-toggle, .topbar-avatar:not(button), .notif-badge-wrap, .modal-close:not(button)').forEach(element => {
+  document.querySelectorAll('.nav-item[onclick], .dark-mode-toggle, .notif-badge-wrap, .modal-close:not(button)').forEach(element => {
     element.tabIndex = 0;
     element.setAttribute('role', 'button');
-    if (element.classList.contains('topbar-avatar')) element.setAttribute('aria-label', 'Sign out');
     element.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); element.click(); } });
   });
   document.querySelectorAll('.form-group').forEach((group, index) => {
@@ -4557,7 +4692,7 @@ document.addEventListener('DOMContentLoaded', () => {
 async function loadResidentPortalAccount(residentId) {
   const panel = document.getElementById('resident-portal-account');
   try {
-    const resident = await adminRequest(`/admin/residents/${residentId}`);
+    const resident = await adminRequest(`/staff/residents/${residentId}`);
     if (!panel?.isConnected) return;
     const account = resident.portal_account;
     panel.innerHTML = `<h3>Resident Portal account</h3><p>Resident record: ${escapeText(resident.status)}</p>`;
@@ -4577,7 +4712,7 @@ async function issuePortalActivation(residentId, button) {
   button.disabled = true;
   const output = document.getElementById('resident-activation-result');
   try {
-    const result = await adminRequest(`/admin/residents/${residentId}/portal-activation`, { method: 'POST' });
+    const result = await adminRequest(`/staff/residents/${residentId}/portal-activation`, { method: 'POST' });
     if (output?.isConnected && button.closest('.modal-overlay')?.classList.contains('show')) output.innerHTML = `<p>${escapeText(result.message)}</p><label for="resident-activation-code">Private activation code</label><input id="resident-activation-code" class="form-input" readonly autocomplete="off" value="${escapeText(result.activation_code)}"><p>Expires: ${escapeText(result.expires_at)}</p>`;
   } catch (error) { showToast(error.message, 'red'); }
   finally { button.disabled = false; }
@@ -4617,7 +4752,7 @@ async function importVotersCsv() {
   result.textContent = 'Importing voters...';
   result.hidden = false;
   try {
-    const response = await fetch('/admin/voter-registrations-import', {
+    const response = await fetch('/staff/voter-registrations-import', {
       method: 'POST', credentials: 'same-origin',
       headers: { Accept: 'application/json', ...csrfRequestHeaders() }, body: data
     });
@@ -4634,4 +4769,17 @@ async function importVotersCsv() {
   } finally {
     button.disabled = false;
   }
+}
+
+if (typeof MutationObserver !== 'undefined') {
+const staffActionObserver = new MutationObserver(records => {
+  records.forEach(record => record.addedNodes.forEach(node => {
+    if (node.nodeType === 1) {
+      if (node.matches('[data-action-permission]') && !node.dataset.actionPermission.split('|').some(hasStaffPermission)) { node.hidden = true; node.style.display = 'none'; }
+      applyStaffActionVisibility(node);
+    }
+  }));
+});
+staffActionObserver.observe(document.body, { childList: true, subtree: true });
+
 }

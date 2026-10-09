@@ -20,7 +20,7 @@ class ResidentSessionController extends Controller
 
         if (! $user?->canUseResidentPortal() || ! Hash::check($request->validated('password'), $user->password)) {
             throw ValidationException::withMessages([
-                'email' => 'The provided resident account credentials are incorrect or the account cannot currently use online services.',
+                'email' => __('The provided resident account credentials are incorrect or the account cannot currently use online services.'),
             ]);
         }
 

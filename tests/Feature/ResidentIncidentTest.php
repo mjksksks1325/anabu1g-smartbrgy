@@ -31,11 +31,11 @@ test('former resident incident endpoints are unavailable to guests and residents
 });
 
 test('barangay officials retain access to existing incident records', function () {
-    $staff = User::factory()->create(['role' => 'staff']);
+    $staff = User::factory()->assignedOperations()->create(['role' => 'staff']);
     $incident = Incident::factory()->for($staff, 'reporter')->create();
 
     $this->actingAs($staff)
-        ->getJson(route('admin.incidents.index'))
+        ->getJson(route('staff.incidents.index'))
         ->assertOk()
         ->assertJsonPath('data.0.incident_number', $incident->incident_number);
 });

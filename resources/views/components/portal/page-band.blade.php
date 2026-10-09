@@ -8,16 +8,16 @@
 <div {{ $attributes->class(['page-band']) }}>
     <div class="page-band-inner">
         <div class="page-band-text">
-            <nav class="breadcrumb" aria-label="Breadcrumb">
+            <nav class="breadcrumb" data-portal-i18n-aria-label="Breadcrumb" aria-label="{{ __('Breadcrumb') }}">
                 <ol>
-                    <li><a href="{{ route('home') }}">Home</a></li>
+                    <li><a href="{{ route('home') }}"><span data-portal-i18n="Home">{{ __('Home') }}</span></a></li>
                     @if($parent)
-                        <li><a href="{{ $parentUrl }}">{{ $parent }}</a></li>
+                        <li><a href="{{ $parentUrl }}"><span data-portal-i18n="{{ $parent }}">{{ __($parent) }}</span></a></li>
                     @endif
-                    <li aria-current="page">{{ $title }}</li>
+                    <li aria-current="page"><span data-portal-i18n="{{ $title }}">{{ __($title) }}</span></li>
                 </ol>
             </nav>
-            <h1 id="{{ $titleId }}">{{ $title }}</h1>
+            <h1 id="{{ $titleId }}"><span data-portal-i18n="{{ $title }}">{{ __($title) }}</span></h1>
             @if($slot->isNotEmpty())
                 <div class="page-band-lead">{{ $slot }}</div>
             @endif

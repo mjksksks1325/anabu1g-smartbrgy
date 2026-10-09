@@ -1,0 +1,12 @@
+span[data-portal-i18n]:not([class]) { display: contents; }
+.portal-language-toggle { display: inline-flex; align-items: center; gap: .4rem; margin: 0; flex-wrap: nowrap; }
+.portal-language-toggle button { border: 0; border-radius: 4px; background: transparent; color: inherit; font: inherit; padding: .35rem .45rem; cursor: pointer; min-height: 36px; }
+.portal-language-toggle button[aria-pressed="true"] { font-weight: 700; text-decoration: underline; text-underline-offset: .25em; }
+.portal-language-toggle button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.portal-language-toggle button:disabled { cursor: wait; opacity: .65; }
+.gov-actions { gap: .6rem; flex-shrink: 0; }
+@media (max-width: 540px) {
+    .gov-bar-inner { flex-wrap: wrap; gap: .25rem .5rem; }
+    .gov-actions { margin-left: auto; }
+    .portal-language-toggle button { min-height: 44px; padding-inline: .3rem; }
+}

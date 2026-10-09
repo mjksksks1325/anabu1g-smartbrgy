@@ -21,10 +21,10 @@
   <form onsubmit="liftRestriction(event)"><input type="hidden" id="lift-restriction-id"/><div class="form-group"><label class="form-label" for="lift-restriction-reason">Reason for lifting</label><textarea class="form-input" id="lift-restriction-reason" maxlength="5000" required></textarea></div><div class="modal-footer"><button type="button" class="btn" onclick="closeModal('modal-lift-restriction')">Cancel</button><button class="btn btn-primary" type="submit">Lift restriction</button></div></form>
 </div></div>
 @endcan
-@can('create', App\Models\BarangayProtectionOrder::class)
+@if(auth()->user()->hasAnyPermission(['vawc.submit', 'vawc.update']))
 <div class="modal-overlay" id="modal-protection-order"><div class="modal">
   <div class="modal-header"><div class="modal-title">Restricted BPO record</div><button class="modal-close" onclick="closeModal('modal-protection-order')" aria-label="Close">&times;</button></div>
-  <p class="card-sub">Superadmin access only. Record the approved order as supplied by the barangay. Legal validity periods and deadlines require barangay confirmation; no automatic end date is assigned.</p>
+  <p class="card-sub">Restricted to staff assigned VAWC / BPO access. Record the approved order as supplied by the barangay. Legal validity periods and deadlines require barangay confirmation; no automatic end date is assigned.</p>
   <form onsubmit="saveProtectionOrder(event)">
     <input type="hidden" id="bpo-id"/><input type="hidden" id="bpo-incident-id"/>
     <div class="form-group"><label class="form-label" for="bpo-protected-search">Protected resident (optional)</label><input class="form-input" id="bpo-protected-search" placeholder="Name or resident number" oninput="searchCaseResidents('bpo-protected')"/><select class="form-input" id="bpo-protected-resident"><option value="">External person</option></select></div>
@@ -40,4 +40,4 @@
     <div class="modal-footer"><button class="btn" type="button" onclick="closeModal('modal-protection-order')">Cancel</button><button class="btn btn-primary" type="submit">Save BPO record</button></div>
   </form>
 </div></div>
-@endcan
+@endif

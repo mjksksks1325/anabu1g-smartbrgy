@@ -22,6 +22,10 @@ class PurokController extends Controller
             ->orderBy('name')
             ->get();
 
+        if (! request()->user()->hasPermission('demographics.view')) {
+            return response()->json(['data' => $puroks->map(fn (Purok $purok): array => $purok->only(['id', 'name', 'color']))]);
+        }
+
         $activeResidents = Resident::query()
             ->where('status', 'active')
             ->get([

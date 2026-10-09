@@ -209,7 +209,7 @@ test('clicking a household shows its family members in the detail modal', async 
   context.closeModal = id => closed.push(id);
   context.householdMembersMarkup = household => household.members.map(member => member.full_name).join(', ');
   context.householdApi = async url => {
-    assert.equal(url, '/admin/households/8');
+    assert.equal(url, '/staff/households/8');
     return { household_number: 'HH-8', address: 'Block 1', purok: 'Purok 7', head: { full_name: 'Juan Cruz' }, members: [{ full_name: 'Juan Cruz' }, { full_name: 'Maria Cruz' }] };
   };
   vm.runInContext('let demographicHouseholdVersion = 0;\n' + adminSource.slice(adminSource.indexOf('async function viewDemographicHousehold('), adminSource.indexOf('async function refreshHouseholdDemographics(')), context);
@@ -241,7 +241,7 @@ test('selecting a CSV uploads multipart data and shows the returned preview', as
   let requests = 0;
   const { context, field } = profilingClient(async (url, options) => {
     requests++;
-    assert.equal(url, '/admin/resident-profiling-imports/preview');
+    assert.equal(url, '/staff/resident-profiling-imports/preview');
     assert.ok(options.body instanceof FormData);
     assert.equal(options.headers['X-CSRF-TOKEN'], 'test-token');
     assert.equal(options.headers['Content-Type'], undefined);

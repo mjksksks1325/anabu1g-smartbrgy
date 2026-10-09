@@ -23,7 +23,7 @@ class FakeSelect {
 function householdClient(fetch) {
   const fields = new Map();
   const getField = id => {
-    if (!fields.has(id)) fields.set(id, { value: '', checked: false, innerHTML: '', textContent: '', dataset: {} });
+    if (!fields.has(id)) fields.set(id, { value: '', checked: false, innerHTML: '', textContent: '', dataset: {}, style: {} });
     return fields.get(id);
   };
   const toasts = [];
@@ -31,7 +31,7 @@ function householdClient(fetch) {
     document: { getElementById: getField }, Option: FakeOption,
     URLSearchParams, setTimeout, clearTimeout, fetch, confirm: () => true,
     PUROK_DATA: [], getCheckedSpecialGroups: () => [], csrfRequestHeaders: () => ({ 'X-CSRF-TOKEN': 'test-token' }),
-    showToast: message => toasts.push(message),
+    showToast: message => toasts.push(message), hasStaffPermission: () => true,
     escapeText: value => String(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]))
   });
   vm.runInContext(householdCode + payloadCode + mappingCode, context);
@@ -94,7 +94,7 @@ test('new household creation stages existing residents and submits their assignm
 
   const writes = requests.filter(request => request.options.method !== 'GET');
   assert.equal(writes.length, 1);
-  assert.equal(writes[0].url, '/admin/households');
+  assert.equal(writes[0].url, '/staff/households');
   assert.deepEqual(JSON.parse(writes[0].options.body), { household_name: 'Santos Family', address: 'Shared address', purok_id: null, household_number: 'HH-000042', household_head_resident_id: 1, members: [{ resident_id: 2, relationship_to_household_head: 'Spouse' }] });
 });
 
@@ -237,7 +237,7 @@ test('household write requests include CSRF headers and show validation messages
     return { ok: false, json: async () => ({ errors: { is_household_head: ['The resident must be active.'] } }) };
   });
 
-  await assert.rejects(context.householdApi('/admin/households/1/members/2', 'PATCH', { is_household_head: true }), /The resident must be active/);
+  await assert.rejects(context.householdApi('/staff/households/1/members/2', 'PATCH', { is_household_head: true }), /The resident must be active/);
   assert.equal(request.options.credentials, 'same-origin');
   assert.equal(request.options.headers['X-CSRF-TOKEN'], 'test-token');
   assert.deepEqual(JSON.parse(request.options.body), { is_household_head: true });

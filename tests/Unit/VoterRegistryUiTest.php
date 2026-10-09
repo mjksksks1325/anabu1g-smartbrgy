@@ -6,7 +6,7 @@ test('voter page supports adding voters and separates the list by purok and age 
     $adminStyles = file_get_contents(dirname(__DIR__, 2).'/public/css/admin.css');
 
     expect($dashboard)
-        ->toContain("showScreen('voters',this)")
+        ->toContain('data-screen="voters"')
         ->toContain('id="screen-voters"')
         ->toContain('<h1>Voters</h1>')
         ->toContain('Para sa barangay personnel:')
@@ -21,11 +21,11 @@ test('voter page supports adding voters and separates the list by purok and age 
         ->toContain('id="modal-voter-registration"')
         ->toContain('id="voter-registry-tbody"');
     expect($adminScript)
-        ->toContain('fetch(`/admin/voter-registrations?${query}`')
-        ->toContain('window.location.href = `/admin/voter-registrations-export?${query}`')
+        ->toContain('fetch(`/staff/voter-registrations?${query}`')
+        ->toContain('window.location.href = `/staff/voter-registrations-export?${query}`')
         ->toContain("query.set('eligibility', voterEligibilityFilter)")
         ->toContain("query.set('purok', voterPurokFilter)")
-        ->toContain("fetch('/admin/voter-registrations', {")
+        ->toContain("fetch('/staff/voter-registrations', {")
         ->toContain("method: 'POST'")
         ->toContain('registration.voter_eligibility_label')
         ->toContain("document.getElementById('voter-registration-date').value = '';");
@@ -39,7 +39,7 @@ test('purok selector and demographics load from the authenticated database api',
     $adminScript = file_get_contents(dirname(__DIR__, 2).'/public/js/admin.js');
 
     expect($adminScript)
-        ->toContain("fetch('/admin/puroks'")
+        ->toContain("fetch('/staff/puroks'")
         ->toContain('PUROK_DATA.splice(0, PUROK_DATA.length')
         ->toContain('DEMOGRAPHIC_SUMMARY = payload.demographics')
         ->toContain('await loadPuroks();');

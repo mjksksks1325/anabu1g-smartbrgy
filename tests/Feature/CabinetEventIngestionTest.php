@@ -7,7 +7,7 @@ use App\Models\User;
 
 function mappedMovementEmployee(string $rpiEmployeeId = 'EMP001', array $userAttributes = [], array $accessAttributes = []): User
 {
-    $employee = User::factory()->create(array_merge(['role' => 'staff'], $userAttributes));
+    $employee = User::factory()->assignedOperations()->create(array_merge(['role' => 'staff'], $userAttributes));
     EmployeeCabinetAccess::factory()->create(array_merge([
         'user_id' => $employee->id,
         'rpi_employee_id' => $rpiEmployeeId,
@@ -48,7 +48,7 @@ it('records a mapped employee removal without a Laravel user ID or folder RFID t
     ]);
     expect($cabinet->fresh()->connectionStatus())->toBe('online');
     expect($cabinet->fresh()->last_seen_at)->not->toBeNull();
-    $this->actingAs($employee)->get(route('admin.rfid-files.index'))->assertSee('Budget Folder');
+    $this->actingAs($employee)->get(route('staff.rfid-files.index'))->assertSee('Budget Folder');
 
     $this->withHeader('X-Device-Token', 'local-device-token')
         ->postJson(route('api.iot.cabinets.movements', $cabinet), $payload)
@@ -142,7 +142,7 @@ it('rejects mapped users without active authorized effective cabinet access', fu
 it('rejects numeric employee IDs and client-supplied names instead of trusting them', function () {
     $cabinet = CabinetDevice::factory()->create(['api_token_hash' => hash('sha256', 'device-token')]);
     $employee = mappedMovementEmployee();
-    $otherEmployee = User::factory()->create(['role' => 'staff']);
+    $otherEmployee = User::factory()->assignedOperations()->create(['role' => 'staff']);
 
     $this->withHeader('X-Device-Token', 'device-token')
         ->postJson(route('api.iot.cabinets.movements', $cabinet), cabinetMovementPayload(['employee_id' => $otherEmployee->id]))

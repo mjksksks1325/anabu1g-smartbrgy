@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Database\Factories\IncidentFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -20,6 +21,18 @@ class Incident extends Model
 {
     public const STATUSES = ['open', 'under_review', 'referred', 'resolved', 'closed', 'pending', 'under_investigation', 'dismissed'];
 
+    public const SUBMISSION_CATEGORIES = [
+        'Disturbance / altercation' => 'Reported disturbance / altercation',
+        'Noise Complaint' => 'Noise complaint',
+        'Theft' => 'Reported theft',
+        'Vandalism' => 'Reported property damage',
+        'Accident' => 'Accident',
+        'Suspicious activity' => 'Reported suspicious activity',
+        'Property Dispute' => 'Reported property dispute',
+        'Physical Assault' => 'Reported physical assault',
+        'Iba pa' => 'Other ordinary incident (Iba pa)',
+    ];
+
     /** @use HasFactory<IncidentFactory> */
     use HasFactory, SoftDeletes;
 
@@ -27,8 +40,41 @@ class Incident extends Model
         'incident_type', 'occurred_at', 'location', 'complainant_name',
         'respondent_name', 'severity', 'details', 'status',
         'resolution_notes', 'attachments', 'reported_by', 'assigned_to',
-        'resolved_at', 'complainant_resident_id', 'respondent_resident_id', 'updated_by', 'remarks',
+        'is_sensitive', 'resolved_at', 'complainant_resident_id', 'respondent_resident_id', 'updated_by', 'remarks',
     ];
+
+    /** @return HasMany<BarangayProtectionOrder, $this> */
+    public function protectionOrders(): HasMany
+    {
+        return $this->hasMany(BarangayProtectionOrder::class);
+    }
+
+    public static function sensitiveType(string $type): bool
+    {
+        return preg_match('/vawc|bpo|violence against women|domestic violence/i', $type) === 1;
+    }
+
+    public function isRestricted(): bool
+    {
+        return (bool) $this->is_sensitive || self::sensitiveType($this->incident_type) || $this->protectionOrders()->exists();
+    }
+
+    /** @param Builder<Incident> $query */
+    public function scopeVisibleTo(Builder $query, User $user): void
+    {
+        $restricted = function (Builder $q): void {
+            $q->where('is_sensitive', true)->orWhereRaw("LOWER(incident_type) LIKE '%vawc%'")
+                ->orWhereRaw("LOWER(incident_type) LIKE '%bpo%'")
+                ->orWhereRaw("LOWER(incident_type) LIKE '%violence against women%'")
+                ->orWhereRaw("LOWER(incident_type) LIKE '%domestic violence%'")->orWhereHas('protectionOrders');
+        };
+        if (! $user->hasPermission('vawc.view')) {
+            $query->whereNot($restricted);
+        }
+        if (! $user->hasPermission('incidents.view')) {
+            $query->where($restricted);
+        }
+    }
 
     protected static function booted(): void
     {
@@ -71,6 +117,7 @@ class Incident extends Model
     protected function casts(): array
     {
         return [
+            'is_sensitive' => 'boolean',
             'occurred_at' => 'datetime',
             'resolved_at' => 'datetime',
             'attachments' => 'array',

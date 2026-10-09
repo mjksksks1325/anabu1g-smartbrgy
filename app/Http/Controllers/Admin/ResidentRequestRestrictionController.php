@@ -23,7 +23,7 @@ class ResidentRequestRestrictionController extends Controller
         $data = $request->validate(['resident_id' => ['nullable', 'integer', 'exists:residents,id'], 'search' => ['nullable', 'string', 'max:100'], 'status' => ['nullable', 'in:pending_review,active,lifted,expired']]);
         $checks->expire($data['resident_id'] ?? null);
 
-        return response()->json(ResidentRequestRestriction::query()->with('resident:id,first_name,middle_name,last_name,suffix,resident_number')
+        return response()->json(ResidentRequestRestriction::query()->when(! $request->user()->isSuperAdmin(), fn ($query) => $query->select(['id', 'resident_id', 'affected_document_type', 'status', 'starts_at', 'ends_at', 'reviewed_at', 'next_review_at']))->with('resident:id,first_name,middle_name,last_name,suffix,resident_number')
             ->when($data['resident_id'] ?? null, fn ($q, $id) => $q->where('resident_id', $id))
             ->when($data['status'] ?? null, fn ($q, $status) => $q->where('status', $status))
             ->when($data['search'] ?? null, fn ($q, $term) => $q->whereHas('resident', fn ($r) => $r->where(fn ($r) => $r->where('last_name', 'like', '%'.$term.'%')->orWhere('first_name', 'like', '%'.$term.'%')->orWhere('resident_number', 'like', '%'.$term.'%'))))

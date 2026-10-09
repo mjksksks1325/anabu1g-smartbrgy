@@ -41,7 +41,10 @@ class HouseholdController extends Controller
 
     public function store(Request $request, ManageHouseholds $households): JsonResponse
     {
-        Gate::authorize('create', Resident::class);
+        Gate::authorize('households.create');
+        if ($request->filled('members')) {
+            Gate::authorize('households.update');
+        }
         $validated = $request->validate($this->addressRules() + [
             'household_number' => ['nullable', 'string', 'max:100', Rule::unique('households', 'household_number')],
             'household_head_resident_id' => ['required_with:members', 'nullable', 'integer', Rule::exists('residents', 'id')->whereNull('deleted_at')->where('status', 'active')],
@@ -63,7 +66,7 @@ class HouseholdController extends Controller
 
     public function update(Request $request, Household $household, ManageHouseholds $households): JsonResponse
     {
-        Gate::authorize('create', Resident::class);
+        Gate::authorize('households.update');
         $validated = $request->validate($this->addressRules() + [
             'household_number' => ['prohibited'],
             'household_head_resident_id' => ['sometimes', 'nullable', 'integer', Rule::exists('residents', 'id')->whereNull('deleted_at')->where('status', 'active')],
@@ -74,7 +77,7 @@ class HouseholdController extends Controller
 
     public function member(Request $request, Household $household, Resident $resident, ManageHouseholds $households): JsonResponse
     {
-        Gate::authorize('update', $resident);
+        Gate::authorize('households.update');
         $validated = $request->validate([
             'relationship_to_household_head' => ['nullable', 'string', 'max:100'],
             'is_household_head' => ['sometimes', 'boolean'],
@@ -86,7 +89,7 @@ class HouseholdController extends Controller
 
     public function removeMember(Household $household, Resident $resident, ManageHouseholds $households): JsonResponse
     {
-        Gate::authorize('update', $resident);
+        Gate::authorize('households.remove');
         $households->remove($household, $resident);
 
         return response()->json(['message' => 'Resident removed from household.', 'household' => $household->refresh()->details()]);

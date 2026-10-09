@@ -174,11 +174,11 @@ test('portal requests store an uploaded valid ID', function () {
     Storage::disk('local')->assertExists($documentRequest->private_attachment_path);
     expect($documentRequest->getRawOriginal('attachment_path'))->toBeNull();
     expect($documentRequest->toArray())->not->toHaveKey('private_attachment_path');
-    $url = route('admin.document-requests.attachment', $documentRequest);
+    $url = route('staff.document-requests.attachment', $documentRequest);
     expect($documentRequest->attachment_path)->toBe($url);
-    $this->get($url)->assertForbidden();
-    $this->actingAs(User::factory()->create(['role' => 'viewer']))->get($url)->assertForbidden();
-    $response = $this->actingAs(User::factory()->create(['role' => 'staff']))->get($url)->assertOk();
+    $this->get($url)->assertRedirect(route('login'));
+    $this->actingAs(User::factory()->assignedOperations()->create(['role' => 'viewer']), 'web')->get($url)->assertForbidden();
+    $response = $this->actingAs(User::factory()->assignedOperations()->create(['role' => 'staff']), 'web')->get($url)->assertOk();
     expect($response->headers->get('Cache-Control'))->toContain('no-store');
 });
 

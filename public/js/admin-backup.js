@@ -3126,7 +3126,7 @@ function openDocumentRequestModal(
     }
     const form = document.getElementById('document-request-form');
 
-    form.action = `/admin/document-requests/${id}/status`;
+    form.action = `/staff/document-requests/${id}/status`;
 
     openModal('modal-document-request');
 }
@@ -3141,7 +3141,7 @@ function updateRequestStage(id, status) {
 
     const form = document.createElement('form');
     form.method = 'POST';
-    form.action = `/admin/document-requests/${id}/status`;
+    form.action = `/staff/document-requests/${id}/status`;
 
     form.innerHTML = `
         <input type="hidden" name="_token" value="${token}">

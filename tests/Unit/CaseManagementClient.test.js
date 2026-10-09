@@ -40,7 +40,7 @@ test('case history escapes narrative and a slower previous case does not replace
   const second = context.loadCaseHistory(2);
   requests[1].resolve({ remarks: '<script>latest notes</script>', history: [], restrictions: [] });
   await new Promise(resolve => setImmediate(resolve));
-  const bpo = requests.find(request => request.url.startsWith('/admin/protection-orders?'));
+  const bpo = requests.find(request => request.url.startsWith('/staff/protection-orders?'));
   bpo.resolve({ data: [], last_page: 1 });
   await second;
   requests[0].resolve({ remarks: 'Wrong case', history: [], restrictions: [] });
@@ -49,13 +49,39 @@ test('case history escapes narrative and a slower previous case does not replace
   assert.ok(!field('incident-case-history').innerHTML.includes('Wrong case'));
 });
 
+test('case history shows Philippine time and readable status changes without raw separators', async () => {
+  const { context, field } = caseClient(async url => url.startsWith('/staff/incidents/') ? {
+    history: [{ created_at: '2026-10-09T08:55:56.000000Z', actor: '<img src=x>', previous_status: null, status: 'under_review' }],
+    restrictions: [{ id: 2, affected_document_type: '<script>test</script>', status: 'active' }],
+  } : { data: [], last_page: 1 });
+  await context.loadCaseHistory(1);
+  const html = field('incident-case-history').innerHTML;
+  assert.match(html, /Oct 9, 2026, 4:55 PM \(PHT\)/);
+  assert.match(html, /datetime="2026-10-09T08:55:56.000Z"/);
+  assert.match(html, /New <span aria-label="changed to">&rarr;<\/span> Under Review/);
+  assert.match(html, /&lt;img src=x&gt;/);
+  assert.match(html, /Restriction #2: &lt;script&gt;test&lt;\/script&gt;/);
+  assert.ok(!html.includes(' ? '));
+  assert.ok(!html.includes('<img'));
+});
+
+test('missing case history and malformed timestamps have understandable fallbacks', async () => {
+  const { context, field } = caseClient(async url => url.startsWith('/staff/incidents/') ? { history: [] } : { data: [], last_page: 1 });
+  await context.loadCaseHistory(1);
+  assert.match(field('incident-case-history').innerHTML, /No case history yet/);
+  const html = context.renderCaseHistoryEvent({ created_at: 'invalid', status: 'open' });
+  assert.match(html, /Date unavailable/);
+  assert.match(html, /System/);
+  assert.ok(!html.includes('Invalid Date'));
+});
+
 test('restriction review disables duplicate actions and uses the authorized review endpoint', async () => {
   let requests = 0;
   let release;
   const { context } = caseClient(async (url, method) => {
     if (method === 'POST') {
       requests++;
-      assert.equal(url, '/admin/request-restrictions/7/review');
+      assert.equal(url, '/staff/request-restrictions/7/review');
       await new Promise(resolve => { release = resolve; });
       return { message: 'Reviewed restriction activated.' };
     }
@@ -87,4 +113,39 @@ test('incident filters send server-side category date and assignment criteria', 
   assert.equal(params.get('date_to'), '2026-10-04');
   assert.equal(params.get('assigned_to'), '7');
   assert.equal(params.get('page'), '2');
+});
+
+test('ordinary staff creation omits restricted flags while authorized restricted creation and editing retain them', async () => {
+  for (const [id, allowed, checkbox, expected] of [['', false, null, null], ['', false, { checked: false }, null], ['', true, { checked: true }, '1'], ['1', false, { checked: false }, '0']]) {
+    let payload;
+    const context = vm.createContext({ FormData, incidentCurrentPage: 1,
+      document: { getElementById: name => name === 'inc-edit-id' ? { value: id } : name === 'inc-sensitive' ? checkbox : null, querySelector: () => null },
+      hasStaffPermission: () => allowed, csrfRequestHeaders: () => ({}), closeModal() {}, showToast() {}, loadIncidents() {}, refreshDashboardStats() {},
+      fetch: async (url, options) => { payload = options.body; return { ok: true, json: async () => ({ message: 'Submitted' }) }; },
+    });
+    vm.runInContext(adminSource.slice(adminSource.indexOf('async function saveIncident('), adminSource.indexOf('async function archiveIncident(')), context);
+    await context.saveIncident();
+    assert.equal(payload.get('is_sensitive'), expected);
+  }
+});
+
+test('authorized editing retains a custom submitted category which is absent from the preset list', () => {
+  const category = 'Traffic obstruction <reported>';
+  const fields = new Map();
+  const select = { options: [{ value: 'Noise Complaint' }], value: '', add(option) { this.options.push(option); } };
+  const field = id => {
+    if (id === 'inc-type') return select;
+    if (!fields.has(id)) fields.set(id, { value: '', style: {}, textContent: '', innerHTML: '' });
+    return fields.get(id);
+  };
+  const context = vm.createContext({ INCIDENTS: [{ id: 1, incident_type: category }],
+    document: { getElementById: field, querySelector: () => ({ textContent: '' }) },
+    Option: class { constructor(text, value) { this.text = text; this.value = value; } }, toggleIncidentResolution() {}, openModal() {},
+  });
+  vm.runInContext(adminSource.slice(adminSource.indexOf('function openEditIncident('), adminSource.indexOf('function openAddIncident(')), context);
+  context.openEditIncident(1);
+  assert.equal(select.value, category);
+  assert.equal(select.options[1].text, category);
+  context.openEditIncident(1);
+  assert.equal(select.options.length, 2);
 });

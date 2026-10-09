@@ -16,6 +16,10 @@ function residentClient() {
     };
   }
   const fields = new Map(['f-name', 'f-address', 'f-email', 'f-dob', 'portal-form-error'].map(id => [id, element('Previous resident')]));
+  const password = element('ResidentPassword123!'); password.type = 'password';
+  fields.set('resident-password', password);
+  const passwordToggle = element(); passwordToggle.dataset.passwordToggle = 'resident-password';
+  passwordToggle.setAttribute('aria-pressed', 'false');
   const privateContent = element();
   const submit = element(); submit.textContent = 'Log out';
   const cancel = element();
@@ -46,7 +50,7 @@ function residentClient() {
       getElementById: id => fields.get(id),
       addEventListener: (name, handler) => { documentListeners[name] = handler; },
       querySelector: selector => ({ '[data-resident-logout]': logout, '[data-resident-cancel]': cancel, '[data-menu-toggle]': menuButton, '[data-resident-theme]': theme })[selector] ?? null,
-      querySelectorAll: selector => selector === '[data-resident-form]' ? [form] : selector === '[data-resident-private]' ? [privateContent] : [...fields.values()],
+      querySelectorAll: selector => selector === '[data-password-toggle]' ? [passwordToggle] : selector === '[data-resident-form]' ? [form] : selector === '[data-resident-private]' ? [privateContent] : [...fields.values()],
     },
     window: {
       RESIDENT_PORTAL: { authenticated: true, loginUrl: '/portal/login', identityUrl: '/portal/identity' },
@@ -55,8 +59,9 @@ function residentClient() {
     },
     sessionStorage: { getItem: key => saved.get(key), setItem: (key, value) => saved.set(key, value), removeItem: key => saved.delete(key) },
   });
+  vm.runInContext(readFileSync(new URL('../../public/js/portal-localization.js', import.meta.url), 'utf8'), context);
   vm.runInContext(readFileSync(new URL('../../public/js/resident-account.js', import.meta.url), 'utf8'), context);
-  return { context, fields, privateContent, submit, cancel, logout, form, dialog, listeners, saved, menuButton, theme, bodyClasses, documentListeners };
+  return { context, fields, passwordToggle, privateContent, submit, cancel, logout, form, dialog, listeners, saved, menuButton, theme, bodyClasses, documentListeners };
 }
 
 test('resident identity comes from the authenticated endpoint and is read only', async () => {
@@ -146,4 +151,20 @@ test('the theme button reports its state and remembers the choice', () => {
   theme.listeners.click();
   assert.equal(theme.getAttribute('aria-pressed'), 'true');
   assert.equal(saved.get('smartbrgy_portal_theme'), 'dark');
+});
+
+
+test('resident eye button reveals and hides the same password without replacing its icon', () => {
+  const { fields, passwordToggle } = residentClient();
+  const password = fields.get('resident-password');
+  passwordToggle.listeners.click();
+  assert.equal(password.type, 'text');
+  assert.equal(password.value, 'ResidentPassword123!');
+  assert.equal(passwordToggle.getAttribute('aria-pressed'), 'true');
+  assert.equal(passwordToggle.getAttribute('aria-label'), 'Hide password');
+  assert.equal(passwordToggle.textContent, '');
+  passwordToggle.listeners.click();
+  assert.equal(password.type, 'password');
+  assert.equal(passwordToggle.getAttribute('aria-label'), 'Show password');
+  assert.equal(passwordToggle.getAttribute('aria-pressed'), 'false');
 });

@@ -22,7 +22,7 @@ test('a resident without a photo can upload it from profile into the admin resid
     $this->actingAs($account->fresh(), 'resident')->get(route('portal.profile'))->assertOk()->assertSee('Update Photo')->assertSee(route('portal.profile.photo'));
     $this->get(route('portal.profile.photo'))->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff');
 
-    $this->actingAs(User::factory()->create())->get(route('admin.residents.photo', $account->resident))->assertOk();
+    $this->actingAs(User::factory()->assignedOperations()->create(), 'web')->get(route('staff.residents.photo', $account->resident))->assertOk();
     $this->assertDatabaseHas('residents', ['id' => $account->resident_id, 'photo_path' => $photoPath]);
 });
 
@@ -68,7 +68,7 @@ test('invalid profile uploads preserve the existing resident photo', function (s
 test('guests and staff sessions cannot use resident profile photo endpoints', function (string $condition) {
     Storage::fake('local');
     if ($condition === 'staff') {
-        $this->actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->assignedOperations()->create(), 'web');
     }
     $this->get(route('portal.profile.photo'))->assertRedirect(route('portal.login'));
     $this->post(route('portal.profile.photo.store'), ['photo' => UploadedFile::fake()->image('photo.jpg')])

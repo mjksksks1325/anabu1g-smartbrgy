@@ -14,7 +14,17 @@ class UpdateResidentRequest extends FormRequest
      */
     public function authorize(): bool
     {
+        if ($this->has('new_household') && ! ($this->user()?->hasPermission('households.create') ?? false)) {
+            return false;
+        }
         $resident = $this->route('resident');
+        if ($resident instanceof Resident && ! ($this->user()?->hasPermission('households.update') ?? false)) {
+            foreach (['household_id', 'relationship_to_household_head', 'is_household_head'] as $field) {
+                if ($this->has($field) && (string) $this->input($field) !== (string) $resident->getAttribute($field)) {
+                    return false;
+                }
+            }
+        }
 
         return $resident instanceof Resident
             && ($this->user()?->can('update', $resident) ?? false);

@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\User;
+use App\StaffPermissions;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Support\Facades\Date;
@@ -29,7 +30,12 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
 
-        Gate::define('access-employee-settings', fn (User $user): bool => ! $user->isResidentAccount());
+        Gate::define('access-personnel', fn (User $user): bool => $user->is_active && $user->resident_id === null && in_array($user->role, ['admin', 'staff', 'viewer'], true));
+        Gate::define('operate-personnel', fn (User $user): bool => $user->canLoginAsPersonnel());
+        Gate::define('access-employee-settings', fn (User $user): bool => $user->is_active && $user->resident_id === null && in_array($user->role, ['admin', 'staff', 'viewer'], true));
+        foreach (StaffPermissions::keys() as $permission) {
+            Gate::define($permission, fn (User $user): bool => $user->hasPermission($permission));
+        }
         Gate::define('view-administration', fn (User $user): bool => $user->isSuperAdmin());
         Gate::define('view-rfid-files', fn (User $user): bool => $user->canTrackRfidFiles());
 

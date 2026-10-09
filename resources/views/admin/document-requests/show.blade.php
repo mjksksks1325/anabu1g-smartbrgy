@@ -11,7 +11,7 @@
             <p>Review and manage the resident's document request</p>
         </div>
 
-        <a href="{{ route('admin.dashboard') }}"
+        <a href="{{ route(App\StaffPermissions::landing(auth()->user())) }}"
            class="btn btn-outline"
            style="text-decoration:none;">
             ← Back to Dashboard
@@ -110,6 +110,7 @@
         </div>
     </div>
 
+    @can('documents.process')
     {{-- Status Management --}}
     <div class="card">
 
@@ -123,7 +124,7 @@
         </div>
 
         <form method="POST"
-              action="{{ route('admin.document-requests.update-status', $documentRequest) }}"
+              action="{{ route('staff.document-requests.update-status', $documentRequest) }}"
               style="padding:18px;">
 
             @csrf
@@ -182,7 +183,7 @@
             </div>
             <div style="display:flex; justify-content:flex-end; gap:10px;">
 
-                <a href="{{ route('admin.dashboard') }}"
+                <a href="{{ route(App\StaffPermissions::landing(auth()->user())) }}"
                    class="btn btn-outline"
                    style="text-decoration:none;">
                     Cancel
@@ -199,4 +200,5 @@
     </div>
 
 </div>
+@endcan
 @endsection

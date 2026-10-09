@@ -12,6 +12,7 @@ use App\Models\ResidentRequestRestriction;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
@@ -48,7 +49,7 @@ class IncidentController extends Controller
             'severity' => ['nullable', 'in:low,medium,high'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
-        $query = Incident::query()
+        $query = Incident::query()->visibleTo($request->user())
             ->with(['reporter:id,name', 'assignee:id,name', 'complainant', 'respondent'])
             ->when($validated['incident_type'] ?? null, fn (Builder $query, string $type) => $query->where('incident_type', $type))
             ->when($validated['date_from'] ?? null, fn (Builder $query, string $date) => $query->whereDate('occurred_at', '>=', $date))
@@ -77,9 +78,9 @@ class IncidentController extends Controller
             ...$incidents->toArray(),
             'data' => $incidents->getCollection()->map(fn (Incident $incident): array => $this->incidentData($incident)),
             'summary' => [
-                'pending' => Incident::query()->whereIn('status', ['open', 'under_review', 'referred', 'pending', 'under_investigation'])->count(),
-                'resolved_this_month' => Incident::query()->where('status', 'resolved')->whereBetween('resolved_at', [now()->startOfMonth(), now()->endOfMonth()])->count(),
-                'high' => Incident::query()->where('severity', 'high')->whereNotIn('status', ['resolved', 'closed', 'dismissed'])->count(),
+                'pending' => Incident::query()->visibleTo($request->user())->whereIn('status', ['open', 'under_review', 'referred', 'pending', 'under_investigation'])->count(),
+                'resolved_this_month' => Incident::query()->visibleTo($request->user())->where('status', 'resolved')->whereBetween('resolved_at', [now()->startOfMonth(), now()->endOfMonth()])->count(),
+                'high' => Incident::query()->visibleTo($request->user())->where('severity', 'high')->whereNotIn('status', ['resolved', 'closed', 'dismissed'])->count(),
             ],
         ]);
     }
@@ -87,14 +88,16 @@ class IncidentController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(StoreIncidentRequest $request): JsonResponse
+    public function store(StoreIncidentRequest $request): JsonResponse|RedirectResponse
     {
         $validated = $request->validated();
+        abort_unless($request->user()->hasPermission(($request->boolean('is_sensitive') || Incident::sensitiveType($validated['incident_type'])) ? 'vawc.submit' : 'incidents.submit'), 403);
         $attachments = $this->storeAttachments($request);
 
         try {
             $incident = Incident::query()->create([
-                ...$this->partyNames(Arr::except($validated, ['occurred_date', 'occurred_time', 'attachments'])),
+                ...$this->partyNames(Arr::except($validated, ['occurred_date', 'occurred_time', 'attachments', 'incident_type_selection', 'purok', 'immediate_action'])),
+                'details' => $request->reportedDetails(),
                 'occurred_at' => $this->occurredAt($validated),
                 'status' => 'open',
                 'attachments' => $attachments,
@@ -105,6 +108,16 @@ class IncidentController extends Controller
         } catch (\Throwable $exception) {
             $this->deleteStoredAttachments($attachments);
             throw $exception;
+        }
+
+        if (! $request->expectsJson()) {
+            $request->session()->put('staff_incident_confirmation', ['actor_id' => $request->user()->id, 'reference' => $incident->incident_number]);
+
+            return redirect()->route('staff.incidents.index', ['submitted' => 1]);
+        }
+
+        if (! $request->user()->can('view', $incident)) {
+            return response()->json(['message' => 'Incident report submitted.', 'reference' => $incident->incident_number], 201);
         }
 
         return response()->json([
@@ -126,7 +139,7 @@ class IncidentController extends Controller
                 'action' => $event->action, 'previous_status' => $event->previous_status,
                 'status' => $event->status, 'actor' => $event->actor?->name, 'created_at' => $event->created_at,
             ]),
-            'restrictions' => ResidentRequestRestriction::query()->where('incident_id', $incident->id)->get(['id', 'resident_id', 'affected_document_type', 'status', 'starts_at', 'ends_at']),
+            'restrictions' => request()->user()->hasAnyPermission(['eligibility.view', 'documents.view']) ? ResidentRequestRestriction::query()->where('incident_id', $incident->id)->get(['id', 'resident_id', 'affected_document_type', 'status', 'starts_at', 'ends_at']) : [],
         ]);
     }
 
@@ -137,6 +150,10 @@ class IncidentController extends Controller
     {
         $validated = $request->validated();
         $incident = Incident::query()->lockForUpdate()->findOrFail($incident->id);
+        if ($request->boolean('is_sensitive') || Incident::sensitiveType($validated['incident_type']) || $incident->isRestricted()) {
+            abort_unless($request->user()->hasPermission('vawc.update'), 403);
+            $validated['is_sensitive'] = true;
+        }
         $previousStatus = $incident->status;
         $newAttachments = $this->storeAttachments($request);
         $attachments = [...($incident->attachments ?? []), ...$newAttachments];
@@ -263,6 +280,9 @@ class IncidentController extends Controller
     {
         return [
             'id' => $incident->id,
+            'is_sensitive' => $incident->isRestricted(),
+            'can_update' => request()->user()->can('update', $incident),
+            'can_archive' => request()->user()->can('delete', $incident),
             'complainant_resident_id' => $incident->complainant_resident_id,
             'respondent_resident_id' => $incident->respondent_resident_id,
             'assigned_to' => $incident->assigned_to,
@@ -291,7 +311,7 @@ class IncidentController extends Controller
                 'name' => $attachment['name'],
                 'mime' => $attachment['mime'],
                 'size' => $attachment['size'],
-                'url' => route('admin.incidents.attachments.show', [$incident, $index]),
+                'url' => route('staff.incidents.attachments.show', [$incident, $index]),
             ])->values(),
         ];
     }

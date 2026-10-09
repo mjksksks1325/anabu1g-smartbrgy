@@ -17,6 +17,7 @@ use Illuminate\Support\Str;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
 /**
+ * @property list<string>|null $staff_permissions
  * @property int $id
  * @property string $name
  * @property string $email
@@ -55,14 +56,37 @@ class User extends Authenticatable
         return $this->hasMany(FileMovementEvent::class);
     }
 
+    public function canLoginAsPersonnel(): bool
+    {
+        return $this->is_active && $this->resident_id === null && in_array($this->role, ['admin', 'staff'], true);
+    }
+
     public function isSuperAdmin(): bool
     {
         return $this->role === 'admin' && $this->is_active && $this->is_super_admin && $this->resident_id === null;
     }
 
+    /** @param list<string> $permissions */
+    public function hasAnyPermission(array $permissions): bool
+    {
+        foreach ($permissions as $permission) {
+            if ($this->hasPermission($permission)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function hasPermission(string $permission): bool
+    {
+        return $this->isSuperAdmin() || ($this->canLoginAsPersonnel()
+            && $this->role === 'staff' && in_array($permission, $this->staff_permissions ?? [], true));
+    }
+
     public function canTrackRfidFiles(): bool
     {
-        return $this->is_active && in_array($this->role, ['admin', 'staff', 'viewer'], true) && $this->resident_id === null;
+        return $this->hasPermission('rfid.view');
     }
 
     public function isResidentAccount(): bool
@@ -92,6 +116,7 @@ class User extends Authenticatable
         return [
             'is_active' => 'boolean',
             'is_super_admin' => 'boolean',
+            'staff_permissions' => 'array',
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];

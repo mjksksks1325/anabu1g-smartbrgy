@@ -78,7 +78,7 @@
       <div class="topbar-chip">📡 RFID: Active</div>
       <div class="topbar-chip notif-badge-wrap" onclick="toggleNotifPanel()" id="notif-chip" style="cursor:pointer;position:relative;">🔔 Notifications <span class="notif-count" id="notif-count">3</span></div>
       <div class="topbar-chip" id="clock-display">--:--:--</div>
-      <div class="topbar-avatar" onclick="doLogout()" title="Mag-logout">JC</div>
+      <span class="topbar-avatar">JC</span>
     </div>
   </div>
 
@@ -1387,7 +1387,7 @@
         </div>
 
         <form method="POST"
-              action="{{ route('admin.issued-certificates.store') }}">
+              action="{{ route('staff.issued-certificates.store') }}">
 
             @csrf
 

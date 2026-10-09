@@ -4,11 +4,11 @@ use App\Models\Resident;
 use App\Models\User;
 
 test('guests cannot read the purok and demographic feed', function () {
-    $this->getJson(route('admin.puroks.index'))->assertUnauthorized();
+    $this->getJson(route('staff.puroks.index'))->assertUnauthorized();
 });
 
 test('staff receive database backed puroks and accurate demographics', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->assignedOperations()->create();
     Resident::factory()->create([
         'purok' => 'Purok 1 - Sampaguita',
         'gender' => 'Male',
@@ -23,7 +23,7 @@ test('staff receive database backed puroks and accurate demographics', function 
     ]);
 
     $this->actingAs($user)
-        ->getJson(route('admin.puroks.index'))
+        ->getJson(route('staff.puroks.index'))
         ->assertOk()
         ->assertJsonPath('data.0.name', 'Purok 1 - Sampaguita')
         ->assertJsonPath('data.0.residents_count', 1)
@@ -35,10 +35,10 @@ test('staff receive database backed puroks and accurate demographics', function 
 });
 
 test('staff can add a unique purok used by resident registration', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->assignedOperations()->create();
 
     $this->actingAs($user)
-        ->postJson(route('admin.puroks.store'), [
+        ->postJson(route('staff.puroks.store'), [
             'name' => '  Purok 6   -  Maharlika ',
             'color' => '#0EA5E9',
         ])
@@ -53,10 +53,10 @@ test('staff can add a unique purok used by resident registration', function () {
 });
 
 test('purok creation rejects duplicate names and unsafe colors', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->assignedOperations()->create();
 
     $this->actingAs($user)
-        ->postJson(route('admin.puroks.store'), [
+        ->postJson(route('staff.puroks.store'), [
             'name' => 'Purok 1 - Sampaguita',
             'color' => 'javascript:alert(1)',
         ])

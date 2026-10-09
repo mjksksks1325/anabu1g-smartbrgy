@@ -31,11 +31,11 @@ function votersCsvRow(Resident $resident, string $number = '1234-5678-9012'): ar
 
 test('personnel can import voters linked by exact resident numbers with encryption and audit', function () {
     $this->travelTo('2026-10-04');
-    $staff = User::factory()->create();
+    $staff = User::factory()->assignedOperations()->create();
     $first = Resident::factory()->create(['date_of_birth' => '1990-01-01']);
     $second = Resident::factory()->create(['date_of_birth' => '1992-01-01']);
 
-    $this->actingAs($staff)->post(route('admin.voter-registrations.import'), [
+    $this->actingAs($staff)->post(route('staff.voter-registrations.import'), [
         'file' => votersCsvFile([votersCsvRow($first), votersCsvRow($second, '9999-8888-7777')], true),
     ], ['Accept' => 'application/json'])->assertCreated()->assertJsonPath('imported', 2)
         ->assertJsonMissing(['comelec_voter_number' => '1234-5678-9012']);
@@ -50,7 +50,7 @@ test('personnel can import voters linked by exact resident numbers with encrypti
 
 test('a bad voter csv row rolls back every imported record and its audit', function (string $problem) {
     $this->travelTo('2026-10-04');
-    $staff = User::factory()->create();
+    $staff = User::factory()->assignedOperations()->create();
     $first = Resident::factory()->create(['date_of_birth' => '1990-01-01']);
     $second = Resident::factory()->create(['date_of_birth' => '1992-01-01']);
     $row = votersCsvRow($second, '9999-8888-7777');
@@ -72,7 +72,7 @@ test('a bad voter csv row rolls back every imported record and its audit', funct
         $second->delete();
     }
 
-    $this->actingAs($staff)->post(route('admin.voter-registrations.import'), [
+    $this->actingAs($staff)->post(route('staff.voter-registrations.import'), [
         'file' => votersCsvFile([votersCsvRow($first), $row]),
     ], ['Accept' => 'application/json'])->assertUnprocessable()->assertJsonValidationErrors('file')
         ->assertJsonPath('errors.file.0', fn (string $message): bool => str_starts_with($message, 'CSV row 3:'));
@@ -82,11 +82,11 @@ test('a bad voter csv row rolls back every imported record and its audit', funct
 })->with(['unknown', 'duplicate resident', 'duplicate number', 'invalid date', 'future date', 'inactive', 'underage', 'archived']);
 
 test('voter csv import does not overwrite existing voters', function () {
-    $staff = User::factory()->create();
+    $staff = User::factory()->assignedOperations()->create();
     $resident = Resident::factory()->create(['date_of_birth' => '1990-01-01']);
     $existing = VoterRegistration::factory()->for($resident)->create(['precinct_number' => 'OLD']);
 
-    $this->actingAs($staff)->post(route('admin.voter-registrations.import'), [
+    $this->actingAs($staff)->post(route('staff.voter-registrations.import'), [
         'file' => votersCsvFile([votersCsvRow($resident)]),
     ], ['Accept' => 'application/json'])->assertUnprocessable()->assertJsonValidationErrors('file');
 
@@ -95,9 +95,9 @@ test('voter csv import does not overwrite existing voters', function () {
 });
 
 test('voter import rejects invalid files and missing headers', function (string $contents) {
-    $staff = User::factory()->create();
+    $staff = User::factory()->assignedOperations()->create();
 
-    $this->actingAs($staff)->post(route('admin.voter-registrations.import'), [
+    $this->actingAs($staff)->post(route('staff.voter-registrations.import'), [
         'file' => UploadedFile::fake()->createWithContent('voters.csv', $contents),
     ], ['Accept' => 'application/json'])->assertUnprocessable()->assertJsonValidationErrors('file');
 
@@ -105,25 +105,25 @@ test('voter import rejects invalid files and missing headers', function (string 
 })->with(['', 'name,birthday', implode(',', ReadVotersCsv::HEADERS)."\n", implode(',', ReadVotersCsv::HEADERS)."\na,b"]);
 
 test('voter import refuses oversized files and more than 500 rows', function () {
-    $staff = User::factory()->create();
-    $this->actingAs($staff)->post(route('admin.voter-registrations.import'), [
+    $staff = User::factory()->assignedOperations()->create();
+    $this->actingAs($staff)->post(route('staff.voter-registrations.import'), [
         'file' => UploadedFile::fake()->create('voters.csv', 5121, 'text/csv'),
     ], ['Accept' => 'application/json'])->assertUnprocessable()->assertJsonValidationErrors('file');
 
-    $this->post(route('admin.voter-registrations.import'), [
+    $this->post(route('staff.voter-registrations.import'), [
         'file' => votersCsvFile(array_fill(0, 501, ['RES-1', '123456', 'P1', '1', '2026-05-12'])),
     ], ['Accept' => 'application/json'])->assertUnprocessable()->assertJsonValidationErrors('file');
     $this->assertDatabaseCount('voter_registrations', 0);
 });
 
 test('only personnel can download the voter import template or import voters', function () {
-    $this->getJson(route('admin.voter-registrations.template'))->assertUnauthorized();
-    $this->postJson(route('admin.voter-registrations.import'))->assertUnauthorized();
+    $this->getJson(route('staff.voter-registrations.template'))->assertUnauthorized();
+    $this->postJson(route('staff.voter-registrations.import'))->assertUnauthorized();
     $resident = User::factory()->resident()->create();
-    $this->actingAs($resident)->getJson(route('admin.voter-registrations.template'))->assertForbidden();
-    $this->postJson(route('admin.voter-registrations.import'))->assertForbidden();
-    $staff = User::factory()->create();
-    $this->actingAs($staff)->get(route('admin.voter-registrations.template'))
+    $this->actingAs($resident)->getJson(route('staff.voter-registrations.template'))->assertForbidden();
+    $this->postJson(route('staff.voter-registrations.import'))->assertForbidden();
+    $staff = User::factory()->assignedOperations()->create();
+    $this->actingAs($staff)->get(route('staff.voter-registrations.template'))
         ->assertOk()->assertHeader('Content-Disposition', 'attachment; filename="voters-import-template.csv"')
         ->assertContent(implode(',', ReadVotersCsv::HEADERS)."\r\n");
 });

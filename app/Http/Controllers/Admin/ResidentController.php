@@ -32,8 +32,10 @@ class ResidentController extends Controller
     {
         Gate::authorize('viewAny', Resident::class);
 
-        $query = $this->residentQuery($request)
-            ->withCount(['documentRequests', 'issuedCertificates']);
+        $query = $this->residentQuery($request);
+        if ($request->user()->hasPermission('documents.view')) {
+            $query->withCount(['documentRequests', 'issuedCertificates']);
+        }
 
         $residents = $query->paginate(min(max($request->integer('per_page', 15), 1), 100));
 
@@ -108,6 +110,15 @@ class ResidentController extends Controller
     {
         Gate::authorize('view', $resident);
 
+        if (! request()->user()->hasPermission('records.view')) {
+            return response()->json([
+                ...$resident->only(['id', 'resident_number', 'first_name', 'middle_name', 'last_name', 'suffix', 'date_of_birth', 'gender', 'civil_status', 'purok', 'address', 'status', 'household_id', 'relationship_to_household_head', 'is_household_head']),
+                'full_name' => $resident->full_name,
+                'age' => $resident->age,
+                'household_information' => $resident->household?->details(),
+            ]);
+        }
+
         $account = $resident->portalAccount()->first();
         $resident->load('household');
         $resident->setAttribute('household_information', $resident->household?->details());
@@ -119,6 +130,10 @@ class ResidentController extends Controller
             'created_at' => $account->created_at?->toDateString(),
             'last_login' => DB::table('administrative_audits')->where('user_id', $account->id)->where('action', 'auth.login')->max('created_at'),
         ] : ['registered' => false]);
+
+        if (! request()->user()->hasPermission('documents.view')) {
+            return response()->json($resident);
+        }
 
         return response()->json($resident
             ->load([
@@ -171,7 +186,7 @@ class ResidentController extends Controller
 
     public function eligibility(Request $request, Resident $resident): JsonResponse
     {
-        Gate::authorize('view', $resident);
+        abort_unless($request->user()->hasAnyPermission(['eligibility.view', 'documents.view']), 403);
         $validated = $request->validate([
             'certificate_type' => ['required', Rule::in(CertificateType::values())],
         ]);
@@ -186,7 +201,7 @@ class ResidentController extends Controller
 
     public function requestRecords(Request $request): JsonResponse
     {
-        Gate::authorize('viewAny', Resident::class);
+        abort_unless($request->user()->hasAnyPermission(['eligibility.view', 'documents.view']), 403);
         $validated = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
             'eligibility' => ['nullable', Rule::in(['eligible', 'ineligible'])],
@@ -228,7 +243,7 @@ class ResidentController extends Controller
 
     public function requestRecordsExport(): StreamedResponse
     {
-        Gate::authorize('viewAny', Resident::class);
+        Gate::authorize('eligibility.export');
 
         return response()->streamDownload(function (): void {
             $output = fopen('php://output', 'w');

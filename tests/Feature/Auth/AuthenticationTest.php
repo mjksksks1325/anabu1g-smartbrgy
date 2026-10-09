@@ -24,7 +24,7 @@ test('users can authenticate using the login screen', function () {
 
     $response
         ->assertSessionHasNoErrors()
-        ->assertRedirect(route('dashboard', absolute: false));
+        ->assertRedirect(route('admin.dashboard'));
 
     $this->assertAuthenticated();
     $this->assertDatabaseHas('administrative_audits', [
@@ -83,7 +83,7 @@ test('users can logout', function () {
 
     $response = $this->actingAs($user)->post(route('logout'));
 
-    $response->assertRedirect(route('home'));
+    $response->assertRedirect(route('login'));
 
     $this->assertGuest();
 });
@@ -94,4 +94,21 @@ test('users can logout through the confirmation dialog request', function () {
     $this->actingAs($user)->postJson(route('logout'))->assertNoContent();
 
     $this->assertGuest();
+});
+
+test('personnel welcome greeting is consumed once after successful login', function () {
+    $user = User::factory()->superAdmin()->create();
+
+    $this->post(route('login.store'), ['email' => $user->email, 'password' => 'password'])
+        ->assertRedirect(route('admin.dashboard'))
+        ->assertSessionHas('personnel_login_greeting', true);
+    $this->get(route('admin.dashboard'))->assertOk()
+        ->assertSee('window.PERSONNEL_LOGIN_GREETING = true;', false)
+        ->assertSessionMissing('personnel_login_greeting');
+
+    foreach (['staff.residents.index', 'staff.voters', 'staff.document-requests.index',
+        'staff.request-eligibility', 'staff.incidents.index', 'admin.dashboard'] as $route) {
+        $this->get(route($route))->assertOk()
+            ->assertSee('window.PERSONNEL_LOGIN_GREETING = false;', false);
+    }
 });

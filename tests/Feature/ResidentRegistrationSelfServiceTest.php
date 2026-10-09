@@ -86,7 +86,7 @@ test('eligible resident receives a bound activation email and creates an account
             && $mail->viewData['activationCode'] === $notification->activationCode
             && in_array('mail', $channels, true);
     });
-    expect($code)->toBeString()->toHaveLength(32);
+    expect($code)->toBeString()->toHaveLength(8)->toMatch('/^[A-Z0-9]{8}$/');
     expect($resident->fresh()->portal_registration_hash)->toBe(hash('sha256', $code));
     expect($resident->fresh()->portal_registration_email)->toBe('jane@example.test');
     $this->assertDatabaseMissing('residents', ['id' => $resident->id, 'portal_registration_email' => 'jane@example.test']);
@@ -107,7 +107,7 @@ test('eligible resident receives a bound activation email and creates an account
 
 test('a resident can restart registration from the code screen without ending a staff session', function () {
     $resident = selfServiceResident();
-    $staff = User::factory()->create(['role' => 'staff']);
+    $staff = User::factory()->assignedOperations()->create(['role' => 'staff']);
     $this->actingAs($staff);
     Notification::fake();
     config()->set('mail.default', 'smtp');
@@ -134,7 +134,7 @@ test('a resident can restart registration from the code screen without ending a 
 
 test('refreshing registration clears the old step without revoking an emailed activation code', function () {
     $resident = selfServiceResident();
-    $staff = User::factory()->create(['role' => 'staff']);
+    $staff = User::factory()->assignedOperations()->create(['role' => 'staff']);
     $this->actingAs($staff);
     Notification::fake();
     config()->set('mail.default', 'smtp');
@@ -279,7 +279,7 @@ test('a mismatched birthday stays on confirmation and can be corrected without r
     $this->post(route('portal.register.name'), ['full_name' => 'Jane A Santos'])->assertRedirect(route('portal.register'));
     $this->from(route('portal.register'))->post(route('portal.register.confirm-record'), ['date_of_birth' => '1990-02-04'])
         ->assertRedirect(route('portal.register'))->assertSessionHasErrors([
-            'date_of_birth' => 'Hindi tugma ang petsa ng kapanganakan sa barangay record. Suriin ang buwan, araw, at taon, o magpatulong sa barangay staff.',
+            'date_of_birth' => 'Your date of birth does not match the barangay record. Check the month, day, and year, or ask barangay staff for help.',
         ]);
     $this->get(route('portal.register'))->assertSee('Kumpirmahin ang details')->assertSee('value="1990-02-04"', false);
     $this->post(route('portal.register.confirm-record'), ['date_of_birth' => '1990-02-03'])
@@ -328,7 +328,7 @@ test('already linked residents and duplicate email addresses cannot receive a se
         $this->get(route('portal.registration.denied'))->assertSee('May online account na')
             ->assertDontSee('Bagong lipat kayo at wala pa ang record');
     } else {
-        User::factory()->create(['email' => 'JANE@example.test']);
+        User::factory()->assignedOperations()->create(['email' => 'JANE@example.test']);
         Notification::fake();
         config()->set('mail.default', 'smtp');
         confirmSelfServiceRecord($this);
@@ -449,8 +449,8 @@ test('staff-issued activation replaces an emailed code without retaining its ema
     $this->post(route('portal.register.send-code'), ['email' => 'jane@example.test'])->assertRedirect(route('portal.register'));
     $oldHash = $resident->fresh()->portal_registration_hash;
 
-    $staff = User::factory()->create(['role' => 'staff']);
-    $this->actingAs($staff)->postJson(route('admin.residents.portal-activation', $resident))->assertOk();
+    $staff = User::factory()->assignedOperations()->create(['role' => 'staff']);
+    $this->actingAs($staff)->postJson(route('staff.residents.portal-activation', $resident))->assertOk();
 
     expect($resident->fresh()->portal_registration_hash)->not->toBe($oldHash)
         ->and($resident->fresh()->portal_registration_email)->toBeNull()

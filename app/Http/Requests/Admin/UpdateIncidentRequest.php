@@ -28,6 +28,7 @@ class UpdateIncidentRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'is_sensitive' => ['sometimes', 'boolean'],
             'incident_type' => ['required', 'string', 'max:100'],
             'occurred_date' => ['required', 'date', 'before_or_equal:today'],
             'occurred_time' => ['nullable', 'date_format:H:i'],

@@ -30,7 +30,7 @@ class ResidentProfilePhotoController extends Controller
         $photo = $request->file('photo');
         $path = $photo->store('resident-photos', 'local');
         if ($path === false) {
-            throw ValidationException::withMessages(['photo' => 'Hindi ma-save ang larawan. Pakisubukan ulit.']);
+            throw ValidationException::withMessages(['photo' => __('Hindi ma-save ang larawan. Pakisubukan ulit.')]);
         }
 
         try {
@@ -50,6 +50,6 @@ class ResidentProfilePhotoController extends Controller
             DB::afterCommit(fn () => Storage::disk('local')->delete($oldPath));
         }
 
-        return redirect()->route('portal.profile')->with('status', 'Na-update na ang resident photo. Ito ang gagamitin sa mga susunod na certificate o clearance.');
+        return redirect()->route('portal.profile')->with('status', __('Na-update na ang resident photo. Ito ang gagamitin sa mga susunod na certificate o clearance.'));
     }
 }

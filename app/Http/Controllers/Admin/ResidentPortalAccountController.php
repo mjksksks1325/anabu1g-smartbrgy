@@ -15,14 +15,14 @@ class ResidentPortalAccountController extends Controller
 {
     public function store(Resident $resident): JsonResponse
     {
-        Gate::authorize('update', $resident);
+        Gate::authorize('records.activate');
 
         return DB::transaction(function () use ($resident): JsonResponse {
             $resident = Resident::query()->lockForUpdate()->findOrFail($resident->id);
             if ($resident->status !== 'active' || $resident->portalAccount()->exists()) {
                 throw ValidationException::withMessages(['account' => 'Only an active resident without an online account can receive an activation code.']);
             }
-            $code = Str::random(32);
+            $code = Str::upper(Str::random(8));
             $resident->portal_registration_hash = hash('sha256', $code);
             $resident->portal_registration_expires_at = now()->addDay();
             $resident->portal_registration_email = null;

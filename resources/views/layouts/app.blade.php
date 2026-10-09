@@ -4,7 +4,7 @@
             <div class="staff-settings-topbar-title"><span>STAFF WORKSPACE</span><strong>{{ request()->routeIs('security.edit') ? 'Account security' : (request()->routeIs('appearance.edit') ? 'Appearance' : 'My profile') }}</strong></div>
             <div class="staff-settings-topbar-actions">
                 <button id="staff-settings-theme-toggle" type="button">Dark Mode</button>
-                <a href="{{ auth()->user()->isSuperAdmin() ? route('admin.smart-cabinet.index') : route('admin.rfid-files.index') }}">IoT status</a>
+                <a href="{{ auth()->user()->isSuperAdmin() ? route('admin.smart-cabinet.index') : route('staff.rfid-files.index') }}">IoT status</a>
                 <span title="{{ auth()->user()->name }}">{{ auth()->user()->initials() }}</span>
             </div>
         </header>

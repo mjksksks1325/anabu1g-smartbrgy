@@ -32,7 +32,9 @@ class AuditLogController extends Controller
                         default => 'Cabinet access event',
                     }
                     : ($event->action === 'auth.login' ? 'Login' : str_replace(['admin.', '-', '.'], ['', ' ', ' / '], $event->action)),
-                'detail' => $event->type === 'cabinet'
+                'detail' => $event->action === 'admin.users.permissions-changed'
+                    ? 'Staff #'.$event->target_user_id.' - Before: '.$event->before_assignments.'; After: '.$event->after_assignments
+                    : ($event->type === 'cabinet'
                     ? implode(' · ', array_filter([
                         'Cabinet: '.$event->cabinet_identifier,
                         $event->user_id ? 'Employee ID: '.$event->user_id : null,
@@ -43,8 +45,12 @@ class AuditLogController extends Controller
                     ]))
                     : ($event->action === 'auth.login'
                         ? 'Successful sign in'
-                        : ($event->action === 'portal.account.registered' ? 'Resident portal account created' : ($event->record ? 'Record ID: '.$event->record : 'Administrative operation'))),
+                        : ($event->action === 'portal.account.registered' ? 'Resident portal account created' : ($event->record ? 'Record ID: '.$event->record : 'Administrative operation')))),
                 'user' => $event->actor,
+                'actor_id' => $event->user_id,
+                'target_staff_id' => $event->target_user_id,
+                'before_assignments' => $event->before_assignments ? json_decode($event->before_assignments, true, 512, JSON_THROW_ON_ERROR) : null,
+                'after_assignments' => $event->after_assignments ? json_decode($event->after_assignments, true, 512, JSON_THROW_ON_ERROR) : null,
                 'date' => ($event->type === 'cabinet' ? Carbon::parse($event->created_at, 'UTC')->setTimezone(config('app.timezone')) : Carbon::parse($event->created_at))->toDateString(),
                 'time' => ($event->type === 'cabinet' ? Carbon::parse($event->created_at, 'UTC')->setTimezone(config('app.timezone')) : Carbon::parse($event->created_at))->format('M d, Y H:i'),
                 'icon' => '•',

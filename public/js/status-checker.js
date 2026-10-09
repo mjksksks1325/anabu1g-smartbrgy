@@ -24,7 +24,7 @@ async function checkStatus() {
     const resultDiv = document.getElementById('status-result');
 
     resultDiv.style.display = 'block';
-    resultDiv.textContent = 'Hinahanap ang request...';
+    portalSetText(resultDiv, 'Hinahanap ang request...');
     setLoading(true);
 
     try {
@@ -45,7 +45,7 @@ async function checkStatus() {
 
         if (!res.ok || data.success !== true) {
             const message = res.status === 404
-                ? `Walang record ng request na may code na ${code}.`
+                ? portalT('Walang record ng request na may code na :code.', { code })
                 : res.status === 429
                     ? 'Masyadong maraming pagsubok. Maghintay ng isang minuto bago subukan muli.'
                     : res.status === 401
@@ -53,7 +53,7 @@ async function checkStatus() {
                     : res.status === 403
                         ? 'Hindi magamit ng account ang online services. Magpatulong sa Barangay Hall.'
                     : 'Hindi makuha ang status ngayon. Subukan muli mamaya.';
-            resultDiv.innerHTML = `<div class="alert alert-red">${escapeStatusText(message)}</div>`;
+            portalSetHtml(resultDiv, `<div class="alert alert-red">${portalHtml(portalMessage(message).source, portalMessage(message).replacements)}</div>`);
             return;
         }
 
@@ -67,35 +67,35 @@ async function checkStatus() {
         };
         const [label, description, statusClass] = statusMap[data.status] || [data.status, '', ''];
 
-        resultDiv.innerHTML = `
+        portalSetHtml(resultDiv, `
             <div class="request-item">
                 <div class="request-item-head">
                     <div>
-                        <h3>${escapeStatusText(data.document_type)}</h3>
+                        <h3>${portalHtml(data.document_type)}</h3>
                         <p class="request-meta"><span class="reference">${escapeStatusText(data.reference_code)}</span></p>
                     </div>
-                    <span class="status ${statusClass}">${escapeStatusText(label)}</span>
+                    <span class="status ${statusClass}">${portalHtml(label)}</span>
                 </div>
-                ${description ? `<p class="request-status-note">${escapeStatusText(description)}</p>` : ''}
+                ${description ? `<p class="request-status-note">${portalHtml(description)}</p>` : ''}
                 ${
                     data.rejection_reason
-                        ? `<div class="request-callout request-callout-rejected"><strong>Dahilan</strong>${escapeStatusText(data.rejection_reason)}</div>`
+                        ? `<div class="request-callout request-callout-rejected"><strong>${portalHtml('Dahilan')}</strong>${escapeStatusText(data.rejection_reason)}</div>`
                         : ''
                 }
                 ${
                     data.remarks
-                        ? `<div class="request-callout request-callout-remarks"><strong>Paalala mula sa barangay</strong>${escapeStatusText(data.remarks)}</div>`
+                        ? `<div class="request-callout request-callout-remarks"><strong>${portalHtml('Paalala mula sa barangay')}</strong>${escapeStatusText(data.remarks)}</div>`
                         : ''
                 }
             </div>
-        `;
+        `);
 
     } catch (error) {
         if (generation !== null && generation !== residentIdentityGeneration) return;
         console.error(error);
 
         resultDiv.style.display = 'block';
-        resultDiv.innerHTML = '<div class="alert alert-red">Hindi ma-check ang request ngayon. Subukan ulit mamaya.</div>';
+        portalSetHtml(resultDiv, `<div class="alert alert-red">${portalHtml('Hindi ma-check ang request ngayon. Subukan ulit mamaya.')}</div>`);
     } finally {
         setLoading(false);
     }

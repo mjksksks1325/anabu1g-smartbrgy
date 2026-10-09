@@ -49,7 +49,7 @@ function portal() {
     sessionStorage: { setItem: (key, value) => saved.set(key, value), getItem: key => saved.get(key), removeItem: key => saved.delete(key) },
     setTimeout() {}, clearTimeout() {},
   });
-  for (const file of ['portal-form.js', 'portal-session.js', 'attachments.js', 'portal-ui.js', 'document-request.js', 'status-checker.js']) {
+  for (const file of ['portal-localization.js', 'portal-form.js', 'portal-session.js', 'attachments.js', 'portal-ui.js', 'document-request.js', 'status-checker.js']) {
     vm.runInContext(readFileSync(new URL('../../public/js/' + file, import.meta.url), 'utf8'), context);
   }
   context.messages = [];

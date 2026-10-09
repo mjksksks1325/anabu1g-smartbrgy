@@ -5,12 +5,12 @@ use App\Models\IssuedCertificate;
 use App\Models\User;
 
 test('guests receive 401 from the live document request feed', function () {
-    $this->getJson(route('admin.document-requests.live'))
+    $this->getJson(route('staff.document-requests.live'))
         ->assertUnauthorized();
 });
 
 test('authenticated users receive all available request detail fields', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->assignedOperations()->create();
 
     $documentRequest = DocumentRequest::query()->create([
         'reference_code' => 'REQ-2026-DETAIL',
@@ -25,7 +25,7 @@ test('authenticated users receive all available request detail fields', function
     ]);
 
     $this->actingAs($user)
-        ->getJson(route('admin.document-requests.live'))
+        ->getJson(route('staff.document-requests.live'))
         ->assertOk()
         ->assertJsonFragment([
             'id' => $documentRequest->id,
@@ -44,7 +44,7 @@ test('authenticated users receive all available request detail fields', function
 });
 
 test('requests cannot be marked released without issuing a certificate', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->assignedOperations()->create();
     $documentRequest = DocumentRequest::query()->create([
         'reference_code' => 'REQ-2026-NOBYPASS',
         'document_type' => 'Barangay Clearance',
@@ -54,7 +54,7 @@ test('requests cannot be marked released without issuing a certificate', functio
     ]);
 
     $this->actingAs($user)
-        ->patchJson(route('admin.document-requests.update-status', $documentRequest), [
+        ->patchJson(route('staff.document-requests.update-status', $documentRequest), [
             'status' => 'released',
         ])
         ->assertUnprocessable()
@@ -64,7 +64,7 @@ test('requests cannot be marked released without issuing a certificate', functio
 });
 
 test('request status is locked after its certificate has been issued', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->assignedOperations()->create();
     $documentRequest = DocumentRequest::query()->create([
         'reference_code' => 'REQ-2026-LOCKED',
         'document_type' => 'Barangay Clearance',
@@ -83,7 +83,7 @@ test('request status is locked after its certificate has been issued', function 
     ]);
 
     $this->actingAs($user)
-        ->patchJson(route('admin.document-requests.update-status', $documentRequest), [
+        ->patchJson(route('staff.document-requests.update-status', $documentRequest), [
             'status' => 'processing',
         ])
         ->assertConflict()
@@ -93,7 +93,7 @@ test('request status is locked after its certificate has been issued', function 
 });
 
 test('rejecting an online request requires a meaningful reason', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->assignedOperations()->create();
     $documentRequest = DocumentRequest::query()->create([
         'reference_code' => 'REQ-2026-REJECT-REASON',
         'document_type' => 'Barangay Clearance',
@@ -103,7 +103,7 @@ test('rejecting an online request requires a meaningful reason', function () {
     ]);
 
     $this->actingAs($user)
-        ->patchJson(route('admin.document-requests.update-status', $documentRequest), [
+        ->patchJson(route('staff.document-requests.update-status', $documentRequest), [
             'status' => 'rejected',
             'rejection_reason' => 'Too short',
         ])
@@ -114,7 +114,7 @@ test('rejecting an online request requires a meaningful reason', function () {
 });
 
 test('rejecting an online request records the reason actor and timestamp', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->assignedOperations()->create();
     $documentRequest = DocumentRequest::query()->create([
         'reference_code' => 'REQ-2026-REJECTED',
         'source' => 'online',
@@ -125,7 +125,7 @@ test('rejecting an online request records the reason actor and timestamp', funct
     ]);
 
     $this->actingAs($user)
-        ->patchJson(route('admin.document-requests.update-status', $documentRequest), [
+        ->patchJson(route('staff.document-requests.update-status', $documentRequest), [
             'status' => 'rejected',
             'rejection_reason' => 'The submitted address does not match the resident record.',
         ])
@@ -140,7 +140,7 @@ test('rejecting an online request records the reason actor and timestamp', funct
 });
 
 test('users without a staff role cannot reject online requests', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->assignedOperations()->create();
     $user->forceFill(['role' => 'viewer'])->save();
     $documentRequest = DocumentRequest::query()->create([
         'reference_code' => 'REQ-2026-FORBIDDEN',
@@ -151,7 +151,7 @@ test('users without a staff role cannot reject online requests', function () {
     ]);
 
     $this->actingAs($user)
-        ->patchJson(route('admin.document-requests.update-status', $documentRequest), [
+        ->patchJson(route('staff.document-requests.update-status', $documentRequest), [
             'status' => 'rejected',
             'rejection_reason' => 'The submitted requirements could not be verified.',
         ])

@@ -7,17 +7,12 @@ use App\Models\User;
 
 class DocumentRequestPolicy
 {
-    private function isStaff(User $user): bool
-    {
-        return in_array($user->role, ['admin', 'staff'], true);
-    }
-
     /**
      * Determine whether the user can view any models.
      */
     public function viewAny(User $user): bool
     {
-        return $this->isStaff($user);
+        return $user->hasPermission('documents.view');
     }
 
     /**
@@ -25,7 +20,7 @@ class DocumentRequestPolicy
      */
     public function view(User $user, DocumentRequest $documentRequest): bool
     {
-        return $this->isStaff($user);
+        return $user->hasPermission('documents.view');
     }
 
     /**
@@ -41,7 +36,7 @@ class DocumentRequestPolicy
      */
     public function update(User $user, DocumentRequest $documentRequest): bool
     {
-        return $this->isStaff($user);
+        return $user->hasPermission('documents.process');
     }
 
     /**

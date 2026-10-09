@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Actions\ImportHouseholdProfiling;
 use App\Actions\ReadHouseholdProfiling;
 use App\Http\Controllers\Controller;
-use App\Models\Resident;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -17,7 +16,7 @@ class HouseholdProfilingImportController extends Controller
 {
     public function preview(Request $request, ReadHouseholdProfiling $reader, ImportHouseholdProfiling $import): JsonResponse
     {
-        Gate::authorize('create', Resident::class);
+        Gate::authorize('records.import');
         $request->validate(['file' => ['required', 'file', 'max:5120', 'extensions:csv,xlsx'], 'purok' => ['nullable', 'string', Rule::exists('puroks', 'name')->where('is_active', true)]]);
         $raw = $reader->read($request->file('file'));
         $mapping = $import->mapping($raw['headers']);
@@ -29,7 +28,7 @@ class HouseholdProfilingImportController extends Controller
 
     public function review(Request $request, ImportHouseholdProfiling $import): JsonResponse
     {
-        Gate::authorize('create', Resident::class);
+        Gate::authorize('records.import');
         [$state, $input] = $this->state($request, $import);
 
         return response()->json($import->preview($state['raw'], $input['mapping'], $input['purok'] ?? null, $input['rows'] ?? []));
@@ -37,7 +36,7 @@ class HouseholdProfilingImportController extends Controller
 
     public function store(Request $request, ImportHouseholdProfiling $import): JsonResponse
     {
-        Gate::authorize('create', Resident::class);
+        Gate::authorize('records.import');
         [$state, $input] = $this->state($request, $import);
         $result = $import->save($import->preview($state['raw'], $input['mapping'], $input['purok'] ?? null, $input['rows'] ?? []));
         $request->session()->forget('household_profiling_import');

@@ -13,7 +13,7 @@ test('portal home shows community content without the document request form', fu
         ->assertSee('images/barangay-hall-anabu-1g.jpg')
         ->assertSee('Mabilis. Malinaw. Maaasahang serbisyo.')
         ->assertSee('Check status')
-        ->assertSee('Government-secured resident portal')
+        ->assertSee('Secure resident portal')
         ->assertSee('GOVPH')
         ->assertSee('css/figma-portal.css')
         ->assertSee('<body class="has-hero-header">', false)
@@ -46,11 +46,11 @@ test('officials navigation is available to guests and residents and marks its cu
 
 test('guest hero status opens resident sign in and signed in status opens request history', function () {
     $this->get(route('home'))
-        ->assertSee('href="'.route('portal.login').'">Check status', false);
+        ->assertSee('href="'.route('portal.login').'"><span data-portal-i18n="Check status">Check status', false);
 
     $this->actingAs(User::factory()->resident()->create(), 'resident')
         ->get(route('home'))
-        ->assertSee('href="'.route('portal.account').'">Check status', false);
+        ->assertSee('href="'.route('portal.account').'"><span data-portal-i18n="Check status">Check status', false);
 });
 
 test('public portal shows community information and usable service links', function () {
@@ -74,7 +74,7 @@ test('public portal shows community information and usable service links', funct
 test('portal home lists confirmed document fees and flags the business clearance fee for confirmation', function () {
     $this->get(route('home'))
         ->assertOk()
-        ->assertSeeInOrder(['Mga dokumento at fee', 'Business Clearance fee: To be confirmed', 'Barangay Clearance', 'PHP 25.00', 'Certificate of Residency', 'PHP 25.00', 'Certificate of Indigency', 'Walang bayad', 'Business Clearance', 'PHP 200.00']);
+        ->assertSeeInOrder(['>Documents and fees</span>', '>Business Clearance fee: To be confirmed</span>', '>Barangay Clearance</span>', '>PHP 25.00</span>', '>Certificate of Residency</span>', '>PHP 25.00</span>', '>Certificate of Indigency</span>', '>Free</span>', '>Business Clearance</span>', '>PHP 200.00</span>'], false);
 });
 
 test('document request page renders the terms when a resident is signed in', function () {
@@ -123,7 +123,7 @@ test('legacy request links redirect to the dedicated request page', function () 
 });
 
 test('request buttons reach resident login while an employee remains authenticated', function (string $role) {
-    $employee = User::factory()->create(['role' => $role]);
+    $employee = User::factory()->assignedOperations()->create(['role' => $role]);
 
     $this->actingAs($employee)->followingRedirects()->get(route('portal.request.create', ['service' => 'BC']))
         ->assertOk()->assertViewIs('portal.login');
@@ -163,7 +163,7 @@ test('ineligible resident cannot open the document request page', function () {
 
 test('authenticated employees can use resident registration without ending their employee session', function () {
     Storage::fake('local');
-    $employee = User::factory()->create(['role' => 'staff']);
+    $employee = User::factory()->assignedOperations()->create(['role' => 'staff']);
     $resident = Resident::factory()->create([
         'portal_registration_hash' => hash('sha256', 'private-test-activation-code'),
         'portal_registration_expires_at' => now()->addDay(),
@@ -194,7 +194,7 @@ test('an authenticated resident stays in the resident portal when opening accoun
 });
 
 test('employee and resident accounts can be authenticated at the same time', function () {
-    $employee = User::factory()->create(['role' => 'admin']);
+    $employee = User::factory()->superAdmin()->create();
     $resident = User::factory()->resident()->create();
 
     $this->actingAs($employee)->post(route('portal.login.store'), [
@@ -204,12 +204,12 @@ test('employee and resident accounts can be authenticated at the same time', fun
 
     $this->assertAuthenticatedAs($employee, 'web');
     $this->assertAuthenticatedAs($resident, 'resident');
-    $this->get(route('admin.dashboard'))->assertOk();
+    $this->get(route('staff.dashboard'))->assertOk();
     $this->get(route('portal.account'))->assertOk();
 });
 
 test('resident logout preserves the employee session', function () {
-    $employee = User::factory()->create(['role' => 'admin']);
+    $employee = User::factory()->superAdmin()->create();
     $resident = User::factory()->resident()->create();
 
     $this->actingAs($employee)->actingAs($resident, 'resident')
@@ -218,16 +218,16 @@ test('resident logout preserves the employee session', function () {
     $this->assertAuthenticatedAs($employee, 'web');
     $this->assertGuest('resident');
     Auth::shouldUse('web');
-    $this->get(route('admin.dashboard'))->assertOk();
+    $this->get(route('staff.dashboard'))->assertOk();
 });
 
 test('employee logout preserves the resident session', function () {
-    $employee = User::factory()->create(['role' => 'admin']);
+    $employee = User::factory()->superAdmin()->create();
     $resident = User::factory()->resident()->create();
 
     $this->actingAs($employee)->actingAs($resident, 'resident');
     Auth::shouldUse('web');
-    $this->post(route('logout'))->assertRedirect(route('home'));
+    $this->post(route('logout'))->assertRedirect(route('login'));
 
     $this->assertGuest('web');
     $this->assertAuthenticatedAs($resident, 'resident');
@@ -235,7 +235,7 @@ test('employee logout preserves the resident session', function () {
 });
 
 test('staff login rejects resident credentials and resident login rejects staff credentials', function () {
-    $employee = User::factory()->create(['role' => 'staff']);
+    $employee = User::factory()->assignedOperations()->create(['role' => 'staff']);
     $resident = User::factory()->resident()->create();
 
     $this->post(route('login.store'), ['email' => $resident->email, 'password' => 'password'])
@@ -248,7 +248,7 @@ test('staff login rejects resident credentials and resident login rejects staff 
 });
 
 test('simultaneous employee access does not widen resident request status access', function () {
-    $employee = User::factory()->create(['role' => 'admin']);
+    $employee = User::factory()->superAdmin()->create();
     $resident = User::factory()->resident()->create();
     $otherResident = Resident::factory()->create();
     $otherRequest = $otherResident->documentRequests()->create([
@@ -264,7 +264,7 @@ test('simultaneous employee access does not widen resident request status access
         ->getJson(route('portal.request.status', $otherRequest->reference_code))->assertNotFound();
 
     Auth::shouldUse('web');
-    $this->get(route('admin.document-requests.show', $otherRequest))
+    $this->get(route('staff.document-requests.show', $otherRequest))
         ->assertOk()->assertSee('REQ-OTHER-RESIDENT');
 });
 

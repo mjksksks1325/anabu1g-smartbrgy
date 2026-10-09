@@ -19,6 +19,6 @@ class Logout
         Session::regenerate();
         Session::regenerateToken();
 
-        return redirect('/');
+        return redirect()->route('login');
     }
 }

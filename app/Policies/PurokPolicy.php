@@ -7,17 +7,12 @@ use App\Models\User;
 
 class PurokPolicy
 {
-    private function isStaff(User $user): bool
-    {
-        return in_array($user->role, ['admin', 'staff'], true);
-    }
-
     /**
      * Determine whether the user can view any models.
      */
     public function viewAny(User $user): bool
     {
-        return $this->isStaff($user);
+        return $user->hasAnyPermission(['demographics.view', 'records.view', 'households.view', 'voters.view', 'documents.view']);
     }
 
     /**
@@ -25,7 +20,7 @@ class PurokPolicy
      */
     public function view(User $user, Purok $purok): bool
     {
-        return $this->isStaff($user);
+        return $user->hasPermission('demographics.view');
     }
 
     /**
@@ -33,7 +28,7 @@ class PurokPolicy
      */
     public function create(User $user): bool
     {
-        return $this->isStaff($user);
+        return $user->hasPermission('records.create');
     }
 
     /**
@@ -41,7 +36,7 @@ class PurokPolicy
      */
     public function update(User $user, Purok $purok): bool
     {
-        return $this->isStaff($user);
+        return $user->isSuperAdmin();
     }
 
     /**
@@ -49,7 +44,7 @@ class PurokPolicy
      */
     public function delete(User $user, Purok $purok): bool
     {
-        return $user->role === 'admin';
+        return $user->isSuperAdmin();
     }
 
     /**
@@ -57,7 +52,7 @@ class PurokPolicy
      */
     public function restore(User $user, Purok $purok): bool
     {
-        return $user->role === 'admin';
+        return $user->isSuperAdmin();
     }
 
     /**

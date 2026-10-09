@@ -18,10 +18,13 @@ class DashboardController extends Controller
      */
     public function __invoke(): JsonResponse
     {
-        Gate::authorize('viewAny', Resident::class);
-        Gate::authorize('viewAny', Incident::class);
+        Gate::authorize('dashboard.view');
+        $user = request()->user();
+        $documents = $user->hasPermission('documents.view');
+        $residents = $user->hasAnyPermission(['records.view', 'demographics.view']);
+        $incidents = $user->hasAnyPermission(['incidents.view', 'vawc.view']);
 
-        $recentRequests = DocumentRequest::query()
+        $recentRequests = $documents ? DocumentRequest::query()
             ->latest()
             ->limit(6)
             ->get(['reference_code', 'document_type', 'status', 'created_at'])
@@ -30,8 +33,8 @@ class DashboardController extends Controller
                 'title' => 'Document request '.str_replace('_', ' ', $documentRequest->status),
                 'detail' => $documentRequest->reference_code.' — '.$documentRequest->document_type,
                 'occurred_at' => $documentRequest->created_at,
-            ]);
-        $recentIncidents = Incident::query()
+            ]) : collect();
+        $recentIncidents = $incidents ? Incident::query()->visibleTo($user)
             ->latest()
             ->limit(6)
             ->get(['incident_number', 'incident_type', 'status', 'created_at'])
@@ -40,21 +43,21 @@ class DashboardController extends Controller
                 'title' => 'Incident '.str_replace('_', ' ', $incident->status),
                 'detail' => $incident->incident_number.' — '.$incident->incident_type,
                 'occurred_at' => $incident->created_at,
-            ]);
+            ]) : collect();
 
         return response()->json([
             'summary' => [
-                'active_residents' => Resident::query()->where('status', 'active')->count(),
-                'issued_certificates' => IssuedCertificate::query()->count(),
-                'pending_requests' => DocumentRequest::query()->whereIn('status', ['pending', 'processing', 'ready_for_release'])->count(),
-                'open_incidents' => Incident::query()->whereIn('status', ['open', 'under_review', 'referred', 'pending', 'under_investigation'])->count(),
+                'active_residents' => $residents ? Resident::query()->where('status', 'active')->count() : null,
+                'issued_certificates' => $documents ? IssuedCertificate::query()->count() : null,
+                'pending_requests' => $documents ? DocumentRequest::query()->whereIn('status', ['pending', 'processing', 'ready_for_release'])->count() : null,
+                'open_incidents' => $incidents ? Incident::query()->visibleTo($user)->whereIn('status', ['open', 'under_review', 'referred', 'pending', 'under_investigation'])->count() : null,
             ],
-            'certificate_requests' => DocumentRequest::query()
+            'certificate_requests' => $documents ? DocumentRequest::query()
                 ->select('document_type')
                 ->selectRaw('COUNT(*) as aggregate')
                 ->groupBy('document_type')
                 ->orderByDesc('aggregate')
-                ->pluck('aggregate', 'document_type'),
+                ->pluck('aggregate', 'document_type') : [],
             'recent_activity' => Collection::make([...$recentRequests, ...$recentIncidents])
                 ->sortByDesc('occurred_at')
                 ->take(6)

@@ -24,13 +24,13 @@ function householdResidentPayload(array $overrides = []): array
 it('keeps existing residents valid without assigning a household', function () {
     $resident = Resident::factory()->create();
 
-    $this->actingAs(User::factory()->create())->getJson(route('admin.residents.show', $resident))
+    $this->actingAs(User::factory()->assignedOperations()->create())->getJson(route('staff.residents.show', $resident))
         ->assertOk()->assertJsonPath('household_id', null)->assertJsonPath('household_information', null)->assertJsonPath('is_household_head', false);
     expect($resident->fresh()->household)->toBeNull();
 });
 
 it('renders household controls inside the existing staff resident dashboard', function () {
-    $this->actingAs(User::factory()->create(['role' => 'staff']))->get(route('admin.dashboard'))
+    $this->actingAs(User::factory()->assignedOperations()->create(['role' => 'staff']))->get(route('staff.dashboard'))
         ->assertOk()
         ->assertSee('id="modal-resident"', false)
         ->assertSee('id="res-household-id"', false)
@@ -57,13 +57,13 @@ it('renders household controls inside the existing staff resident dashboard', fu
 
 it('creates renames and searches households by name while retaining their number and members', function () {
     $head = Resident::factory()->create();
-    $this->actingAs(User::factory()->create(['role' => 'staff']));
-    $response = $this->postJson(route('admin.households.store'), ['household_name' => 'Pamilya Manalac', 'address' => 'Block 1', 'household_head_resident_id' => $head->id])->assertCreated()->assertJsonPath('household.household_name', 'Pamilya Manalac');
+    $this->actingAs(User::factory()->assignedOperations()->create(['role' => 'staff']));
+    $response = $this->postJson(route('staff.households.store'), ['household_name' => 'Pamilya Manalac', 'address' => 'Block 1', 'household_head_resident_id' => $head->id])->assertCreated()->assertJsonPath('household.household_name', 'Pamilya Manalac');
     $id = $response->json('household.id');
     $number = $response->json('household.household_number');
 
-    $this->getJson(route('admin.households.index', ['search' => 'Manalac']))->assertJsonPath('total', 1)->assertJsonPath('data.0.household_name', 'Pamilya Manalac');
-    $this->patchJson(route('admin.households.update', $id), ['household_name' => 'Manalac Family', 'address' => 'Block 1'])->assertOk()->assertJsonPath('household.household_name', 'Manalac Family')->assertJsonPath('household.household_number', $number)->assertJsonPath('household.members.0.id', $head->id);
+    $this->getJson(route('staff.households.index', ['search' => 'Manalac']))->assertJsonPath('total', 1)->assertJsonPath('data.0.household_name', 'Pamilya Manalac');
+    $this->patchJson(route('staff.households.update', $id), ['household_name' => 'Manalac Family', 'address' => 'Block 1'])->assertOk()->assertJsonPath('household.household_name', 'Manalac Family')->assertJsonPath('household.household_number', $number)->assertJsonPath('household.members.0.id', $head->id);
     $this->assertDatabaseHas('households', ['id' => $id, 'household_name' => 'Manalac Family', 'household_number' => $number]);
 });
 
@@ -73,22 +73,22 @@ it('searches family names across pages while keeping results inside the selected
     $second = Household::factory()->create(['household_name' => 'Manalac Family', 'purok_id' => $puroks[0]->id]);
     Household::factory()->create(['household_name' => 'Pamilya Santos', 'purok_id' => $puroks[0]->id]);
     Household::factory()->create(['household_name' => 'Pamilya Manalac', 'purok_id' => $puroks[1]->id]);
-    $this->actingAs(User::factory()->create(['role' => 'staff']));
+    $this->actingAs(User::factory()->assignedOperations()->create(['role' => 'staff']));
     $query = ['search' => 'Manalac', 'purok_id' => $puroks[0]->id, 'per_page' => 1];
 
-    $this->getJson(route('admin.households.index', $query))->assertOk()
+    $this->getJson(route('staff.households.index', $query))->assertOk()
         ->assertJsonPath('total', 2)->assertJsonPath('last_page', 2)->assertJsonPath('data.0.id', $first->id);
-    $this->getJson(route('admin.households.index', [...$query, 'page' => 2]))->assertOk()
+    $this->getJson(route('staff.households.index', [...$query, 'page' => 2]))->assertOk()
         ->assertJsonPath('total', 2)->assertJsonPath('data.0.id', $second->id);
 });
 
 it('rejects oversized household names and allows unnamed existing households to stay valid', function () {
     $household = Household::factory()->create();
-    $this->actingAs(User::factory()->create());
+    $this->actingAs(User::factory()->assignedOperations()->create());
 
-    $this->postJson(route('admin.households.store'), ['household_name' => str_repeat('a', 151), 'address' => 'Block 1'])->assertUnprocessable()->assertJsonValidationErrors('household_name');
-    $this->patchJson(route('admin.households.update', $household), ['household_name' => str_repeat('a', 151), 'address' => 'Block 1'])->assertUnprocessable()->assertJsonValidationErrors('household_name');
-    $this->getJson(route('admin.households.show', $household))->assertOk()->assertJsonPath('household_name', null);
+    $this->postJson(route('staff.households.store'), ['household_name' => str_repeat('a', 151), 'address' => 'Block 1'])->assertUnprocessable()->assertJsonValidationErrors('household_name');
+    $this->patchJson(route('staff.households.update', $household), ['household_name' => str_repeat('a', 151), 'address' => 'Block 1'])->assertUnprocessable()->assertJsonValidationErrors('household_name');
+    $this->getJson(route('staff.households.show', $household))->assertOk()->assertJsonPath('household_name', null);
     $this->assertDatabaseCount('households', 1);
 });
 
@@ -105,10 +105,10 @@ it('adds household fields to a populated database without changing existing resi
 });
 
 it('creates sequential unique household numbers and permits the same address for staff', function () {
-    $this->actingAs(User::factory()->create(['role' => 'staff']));
+    $this->actingAs(User::factory()->assignedOperations()->create(['role' => 'staff']));
 
-    $this->postJson(route('admin.households.store'), ['address' => 'Shared address'])->assertCreated()->assertJsonPath('household.household_number', 'HH-000001');
-    $this->postJson(route('admin.households.store'), ['address' => 'Shared address'])->assertCreated()->assertJsonPath('household.household_number', 'HH-000002');
+    $this->postJson(route('staff.households.store'), ['address' => 'Shared address'])->assertCreated()->assertJsonPath('household.household_number', 'HH-000001');
+    $this->postJson(route('staff.households.store'), ['address' => 'Shared address'])->assertCreated()->assertJsonPath('household.household_number', 'HH-000002');
 
     $this->assertDatabaseCount('households', 2);
     $this->assertDatabaseHas('administrative_audits', ['action' => 'admin.households.store', 'type' => 'record']);
@@ -122,11 +122,11 @@ it('rejects duplicate household numbers at the database boundary', function () {
 
 it('rejects changes and duplicate supplied household numbers with 422', function () {
     $household = Household::factory()->create(['household_number' => 'HH-000045']);
-    $this->actingAs(User::factory()->create());
+    $this->actingAs(User::factory()->assignedOperations()->create());
 
-    $this->patchJson(route('admin.households.update', $household), ['address' => 'Changed', 'household_number' => 'HH-000046'])
+    $this->patchJson(route('staff.households.update', $household), ['address' => 'Changed', 'household_number' => 'HH-000046'])
         ->assertUnprocessable()->assertJsonValidationErrors('household_number');
-    $this->postJson(route('admin.households.store'), ['address' => 'Changed', 'household_number' => 'HH-000045'])
+    $this->postJson(route('staff.households.store'), ['address' => 'Changed', 'household_number' => 'HH-000045'])
         ->assertUnprocessable()->assertJsonValidationErrors('household_number');
     expect($household->fresh()->household_number)->toBe('HH-000045');
     $this->assertDatabaseCount('households', 1);
@@ -140,19 +140,19 @@ it('prevents changing an assigned number through model updates', function () {
 
 it('assigns residents with different surnames to the same household during registration', function () {
     $household = Household::factory()->create();
-    $this->actingAs(User::factory()->create());
+    $this->actingAs(User::factory()->assignedOperations()->create());
 
-    $this->postJson(route('admin.residents.store'), householdResidentPayload(['household_id' => $household->id, 'is_household_head' => true]))->assertCreated();
-    $this->postJson(route('admin.residents.store'), householdResidentPayload(['last_name' => 'Garcia', 'household_id' => $household->id, 'relationship_to_household_head' => 'Spouse']))->assertCreated();
+    $this->postJson(route('staff.residents.store'), householdResidentPayload(['household_id' => $household->id, 'is_household_head' => true]))->assertCreated();
+    $this->postJson(route('staff.residents.store'), householdResidentPayload(['last_name' => 'Garcia', 'household_id' => $household->id, 'relationship_to_household_head' => 'Spouse']))->assertCreated();
 
-    $this->getJson(route('admin.households.show', $household))->assertOk()->assertJsonPath('household_size', 2)->assertJsonPath('head.full_name', 'Maria Santos');
+    $this->getJson(route('staff.households.show', $household))->assertOk()->assertJsonPath('household_size', 2)->assertJsonPath('head.full_name', 'Maria Santos');
     $this->assertDatabaseHas('residents', ['last_name' => 'Garcia', 'household_id' => $household->id, 'relationship_to_household_head' => 'Spouse', 'is_household_head' => false]);
 });
 
 it('creates a household inline when editing an existing resident', function () {
     $resident = Resident::factory()->create();
 
-    $this->actingAs(User::factory()->create())->patchJson(route('admin.residents.update', $resident), householdResidentPayload([
+    $this->actingAs(User::factory()->assignedOperations()->create())->patchJson(route('staff.residents.update', $resident), householdResidentPayload([
         'new_household' => ['address' => 'New household address', 'purok_id' => Purok::query()->firstOrFail()->id],
         'is_household_head' => true,
     ]))->assertOk()->assertJsonPath('resident.is_household_head', true);
@@ -162,7 +162,7 @@ it('creates a household inline when editing an existing resident', function () {
 });
 
 it('rolls back resident and inline household creation when head assignment is invalid', function () {
-    $this->actingAs(User::factory()->create())->postJson(route('admin.residents.store'), householdResidentPayload([
+    $this->actingAs(User::factory()->assignedOperations()->create())->postJson(route('staff.residents.store'), householdResidentPayload([
         'new_household' => ['address' => 'Should not remain'], 'is_household_head' => true, 'status' => 'inactive',
     ]))->assertUnprocessable()->assertJsonValidationErrors('is_household_head');
 
@@ -176,7 +176,7 @@ it('preserves assignment when older clients update resident fields without house
     $resident = Resident::factory()->create();
     app(ManageHouseholds::class)->assign($resident, $household->id, 'Head', true);
 
-    $this->actingAs(User::factory()->create())->patchJson(route('admin.residents.update', $resident), householdResidentPayload())
+    $this->actingAs(User::factory()->assignedOperations()->create())->patchJson(route('staff.residents.update', $resident), householdResidentPayload())
         ->assertOk()->assertJsonPath('resident.household_id', $household->id)->assertJsonPath('resident.is_household_head', true);
 });
 
@@ -188,7 +188,7 @@ it('changes the designated head and removes head status from the previous head',
     $manager->assign($previous, $household->id, 'Head', true);
     $manager->assign($next, $household->id, 'Child', false);
 
-    $this->actingAs(User::factory()->create())->patchJson(route('admin.households.update', $household), [
+    $this->actingAs(User::factory()->assignedOperations()->create())->patchJson(route('staff.households.update', $household), [
         'address' => 'Updated household address', 'household_head_resident_id' => $next->id,
     ])->assertOk()->assertJsonPath('household.head.id', $next->id);
 
@@ -203,7 +203,7 @@ it('moves a head to another household and leaves the original without a head', f
     $resident = Resident::factory()->create();
     app(ManageHouseholds::class)->assign($resident, $original->id, 'Head', true);
 
-    $this->actingAs(User::factory()->create())->patchJson(route('admin.households.members.update', [$destination, $resident]), ['is_household_head' => true])->assertOk();
+    $this->actingAs(User::factory()->assignedOperations()->create())->patchJson(route('staff.households.members.update', [$destination, $resident]), ['is_household_head' => true])->assertOk();
 
     expect($original->fresh()->household_head_resident_id)->toBeNull();
     expect($destination->fresh()->household_head_resident_id)->toBe($resident->id);
@@ -215,7 +215,7 @@ it('unsets the head checkbox in the resident form without leaving a misleading H
     $head = Resident::factory()->create();
     app(ManageHouseholds::class)->assign($head, $household->id, 'Head', true);
 
-    $this->actingAs(User::factory()->create())->patchJson(route('admin.residents.update', $head), householdResidentPayload([
+    $this->actingAs(User::factory()->assignedOperations()->create())->patchJson(route('staff.residents.update', $head), householdResidentPayload([
         'household_id' => $household->id, 'is_household_head' => false, 'relationship_to_household_head' => 'Head',
     ]))->assertOk()->assertJsonPath('resident.relationship_to_household_head', null);
 
@@ -228,7 +228,7 @@ it('lets staff explicitly leave a household without a head', function () {
     $head = Resident::factory()->create();
     app(ManageHouseholds::class)->assign($head, $household->id, 'Head', true);
 
-    $this->actingAs(User::factory()->create())->patchJson(route('admin.households.update', $household), [
+    $this->actingAs(User::factory()->assignedOperations()->create())->patchJson(route('staff.households.update', $household), [
         'address' => $household->address, 'household_head_resident_id' => null,
     ])->assertOk()->assertJsonPath('household.head', null);
 
@@ -239,7 +239,7 @@ it('lets staff explicitly leave a household without a head', function () {
 it('returns 422 when both an existing and new household are selected', function () {
     $household = Household::factory()->create();
 
-    $this->actingAs(User::factory()->create())->postJson(route('admin.residents.store'), householdResidentPayload([
+    $this->actingAs(User::factory()->assignedOperations()->create())->postJson(route('staff.residents.store'), householdResidentPayload([
         'household_id' => $household->id, 'new_household' => ['address' => 'Ambiguous assignment'],
     ]))->assertUnprocessable()->assertJsonValidationErrors('household_id');
 
@@ -251,7 +251,7 @@ it('returns 404 for assigning an archived resident through the member endpoint',
     $household = Household::factory()->create();
     $resident = Resident::factory()->archived()->create();
 
-    $this->actingAs(User::factory()->create())->patchJson(route('admin.households.members.update', [$household, $resident]), ['is_household_head' => true])->assertNotFound();
+    $this->actingAs(User::factory()->assignedOperations()->create())->patchJson(route('staff.households.members.update', [$household, $resident]), ['is_household_head' => true])->assertNotFound();
 
     expect($household->fresh()->household_head_resident_id)->toBeNull();
 });
@@ -260,7 +260,7 @@ it('returns 422 for a head who does not belong to the household', function () {
     $household = Household::factory()->create();
     $outsider = Resident::factory()->create();
 
-    $this->actingAs(User::factory()->create())->patchJson(route('admin.households.update', $household), ['address' => 'Rollback', 'household_head_resident_id' => $outsider->id])
+    $this->actingAs(User::factory()->assignedOperations()->create())->patchJson(route('staff.households.update', $household), ['address' => 'Rollback', 'household_head_resident_id' => $outsider->id])
         ->assertUnprocessable()->assertJsonValidationErrors('household_head_resident_id');
 
     expect($household->fresh()->address)->toBe($household->address);
@@ -277,7 +277,7 @@ it('returns 422 when an archived or inactive resident is designated head', funct
         $resident->update(['status' => 'inactive']);
     }
 
-    $this->actingAs(User::factory()->create())->patchJson(route('admin.households.update', $household), ['address' => $household->address, 'household_head_resident_id' => $resident->id])
+    $this->actingAs(User::factory()->assignedOperations()->create())->patchJson(route('staff.households.update', $household), ['address' => $household->address, 'household_head_resident_id' => $resident->id])
         ->assertUnprocessable()->assertJsonValidationErrors('household_head_resident_id');
     expect($household->fresh()->household_head_resident_id)->toBeNull();
 })->with(['archived', 'inactive']);
@@ -289,11 +289,11 @@ it('archives and restores the head without automatically assigning a replacement
     $manager = app(ManageHouseholds::class);
     $manager->assign($head, $household->id, 'Head', true);
     $manager->assign($other, $household->id, 'Child', false);
-    $this->actingAs(User::factory()->create());
+    $this->actingAs(User::factory()->assignedOperations()->create());
 
-    $this->deleteJson(route('admin.residents.destroy', $head))->assertOk();
-    $this->getJson(route('admin.households.show', $household))->assertJsonPath('head', null)->assertJsonCount(1, 'members');
-    $this->patchJson(route('admin.residents.restore', $head->id))->assertOk();
+    $this->deleteJson(route('staff.residents.destroy', $head))->assertOk();
+    $this->getJson(route('staff.households.show', $household))->assertJsonPath('head', null)->assertJsonCount(1, 'members');
+    $this->patchJson(route('staff.residents.restore', $head->id))->assertOk();
 
     expect($head->fresh()->is_household_head)->toBeFalse();
     expect($head->fresh()->household_id)->toBe($household->id);
@@ -306,7 +306,7 @@ it('clears an inactive head when updating only existing resident fields', functi
     $head = Resident::factory()->create();
     app(ManageHouseholds::class)->assign($head, $household->id, 'Head', true);
 
-    $this->actingAs(User::factory()->create())->patchJson(route('admin.residents.update', $head), householdResidentPayload(['status' => 'inactive']))->assertOk();
+    $this->actingAs(User::factory()->assignedOperations()->create())->patchJson(route('staff.residents.update', $head), householdResidentPayload(['status' => 'inactive']))->assertOk();
 
     expect($head->fresh()->is_household_head)->toBeFalse();
     expect($household->fresh()->household_head_resident_id)->toBeNull();
@@ -323,7 +323,7 @@ it('removes membership without deleting the resident or request and certificate 
         'issued_by' => 'Staff', 'issued_at' => now(), 'verification_code' => 'HH-VERIFY',
     ]);
 
-    $this->actingAs(User::factory()->create())->deleteJson(route('admin.households.members.destroy', [$household, $resident]))->assertOk();
+    $this->actingAs(User::factory()->assignedOperations()->create())->deleteJson(route('staff.households.members.destroy', [$household, $resident]))->assertOk();
 
     $this->assertModelExists($resident);
     $this->assertNotSoftDeleted($resident);
@@ -332,8 +332,8 @@ it('removes membership without deleting the resident or request and certificate 
     expect($request->fresh()->resident_id)->toBe($resident->id);
     expect($certificate->fresh()->resident_id)->toBe($resident->id);
     expect($certificate->fresh()->document_request_id)->toBe($request->id);
-    $this->getJson(route('admin.residents.show', $resident))->assertJsonPath('document_requests.0.reference_code', 'REQ-HH-HISTORY')->assertJsonPath('issued_certificates.0.certificate_number', 'CERT-HH-HISTORY');
-    $this->getJson(route('admin.request-records.index'))->assertJsonPath('data.0.document_requests.0.reference_code', 'REQ-HH-HISTORY');
+    $this->getJson(route('staff.residents.show', $resident))->assertJsonPath('document_requests.0.reference_code', 'REQ-HH-HISTORY')->assertJsonPath('issued_certificates.0.certificate_number', 'CERT-HH-HISTORY');
+    $this->getJson(route('staff.request-records.index'))->assertJsonPath('data.0.document_requests.0.reference_code', 'REQ-HH-HISTORY');
 });
 
 it('returns 404 when removing a resident from a different household', function () {
@@ -342,7 +342,7 @@ it('returns 404 when removing a resident from a different household', function (
     $resident = Resident::factory()->create();
     app(ManageHouseholds::class)->assign($resident, $other->id, null, false);
 
-    $this->actingAs(User::factory()->create())->deleteJson(route('admin.households.members.destroy', [$household, $resident]))->assertNotFound();
+    $this->actingAs(User::factory()->assignedOperations()->create())->deleteJson(route('staff.households.members.destroy', [$household, $resident]))->assertNotFound();
     expect($resident->fresh()->household_id)->toBe($other->id);
 });
 
@@ -350,7 +350,7 @@ it('keeps exact duplicate detection in place with inline household creation', fu
     $attributes = householdResidentPayload();
     Resident::factory()->create($attributes);
 
-    $this->actingAs(User::factory()->create())->postJson(route('admin.residents.store'), [...$attributes, 'new_household' => ['address' => 'Unused'], 'confirm_duplicate' => true])
+    $this->actingAs(User::factory()->assignedOperations()->create())->postJson(route('staff.residents.store'), [...$attributes, 'new_household' => ['address' => 'Unused'], 'confirm_duplicate' => true])
         ->assertUnprocessable()->assertJsonValidationErrors('first_name');
 
     $this->assertDatabaseCount('residents', 1);
@@ -363,7 +363,7 @@ it('searches household number head full name and address without exposing reside
     app(ManageHouseholds::class)->assign($head, $household->id, null, true);
     Household::factory()->create(['address' => 'Other street']);
 
-    $response = $this->actingAs(User::factory()->create())->getJson(route('admin.households.index', ['search' => $term, 'per_page' => 1]));
+    $response = $this->actingAs(User::factory()->assignedOperations()->create())->getJson(route('staff.households.index', ['search' => $term, 'per_page' => 1]));
 
     $response->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.household_number', 'HH-000901');
     expect($response->json('data.0.head'))->toBe(['id' => $head->id, 'full_name' => 'Maria Garcia']);
@@ -379,7 +379,7 @@ it('exports household columns while preserving resident filters and formula prot
     $manager->assign($head, $household->id, null, true);
     $manager->assign($member, $household->id, '=DANGEROUS', false);
 
-    $response = $this->actingAs(User::factory()->create())->get(route('admin.residents.export', ['search' => 'Included', 'status' => 'active']));
+    $response = $this->actingAs(User::factory()->assignedOperations()->create())->get(route('staff.residents.export', ['search' => 'Included', 'status' => 'active']));
 
     $response->assertOk()->assertDownload('resident-records-'.today()->toDateString().'.csv');
     expect($response->streamedContent())->toContain('Household Number')->toContain('Household Head')->toContain('Relationship to Household Head')->toContain('HH-000321')->toContain('Head Garcia')->toContain("'=DANGEROUS")->not->toContain('Excluded');
@@ -395,11 +395,11 @@ it('provides household size and demographic query support excluding archived mem
     app(ManageHouseholds::class)->assign($female, $household->id, 'Spouse', false);
 
     expect(Household::demographics())->toBe(['total_households' => 1, 'total_residents' => 2, 'male' => 1, 'female' => 1, 'registered_voters' => 1, 'average_household_size' => 2.0]);
-    $this->actingAs(User::factory()->create())->getJson(route('admin.residents.show', $female))->assertJsonPath('household_information.household_size', 2)->assertJsonPath('household_information.members.1.registered_voter', true);
+    $this->actingAs(User::factory()->assignedOperations()->create())->getJson(route('staff.residents.show', $female))->assertJsonPath('household_information.household_size', 2)->assertJsonPath('household_information.members.1.registered_voter', true);
 });
 
 it('returns 422 for invalid household assignments and relationships', function (array $fields, string $error) {
-    $this->actingAs(User::factory()->create())->postJson(route('admin.residents.store'), householdResidentPayload($fields))
+    $this->actingAs(User::factory()->assignedOperations()->create())->postJson(route('staff.residents.store'), householdResidentPayload($fields))
         ->assertUnprocessable()->assertJsonValidationErrors($error);
 
     $this->assertDatabaseCount('residents', 0);
@@ -414,14 +414,14 @@ it('returns 422 for invalid household assignments and relationships', function (
 ]);
 
 it('returns 422 for missing household addresses', function () {
-    $this->actingAs(User::factory()->create())->postJson(route('admin.households.store'), [])->assertUnprocessable()->assertJsonValidationErrors('address');
+    $this->actingAs(User::factory()->assignedOperations()->create())->postJson(route('staff.households.store'), [])->assertUnprocessable()->assertJsonValidationErrors('address');
     $this->assertDatabaseCount('households', 0);
 });
 
 it('requires an existing head when creating a household with selected members', function () {
     $member = Resident::factory()->create();
 
-    $this->actingAs(User::factory()->create())->postJson(route('admin.households.store'), [
+    $this->actingAs(User::factory()->assignedOperations()->create())->postJson(route('staff.households.store'), [
         'address' => 'Address', 'members' => [['resident_id' => $member->id, 'relationship_to_household_head' => 'Child']],
     ])->assertUnprocessable()->assertJsonValidationErrors('household_head_resident_id');
 
@@ -434,7 +434,7 @@ it('creates a household with a supplied number existing head and members in one 
     $member = Resident::factory()->create(['last_name' => 'Member']);
     $purok = Purok::query()->firstOrFail();
 
-    $response = $this->actingAs(User::factory()->create(['role' => 'staff']))->postJson(route('admin.households.store'), [
+    $response = $this->actingAs(User::factory()->assignedOperations()->create(['role' => 'staff']))->postJson(route('staff.households.store'), [
         'household_number' => 'HH-000100', 'address' => 'Shared address', 'purok_id' => $purok->id,
         'household_head_resident_id' => $head->id,
         'members' => [['resident_id' => $member->id, 'relationship_to_household_head' => 'Spouse']],
@@ -444,14 +444,14 @@ it('creates a household with a supplied number existing head and members in one 
     $this->assertDatabaseCount('residents', 2);
     expect($member->fresh()->household_id)->toBe($head->fresh()->household_id);
     expect($member->fresh()->relationship_to_household_head)->toBe('Spouse');
-    $this->postJson(route('admin.households.store'), ['address' => 'Shared address'])->assertCreated()->assertJsonPath('household.household_number', 'HH-000101');
+    $this->postJson(route('staff.households.store'), ['address' => 'Shared address'])->assertCreated()->assertJsonPath('household.household_number', 'HH-000101');
 });
 
 it('retains supplied barangay numbers and generates a number when blank', function () {
-    $this->actingAs(User::factory()->create())->postJson(route('admin.households.store'), [
+    $this->actingAs(User::factory()->assignedOperations()->create())->postJson(route('staff.households.store'), [
         'household_number' => 'BRGY-LOT-12', 'address' => 'Address',
     ])->assertCreated()->assertJsonPath('household.household_number', 'BRGY-LOT-12');
-    $this->postJson(route('admin.households.store'), ['household_number' => null, 'address' => 'Address'])
+    $this->postJson(route('staff.households.store'), ['household_number' => null, 'address' => 'Address'])
         ->assertCreated()->assertJsonPath('household.household_number', 'HH-000001');
 });
 
@@ -493,13 +493,13 @@ it('returns 422 for invalid selected head or household member input', function (
         $resident->update(['status' => 'inactive']);
     }
 
-    $this->actingAs(User::factory()->create())->postJson(route('admin.households.store'), $payload)->assertUnprocessable()->assertJsonValidationErrors($error);
+    $this->actingAs(User::factory()->assignedOperations()->create())->postJson(route('staff.households.store'), $payload)->assertUnprocessable()->assertJsonValidationErrors($error);
     $this->assertDatabaseCount('households', 0);
     expect($resident->fresh()->household_id)->toBeNull();
 })->with(['duplicate', 'relationship', 'archived', 'head']);
 
 it('returns the six household demographics with accurate averages and zero household handling', function () {
-    $this->actingAs(User::factory()->create())->getJson(route('admin.puroks.index'))
+    $this->actingAs(User::factory()->assignedOperations()->create())->getJson(route('staff.puroks.index'))
         ->assertOk()->assertJsonPath('demographics.households.total_households', 0)->assertJsonPath('demographics.households.average_household_size', 0);
     $first = Household::factory()->create();
     Household::factory()->create();
@@ -511,7 +511,7 @@ it('returns the six household demographics with accurate averages and zero house
     app(ManageHouseholds::class)->assign($male, $first->id, 'Head', true);
     app(ManageHouseholds::class)->assign($female, $first->id, 'Spouse', false);
 
-    $this->getJson(route('admin.puroks.index'))->assertOk()
+    $this->getJson(route('staff.puroks.index'))->assertOk()
         ->assertJsonPath('demographics.households.total_residents', 3)
         ->assertJsonPath('demographics.households.total_households', 2)
         ->assertJsonPath('demographics.households.male', 1)
@@ -524,24 +524,24 @@ it('returns 401 for guest household access', function () {
     $household = Household::factory()->create();
     $resident = Resident::factory()->create();
 
-    $this->getJson(route('admin.households.index'))->assertUnauthorized();
-    $this->getJson(route('admin.households.show', $household))->assertUnauthorized();
-    $this->postJson(route('admin.households.store'), ['address' => 'Address'])->assertUnauthorized();
-    $this->patchJson(route('admin.households.update', $household), ['address' => 'Address'])->assertUnauthorized();
-    $this->patchJson(route('admin.households.members.update', [$household, $resident]), [])->assertUnauthorized();
-    $this->deleteJson(route('admin.households.members.destroy', [$household, $resident]))->assertUnauthorized();
+    $this->getJson(route('staff.households.index'))->assertUnauthorized();
+    $this->getJson(route('staff.households.show', $household))->assertUnauthorized();
+    $this->postJson(route('staff.households.store'), ['address' => 'Address'])->assertUnauthorized();
+    $this->patchJson(route('staff.households.update', $household), ['address' => 'Address'])->assertUnauthorized();
+    $this->patchJson(route('staff.households.members.update', [$household, $resident]), [])->assertUnauthorized();
+    $this->deleteJson(route('staff.households.members.destroy', [$household, $resident]))->assertUnauthorized();
 });
 
 it('returns 403 for household browsing and management by unauthorized users', function (string $role) {
     $household = Household::factory()->create();
     $resident = Resident::factory()->create();
-    $this->actingAs(User::factory()->create(['role' => $role]));
+    $this->actingAs(User::factory()->assignedOperations()->create(['role' => $role]));
 
-    $this->getJson(route('admin.households.index'))->assertForbidden();
-    $this->getJson(route('admin.households.show', $household))->assertForbidden();
-    $this->postJson(route('admin.households.store'), ['address' => 'Address'])->assertForbidden();
-    $this->patchJson(route('admin.households.update', $household), ['address' => 'Address'])->assertForbidden();
-    $this->patchJson(route('admin.households.members.update', [$household, $resident]), [])->assertForbidden();
-    $this->deleteJson(route('admin.households.members.destroy', [$household, $resident]))->assertForbidden();
+    $this->getJson(route('staff.households.index'))->assertForbidden();
+    $this->getJson(route('staff.households.show', $household))->assertForbidden();
+    $this->postJson(route('staff.households.store'), ['address' => 'Address'])->assertForbidden();
+    $this->patchJson(route('staff.households.update', $household), ['address' => 'Address'])->assertForbidden();
+    $this->patchJson(route('staff.households.members.update', [$household, $resident]), [])->assertForbidden();
+    $this->deleteJson(route('staff.households.members.destroy', [$household, $resident]))->assertForbidden();
     expect($resident->fresh()->household_id)->toBeNull();
 })->with(['viewer', 'resident']);

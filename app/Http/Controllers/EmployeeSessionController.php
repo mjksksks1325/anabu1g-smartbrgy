@@ -16,6 +16,6 @@ class EmployeeSessionController extends Controller
 
         return $request->wantsJson()
             ? response()->noContent()
-            : redirect()->route('home');
+            : redirect()->route('login');
     }
 }

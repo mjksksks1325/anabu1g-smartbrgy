@@ -3,11 +3,18 @@
 use App\Models\User;
 
 it('does not render the QR verification module for any employee role', function (string $role) {
-    $employee = $role === 'super' ? User::factory()->superAdmin()->create() : User::factory()->create(['role' => $role]);
+    $employee = $role === 'super' ? User::factory()->superAdmin()->create() : User::factory()->assignedOperations()->create(['role' => $role]);
 
-    $this->actingAs($employee)->get(route('admin.dashboard', ['screen' => 'qr']))
-        ->assertRedirect(route('admin.dashboard'));
-    $this->get(route('admin.dashboard'))
+    if ($role === 'admin') {
+        $this->actingAs($employee)->get(route('staff.dashboard'))->assertRedirect(route('staff.access-pending'));
+        $this->get(route('staff.access-pending'))->assertOk()->assertDontSee('QR Verification');
+
+        return;
+    }
+
+    $this->actingAs($employee)->get(route('staff.dashboard', ['screen' => 'qr']))
+        ->assertRedirect(route($employee->role === 'admin' ? 'admin.dashboard' : 'staff.dashboard'));
+    $this->get(route('staff.dashboard'))
         ->assertOk()
         ->assertDontSee('data-perm="QR"', false)
         ->assertDontSee('id="screen-qr"', false)
@@ -16,10 +23,10 @@ it('does not render the QR verification module for any employee role', function 
         ->assertDontSee('Open QR Scanner');
 })->with(['staff', 'admin', 'super']);
 
-it('does not show the removed module in the viewer workspace', function () {
-    $viewer = User::factory()->create(['role' => 'viewer']);
+it('does not grant legacy viewers module access through stored assignments', function () {
+    $viewer = User::factory()->assignedOperations()->create(['role' => 'viewer']);
 
-    $this->actingAs($viewer)->get(route('admin.rfid-files.index'))
-        ->assertOk()
+    $this->actingAs($viewer)->get(route('staff.rfid-files.index'))
+        ->assertForbidden()
         ->assertDontSee('QR Verification');
 });

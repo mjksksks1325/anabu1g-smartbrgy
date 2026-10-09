@@ -19,15 +19,15 @@ function voterPayload(Resident $resident, array $overrides = []): array
 }
 
 test('guests cannot access the voter registry', function () {
-    $this->getJson(route('admin.voter-registrations.index'))->assertUnauthorized();
+    $this->getJson(route('staff.voter-registrations.index'))->assertUnauthorized();
 });
 
 test('barangay personnel can add an existing voter without a resident portal account', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->assignedOperations()->create();
     $resident = Resident::factory()->create(['date_of_birth' => '1990-01-01']);
 
     $this->actingAs($user)
-        ->postJson(route('admin.voter-registrations.store'), voterPayload($resident))
+        ->postJson(route('staff.voter-registrations.store'), voterPayload($resident))
         ->assertCreated()
         ->assertJsonPath('message', 'Voter record added securely.')
         ->assertJsonPath('registration.resident_id', $resident->id)
@@ -48,11 +48,11 @@ test('barangay personnel can add an existing voter without a resident portal acc
 });
 
 test('voter registration rejects residents younger than 15 and duplicate identifiers', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->assignedOperations()->create();
     $minor = Resident::factory()->create(['date_of_birth' => '2012-01-01']);
 
     $this->actingAs($user)
-        ->postJson(route('admin.voter-registrations.store'), voterPayload($minor))
+        ->postJson(route('staff.voter-registrations.store'), voterPayload($minor))
         ->assertUnprocessable()
         ->assertJsonValidationErrors('resident_id');
 
@@ -64,14 +64,14 @@ test('voter registration rejects residents younger than 15 and duplicate identif
     $secondResident = Resident::factory()->create(['date_of_birth' => '1988-01-01']);
 
     $this->actingAs($user)
-        ->postJson(route('admin.voter-registrations.store'), voterPayload($secondResident))
+        ->postJson(route('staff.voter-registrations.store'), voterPayload($secondResident))
         ->assertUnprocessable()
         ->assertJsonValidationErrors('comelec_voter_number');
 });
 
 test('listing separates active voters by purok and age eligibility', function () {
     $this->travelTo('2026-09-19');
-    $user = User::factory()->create();
+    $user = User::factory()->assignedOperations()->create();
     $skOnlyResident = Resident::factory()->create([
         'date_of_birth' => '2009-09-20',
         'purok' => 'Purok 1 - Sampaguita',
@@ -94,7 +94,7 @@ test('listing separates active voters by purok and age eligibility', function ()
     VoterRegistration::factory()->for(Resident::factory()->archived())->create();
 
     $this->actingAs($user)
-        ->getJson(route('admin.voter-registrations.index', [
+        ->getJson(route('staff.voter-registrations.index', [
             'purok' => 'Purok 1 - Sampaguita',
             'eligibility' => 'sk_only',
         ]))
@@ -113,11 +113,11 @@ test('listing separates active voters by purok and age eligibility', function ()
 });
 
 test('a 15 year old resident can be registered as an sk voter', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->assignedOperations()->create();
     $resident = Resident::factory()->create(['date_of_birth' => '2011-05-12']);
 
     $this->actingAs($user)
-        ->postJson(route('admin.voter-registrations.store'), voterPayload($resident))
+        ->postJson(route('staff.voter-registrations.store'), voterPayload($resident))
         ->assertCreated()
         ->assertJsonPath('registration.voter_eligibility', 'sk_only');
 
@@ -126,7 +126,7 @@ test('a 15 year old resident can be registered as an sk voter', function () {
 
 test('listing provides unregistered residents age 15 and older for the add voter form', function () {
     $this->travelTo('2026-09-19');
-    $user = User::factory()->create();
+    $user = User::factory()->assignedOperations()->create();
     $eligibleResident = Resident::factory()->create(['date_of_birth' => '2011-09-19']);
     Resident::factory()->create(['date_of_birth' => '2012-09-20']);
     VoterRegistration::factory()->for(Resident::factory()->create([
@@ -134,7 +134,7 @@ test('listing provides unregistered residents age 15 and older for the add voter
     ]))->create();
 
     $this->actingAs($user)
-        ->getJson(route('admin.voter-registrations.index'))
+        ->getJson(route('staff.voter-registrations.index'))
         ->assertOk()
         ->assertJsonCount(1, 'eligible_residents')
         ->assertJsonPath('eligible_residents.0.id', $eligibleResident->id)
@@ -143,11 +143,11 @@ test('listing provides unregistered residents age 15 and older for the add voter
 });
 
 test('updates use version checks and append an encrypted audit record', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->assignedOperations()->create();
     $registration = VoterRegistration::factory()->create();
 
     $this->actingAs($user)
-        ->patchJson(route('admin.voter-registrations.update', $registration), [
+        ->patchJson(route('staff.voter-registrations.update', $registration), [
             'precinct_number' => '9999B',
             'cluster_number' => '100',
             'registration_date' => '2026-05-15',
@@ -161,7 +161,7 @@ test('updates use version checks and append an encrypted audit record', function
     expect($registration->fresh()->audits()->count())->toBe(1);
 
     $this->actingAs($user)
-        ->patchJson(route('admin.voter-registrations.update', $registration), [
+        ->patchJson(route('staff.voter-registrations.update', $registration), [
             'precinct_number' => '9999C',
             'cluster_number' => '101',
             'registration_date' => '2026-05-16',
@@ -173,12 +173,12 @@ test('updates use version checks and append an encrypted audit record', function
 });
 
 test('tamper detection blocks updates after an out of band database change', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->assignedOperations()->create();
     $registration = VoterRegistration::factory()->create();
     DB::table('voter_registrations')->where('id', $registration->id)->update(['precinct_number' => 'TAMPERED']);
 
     $this->actingAs($user)
-        ->patchJson(route('admin.voter-registrations.update', $registration), [
+        ->patchJson(route('staff.voter-registrations.update', $registration), [
             'precinct_number' => '1000A',
             'cluster_number' => '001',
             'registration_date' => '2026-05-15',
@@ -191,14 +191,14 @@ test('tamper detection blocks updates after an out of band database change', fun
 });
 
 test('registry export omits the private comelec number', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->assignedOperations()->create();
     VoterRegistration::factory()->create([
         'comelec_voter_number' => '5555-4444-3333',
         'comelec_voter_number_hash' => VoterRegistration::identifierHash('5555-4444-3333'),
     ]);
 
     $this->actingAs($user)
-        ->get(route('admin.voter-registrations.export'))
+        ->get(route('staff.voter-registrations.export'))
         ->assertOk()
         ->assertDownload()
         ->assertDontSee('5555-4444-3333');
@@ -209,16 +209,16 @@ test('residents cannot add themselves to the personnel-managed voters list', fun
     $account = User::factory()->resident()->create(['resident_id' => $resident->id]);
 
     $this->actingAs($account)
-        ->postJson(route('admin.voter-registrations.store'), voterPayload($resident))
+        ->postJson(route('staff.voter-registrations.store'), voterPayload($resident))
         ->assertForbidden();
 
     $this->assertDatabaseCount('voter_registrations', 0);
 });
 
 test('voters page describes personnel recording existing voter information', function () {
-    $staff = User::factory()->create();
+    $staff = User::factory()->assignedOperations()->create();
 
-    $this->actingAs($staff)->get(route('admin.voters'))
+    $this->actingAs($staff)->get(route('staff.voters'))
         ->assertSee('<h1>Voters</h1>', false)
         ->assertSee('Para sa barangay personnel:')
         ->assertSee('hindi ito pagpaparehistro sa COMELEC')

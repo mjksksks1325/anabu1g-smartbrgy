@@ -9,12 +9,12 @@ class ResidentRequestRestrictionPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->is_active && $user->resident_id === null && in_array($user->role, ['admin', 'staff'], true);
+        return $user->hasAnyPermission(['eligibility.view', 'documents.view']);
     }
 
     public function create(User $user): bool
     {
-        return $this->viewAny($user) && $user->role === 'admin';
+        return $user->isSuperAdmin();
     }
 
     public function update(User $user, ResidentRequestRestriction $restriction): bool

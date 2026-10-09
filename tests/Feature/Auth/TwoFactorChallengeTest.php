@@ -38,7 +38,7 @@ test('a completed two factor login records one successful sign in', function () 
 
     $this->post(route('two-factor.login.store'), [
         'recovery_code' => 'recovery-code-1',
-    ])->assertRedirect(route('dashboard', absolute: false));
+    ])->assertRedirect(route('staff.access-pending'));
 
     $this->assertAuthenticatedAs($user);
     $this->assertDatabaseCount('administrative_audits', 1);

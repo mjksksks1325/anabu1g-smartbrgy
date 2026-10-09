@@ -1,10 +1,16 @@
 <?php
 
+use App\Http\Middleware\ApplyPortalLocale;
 use App\Http\Middleware\EnsureActiveAccount;
+use App\Http\Middleware\EnsurePersonnelTwoFactorAccount;
 use App\Http\Middleware\PreventAccountCaching;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -15,7 +21,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->web(prepend: [PreventAccountCaching::class], append: [EnsureActiveAccount::class]);
+        $middleware->web(prepend: [PreventAccountCaching::class], append: [ApplyPortalLocale::class, EnsureActiveAccount::class, EnsurePersonnelTwoFactorAccount::class]);
+        $middleware->prependToPriorityList(AuthenticatesRequests::class, ApplyPortalLocale::class);
         $middleware->trustProxies(
             at: '*',
             headers: Request::HEADER_X_FORWARDED_FOR
@@ -24,6 +31,20 @@ return Application::configure(basePath: dirname(__DIR__))
         );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->render(function (ThrottleRequestsException $exception, Request $request): ?JsonResponse {
+            if ($request->is('portal', 'portal/*') && $request->expectsJson()) {
+                return response()->json(['message' => __('Too many attempts. Please wait before trying again.')], 429, $exception->getHeaders());
+            }
+
+            return null;
+        });
+        $exceptions->render(function (AuthenticationException $exception, Request $request): ?JsonResponse {
+            if ($request->is('portal', 'portal/*') && $request->expectsJson()) {
+                return response()->json(['message' => __('Sign in to your resident account to continue.')], 401);
+            }
+
+            return null;
+        });
         $exceptions->dontFlash(['activation_code', 'resident_number']);
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),

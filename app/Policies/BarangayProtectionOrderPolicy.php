@@ -9,21 +9,21 @@ class BarangayProtectionOrderPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->isSuperAdmin();
+        return $user->hasPermission('vawc.view');
     }
 
     public function view(User $user, BarangayProtectionOrder $order): bool
     {
-        return $user->isSuperAdmin();
+        return $user->hasPermission('vawc.view');
     }
 
     public function create(User $user): bool
     {
-        return $user->isSuperAdmin();
+        return $user->hasPermission('vawc.submit');
     }
 
     public function update(User $user, BarangayProtectionOrder $order): bool
     {
-        return $user->isSuperAdmin();
+        return $user->hasPermission('vawc.update');
     }
 }

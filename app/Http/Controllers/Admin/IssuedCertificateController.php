@@ -38,7 +38,7 @@ class IssuedCertificateController extends Controller
                 'amount_paid' => $certificate->amount_paid,
                 'issued_at' => $certificate->issued_at?->toIso8601String(),
                 'issued_by' => $certificate->issued_by,
-                'print_url' => route('admin.issued-certificates.print', $certificate),
+                'print_url' => route('staff.issued-certificates.print', $certificate),
                 'verification_url' => route('certificate.verify', $certificate->verification_code),
             ]);
 
@@ -67,7 +67,7 @@ class IssuedCertificateController extends Controller
         DocumentRequest $documentRequest,
         IssueCertificate $issueCertificate,
     ): JsonResponse|RedirectResponse {
-        Gate::authorize('update', $documentRequest);
+        Gate::authorize('documents.issue');
         $validated = $request->validate(['expires_on' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:today']]);
         try {
             $certificate = $issueCertificate->handle(
@@ -90,7 +90,7 @@ class IssuedCertificateController extends Controller
 
     public function print(IssuedCertificate $issuedCertificate): View
     {
-        Gate::authorize('viewAny', DocumentRequest::class);
+        Gate::authorize('documents.print');
         $view = CertificateType::tryFromLabel($issuedCertificate->certificate_type)?->printView()
             ?? 'admin.certificates.print';
 
@@ -99,7 +99,7 @@ class IssuedCertificateController extends Controller
 
     public function photo(IssuedCertificate $issuedCertificate): StreamedResponse
     {
-        Gate::authorize('viewAny', DocumentRequest::class);
+        Gate::authorize('documents.print');
         $disk = Storage::disk('local');
         abort_unless($issuedCertificate->photo_path !== null && $disk->exists($issuedCertificate->photo_path), 404);
 
@@ -118,14 +118,14 @@ class IssuedCertificateController extends Controller
                 'verification_url' => route('certificate.verify', [
                     'code' => $certificate->verification_code,
                 ]),
-                'print_url' => route('admin.issued-certificates.print', [
+                'print_url' => route('staff.issued-certificates.print', [
                     'issuedCertificate' => $certificate,
                 ]),
             ]);
         }
 
         return redirect()
-            ->route('admin.document-requests.index')
+            ->route('staff.document-requests.index')
             ->with('success', 'Certificate issued successfully.');
     }
 

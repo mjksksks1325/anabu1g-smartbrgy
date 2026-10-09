@@ -39,7 +39,7 @@ class DocumentRequest extends Model
     public function getAttachmentPathAttribute(?string $value): ?string
     {
         return $this->private_attachment_path
-            ? route('admin.document-requests.attachment', $this)
+            ? route('staff.document-requests.attachment', $this)
             : $value;
     }
 

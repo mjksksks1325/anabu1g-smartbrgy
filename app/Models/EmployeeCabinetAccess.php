@@ -41,7 +41,9 @@ class EmployeeCabinetAccess extends Model
 
     public function isEffective(): bool
     {
-        return $this->is_active && $this->user->canTrackRfidFiles()
+        return $this->is_active && $this->user->is_active
+            && $this->user->resident_id === null
+            && in_array($this->user->role, ['admin', 'staff', 'viewer'], true)
             && $this->rfid_enrollment_status === self::ENROLLED
             && $this->face_enrollment_status === self::ENROLLED;
     }

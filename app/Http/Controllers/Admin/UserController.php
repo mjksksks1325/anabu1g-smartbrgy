@@ -29,6 +29,7 @@ class UserController extends Controller
                 'role',
                 'is_active',
                 'is_super_admin',
+                'staff_permissions',
                 'created_at',
                 'two_factor_confirmed_at',
             ]);
@@ -46,6 +47,7 @@ class UserController extends Controller
             $user->role = $request->validated('role');
             $user->is_active = $request->boolean('is_active');
             $user->save();
+            $this->saveAssignments($request, $user);
 
             if ($request->boolean('smart_cabinet_access')) {
                 $access = new EmployeeCabinetAccess;
@@ -104,6 +106,7 @@ class UserController extends Controller
             }
 
             $locked->save();
+            $this->saveAssignments($request, $locked);
 
             $access = EmployeeCabinetAccess::query()
                 ->where('user_id', $locked->id)
@@ -137,6 +140,30 @@ class UserController extends Controller
 
         return response()->json([
             'message' => 'User account updated.',
+        ]);
+    }
+
+    private function saveAssignments(SaveUserRequest $request, User $user): void
+    {
+        if (! $request->has('staff_permissions') && $user->role === 'staff') {
+            return;
+        }
+        $before = $user->staff_permissions ?? [];
+        $after = $user->role === 'staff' ? $request->validated('staff_permissions', []) : [];
+        sort($before);
+        sort($after);
+        if ($before === $after) {
+            return;
+        }
+        $user->staff_permissions = $after;
+        $user->save();
+        DB::table('administrative_audits')->insert([
+            'user_id' => $request->user()->id, 'actor' => $request->user()->name,
+            'action' => 'admin.users.permissions-changed', 'type' => 'security',
+            'record' => (string) $user->id, 'target_user_id' => $user->id,
+            'before_assignments' => json_encode($before, JSON_THROW_ON_ERROR),
+            'after_assignments' => json_encode($after, JSON_THROW_ON_ERROR),
+            'created_at' => now(), 'updated_at' => now(),
         ]);
     }
 }

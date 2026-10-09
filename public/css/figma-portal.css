@@ -56,10 +56,13 @@ h1, h2, h3, h4 { font-family: var(--civic-font-display); font-weight: 800; lette
 .site-brand-portal::before { display: none; }
 .site-brand-text strong { font-size: 17px; color: var(--ink); }
 .site-brand-text > span:not(.site-brand-portal) { font-size: 12px; }
+.site-brand-text [data-portal-i18n] { color: inherit; font: inherit; letter-spacing: inherit; }
 .site-nav { flex: 1; min-width: 0; border: 0; box-shadow: none; }
 .site-nav-inner { padding: 0; max-width: none; justify-content: flex-end; gap: 16px; }
 .site-nav ul { gap: 2px; }
-.site-nav-list a { min-height: 42px; padding: 0 10px; border-radius: 7px; font-size: 14px; white-space: nowrap; }
+.site-nav-list, .site-nav-account { flex-shrink: 0; }
+.site-nav-account a, .site-nav-account button { white-space: nowrap; }
+.site-nav-list a { min-height: 42px; padding: 0 6px; border-radius: 7px; font-size: 14px; white-space: nowrap; }
 .site-nav-list a::after { display: none; }
 .site-nav-list a[aria-current="page"] { color: var(--civic-blue); background: var(--civic-blue-soft); }
 .site-nav-account a:not(.btn) { min-height: 42px; color: var(--civic-blue); font-size: 14px; }
@@ -191,7 +194,7 @@ h1, h2, h3, h4 { font-family: var(--civic-font-display); font-weight: 800; lette
     .auth-aside { display: grid; gap: 14px; }
     .auth-aside section + section { margin-top: 0; }
 }
-@media (max-width: 880px) {
+@media (max-width: 1280px) {
     .site-header-inner { position: relative; }
     .menu-toggle.btn { display: inline-flex; order: 2; }
     .site-nav { position: absolute; z-index: 30; top: 100%; left: 0; right: 0; border-top: 1px solid var(--line); box-shadow: var(--civic-shadow); }
@@ -331,7 +334,7 @@ body.has-hero-header:not(.hero-header-scrolled) .site-nav-list a:hover,
 body.has-hero-header:not(.hero-header-scrolled) .site-nav-list a:focus-visible,
 body.has-hero-header:not(.hero-header-scrolled) .site-nav-account a:not(.btn):hover { background: rgba(255, 255, 255, .14); color: #fff; }
 body.has-hero-header:not(.hero-header-scrolled) .menu-toggle { border-color: rgba(255, 255, 255, .7); background: transparent; color: #fff; }
-@media (max-width: 880px) {
+@media (max-width: 1280px) {
     body.has-hero-header:not(.hero-header-scrolled) .site-nav { background: var(--surface); }
     body.has-hero-header:not(.hero-header-scrolled) .site-nav .site-nav-list a,
     body.has-hero-header:not(.hero-header-scrolled) .site-nav .site-nav-account a:not(.btn) { color: var(--ink); }
@@ -367,3 +370,11 @@ body.dark-mode .portal-hero-photo img { filter: brightness(.72); }
 /* Stack the unconfirmed-fees notice under the requirements panel at the same width */
 .requirements-intro { grid-template-columns: 1fr; gap: 14px; }
 .requirements-intro .unconfirmed { margin: 0; }
+
+.resident-password-toggle { display: grid; place-items: center; width: 44px; height: 44px; padding: 10px; }
+.resident-password-toggle svg { width: 21px; height: 21px; }
+.resident-password-toggle[aria-pressed="false"] .password-eye-slash { display: none; }
+.resident-password-toggle:focus-visible { outline: 2px solid var(--civic-blue); outline-offset: 2px; }
+.auth-layout .form-group { min-width: 0; }
+.auth-layout input[type="date"] { width: 100%; min-width: 0; max-width: 100%; min-height: 44px; box-sizing: border-box; }
+.auth-layout input[type="date"]::-webkit-date-and-time-value { text-align: left; }

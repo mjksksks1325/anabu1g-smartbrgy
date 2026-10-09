@@ -77,7 +77,7 @@ it('does not expose authentication secrets in the account list', function () {
 it('denies suspended accounts even when they already have a session', function () {
     $user = User::factory()->create(['is_active' => false]);
 
-    $this->actingAs($user)->getJson(route('admin.dashboard.summary'))->assertUnauthorized();
+    $this->actingAs($user)->getJson(route('staff.dashboard.summary'))->assertUnauthorized();
     $this->assertGuest();
 });
 

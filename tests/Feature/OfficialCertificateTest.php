@@ -28,10 +28,10 @@ test('official certificates preserve all historical details and private photos t
         'document_type' => $type->value, 'purpose' => 'Test assistance',
     ])->assertOk();
     $request = DocumentRequest::query()->sole();
-    $staff = User::factory()->create();
-    $this->actingAs($staff, 'web')->patchJson(route('admin.document-requests.update-status', $request), ['status' => 'processing'])->assertOk();
-    $this->patchJson(route('admin.document-requests.update-status', $request), ['status' => 'ready_for_release'])->assertOk();
-    $this->actingAs($staff, 'web')->postJson(route('admin.document-requests.issue', $request), ['expires_on' => '2026-12-31'])
+    $staff = User::factory()->assignedOperations()->create();
+    $this->actingAs($staff, 'web')->patchJson(route('staff.document-requests.update-status', $request), ['status' => 'processing'])->assertOk();
+    $this->patchJson(route('staff.document-requests.update-status', $request), ['status' => 'ready_for_release'])->assertOk();
+    $this->actingAs($staff, 'web')->postJson(route('staff.document-requests.issue', $request), ['expires_on' => '2026-12-31'])
         ->assertOk()->assertJsonPath('certificate.certificate_type', $type->value);
     $certificate = IssuedCertificate::query()->sole();
     expect($request->fresh()->status)->toBe('released');
@@ -40,13 +40,13 @@ test('official certificates preserve all historical details and private photos t
     expect($certificate->photo_path)->not->toBe($resident->photo_path);
     $originalPhoto = Storage::disk('local')->get($certificate->photo_path);
     $resident->update(['first_name' => 'Changed', 'address' => 'Changed address', 'nationality' => null, 'date_of_birth' => '1980-01-01', 'gender' => 'Male', 'civil_status' => 'Married']);
-    $this->postJson(route('admin.residents.photo.store', $resident), ['photo' => UploadedFile::fake()->image('replacement.png')])->assertOk();
+    $this->postJson(route('staff.residents.photo.store', $resident), ['photo' => UploadedFile::fake()->image('replacement.png')])->assertOk();
     expect(Storage::disk('local')->get($certificate->photo_path))->toBe($originalPhoto);
-    $print = $this->get(route('admin.issued-certificates.print', $certificate))->assertOk();
+    $print = $this->get(route('staff.issued-certificates.print', $certificate))->assertOk();
     foreach (['Province of Cavite', 'OFFICE OF THE SANGGUNIANG BARANGAY', 'Test Resident', 'Example Street, Anabu I-G', 'February 12, 1990', 'Female', 'Single', 'Test nationality', 'Test assistance', 'October 03, 2026', 'December 31, 2026', 'EXPIRATION DATE', 'Resident photo at issuance', 'registered voter'] as $text) {
         $print->assertSee($text);
     }
-    $print->assertDontSee('Changed address')->assertSee(route('admin.issued-certificates.photo', $certificate));
+    $print->assertDontSee('Changed address')->assertSee(route('staff.issued-certificates.photo', $certificate));
     $print->assertDontSeeText('Certificate No.:')->assertDontSeeText('Verification code:')
         ->assertDontSeeText($certificate->certificate_number)->assertDontSeeText($certificate->verification_code)
         ->assertSee(asset($certificate->qr_code_path));
@@ -57,14 +57,14 @@ test('official certificates preserve all historical details and private photos t
     } else {
         $print->assertSee('INDIGENT family')->assertDontSee('Right Thumb Mark');
     }
-    $this->get(route('admin.issued-certificates.photo', $certificate))->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff');
-    $this->postJson(route('admin.document-requests.issue', $request))->assertConflict();
+    $this->get(route('staff.issued-certificates.photo', $certificate))->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff');
+    $this->postJson(route('staff.document-requests.issue', $request))->assertConflict();
     $verification = $this->getJson(route('certificate.verify', $certificate->verification_code))->assertOk();
     expect(array_keys($verification->json('certificate')))->toBe(['certificate_number', 'verification_code', 'certificate_type', 'resident_name', 'purpose', 'issued_at', 'issued_by']);
     $this->getJson(route('certificate.verify', 'INVALID-CODE'))->assertNotFound();
     $other = User::factory()->resident()->create();
-    $this->actingAs($other, 'web')->get(route('admin.issued-certificates.print', $certificate))->assertForbidden();
-    $this->get(route('admin.issued-certificates.photo', $certificate))->assertForbidden();
+    $this->actingAs($other, 'web')->get(route('staff.issued-certificates.print', $certificate))->assertForbidden();
+    $this->get(route('staff.issued-certificates.photo', $certificate))->assertForbidden();
     $this->actingAs($other, 'resident')->getJson(route('portal.request.status', $request->reference_code))->assertNotFound();
 })->with([CertificateType::RegisteredVoterCertification, CertificateType::CertificateOfIndigency]);
 
@@ -73,15 +73,15 @@ test('official certificates allow missing legacy photos and nationality without 
     Storage::fake('public');
     $resident = Resident::factory()->create(['is_in_good_standing' => true]);
     VoterRegistration::factory()->create(['resident_id' => $resident->id]);
-    $staff = User::factory()->create();
-    $this->actingAs($staff)->postJson(route('admin.issued-certificates.store'), [
+    $staff = User::factory()->assignedOperations()->create();
+    $this->actingAs($staff)->postJson(route('staff.issued-certificates.store'), [
         'certificate_type' => CertificateType::RegisteredVoterCertification->value,
         'resident_id' => $resident->id, 'resident_name' => $resident->full_name, 'address' => $resident->address,
     ])->assertOk();
     $certificate = IssuedCertificate::query()->sole();
     expect($certificate->expires_on)->toBeNull()->and($certificate->resident_snapshot['nationality'])->toBeNull();
-    $this->get(route('admin.issued-certificates.print', $certificate))->assertOk()->assertSee('Resident photo not provided')->assertDontSee('Filipino');
-    $this->get(route('admin.issued-certificates.photo', $certificate))->assertNotFound();
+    $this->get(route('staff.issued-certificates.print', $certificate))->assertOk()->assertSee('Resident photo not provided')->assertDontSee('Filipino');
+    $this->get(route('staff.issued-certificates.photo', $certificate))->assertNotFound();
 });
 
 test('official certificate assertions require verified linked records', function (string $condition) {
@@ -101,7 +101,7 @@ test('official certificate assertions require verified linked records', function
     } elseif ($condition === 'inactive resident') {
         $resident->update(['status' => 'inactive']);
     }
-    $this->actingAs(User::factory()->create())->postJson(route('admin.issued-certificates.store'), [
+    $this->actingAs(User::factory()->assignedOperations()->create())->postJson(route('staff.issued-certificates.store'), [
         'certificate_type' => CertificateType::CertificateOfIndigency->value,
         'resident_id' => $condition === 'unlinked' ? null : $resident->id,
         'resident_name' => $resident->full_name, 'address' => $resident->address,
@@ -111,7 +111,7 @@ test('official certificate assertions require verified linked records', function
 })->with(['not indigent', 'inactive voter', 'tampered voter', 'missing voter', 'not good standing', 'inactive resident', 'unlinked']);
 
 test('staff supplied expiration dates reject malformed and past dates', function (string $expiry) {
-    $this->actingAs(User::factory()->create())->postJson(route('admin.issued-certificates.store'), [
+    $this->actingAs(User::factory()->assignedOperations()->create())->postJson(route('staff.issued-certificates.store'), [
         'certificate_type' => CertificateType::BarangayClearance->value,
         'resident_name' => 'Test Resident', 'address' => 'Test address', 'expires_on' => $expiry,
     ])->assertUnprocessable()->assertJsonValidationErrors('expires_on');
@@ -124,7 +124,7 @@ test('registered voter certificates reject unverified voter records before issui
     if ($condition !== 'missing') {
         VoterRegistration::factory()->create(['resident_id' => $resident->id, 'status' => 'deregistered']);
     }
-    $this->actingAs(User::factory()->create())->postJson(route('admin.issued-certificates.store'), [
+    $this->actingAs(User::factory()->assignedOperations()->create())->postJson(route('staff.issued-certificates.store'), [
         'certificate_type' => CertificateType::RegisteredVoterCertification->value,
         'resident_id' => $resident->id, 'resident_name' => $resident->full_name, 'address' => $resident->address,
     ])->assertUnprocessable();
@@ -159,7 +159,7 @@ test('official print fields escape resident supplied content', function () {
         'resident_name' => $input, 'purpose' => $input, 'issued_at' => now(),
         'resident_snapshot' => ['address' => $input, 'nationality' => $input],
     ]);
-    $this->actingAs(User::factory()->create())->get(route('admin.issued-certificates.print', $certificate))
+    $this->actingAs(User::factory()->assignedOperations()->create())->get(route('staff.issued-certificates.print', $certificate))
         ->assertOk()->assertSee('&lt;script&gt;', false)->assertDontSee($input, false);
 });
 
@@ -171,7 +171,7 @@ test('every paper certificate uses the shared historical fields and its own word
         'qr_code_path' => '/storage/qrcodes/shared-test.svg',
         'resident_snapshot' => ['address' => 'Historical test address', 'date_of_birth' => '1990-02-12', 'gender' => 'Female', 'civil_status' => 'Single', 'nationality' => 'Test nationality'],
     ]);
-    $this->actingAs(User::factory()->create())->get(route('admin.issued-certificates.print', $certificate))
+    $this->actingAs(User::factory()->assignedOperations()->create())->get(route('staff.issued-certificates.print', $certificate))
         ->assertOk()->assertSeeText($wording)->assertSeeText('Historical test address')->assertSeeText('February 12, 1990')
         ->assertSeeText('Female')->assertSeeText('Single')->assertSeeText('Test nationality')->assertSeeText('Test purpose')
         ->assertSeeText('December 31, 2026')->assertSee('Resident photo not provided')
@@ -191,7 +191,7 @@ test('legacy indigency prints the shared design without retroactively asserting 
         'certificate_type' => CertificateType::CertificateOfIndigency->value,
         'resident_name' => 'Historical Resident', 'purpose' => 'Historical purpose', 'issued_at' => now(),
     ]);
-    $this->actingAs(User::factory()->create())->get(route('admin.issued-certificates.print', $certificate))
+    $this->actingAs(User::factory()->assignedOperations()->create())->get(route('staff.issued-certificates.print', $certificate))
         ->assertOk()->assertSeeText('requesting this Certificate of Indigency')
         ->assertSeeText('Historical Resident')->assertSeeText('Historical purpose')->assertSee('City of Imus footer logo')
         ->assertSee('Resident photo not provided')->assertDontSeeText('INDIGENT family')->assertDontSeeText('registered voter')
@@ -205,8 +205,8 @@ test('the ID card reuses its private photo while keeping its identification fiel
         'resident_name' => 'Test Resident', 'issued_at' => now(), 'photo_path' => 'certificate-photos/test.jpg',
         'qr_code_path' => '/storage/qrcodes/id-test.svg',
     ]);
-    $this->actingAs(User::factory()->create())->get(route('admin.issued-certificates.print', $certificate))
+    $this->actingAs(User::factory()->assignedOperations()->create())->get(route('staff.issued-certificates.print', $certificate))
         ->assertOk()->assertSee('BARANGAY RESIDENT IDENTIFICATION CARD')->assertSeeText('ID No.:')->assertSeeText('CERT-ID-TEST')
-        ->assertSee(route('admin.issued-certificates.photo', $certificate))->assertSee('Resident photo at issuance')
+        ->assertSee(route('staff.issued-certificates.photo', $certificate))->assertSee('Resident photo at issuance')
         ->assertSee('City of Imus footer logo')->assertSee('Certificate authenticity QR code')->assertDontSeeText('IDPRINTVERIFY');
 });

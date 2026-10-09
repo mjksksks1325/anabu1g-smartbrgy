@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Models\Resident;
 use App\Models\User;
+use App\StaffPermissions;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -45,6 +46,12 @@ class UserFactory extends Factory
     public function resident(): static
     {
         return $this->state(fn (): array => ['role' => 'resident', 'resident_id' => Resident::factory()]);
+    }
+
+    /** Explicit operational assignments for existing workflow tests; production accounts remain unassigned. */
+    public function assignedOperations(): static
+    {
+        return $this->state(fn (): array => ['staff_permissions' => array_values(array_filter(StaffPermissions::keys(), fn (string $permission): bool => ! str_starts_with($permission, 'vawc.') && $permission !== 'incidents.archive'))]);
     }
 
     public function superAdmin(): static

@@ -16,19 +16,24 @@ use App\Http\Controllers\Admin\ResidentPortalAccountController;
 use App\Http\Controllers\Admin\ResidentRequestRestrictionController;
 use App\Http\Controllers\Admin\RfidFileTrackingController;
 use App\Http\Controllers\Admin\SmartCabinetController;
+use App\Http\Controllers\Admin\StaffSubmissionController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\VoterRegistrationController;
 use App\Http\Controllers\Admin\WorkspaceController;
 use App\Http\Controllers\CertificateVerificationController;
 use App\Http\Controllers\DocumentRequestController;
 use App\Http\Controllers\EmployeeSessionController;
+use App\Http\Controllers\LegacyPersonnelRouteController;
+use App\Http\Controllers\PortalLocaleController;
 use App\Http\Controllers\ResidentPortalController;
 use App\Http\Controllers\ResidentProfilePhotoController;
 use App\Http\Controllers\ResidentRegistrationController;
 use App\Http\Controllers\ResidentSessionController;
 use App\Http\Middleware\EnsureGuestResidentPortal;
 use App\Http\Middleware\EnsureResidentAccount;
+use App\Http\Middleware\EnsureStaffAccess;
 use App\Http\Middleware\RecordAdministrativeAction;
+use App\StaffPermissions;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Route;
 
@@ -37,12 +42,14 @@ Route::get('/', function () {
 });
 
 Route::get('/portal', [ResidentPortalController::class, 'index'])->name('home');
+Route::post('/portal/locale', PortalLocaleController::class)->name('portal.locale');
+Route::get('/portal/translations.js', [PortalLocaleController::class, 'catalog'])->name('portal.translations');
 Route::get('/portal/request', [ResidentPortalController::class, 'createRequest'])
     ->middleware(EnsureResidentAccount::class)
     ->name('portal.request.create');
 
 Route::get('/dashboard', function (): RedirectResponse {
-    return redirect()->route(auth()->user()->isResidentAccount() ? 'portal.account' : 'admin.dashboard');
+    return redirect()->route(auth()->user()->isResidentAccount() ? 'portal.account' : StaffPermissions::landing(auth()->user()));
 })->middleware('auth')->name('dashboard');
 
 Route::post('/portal/request', [DocumentRequestController::class, 'store'])
@@ -71,7 +78,10 @@ Route::middleware(EnsureGuestResidentPortal::class)->group(function () {
     Route::view('/portal/registration-help', 'portal.registration-help')->name('portal.registration.denied');
 });
 Route::post('/portal/logout', [ResidentSessionController::class, 'destroy'])->middleware('auth:resident')->name('portal.logout');
-Route::post('/logout', [EmployeeSessionController::class, 'destroy'])->middleware('auth:web')->name('logout');
+Route::get('/login', fn (): RedirectResponse => redirect()->route('login'));
+Route::post('/login', fn (): RedirectResponse => redirect()->route('login.store', [], 307));
+Route::post('/logout', [EmployeeSessionController::class, 'destroy'])->middleware('auth:web')->name('legacy.logout');
+Route::post('/staff/logout', [EmployeeSessionController::class, 'destroy'])->middleware('auth:web')->name('logout');
 Route::middleware(EnsureResidentAccount::class)->group(function () {
     Route::get('/portal/account', [ResidentPortalController::class, 'account'])->name('portal.account');
     Route::get('/portal/account/statuses', [ResidentPortalController::class, 'requestStatuses'])
@@ -83,40 +93,31 @@ Route::middleware(EnsureResidentAccount::class)->group(function () {
     Route::get('/portal/identity', [ResidentPortalController::class, 'identity'])->name('portal.identity');
 });
 
-Route::middleware(['auth', RecordAdministrativeAction::class])->prefix('admin')->name('admin.')->group(function () {
+Route::get('/staff/access-pending', [StaffSubmissionController::class, 'pending'])->middleware(['auth:web', 'can:operate-personnel'])->name('staff.access-pending');
+
+Route::middleware(['auth:web', 'can:operate-personnel', EnsureStaffAccess::class, RecordAdministrativeAction::class])->prefix('staff')->name('staff.')->group(function () {
 
     Route::get('/', WorkspaceController::class)->defaults('screen', 'dashboard')->name('dashboard');
     Route::get('/demographics', WorkspaceController::class)->defaults('screen', 'demographics')->name('demographics');
     Route::get('/voters', WorkspaceController::class)->defaults('screen', 'voters')->name('voters');
     Route::get('/request-eligibility', WorkspaceController::class)->defaults('screen', 'request-records')->name('request-eligibility');
 
-    Route::get('/rfid-file-tracking', RfidFileTrackingController::class)->middleware('can:view-rfid-files')->name('rfid-files.index');
-    Route::middleware('can:view-administration')->group(function () {
-        Route::get('/audit', WorkspaceController::class)->defaults('screen', 'audit')->name('audit');
-        Route::get('/settings', WorkspaceController::class)->defaults('screen', 'settings')->name('settings');
-        Route::get('/smart-cabinet', SmartCabinetController::class)->name('smart-cabinet.index');
-        Route::get('/employee-cabinet-access', [EmployeeCabinetAccessController::class, 'index'])->name('cabinet-access.index');
-        Route::patch('/employee-cabinet-access/{user}', [EmployeeCabinetAccessController::class, 'update'])->name('cabinet-access.update');
-        Route::patch('/employee-cabinet-access/{user}/rpi-employee-id', [EmployeeCabinetAccessController::class, 'updateRpiEmployeeId'])->name('cabinet-access.rpi-employee-id.update');
-        Route::post('/employee-cabinet-access/{user}/enrollment/{method}', [EmployeeCabinetAccessController::class, 'enroll'])->name('cabinet-access.enroll');
-        Route::get('/audit-log', AuditLogController::class)->name('audit.index');
-        Route::get('/users', WorkspaceController::class)->defaults('screen', 'users')->name('users.index');
-        Route::post('/users', [UserController::class, 'store'])->name('users.store');
-        Route::patch('/users/{user}', [UserController::class, 'update'])->name('users.update');
-        Route::patch('/residents/{resident}/portal-account', [ResidentPortalAccountController::class, 'update'])->name('residents.portal-account');
-    });
-
     Route::get('/document-requests-live', [AdminDocumentRequestController::class, 'live'])
         ->name('document-requests.live');
     Route::get('/dashboard-summary', DashboardController::class)->name('dashboard.summary');
 
-    Route::get('/incidents', WorkspaceController::class)->defaults('screen', 'incidents')->name('incidents.index');
-    Route::post('/incidents', [IncidentController::class, 'store'])->name('incidents.store');
-    Route::get('/incident-options', [IncidentController::class, 'options'])->name('incidents.options');
+    Route::get('/incidents/create', [StaffSubmissionController::class, 'create'])->name('incidents.create');
+    Route::get('/incidents/submitted', [StaffSubmissionController::class, 'confirmation'])->name('incidents.confirmation');
+    Route::get('/case-residents', [StaffSubmissionController::class, 'residents'])->name('case-residents');
+    Route::get('/households/page', WorkspaceController::class)->defaults('screen', 'records')->name('households.page');
     Route::get('/protection-orders', [BarangayProtectionOrderController::class, 'index'])->name('protection-orders.index');
     Route::post('/protection-orders', [BarangayProtectionOrderController::class, 'store'])->name('protection-orders.store');
     Route::get('/protection-orders/{protectionOrder}', [BarangayProtectionOrderController::class, 'show'])->name('protection-orders.show');
     Route::patch('/protection-orders/{protectionOrder}', [BarangayProtectionOrderController::class, 'update'])->name('protection-orders.update');
+
+    Route::get('/incidents', WorkspaceController::class)->defaults('screen', 'incidents')->name('incidents.index');
+    Route::post('/incidents', [IncidentController::class, 'store'])->name('incidents.store');
+    Route::get('/incident-options', [IncidentController::class, 'options'])->name('incidents.options');
     Route::get('/request-restrictions', [ResidentRequestRestrictionController::class, 'index'])->name('request-restrictions.index');
     Route::post('/request-restrictions', [ResidentRequestRestrictionController::class, 'store'])->name('request-restrictions.store');
     Route::post('/request-restrictions/{restriction}/review', [ResidentRequestRestrictionController::class, 'review'])->name('request-restrictions.review');
@@ -189,6 +190,40 @@ Route::middleware(['auth', RecordAdministrativeAction::class])->prefix('admin')-
     )->name('issued-certificates.print');
 
 });
+
+Route::get('/staff/rfid-file-tracking', RfidFileTrackingController::class)
+    ->middleware(['auth:web', 'can:view-rfid-files', EnsureStaffAccess::class, RecordAdministrativeAction::class])
+    ->name('staff.rfid-files.index');
+
+Route::middleware(['auth:web', 'can:access-personnel', RecordAdministrativeAction::class])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/', WorkspaceController::class)->defaults('screen', 'dashboard')->name('dashboard');
+    Route::middleware('can:view-administration')->group(function () {
+        Route::get('/audit', WorkspaceController::class)->defaults('screen', 'audit')->name('audit');
+        Route::get('/settings', WorkspaceController::class)->defaults('screen', 'settings')->name('settings');
+        Route::get('/smart-cabinet', SmartCabinetController::class)->name('smart-cabinet.index');
+        Route::get('/employee-cabinet-access', [EmployeeCabinetAccessController::class, 'index'])->name('cabinet-access.index');
+        Route::patch('/employee-cabinet-access/{user}', [EmployeeCabinetAccessController::class, 'update'])->name('cabinet-access.update');
+        Route::patch('/employee-cabinet-access/{user}/rpi-employee-id', [EmployeeCabinetAccessController::class, 'updateRpiEmployeeId'])->name('cabinet-access.rpi-employee-id.update');
+        Route::post('/employee-cabinet-access/{user}/enrollment/{method}', [EmployeeCabinetAccessController::class, 'enroll'])->name('cabinet-access.enroll');
+        Route::get('/audit-log', AuditLogController::class)->name('audit.index');
+        Route::get('/users', WorkspaceController::class)->defaults('screen', 'users')->name('users.index');
+        Route::post('/users', [UserController::class, 'store'])->name('users.store');
+        Route::patch('/users/{user}', [UserController::class, 'update'])->name('users.update');
+        Route::patch('/residents/{resident}/portal-account', [ResidentPortalAccountController::class, 'update'])->name('residents.portal-account');
+    });
+
+});
+
+foreach (Route::getRoutes()->getRoutes() as $personnelRoute) {
+    if (! str_starts_with($personnelRoute->getName() ?? '', 'staff.') || in_array($personnelRoute->getName(), ['staff.dashboard', 'staff.access-pending'], true)) {
+        continue;
+    }
+    Route::match($personnelRoute->methods(), preg_replace('/^staff/', 'admin', $personnelRoute->uri()), LegacyPersonnelRouteController::class)
+        ->middleware(['auth:web', 'can:access-personnel', $personnelRoute->getName() === 'staff.rfid-files.index' ? 'can:view-rfid-files' : 'can:operate-personnel', EnsureStaffAccess::class])
+        ->where($personnelRoute->wheres)
+        ->defaults('destination', $personnelRoute->getName())
+        ->name(str_starts_with($personnelRoute->getName(), 'staff.protection-orders.') ? str_replace('staff.', 'admin.', $personnelRoute->getName()) : 'legacy.'.$personnelRoute->getName());
+}
 
 Route::get('/verify-certificate/{code}', [CertificateVerificationController::class, 'show'])
     ->middleware('throttle:60,1')

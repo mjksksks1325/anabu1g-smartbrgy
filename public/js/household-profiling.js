@@ -80,7 +80,7 @@ async function uploadHouseholdProfiling() {
   document.getElementById('profiling-errors').textContent = '';
   document.getElementById('profiling-status').textContent = 'Uploading file and preparing preview...';
   try {
-    profilingPreview = await profilingRequest('/admin/resident-profiling-imports/preview', form);
+    profilingPreview = await profilingRequest('/staff/resident-profiling-imports/preview', form);
     profilingValidated = true;
     profilingMappingChanged = false;
     renderProfilingMapping();
@@ -151,7 +151,7 @@ async function reviewHouseholdProfiling(resetRows = false) {
   invalidateProfilingPreview();
   setProfilingBusy(true);
   try {
-    const result = await profilingRequest('/admin/resident-profiling-imports/review', profilingReviewPayload(resetRows));
+    const result = await profilingRequest('/staff/resident-profiling-imports/review', profilingReviewPayload(resetRows));
     profilingPreview = { ...profilingPreview, ...result };
     profilingValidated = true;
     profilingMappingChanged = false;
@@ -164,7 +164,7 @@ async function saveHouseholdProfiling() {
   if (!profilingPreview || profilingBusy || document.getElementById('profiling-save').disabled) return;
   setProfilingBusy(true);
   try {
-    const result = await profilingRequest('/admin/resident-profiling-imports', profilingReviewPayload());
+    const result = await profilingRequest('/staff/resident-profiling-imports', profilingReviewPayload());
     profilingPreview = null;
     closeModal('modal-household-import');
     showToast(`${result.message} Created: ${result.result.created}; linked: ${result.result.linked}; skipped: ${result.result.skipped}.`, 'green');
@@ -214,7 +214,7 @@ async function loadPurokHouseholds(purokId, page = 1) {
   try {
     const query = new URLSearchParams({ purok_id: purokId, page, per_page: 15 });
     if (search) query.set('search', search);
-    const result = await householdApi(`/admin/households?${query}`);
+    const result = await householdApi(`/staff/households?${query}`);
     if (version !== purokHouseholdListVersion || selectedHouseholdPurok !== Number(purokId)) return;
     status.textContent = `${Number(result.total ?? result.data.length)} ${search ? 'matching households' : 'registered households'}`;
     container.innerHTML = result.data.map(household => `<tr onclick="viewDemographicHousehold(${Number(household.id)})"><td><button type="button" class="purok-household-link">${escapeText(household.household_name || household.household_number)}</button>${household.household_name ? `<small class="purok-household-number">${escapeText(household.household_number)}</small>` : ''}</td><td>${escapeText(household.head?.full_name || 'No household head assigned')}</td><td>${escapeText(household.address)}</td><td><span class="purok-household-members">${Number(household.household_size)}</span></td></tr>`).join('') || `<tr><td colspan="4" class="resident-table-message">${search ? 'No households match your search in this purok. Try another family name or clear the search.' : 'No households registered in this purok.'}</td></tr>`;

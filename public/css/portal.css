@@ -571,8 +571,8 @@ body.dark-mode .corrections-panel { border-left-color:var(--navy-line); }
   .theme-toggle { min-height:44px; }
 }
 
-/* The full navigation needs about 840px; below that it collapses behind the menu button. */
-@media (max-width:880px) {
+/* Leave room for the brand and both languages before showing the full navigation. */
+@media (max-width:1280px) {
   .nav-collapsible .menu-toggle { display:inline-flex; }
   .nav-collapsible .site-nav:not(.is-open) { display:none; }
   .nav-collapsible .site-nav.is-open { animation:rise-in var(--base) var(--ease) both; }

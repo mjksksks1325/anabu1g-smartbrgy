@@ -10,8 +10,14 @@
 <link rel="stylesheet" href="{{ asset('css/government.css') }}?v={{ filemtime(public_path('css/government.css')) }}">
 <link rel="stylesheet" href="{{ asset('css/figma-tokens.css') }}?v={{ filemtime(public_path('css/figma-tokens.css')) }}">
 <link rel="stylesheet" href="{{ asset('css/figma-admin.css') }}?v={{ filemtime(public_path('css/figma-admin.css')) }}">
+<script src="{{ asset('js/personnel-navigation.js') }}?v={{ filemtime(public_path('js/personnel-navigation.js')) }}" data-navigate-once></script>
+<script defer data-navigate-once src="{{ asset('js/admin.js') }}?v={{ filemtime(public_path('js/admin.js')) }}"></script>
+<script defer data-navigate-once src="{{ asset('js/household-profiling.js') }}?v={{ filemtime(public_path('js/household-profiling.js')) }}"></script>
+<script defer data-navigate-once src="{{ asset('js/case-management.js') }}?v={{ filemtime(public_path('js/case-management.js')) }}"></script>
+<script defer data-navigate-once src="{{ asset('js/personnel-password-confirmation.js') }}?v={{ filemtime(public_path('js/personnel-password-confirmation.js')) }}"></script>
 </head>
-<body class="light-mode">
+<body class="light-mode" data-personnel-layout="admin" data-personnel-super-admin="{{ auth()->user()->isSuperAdmin() ? 'true' : 'false' }}">
+<script>window.PersonnelNavigation.syncStyles();</script>
 <script>try { if (localStorage.getItem('smartbrgy_theme') === 'dark') document.body.classList.remove('light-mode'); } catch (_) {}</script>
 <div id="loading-bar"></div>
 <a href="#screen-{{ $activeScreen }}" class="skip-link">Skip to main content</a>
@@ -34,10 +40,10 @@
       <div class="dark-mode-toggle" id="theme-toggle" onclick="toggleTheme()">
         <span id="theme-label">Dark Mode</span>
       </div>
-      <a class="topbar-chip" href="{{ auth()->user()->isSuperAdmin() ? route('admin.smart-cabinet.index') : route('admin.rfid-files.index') }}">IoT status</a>
+      @if(auth()->user()->isSuperAdmin() || auth()->user()->hasPermission('rfid.view'))<a wire:navigate class="topbar-chip" href="{{ auth()->user()->isSuperAdmin() ? route('admin.smart-cabinet.index') : route('staff.rfid-files.index') }}">IoT status</a>@endif
       <button type="button" class="topbar-chip notif-badge-wrap" onclick="toggleNotifPanel()" id="notif-chip" aria-label="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></svg><span class="notif-count" id="notif-count">0</span></button>
       <div class="topbar-chip" id="clock-display" hidden>--:--:--</div>
-      <button type="button" class="topbar-avatar" onclick="doLogout()" title="Log out" aria-label="Log out" aria-haspopup="dialog" aria-controls="logout-dialog">JC</button>
+      <span class="topbar-avatar">{{ auth()->user()->initials() }}</span>
     </div>
   </div>
 
@@ -45,82 +51,89 @@
     <!-- SIDEBAR -->
     <nav class="sidebar" id="admin-navigation" aria-label="Staff navigation">
       <div class="sidebar-scroll">
+      @if(auth()->user()->hasAnyPermission(['dashboard.view', 'demographics.view']))
       <div class="sidebar-sec">
         <div class="sidebar-label">Overview</div>
-        <a class="nav-item{{ $activeScreen === 'dashboard' ? ' active' : '' }}" data-perm="Dashboard" data-screen="dashboard" aria-current="{{ $activeScreen === 'dashboard' ? 'page' : 'false' }}" href="{{ route('admin.dashboard') }}" onclick="showScreen('dashboard',this);return false">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        @if(auth()->user()->hasAnyPermission(['dashboard.view']))<a wire:navigate class="nav-item{{ $activeScreen === 'dashboard' ? ' active' : '' }}" data-perm="Dashboard" data-screen="dashboard" aria-current="{{ $activeScreen === 'dashboard' ? 'page' : 'false' }}" href="{{ route(auth()->user()->role === 'admin' ? 'admin.dashboard' : 'staff.dashboard') }}">
+          <x-staff-icon name="dashboard" />
           Dashboard
-        </a>
-        <a class="nav-item{{ $activeScreen === 'demographics' ? ' active' : '' }}" data-perm="Records" data-screen="demographics" aria-current="{{ $activeScreen === 'demographics' ? 'page' : 'false' }}" href="{{ route('admin.demographics') }}" onclick="showScreen('demographics',this);return false">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </a>@endif
+        @if(auth()->user()->hasAnyPermission(['demographics.view']))<a wire:navigate class="nav-item{{ $activeScreen === 'demographics' ? ' active' : '' }}" data-perm="Records" data-screen="demographics" aria-current="{{ $activeScreen === 'demographics' ? 'page' : 'false' }}" href="{{ route('staff.demographics') }}">
+          <x-staff-icon name="people" />
           Demographics
-        </a>
+        </a>@endif
       </div>
+      @endif
+      @if(auth()->user()->hasAnyPermission(['records.view', 'voters.view', 'documents.view', 'eligibility.view', 'incidents.view', 'vawc.view', 'incidents.submit', 'vawc.submit']))
       <div class="sidebar-sec">
         <div class="sidebar-label">Records</div>
-        <a class="nav-item{{ $activeScreen === 'records' ? ' active' : '' }}" data-perm="Records" data-screen="records" aria-current="{{ $activeScreen === 'records' ? 'page' : 'false' }}" href="{{ route('admin.residents.index') }}" onclick="showScreen('records',this);return false">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        @if(auth()->user()->hasAnyPermission(['records.view']))<a wire:navigate class="nav-item{{ $activeScreen === 'records' ? ' active' : '' }}" data-perm="Records" data-screen="records" aria-current="{{ $activeScreen === 'records' ? 'page' : 'false' }}" href="{{ route('staff.residents.index') }}">
+          <x-staff-icon name="document" />
           Resident Records
-        </a>
-        <a class="nav-item{{ $activeScreen === 'voters' ? ' active' : '' }}" data-perm="Records" data-screen="voters" aria-current="{{ $activeScreen === 'voters' ? 'page' : 'false' }}" href="{{ route('admin.voters') }}" onclick="showScreen('voters',this);return false">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        </a>@endif
+        @if(auth()->user()->hasAnyPermission(['voters.view']))<a wire:navigate class="nav-item{{ $activeScreen === 'voters' ? ' active' : '' }}" data-perm="Records" data-screen="voters" aria-current="{{ $activeScreen === 'voters' ? 'page' : 'false' }}" href="{{ route('staff.voters') }}">
+          <x-staff-icon name="voters" />
           Voters
-        </a>
-        <a class="nav-item{{ $activeScreen === 'certificates' ? ' active' : '' }}" data-perm="Certificates" data-screen="certificates" aria-current="{{ $activeScreen === 'certificates' ? 'page' : 'false' }}" href="{{ route('admin.document-requests.index') }}" onclick="showScreen('certificates',this);return false">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        </a>@endif
+        @if(auth()->user()->hasAnyPermission(['documents.view']))<a wire:navigate class="nav-item{{ $activeScreen === 'certificates' ? ' active' : '' }}" data-perm="Certificates" data-screen="certificates" aria-current="{{ $activeScreen === 'certificates' ? 'page' : 'false' }}" href="{{ route('staff.document-requests.index') }}">
+          <x-staff-icon name="certificate" />
           Certificates & Clearances
           <span class="nav-badge" id="cert-nav-badge" style="display:none;">0</span>
-        </a>
-        <a class="nav-item{{ $activeScreen === 'request-records' ? ' active' : '' }}" data-perm="Requests" data-screen="request-records" aria-current="{{ $activeScreen === 'request-records' ? 'page' : 'false' }}" href="{{ route('admin.request-eligibility') }}" onclick="showScreen('request-records',this);return false">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+        </a>@endif
+        @if(auth()->user()->hasAnyPermission(['eligibility.view', 'documents.view']))<a wire:navigate class="nav-item{{ $activeScreen === 'request-records' ? ' active' : '' }}" data-perm="Requests" data-screen="request-records" aria-current="{{ $activeScreen === 'request-records' ? 'page' : 'false' }}" href="{{ route('staff.request-eligibility') }}">
+          <x-staff-icon name="clipboard" />
           Request Eligibility
-        </a>
-        <a class="nav-item{{ $activeScreen === 'incidents' ? ' active' : '' }}" data-perm="Incidents" data-screen="incidents" aria-current="{{ $activeScreen === 'incidents' ? 'page' : 'false' }}" href="{{ route('admin.incidents.index') }}" onclick="showScreen('incidents',this);return false">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </a>@endif
+        @if(auth()->user()->hasAnyPermission(['incidents.view', 'vawc.view', 'incidents.submit', 'vawc.submit']))<a wire:navigate class="nav-item{{ $activeScreen === 'incidents' ? ' active' : '' }}" data-perm="Incidents" data-screen="incidents" aria-current="{{ $activeScreen === 'incidents' ? 'page' : 'false' }}" href="{{ route('staff.incidents.index') }}">
+          <x-staff-icon name="alert" />
           Incident Reports
-        </a>
+        </a>@endif
 
       </div>
+      @endif
+      @if(auth()->user()->hasPermission('rfid.view'))
       <div class="sidebar-sec">
         <div class="sidebar-label">IoT Security</div>
-        <a class="nav-item" href="{{ route('admin.rfid-files.index') }}">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+        @if(auth()->user()->hasAnyPermission(['rfid.view']))<a wire:navigate class="nav-item" href="{{ route('staff.rfid-files.index') }}">
+          <x-staff-icon name="card" />
           RFID File Tracking
-        </a>
+        </a>@endif
       </div>
+      @endif
       @if(auth()->user()->isSuperAdmin())
       <div class="sidebar-sec">
         <div class="sidebar-label">Administration</div>
-        <a class="nav-item" href="{{ route('admin.smart-cabinet.index') }}"><x-staff-icon name="cabinet" />Smart Cabinet</a>
-        <a class="nav-item" href="{{ route('admin.cabinet-access.index') }}"><x-staff-icon name="key" />Employee Cabinet Access</a>
-        <a class="nav-item{{ $activeScreen === 'audit' ? ' active' : '' }}" data-perm="Audit" data-screen="audit" aria-current="{{ $activeScreen === 'audit' ? 'page' : 'false' }}" href="{{ route('admin.audit') }}" onclick="showScreen('audit',this);return false">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg>
+        <a wire:navigate class="nav-item" href="{{ route('admin.smart-cabinet.index') }}"><x-staff-icon name="cabinet" />Smart Cabinet</a>
+        <a wire:navigate class="nav-item" href="{{ route('admin.cabinet-access.index') }}"><x-staff-icon name="key" />Employee Cabinet Access</a>
+        <a wire:navigate class="nav-item{{ $activeScreen === 'audit' ? ' active' : '' }}" data-perm="Audit" data-screen="audit" aria-current="{{ $activeScreen === 'audit' ? 'page' : 'false' }}" href="{{ route('admin.audit') }}">
+          <x-staff-icon name="audit" />
           Audit Log
         </a>
-        <a class="nav-item{{ $activeScreen === 'users' ? ' active' : '' }}" data-perm="Users" data-screen="users" aria-current="{{ $activeScreen === 'users' ? 'page' : 'false' }}" href="{{ route('admin.users.index') }}" onclick="showScreen('users',this);return false">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <a wire:navigate class="nav-item{{ $activeScreen === 'users' ? ' active' : '' }}" data-perm="Users" data-screen="users" aria-current="{{ $activeScreen === 'users' ? 'page' : 'false' }}" href="{{ route('admin.users.index') }}">
+          <x-staff-icon name="user" />
           User Management
         </a>
-        <a class="nav-item{{ $activeScreen === 'settings' ? ' active' : '' }}" data-perm="Settings" data-screen="settings" aria-current="{{ $activeScreen === 'settings' ? 'page' : 'false' }}" href="{{ route('admin.settings') }}" onclick="showScreen('settings',this);return false">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <a wire:navigate class="nav-item{{ $activeScreen === 'settings' ? ' active' : '' }}" data-perm="Settings" data-screen="settings" aria-current="{{ $activeScreen === 'settings' ? 'page' : 'false' }}" href="{{ route('admin.settings') }}">
+          <x-staff-icon name="settings" />
           Settings
         </a>
       </div>
       @endif
       <div class="sidebar-sec">
-        <a class="nav-item" href="{{ route('profile.edit') }}"><x-staff-icon name="people" />My profile</a>
-        <a class="nav-item" href="{{ route('security.edit') }}"><x-staff-icon name="shield" />Account security</a>
+        @if(auth()->user()->hasPermission('households.view') && !auth()->user()->hasPermission('records.view'))
+<a wire:navigate class="nav-item" data-screen="records" href="{{ route('staff.households.page') }}"><x-staff-icon name="people" />Households</a>
+      @endif
+
+<a wire:navigate class="nav-item" href="{{ route('profile.edit') }}"><x-staff-icon name="people" />My profile</a>
+        <a wire:navigate class="nav-item" href="{{ route('security.edit') }}"><x-staff-icon name="shield" />Account security</a>
         <div class="nav-item" onclick="window.open('{{ route('home') }}','_blank')" style="margin-top:8px;border-top:1px solid var(--border-color);padding-top:8px;">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          <x-staff-icon name="globe" />
           Portal ng Residente
         </div>
       </div>
       </div>
       <div class="sidebar-footer">
-        <div class="su-card">
-          <div class="su-avatar" id="sidebar-user-avatar">JC</div>
-          <div><div class="su-name" id="sidebar-user-name">Staff account</div><div class="su-role" id="sidebar-user-role">Staff</div></div>
-        </div>
+        <x-desktop-user-menu :personnel="true" />
       </div>
     </nav>
 
@@ -133,13 +146,13 @@
         </div>
       </div>
       <div class="stats-grid">
-        <div class="stat-card blue"><div class="stat-label">Active Residents</div><div class="stat-value" id="dash-stat-residents">0</div><div class="stat-sub" id="dash-sub-residents">Database records</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6m2 3a5 5 0 0 1 2 4v2"/></svg></div></div>
-        <div class="stat-card green"><div class="stat-label">Issued Certificates</div><div class="stat-value" id="dash-stat-issued">0</div><div class="stat-sub">Verified official records</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h9l3 3v15H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM14 3v4h4M8 12h8M8 16h8"/></svg></div></div>
-        <div class="stat-card amber"><div class="stat-label">Pending Requests</div><div class="stat-value" id="dash-stat-pending">0</div><div class="stat-sub" id="dash-sub-pending">No pending requests</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div></div>
-        <div class="stat-card red"><div class="stat-label">Incident Reports</div><div class="stat-value" id="dash-stat-incidents">0</div><div class="stat-sub" id="dash-sub-incidents">No incidents filed</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m12 3 10 18H2L12 3ZM12 9v5m0 3h.01"/></svg></div></div>
+        <div data-action-permission="records.view|demographics.view" class="stat-card blue" @if(!auth()->user()->hasAnyPermission(['records.view', 'demographics.view'])) hidden style="display:none;" @endif><div class="stat-label">Active Residents</div><div class="stat-value" id="dash-stat-residents">0</div><div class="stat-sub" id="dash-sub-residents">Database records</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6m2 3a5 5 0 0 1 2 4v2"/></svg></div></div>
+        <div data-action-permission="documents.view" class="stat-card green" @if(!auth()->user()->hasAnyPermission(['documents.view'])) hidden style="display:none;" @endif><div class="stat-label">Issued Certificates</div><div class="stat-value" id="dash-stat-issued">0</div><div class="stat-sub">Verified official records</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h9l3 3v15H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM14 3v4h4M8 12h8M8 16h8"/></svg></div></div>
+        <div data-action-permission="documents.view" class="stat-card amber" @if(!auth()->user()->hasAnyPermission(['documents.view'])) hidden style="display:none;" @endif><div class="stat-label">Pending Requests</div><div class="stat-value" id="dash-stat-pending">0</div><div class="stat-sub" id="dash-sub-pending">No pending requests</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div></div>
+        <div data-action-permission="incidents.view|vawc.view" class="stat-card red" @if(!auth()->user()->hasAnyPermission(['incidents.view', 'vawc.view'])) hidden style="display:none;" @endif><div class="stat-label">Incident Reports</div><div class="stat-value" id="dash-stat-incidents">0</div><div class="stat-sub" id="dash-sub-incidents">No incidents filed</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m12 3 10 18H2L12 3ZM12 9v5m0 3h.01"/></svg></div></div>
       </div>
       <div class="two-col">
-        <div class="card">
+        <div class="card" @cannot('documents.view') hidden style="display:none;" @endcannot>
           <div class="card-header"><div><div class="card-title">Certificate Requests</div><div class="card-sub">Real-time na bilang ng bawat uri ng kahilingan</div></div><span class="badge badge-green">Live</span></div>
           <div id="dash-chart"></div>
         </div>
@@ -151,20 +164,20 @@
         </div>
       </div>
       <div class="three-col">
-        <div class="card">
+        <div class="card" @cannot('demographics.view') hidden style="display:none;" @endcannot>
           <div class="card-header"><div class="card-title">Purok Breakdown</div></div>
           <div style="display:flex;flex-direction:column;gap:9px;" id="dash-purok-breakdown"></div>
         </div>
         <div class="card">
           <div class="card-header"><div class="card-title">System Status</div></div>
-          <div class="sys-row"><div class="sys-name">Document services</div><a class="btn btn-xs" href="{{ route('admin.document-requests.list') }}">View requests</a></div>
+          <div class="sys-row" @cannot('documents.view') hidden style="display:none;" @endcannot><div class="sys-name">Document services</div><a class="btn btn-xs" href="{{ route('staff.document-requests.list') }}">View requests</a></div>
           <div class="sys-row"><div class="sys-name">Account security</div><a class="btn btn-xs" href="{{ route('security.edit') }}">Manage</a></div>
-          <div class="sys-row"><div class="sys-name">Hardware integrations</div><a class="btn btn-xs" href="{{ auth()->user()->isSuperAdmin() ? route('admin.smart-cabinet.index') : route('admin.rfid-files.index') }}">View status</a></div>
+          <div class="sys-row"><div class="sys-name">Hardware integrations</div>@if(auth()->user()->isSuperAdmin() || auth()->user()->hasPermission('rfid.view'))<a class="btn btn-xs" href="{{ auth()->user()->isSuperAdmin() ? route('admin.smart-cabinet.index') : route('staff.rfid-files.index') }}">View status</a>@endif</div>
         </div>
         <div class="card">
           <div class="card-header"><div class="card-title">Quick Actions</div></div>
           <div style="display:flex;flex-direction:column;gap:7px;">
-            <button class="btn btn-green btn-full" onclick="showScreen('records',findNavItem('records'));openAddResident()"><x-staff-icon name="plus" />Register New Resident</button>
+            <button data-action-permission="records.create" class="btn btn-green btn-full" onclick="showScreen('records',findNavItem('records'));openAddResident()" @if(!auth()->user()->hasAnyPermission(['records.create'])) hidden style="display:none;" @endif><x-staff-icon name="plus" />Register New Resident</button>
             <button class="btn btn-primary btn-full" onclick="showScreen('certificates',findNavItem('certificates'))"><x-staff-icon name="document" />Issue Certificate</button>
             <button class="btn btn-full" onclick="showScreen('incidents',findNavItem('incidents'))"><x-staff-icon name="alert" />File Incident Report</button>
           </div>
@@ -178,7 +191,7 @@
         <div class="page-header"><h1>Population <span>Demographics</span></h1><p>Census data — Barangay Anabu I-G, Imus City</p></div>
         <div style="display:flex;gap:8px;">
           <button class="btn btn-sm" onclick="refreshDemographics()">⟳ Refresh</button>
-          <button class="btn btn-green btn-sm" onclick="window.location.href='{{ route('admin.residents.export') }}'"> Export Census</button>
+          <button class="btn btn-green btn-sm" data-action-permission="records.export" onclick="window.location.href='{{ route('staff.residents.export') }}'"> Export Census</button>
         </div>
       </div>
 
@@ -234,23 +247,23 @@
     <!-- RESIDENT RECORDS -->
     <div class="content{{ $activeScreen === 'records' ? ' active' : '' }}" id="screen-records">
       <div class="page-header-row">
-        <div class="page-header"><h1>Resident <span>Records</span></h1><p>All registered residents — Barangay Anabu I-G</p></div>
-        <button class="btn btn-green" onclick="openAddResident()"> New Resident</button>
+        <div class="page-header"><h1>{{ auth()->user()->hasPermission('records.view') ? 'Resident Records' : 'Households' }}</h1><p>All registered residents — Barangay Anabu I-G</p></div>
+        <button data-action-permission="records.create" class="btn btn-green" onclick="openAddResident()" @if(!auth()->user()->hasAnyPermission(['records.create'])) hidden style="display:none;" @endif> New Resident</button>
       </div>
       <div class="search-row">
-        <div class="search-wrap"><span class="si"></span><input class="search-input" id="residents-search" placeholder="Search resident by name, ID, or purok..." oninput="filterResidents()"/></div>
-        <button class="btn btn-primary btn-sm" onclick="exportResidents()">Export CSV</button>
-        <button class="btn btn-sm" onclick="openHouseholdManagement()">Manage Households</button>
-        <button class="btn btn-sm" onclick="openHouseholdProfilingImport()">Import Residents / Household Profiling</button>
+        <div class="search-wrap"><span class="si"></span><input class="search-input" @cannot('records.view') hidden @endcannot id="residents-search" placeholder="Search resident by name, ID, or purok..." oninput="filterResidents()"/></div>
+        <button data-action-permission="records.export" class="btn btn-primary btn-sm" onclick="exportResidents()" @if(!auth()->user()->hasAnyPermission(['records.export'])) hidden style="display:none;" @endif>Export CSV</button>
+        <button data-action-permission="households.view" class="btn btn-sm" onclick="openHouseholdManagement()" @if(!auth()->user()->hasAnyPermission(['households.view'])) hidden style="display:none;" @endif>Manage Households</button>
+        <button data-action-permission="records.import" class="btn btn-sm" onclick="openHouseholdProfilingImport()" @if(!auth()->user()->hasAnyPermission(['records.import'])) hidden style="display:none;" @endif>Import Residents / Household Profiling</button>
       </div>
-      <div class="status-bar">
+      <div class="status-bar" @cannot('records.view') hidden style="display:none;" @endcannot>
         <div class="status-pill active" onclick="filterResidentStatus('',this)">All</div>
         <div class="status-pill" onclick="filterResidentStatus('Active',this)">Active</div>
         <div class="status-pill" onclick="filterResidentStatus('Inactive',this)">Inactive</div>
         <div class="status-pill" onclick="filterResidentStatus('Senior',this)"> Senior Citizens</div>
         <div class="status-pill" onclick="filterResidentStatus('Archived',this)">Archived</div>
       </div>
-      <div class="card">
+      <div class="card" @cannot('records.view') hidden style="display:none;" @endcannot>
         <div class="table-scroll"><table class="tbl">
           <thead><tr><th>Resident ID</th><th>Full Name</th><th>Age</th><th>Purok</th><th>Gender</th><th>Civil Status</th><th>Status</th><th>Household</th><th>Actions</th></tr></thead>
           <tbody id="records-tbody"></tbody>
@@ -264,9 +277,9 @@
       <div class="page-header-row">
         <div class="page-header"><h1>Voters</h1><p>Listahan ng mga resident na botante, na itinatala ng barangay personnel.</p></div>
         <div class="voter-header-actions">
-          <button class="btn btn-green" onclick="openVoterRegistration()">Add Voter</button>
-          <button class="btn btn-primary" onclick="openVotersImport()">Import CSV</button>
-          <button class="btn btn-primary" onclick="exportVoterRegistry()">Export List</button>
+          <button data-action-permission="voters.create" class="btn btn-green" onclick="openVoterRegistration()" @if(!auth()->user()->hasAnyPermission(['voters.create'])) hidden style="display:none;" @endif>Add Voter</button>
+          <button data-action-permission="voters.import" class="btn btn-primary" onclick="openVotersImport()" @if(!auth()->user()->hasAnyPermission(['voters.import'])) hidden style="display:none;" @endif>Import CSV</button>
+          <button data-action-permission="voters.export" class="btn btn-primary" onclick="exportVoterRegistry()" @if(!auth()->user()->hasAnyPermission(['voters.export'])) hidden style="display:none;" @endif>Export List</button>
         </div>
       </div>
 
@@ -307,7 +320,7 @@
         <div class="page-header"><h1>Certificates &amp; <span>Clearances</span></h1><p>Issue and track official barangay documents</p></div>
         <div style="display:flex;gap:8px;">
           <button class="btn btn-primary btn-sm" onclick="showPublicPortal()"> Public Portal</button>
-          <button class="btn btn-green btn-sm" onclick="openModal('modal-cert-issue')"> Issue Certificate</button>
+          <button data-action-permission="documents.issue" class="btn btn-green btn-sm" @cannot('documents.issue') hidden style="display:none;" @endcannot onclick="openModal('modal-cert-issue')"> Issue Certificate</button>
         </div>
       </div>
 
@@ -332,7 +345,7 @@
       </div>
 
       <!-- Kanban Board -->
-      <div class="card" style="margin-bottom:16px;">
+      <div class="card request-board-panel" style="margin-bottom:16px;">
         <div class="card-header">
           <div><div class="card-title">Request Board</div><div class="card-sub">Status tracking for document requests</div></div>
           <div style="display:flex;gap:6px;">
@@ -369,7 +382,7 @@
     <div class="content{{ $activeScreen === 'incidents' ? ' active' : '' }}" id="screen-incidents">
       <div class="page-header-row">
         <div class="page-header"><h1>Incident <span>Reports</span></h1><p>Complaints and incidents in the barangay</p></div>
-        <button class="btn btn-danger" onclick="openAddIncident()"> File Incident</button>
+        <button data-action-permission="incidents.submit|vawc.submit" class="btn btn-danger" onclick="openAddIncident()" @if(!auth()->user()->hasAnyPermission(['incidents.submit', 'vawc.submit'])) hidden style="display:none;" @endif> File Incident</button>
       </div>
       <div class="stats-grid stats-grid-3">
         <div class="stat-card red"><div class="stat-label">Open / Under Review</div><div class="stat-value" id="inc-stat-pending">0</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div></div>
@@ -402,7 +415,7 @@
         <div class="page-header"><h1>Request <span>Eligibility</span></h1><p>Complete document request history per resident — eligibility tracking & audit trail</p></div>
         <div style="display:flex;gap:8px;">
           <button class="btn btn-primary btn-sm" onclick="openModal('modal-eligibility-check')"> Check Eligibility</button>
-          <a class="btn btn-green btn-sm" href="{{ route('admin.request-records.export') }}"> Export</a>
+          @can('eligibility.export')<a class="btn btn-green btn-sm" href="{{ route('staff.request-records.export') }}"> Export</a>@endcan
         </div>
       </div>
 
@@ -480,10 +493,12 @@
           </div>
         </div>
         <!-- Log Table Header -->
-        <div class="audit-table-head" style="display:grid;grid-template-columns:50px 130px 1fr 200px 90px;gap:12px;padding:7px 14px;border-bottom:1px solid var(--border);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);background:var(--table-header);border-radius:var(--radius-sm);">
+        <div class="audit-log-table-scroll">
+        <div class="audit-table-head" style="gap:12px;padding:7px 14px;border-bottom:1px solid var(--border);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);background:var(--table-header);border-radius:var(--radius-sm);">
           <span>Type</span><span>Timestamp</span><span>Action & Detail</span><span>User / Source</span><span>Category</span>
         </div>
-        <div id="audit-log-list" style="max-height:520px;overflow-y:auto;"></div>
+        <div id="audit-log-list"></div>
+        </div>
         <div style="padding:10px 14px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted);display:flex;justify-content:space-between;">
           <span id="audit-showing-count">Showing all events</span>
           <span> Auto-refreshes every 15 seconds</span>
@@ -558,22 +573,7 @@
 </div><!-- end app -->
 
 <!-- MODALS -->
-<dialog class="modal logout-dialog" id="logout-dialog" aria-labelledby="logout-title" aria-describedby="logout-description" data-logout-url="{{ route('logout') }}" data-login-url="{{ route('login') }}" oncancel="if (logoutPending) event.preventDefault()">
-  <button type="button" class="modal-close logout-close" aria-label="Cancel logout" onclick="cancelLogout()">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg>
-  </button>
-  <div class="logout-symbol" aria-hidden="true">
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4M14 8l4 4-4 4M8 12h13"/></svg>
-  </div>
-  <p class="logout-eyebrow">Staff workspace</p>
-  <h2 id="logout-title">Log out of SmartBrgy?</h2>
-  <p id="logout-description">You're about to end your staff session. You can sign in again anytime.</p>
-  <p class="logout-error" id="logout-error" role="alert" hidden></p>
-  <div class="logout-actions">
-    <button type="button" class="btn logout-cancel" onclick="cancelLogout()" autofocus>Cancel</button>
-    <button type="button" class="btn logout-confirm" id="logout-confirm" onclick="confirmLogout()">Log out</button>
-  </div>
-</dialog>
+@include('partials.personnel-logout-confirmation')
 
 <!-- Add/Edit Purok -->
 <div class="modal-overlay" id="modal-purok">
@@ -686,12 +686,12 @@
       <div class="form-group"><div class="form-label">Suffix</div><input class="form-input" id="res-suffix" placeholder="Jr."/></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><div class="form-label">Date of Birth *</div><input class="form-input" type="date" id="res-dob"/></div>
+      <div class="form-group"><label class="form-label" for="res-dob">Date of Birth *</label><input class="form-input" type="date" id="res-dob" max="{{ today()->toDateString() }}"/></div>
       <div class="form-group"><div class="form-label">Gender *</div><select class="form-input" id="res-gender"><option>Male</option><option>Female</option></select></div>
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label" for="res-nationality">Nationality</label><input class="form-input" id="res-nationality" maxlength="100" placeholder="Not provided"></div>
-      <div class="form-group"><label class="form-label" for="res-photo">Resident photo (JPG, PNG, WebP; up to 5 MB)</label><input class="form-input" type="file" id="res-photo" accept="image/jpeg,image/png,image/webp"><img id="res-photo-preview" alt="Current resident photo" style="max-width:90px;max-height:100px;display:none"></div>
+      <div class="form-group"><label class="form-label" for="res-photo">Resident photo (JPG, PNG, WebP; up to 5 MB)</label><input class="form-input" type="file" id="res-photo" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" onchange="validateResidentPhoto(this)"><img id="res-photo-preview" alt="Current resident photo" style="max-width:90px;max-height:100px;display:none"></div>
       <div class="form-group"><label><input type="checkbox" id="res-verified-indigent"> Indigency verified by barangay staff</label></div>
       <div class="form-group"><div class="form-label">Civil Status</div><select class="form-input" id="res-civil"><option>Single</option><option>Married</option><option>Widowed</option><option>Separated</option></select></div>
       <div class="form-group"><div class="form-label">Purok / Zone *</div><select class="form-input" id="res-purok"><option>Purok 1 - Sampaguita</option><option>Purok 2 - Rosal</option><option>Purok 3 - Camia</option><option>Purok 4 - Ilang-Ilang</option><option>Purok 5 - Mabini</option></select></div>
@@ -786,7 +786,7 @@
     <div class="form-group"><label class="form-label" for="household-search">Search by household name, number, head or address</label><input class="form-input" id="household-search" maxlength="100" oninput="searchHouseholdManagement()"/></div>
     <div id="household-list" aria-live="polite"></div>
     <div class="resident-pagination" id="household-pagination"></div>
-    <button class="btn btn-sm" onclick="newManagedHousehold()">Create household</button>
+    <button data-action-permission="households.create" class="btn btn-sm" onclick="newManagedHousehold()">Create household</button>
     <section class="resident-account-panel" id="household-editor" hidden>
       <h3 id="household-editor-title">New household</h3>
       <input type="hidden" id="household-edit-id"/>
@@ -805,9 +805,9 @@
           <label class="form-label" for="household-resident-relationship">Relationship to head</label><input class="form-input" id="household-resident-relationship" maxlength="100"/>
           <label class="resident-standing"><input type="checkbox" id="household-resident-head"/> Designate as household head</label>
         </div>
-        <button class="btn btn-sm" onclick="addManagedHouseholdMember()">Add resident</button>
+        <button data-action-permission="households.update" class="btn btn-sm" onclick="addManagedHouseholdMember()">Add resident</button>
       </div>
-      <div class="household-save-actions"><button class="btn btn-green btn-sm" id="household-save" onclick="saveManagedHousehold()">Save household</button></div>
+      <div class="household-save-actions"><button data-action-permission="households.create|households.update" class="btn btn-green btn-sm" id="household-save" onclick="saveManagedHousehold()">Save household</button></div>
     </section>
     <div class="modal-footer"><button class="btn" onclick="closeModal('modal-households')">Close</button></div>
   </div>
@@ -819,7 +819,7 @@
     <div id="view-resident-content"></div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('modal-view-resident')">Close</button>
-      <button class="btn btn-primary" onclick="openViewResidentRequests(currentViewResidentId)"> View Requests</button>
+      <button data-action-permission="documents.view" class="btn btn-primary" onclick="openViewResidentRequests(currentViewResidentId)" @if(!auth()->user()->hasAnyPermission(['documents.view'])) hidden style="display:none;" @endif> View Requests</button>
       <button class="btn btn-green" onclick="openEligibilityForResident(currentViewResidentId)"> Check Eligibility</button>
     </div>
   </div>
@@ -833,7 +833,7 @@
       <button type="button" class="modal-close" onclick="closeModal('modal-voters-import')">?</button>
     </div>
     <div class="voter-privacy-panel">Maximum 500 rows at 5 MB. UTF-8 CSV lamang. Dates: YYYY-MM-DD. Kapag may invalid o duplicate row, walang mase-save sa buong file. Hindi maa-update ang existing voter records.</div>
-    <div class="form-group"><a class="btn btn-primary" href="{{ route('admin.voter-registrations.template') }}">Download CSV Template</a></div>
+    <div class="form-group"><a class="btn btn-primary" href="{{ route('staff.voter-registrations.template') }}">Download CSV Template</a></div>
     <div class="form-group"><label class="form-label" for="voters-import-file">CSV File *</label><input class="form-input" type="file" id="voters-import-file" accept=".csv,text/csv"/></div>
     <div class="card-sub">Columns: resident_number, comelec_voter_number, precinct_number, cluster_number, registration_date. Kunin ang Resident Number sa Resident Records; ilagay ang existing voter information.</div>
     <div class="voter-privacy-panel" id="voters-import-result" role="status" aria-live="polite" hidden></div>
@@ -957,7 +957,7 @@
       <div style="background:var(--green-dim);border:1px solid var(--border-green);border-radius:var(--radius-sm);padding:10px;font-size:11.5px;color:var(--text-secondary);margin-bottom:14px;"> The official fee is set by the server. A unique QR verification code is generated automatically.</div>
       <div class="modal-footer">
         <button type="button" class="btn" onclick="closeModal('modal-cert-issue')">Cancel</button>
-        <button type="submit" class="btn btn-green" id="manual-certificate-submit"> Issue & Print</button>
+        <button type="submit" class="btn btn-green" data-action-permission="documents.issue" id="manual-certificate-submit"> Issue & Print</button>
       </div>
     </form>
   </div>
@@ -968,6 +968,7 @@
   <div class="modal">
     <div class="modal-header"><div class="modal-title" id="inc-modal-title"> File Incident Report</div><div class="modal-close" onclick="closeModal('modal-incident')">×</div></div>
     <div class="form-group"><div class="form-label">Incident Type *</div>
+      @if(auth()->user()->hasAnyPermission(['vawc.submit', 'vawc.update']))<label><input type="checkbox" id="inc-sensitive"> Restricted VAWC / BPO case</label>@endif
       <select class="form-input" id="inc-type"><option value="">Select type...</option><option>Noise Complaint</option><option>Property Dispute</option><option>Domestic Dispute</option><option>Vandalism</option><option>Theft</option><option>Physical Assault</option><option>Iba pa</option></select>
     </div>
     <div class="form-row">
@@ -1041,7 +1042,7 @@
     </div>
     <div id="incident-case-history" class="resident-account-panel"></div>
     @can('viewAny', App\Models\BarangayProtectionOrder::class)
-    <div class="resident-account-panel"><h3>Restricted BPO records</h3><button class="btn btn-sm" onclick="openProtectionOrderForm()">Add BPO record</button><div id="protection-orders-list"></div></div>
+    <div class="resident-account-panel"><h3>Restricted BPO records</h3><button data-action-permission="vawc.submit" class="btn btn-sm" onclick="openProtectionOrderForm()" @if(!auth()->user()->hasAnyPermission(['vawc.submit'])) hidden style="display:none;" @endif>Add BPO record</button><div id="protection-orders-list"></div></div>
     @endcan
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('modal-view-incident')">Isara</button>
@@ -1053,13 +1054,17 @@
 <!-- Add User -->
 @if(auth()->user()->isSuperAdmin())
 <div class="modal-overlay" id="modal-adduser">
-  <form class="modal" onsubmit="event.preventDefault();saveNewUser()">
+  <form class="modal user-account-modal" onsubmit="event.preventDefault();saveNewUser()">
     <div class="modal-header">
-      <div class="modal-title" id="adduser-modal-title">New user</div>
+      <div><p class="user-account-eyebrow">User Management</p><div class="modal-title" id="adduser-modal-title">New user</div></div>
       <button type="button" class="modal-close" onclick="closeModal('modal-adduser')" aria-label="Close user form">&times;</button>
     </div>
 
+    <div class="user-account-body">
     <input type="hidden" id="adduser-edit-id">
+    <section class="user-account-section" aria-labelledby="account-details-title">
+    <h3 id="account-details-title">Account details</h3>
+    <div class="user-account-grid">
 
     <div class="form-group">
       <label for="adduser-name" class="form-label">Full name</label>
@@ -1073,10 +1078,10 @@
 
     <div class="form-group">
       <label for="adduser-role" class="form-label">Access role</label>
-      <select class="form-input" id="adduser-role">
-        <option value="staff">Staff</option>
-        <option value="admin">Administrator</option>
-        <option value="viewer">View only (no administrative records)</option>
+      <select class="form-input" id="adduser-role" onchange="toggleStaffAssignmentFields()">
+        <option value="staff">Barangay Staff</option>
+        <option value="admin" hidden disabled>Super Admin / legacy administrator</option>
+        <option value="viewer" hidden disabled>Legacy viewer</option>
       </select>
     </div>
 
@@ -1087,17 +1092,56 @@
         <option value="suspended">Suspended</option>
       </select>
     </div>
-
-    <div class="form-group">
+    <div class="form-group user-account-password">
       <label for="adduser-password" class="form-label">Password</label>
       <input class="form-input" id="adduser-password" type="password" minlength="12" autocomplete="new-password">
       <p class="card-sub" id="adduser-pass-label">At least 12 characters. Leave blank when editing to keep the current password.</p>
     </div>
+    </div>
+    </section>
 
-    <div style="border-top:1px solid var(--border);margin:18px 0 14px;padding-top:14px;">
-      <div class="form-label" style="margin-bottom:8px;">Smart Cabinet Access</div>
+    <section id="staff-assignment-fields" class="user-account-section" aria-labelledby="staff-assignments-title">
+      <h3 id="staff-assignments-title">Staff access assignments</h3>
+      <p class="card-sub">Only Super Admin can change these assignments. No selections means no operational access. Physical cabinet access is separate.</p>
+      <div class="staff-preset-toolbar"><div>
+      <label class="form-label" for="staff-access-preset">Start from a preset</label>
+      <select id="staff-access-preset" class="form-input" onchange="applyStaffPreset(this.value)">
+        <option value="">Custom assignments</option>
+        @foreach(App\StaffPermissions::presets() as $name => $keys)<option value="{{ $name }}">{{ $name }}</option>@endforeach
+      </select>
+      </div><button type="button" class="btn btn-sm" onclick="setStaffAssignments([])">Clear all access</button></div>
+      <p class="card-sub staff-preset-help">Adjust any selections before saving.</p>
+      @foreach([
+        ['title' => 'General pages', 'layout' => 'pages', 'modules' => ['dashboard', 'demographics', 'rfid']],
+        ['title' => 'Records & services', 'layout' => 'services', 'modules' => ['records', 'households', 'documents', 'eligibility', 'voters']],
+        ['title' => 'Incidents & restricted cases', 'layout' => 'cases', 'modules' => ['incidents', 'vawc']],
+      ] as $group)
+        <div class="staff-permission-group">
+          <h4>{{ $group['title'] }}</h4>
+          <div class="staff-permission-grid staff-permission-grid-{{ $group['layout'] }}">
+          @foreach($group['modules'] as $module)
+            @php($definition = App\StaffPermissions::modules()[$module])
+            <fieldset class="staff-permission-module">
+              <legend>{{ $definition['label'] }}</legend>
+              <div class="staff-permission-options">
+              @foreach($definition['actions'] as $action => $label)
+                <label class="staff-permission-option"><input type="checkbox" data-staff-permission="{{ $module.'.'.$action }}" onchange="changeStaffAssignment(this)"><span>{{ $label }}</span></label>
+              @endforeach
+              </div>
+            </fieldset>
+          @endforeach
+          </div>
+        </div>
+      @endforeach
+    </section>
 
-      <label style="display:flex;align-items:center;gap:9px;cursor:pointer;margin-bottom:12px;">
+
+
+
+    <section class="user-account-section user-cabinet-section">
+      <h3>Smart Cabinet Access</h3>
+
+      <label class="staff-permission-option user-cabinet-option">
         <input
           type="checkbox"
           id="adduser-cabinet-access"
@@ -1126,6 +1170,7 @@
           <div>Face: <strong id="adduser-face-status">Not enrolled</strong></div>
         </div>
       </div>
+    </section>
     </div>
 
     <div class="modal-footer">
@@ -1134,7 +1179,7 @@
     </div>
   </form>
 </div>
-@endif
+      @endif
 
 <!-- Eligibility Checker Modal -->
 <div class="modal-overlay" id="modal-eligibility-check">
@@ -1153,7 +1198,7 @@
     <div id="elig-result" style="display:none;"></div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('modal-eligibility-check')">Close</button>
-      <button class="btn btn-green" id="elig-proceed-btn" style="display:none;" onclick="elig_proceedRequest()"> Issue Document</button>
+      <button data-action-permission="documents.issue" class="btn btn-green" id="elig-proceed-btn" style="display:none;" onclick="elig_proceedRequest()"> Issue Document</button>
     </div>
   </div>
 </div>
@@ -1174,13 +1219,16 @@
 
 <script>
     window.LARAVEL_DOCUMENT_REQUESTS = @json($requests);
+    window.PERSONNEL_LOGIN_GREETING = {{ Illuminate\Support\Js::from(session()->pull('personnel_login_greeting', false)) }};
     window.ADMIN_ACTIVE_SCREEN = {{ Illuminate\Support\Js::from($activeScreen) }};
     window.ADMIN_SCREEN_ROUTES = {{ Illuminate\Support\Js::from($screenRoutes) }};
+    window.STAFF_PERMISSION_PRESETS = {{ Illuminate\Support\Js::from(App\StaffPermissions::presets()) }};
+    window.PERSONNEL_SCREEN_ACCESS = {{ Illuminate\Support\Js::from(['dashboard' => auth()->user()->hasPermission('dashboard.view'), 'demographics' => auth()->user()->hasPermission('demographics.view'), 'records' => auth()->user()->hasAnyPermission(['records.view', 'households.view']), 'voters' => auth()->user()->hasPermission('voters.view'), 'certificates' => auth()->user()->hasPermission('documents.view'), 'request-records' => auth()->user()->hasAnyPermission(['eligibility.view', 'documents.view']), 'incidents' => auth()->user()->hasAnyPermission(['incidents.view', 'vawc.view']), 'audit' => auth()->user()->isSuperAdmin(), 'users' => auth()->user()->isSuperAdmin(), 'settings' => auth()->user()->isSuperAdmin()]) }};
+    window.PERSONNEL_PERMISSIONS = {{ Illuminate\Support\Js::from(auth()->user()->isSuperAdmin() ? App\StaffPermissions::keys() : (auth()->user()->staff_permissions ?? [])) }};
     window.AUTHENTICATED_USER = {{ Illuminate\Support\Js::from(['id' => auth()->id(), 'name' => auth()->user()->name, 'role' => auth()->user()->role, 'is_super_admin' => auth()->user()->isSuperAdmin()]) }};
 </script>
 
-<script src="{{ asset('js/admin.js') }}?v={{ filemtime(public_path('js/admin.js')) }}"></script>
-<script src="{{ asset('js/household-profiling.js') }}?v={{ filemtime(public_path('js/household-profiling.js')) }}"></script>
-<script src="{{ asset('js/case-management.js') }}?v={{ filemtime(public_path('js/case-management.js')) }}"></script>
+@livewireScripts
+@include('partials.personnel-password-confirmation')
 </body>
 </html>

@@ -40,15 +40,15 @@ it('requires authentication for certificate administration endpoints', function 
         'issued_at' => now(),
     ]);
 
-    $this->postJson(route('admin.issued-certificates.store'))->assertUnauthorized();
-    $this->getJson(route('admin.issued-certificates.index'))->assertUnauthorized();
-    $this->postJson(route('admin.document-requests.issue', $documentRequest))->assertUnauthorized();
-    $this->get(route('admin.issued-certificates.print', $certificate))
+    $this->postJson(route('staff.issued-certificates.store'))->assertUnauthorized();
+    $this->getJson(route('staff.issued-certificates.index'))->assertUnauthorized();
+    $this->postJson(route('staff.document-requests.issue', $documentRequest))->assertUnauthorized();
+    $this->get(route('staff.issued-certificates.print', $certificate))
         ->assertRedirect(route('login'));
 });
 
 it('lists issued certificates with reprint and verification links', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->assignedOperations()->create();
     $certificate = IssuedCertificate::query()->create([
         'certificate_number' => 'CERT-2026-HISTORY',
         'verification_code' => 'HISTORYVERIFYCODE',
@@ -60,12 +60,12 @@ it('lists issued certificates with reprint and verification links', function () 
     ]);
 
     $this->actingAs($user)
-        ->getJson(route('admin.issued-certificates.index'))
+        ->getJson(route('staff.issued-certificates.index'))
         ->assertOk()
         ->assertJsonPath('0.certificate_number', 'CERT-2026-HISTORY')
         ->assertJsonPath('0.resident_name', 'Maria Santos')
         ->assertJsonPath('0.source', 'onsite')
-        ->assertJsonPath('0.print_url', route('admin.issued-certificates.print', $certificate))
+        ->assertJsonPath('0.print_url', route('staff.issued-certificates.print', $certificate))
         ->assertJsonPath('0.verification_url', route('certificate.verify', 'HISTORYVERIFYCODE'));
 });
 
@@ -74,7 +74,7 @@ it('issues every supported online request with the server fee and a real QR file
     int $expectedFee,
 ) {
     Storage::fake('public');
-    $user = User::factory()->create(['name' => 'Records Officer']);
+    $user = User::factory()->assignedOperations()->create(['name' => 'Records Officer']);
     $resident = null;
     if (in_array($certificateType, [CertificateType::CertificateOfIndigency, CertificateType::RegisteredVoterCertification], true)) {
         $resident = Resident::factory()->create(['is_verified_indigent' => true, 'is_in_good_standing' => true]);
@@ -91,7 +91,7 @@ it('issues every supported online request with the server fee and a real QR file
     ]);
 
     $response = $this->actingAs($user)
-        ->postJson(route('admin.document-requests.issue', $documentRequest));
+        ->postJson(route('staff.document-requests.issue', $documentRequest));
 
     $response
         ->assertOk()
@@ -102,7 +102,7 @@ it('issues every supported online request with the server fee and a real QR file
     expect((float) $certificate->amount_paid)->toBe((float) $expectedFee);
     expect($certificate->qr_code_path)->toStartWith('/storage/qrcodes/');
     expect($response->json('verification_url'))->toBe(route('certificate.verify', $certificate->verification_code));
-    expect($response->json('print_url'))->toBe(route('admin.issued-certificates.print', $certificate));
+    expect($response->json('print_url'))->toBe(route('staff.issued-certificates.print', $certificate));
     Storage::disk('public')->assertExists(Str::after($certificate->qr_code_path, '/storage/'));
     expect($documentRequest->fresh())
         ->status->toBe('released')
@@ -111,9 +111,9 @@ it('issues every supported online request with the server fee and a real QR file
 
 it('creates and links an onsite request while using the server fee', function () {
     Storage::fake('public');
-    $user = User::factory()->create(['name' => 'Barangay Clerk']);
+    $user = User::factory()->assignedOperations()->create(['name' => 'Barangay Clerk']);
 
-    $response = $this->actingAs($user)->postJson(route('admin.issued-certificates.store'), [
+    $response = $this->actingAs($user)->postJson(route('staff.issued-certificates.store'), [
         'certificate_type' => CertificateType::BusinessClearance->value,
         'resident_name' => 'Ana Reyes',
         'address' => 'Anabu I-G, Imus City',
@@ -139,14 +139,14 @@ it('creates and links an onsite request while using the server fee', function ()
 
 it('links an onsite certificate to an eligible resident record', function () {
     Storage::fake('public');
-    $user = User::factory()->create();
+    $user = User::factory()->assignedOperations()->create();
     $resident = Resident::factory()->create([
         'first_name' => 'Ana',
         'middle_name' => null,
         'last_name' => 'Reyes',
     ]);
 
-    $this->actingAs($user)->postJson(route('admin.issued-certificates.store'), [
+    $this->actingAs($user)->postJson(route('staff.issued-certificates.store'), [
         'resident_id' => $resident->id,
         'certificate_type' => CertificateType::CertificateOfResidency->value,
         'resident_name' => 'Client supplied name is replaced',
@@ -160,10 +160,10 @@ it('links an onsite certificate to an eligible resident record', function () {
 
 it('rejects clearance issuance for a linked resident who is not in good standing', function () {
     Storage::fake('public');
-    $user = User::factory()->create();
+    $user = User::factory()->assignedOperations()->create();
     $resident = Resident::factory()->create(['is_in_good_standing' => false]);
 
-    $this->actingAs($user)->postJson(route('admin.issued-certificates.store'), [
+    $this->actingAs($user)->postJson(route('staff.issued-certificates.store'), [
         'resident_id' => $resident->id,
         'certificate_type' => CertificateType::BarangayClearance->value,
         'resident_name' => $resident->full_name,
@@ -177,7 +177,7 @@ it('rejects clearance issuance for a linked resident who is not in good standing
 
 it('rejects a second First Time Jobseeker certificate for the same linked resident', function () {
     Storage::fake('public');
-    $user = User::factory()->create();
+    $user = User::factory()->assignedOperations()->create();
     $resident = Resident::factory()->create();
     IssuedCertificate::query()->create([
         'resident_id' => $resident->id,
@@ -188,7 +188,7 @@ it('rejects a second First Time Jobseeker certificate for the same linked reside
         'issued_at' => now(),
     ]);
 
-    $this->actingAs($user)->postJson(route('admin.issued-certificates.store'), [
+    $this->actingAs($user)->postJson(route('staff.issued-certificates.store'), [
         'resident_id' => $resident->id,
         'certificate_type' => CertificateType::FirstTimeJobseeker->value,
         'resident_name' => $resident->full_name,
@@ -200,9 +200,9 @@ it('rejects a second First Time Jobseeker certificate for the same linked reside
 });
 
 it('rejects an unsupported manual certificate type', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->assignedOperations()->create();
 
-    $this->actingAs($user)->postJson(route('admin.issued-certificates.store'), [
+    $this->actingAs($user)->postJson(route('staff.issued-certificates.store'), [
         'certificate_type' => 'Fake Clearance',
         'resident_name' => 'Ana Reyes',
     ])->assertUnprocessable()
@@ -213,7 +213,7 @@ it('rejects an unsupported manual certificate type', function () {
 
 it('does not issue an online request before it is ready for release', function () {
     Storage::fake('public');
-    $user = User::factory()->create();
+    $user = User::factory()->assignedOperations()->create();
     $documentRequest = DocumentRequest::query()->create([
         'reference_code' => 'REQ-2026-NOTREADY',
         'document_type' => CertificateType::BarangayClearance->value,
@@ -223,7 +223,7 @@ it('does not issue an online request before it is ready for release', function (
     ]);
 
     $this->actingAs($user)
-        ->postJson(route('admin.document-requests.issue', $documentRequest))
+        ->postJson(route('staff.document-requests.issue', $documentRequest))
         ->assertUnprocessable()
         ->assertJsonPath('message', 'This request is not ready for release.');
 
@@ -234,7 +234,7 @@ it('does not issue an online request before it is ready for release', function (
 
 it('returns 409 and keeps one certificate when the same request is issued twice', function () {
     Storage::fake('public');
-    $user = User::factory()->create();
+    $user = User::factory()->assignedOperations()->create();
     $documentRequest = DocumentRequest::query()->create([
         'reference_code' => 'REQ-2026-DUPLICATE',
         'document_type' => CertificateType::CertificateOfResidency->value,
@@ -244,12 +244,12 @@ it('returns 409 and keeps one certificate when the same request is issued twice'
     ]);
 
     $this->actingAs($user)
-        ->postJson(route('admin.document-requests.issue', $documentRequest))
+        ->postJson(route('staff.document-requests.issue', $documentRequest))
         ->assertOk();
     $firstCertificate = IssuedCertificate::query()->sole();
 
     $this->actingAs($user)
-        ->postJson(route('admin.document-requests.issue', $documentRequest))
+        ->postJson(route('staff.document-requests.issue', $documentRequest))
         ->assertConflict()
         ->assertJsonPath('message', 'A certificate has already been issued for this request.');
 
@@ -264,7 +264,7 @@ it('rolls back issuance and request release when the QR file cannot be saved', f
     $filesystem = mock(FilesystemManager::class);
     $filesystem->shouldReceive('disk')->twice()->with('public')->andReturn($disk);
     $this->app->instance(FilesystemManager::class, $filesystem);
-    $user = User::factory()->create();
+    $user = User::factory()->assignedOperations()->create();
     $documentRequest = DocumentRequest::query()->create([
         'reference_code' => 'REQ-2026-QRFAIL',
         'document_type' => CertificateType::BarangayClearance->value,
@@ -274,7 +274,7 @@ it('rolls back issuance and request release when the QR file cannot be saved', f
     ]);
 
     $this->actingAs($user)
-        ->postJson(route('admin.document-requests.issue', $documentRequest))
+        ->postJson(route('staff.document-requests.issue', $documentRequest))
         ->assertInternalServerError()
         ->assertJsonPath('message', 'The certificate QR code could not be generated. No certificate was issued.');
 
@@ -287,7 +287,7 @@ it('renders the matching print template for every certificate type', function (
     int $fee,
     string $expectedView,
 ) {
-    $user = User::factory()->create();
+    $user = User::factory()->assignedOperations()->create();
     $certificate = IssuedCertificate::query()->create([
         'certificate_number' => 'CERT-'.Str::upper(Str::random(12)),
         'verification_code' => Str::upper(Str::random(16)),
@@ -301,7 +301,7 @@ it('renders the matching print template for every certificate type', function (
     ]);
 
     $response = $this->actingAs($user)
-        ->get(route('admin.issued-certificates.print', $certificate))
+        ->get(route('staff.issued-certificates.print', $certificate))
         ->assertOk()
         ->assertSee('Back to certificates')->assertViewIs($expectedView)
         ->assertSeeText('Maria Santos');
@@ -347,7 +347,7 @@ it('returns 404 for an unknown public verification code', function () {
 });
 
 it('escapes resident-provided content on public verification and print pages', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->assignedOperations()->create();
     $dangerousName = "<script>alert('xss')</script>";
     $certificate = IssuedCertificate::query()->create([
         'certificate_number' => 'CERT-2026-ESCAPE',
@@ -364,14 +364,14 @@ it('escapes resident-provided content on public verification and print pages', f
         ->assertSee('&lt;script&gt;', false)
         ->assertDontSee($dangerousName, false);
     $this->actingAs($user)
-        ->get(route('admin.issued-certificates.print', $certificate))
+        ->get(route('staff.issued-certificates.print', $certificate))
         ->assertOk()
         ->assertSee('&lt;script&gt;', false)
         ->assertDontSee($dangerousName, false);
 });
 
 it('forbids view-only accounts from listing printing or issuing certificates', function () {
-    $viewer = User::factory()->create(['role' => 'viewer']);
+    $viewer = User::factory()->assignedOperations()->create(['role' => 'viewer']);
     $request = DocumentRequest::query()->create([
         'reference_code' => 'REQ-PERM-001', 'document_type' => CertificateType::BarangayClearance->value,
         'full_name' => 'Juan Dela Cruz', 'address' => 'Anabu I-G', 'status' => 'ready_for_release',
@@ -382,10 +382,10 @@ it('forbids view-only accounts from listing printing or issuing certificates', f
         'resident_name' => 'Juan Dela Cruz', 'issued_at' => now(),
     ]);
 
-    $this->actingAs($viewer)->getJson(route('admin.issued-certificates.index'))->assertForbidden();
-    $this->get(route('admin.issued-certificates.print', $certificate))->assertForbidden();
-    $this->postJson(route('admin.issued-certificates.store'))->assertForbidden();
-    $this->postJson(route('admin.document-requests.issue', $request))->assertForbidden();
+    $this->actingAs($viewer)->getJson(route('staff.issued-certificates.index'))->assertForbidden();
+    $this->get(route('staff.issued-certificates.print', $certificate))->assertForbidden();
+    $this->postJson(route('staff.issued-certificates.store'))->assertForbidden();
+    $this->postJson(route('staff.document-requests.issue', $request))->assertForbidden();
     $this->assertDatabaseCount('issued_certificates', 1);
     expect($request->fresh()->status)->toBe('ready_for_release');
 });

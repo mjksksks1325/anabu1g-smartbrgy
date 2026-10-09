@@ -71,7 +71,7 @@ async function submitRequest() {
     const finalPurpose = purpose;
     portalSubmitting = true;
     const submitButton = document.getElementById('submit-request-button');
-    if (submitButton) { submitButton.disabled = true; submitButton.setAttribute('aria-busy', 'true'); submitButton.textContent = 'Isinusumite...'; }
+    if (submitButton) { submitButton.disabled = true; submitButton.setAttribute('aria-busy', 'true'); portalSetText(submitButton, 'Isinusumite...'); }
     setLoading(true);
 
     try {
@@ -110,15 +110,15 @@ async function submitRequest() {
 
         showScreen('screen-confirm');
 
-        toast(`Na-submit ang request ${data.reference_code}.`, 'green');
+        toast(portalT('Na-submit ang request :reference.', { reference: data.reference_code }), 'green');
 
     } catch (error) {
         if (generation !== null && generation !== residentIdentityGeneration) return;
         console.error(error);
-        toast(error.message || 'Hindi makakonekta sa server.', 'red');
+        toast(error.message === 'Hindi ma-refresh ang secure session. Paki-reload ang page.' ? error.message : 'Hindi makakonekta sa server.', 'red');
     } finally {
         portalSubmitting = false;
-        if (submitButton) { submitButton.disabled = false; submitButton.removeAttribute('aria-busy'); submitButton.textContent = 'I-submit ang request'; }
+        if (submitButton) { submitButton.disabled = false; submitButton.removeAttribute('aria-busy'); portalSetText(submitButton, 'I-submit ang request'); }
         setLoading(false);
     }
 }

@@ -27,16 +27,16 @@ it('does not block resident requests merely because a linked incident or BPO exi
 });
 it('requires explicit authorized review before activating a restriction and preserves lifting history', function () {
     $account = User::factory()->resident()->create();
-    $admin = User::factory()->create(['role' => 'admin']);
+    $admin = User::factory()->superAdmin()->create(['role' => 'admin']);
     $case = Incident::factory()->create(['respondent_resident_id' => $account->resident_id]);
-    $this->actingAs($admin)->postJson(route('admin.request-restrictions.store'), phaseThreeRestriction($account->resident_id, ['incident_id' => $case->id, 'affected_document_type' => 'Barangay Clearance']))->assertCreated()->assertJsonPath('restriction.status', 'pending_review')->assertJsonPath('restriction.reviewed_at', null);
+    $this->actingAs($admin, 'web')->postJson(route('staff.request-restrictions.store'), phaseThreeRestriction($account->resident_id, ['incident_id' => $case->id, 'affected_document_type' => 'Barangay Clearance']))->assertCreated()->assertJsonPath('restriction.status', 'pending_review')->assertJsonPath('restriction.reviewed_at', null);
     $restriction = ResidentRequestRestriction::query()->sole();
     $this->actingAs($account, 'resident')->postJson(route('portal.request.store'), phaseThreeDocument())->assertOk();
-    $this->actingAs($admin)->postJson(route('admin.request-restrictions.review', $restriction))->assertOk()->assertJsonPath('restriction.reviewed_by', $admin->id);
+    $this->actingAs($admin, 'web')->postJson(route('staff.request-restrictions.review', $restriction))->assertOk()->assertJsonPath('restriction.reviewed_by', $admin->id);
     $response = $this->actingAs($account, 'resident')->postJson(route('portal.request.store'), phaseThreeDocument());
     $response->assertUnprocessable()->assertJsonValidationErrors('document_type')->assertSee(ResidentRequestRestriction::MESSAGE)->assertDontSee('Confidential reviewed allegations')->assertDontSee('Reviewed case decision');
     $this->postJson(route('portal.request.store'), phaseThreeDocument('Certificate of Residency'))->assertOk();
-    $this->actingAs($admin)->postJson(route('admin.request-restrictions.lift', $restriction), ['lift_reason' => 'Decision lifted after review'])->assertOk();
+    $this->actingAs($admin, 'web')->postJson(route('staff.request-restrictions.lift', $restriction), ['lift_reason' => 'Decision lifted after review'])->assertOk();
     $this->actingAs($account, 'resident')->postJson(route('portal.request.store'), phaseThreeDocument())->assertOk();
     $this->assertDatabaseHas('resident_request_restrictions', ['id' => $restriction->id, 'status' => 'lifted', 'lifted_by' => $admin->id, 'lift_reason' => 'Decision lifted after review']);
     $this->assertDatabaseHas('administrative_audits', ['action' => 'admin.request-restrictions.reviewed', 'user_id' => $admin->id]);
@@ -73,21 +73,21 @@ it('expires restrictions once and records an audit while retaining the historica
 it('denies restriction mutation to unauthorized roles', function (string $role) {
     $user = User::factory()->create(['role' => $role]);
     $restriction = ResidentRequestRestriction::factory()->create();
-    $this->actingAs($user)->postJson(route('admin.request-restrictions.store'), phaseThreeRestriction($restriction->resident_id))->assertForbidden();
-    $this->postJson(route('admin.request-restrictions.review', $restriction))->assertForbidden();
-    $this->postJson(route('admin.request-restrictions.lift', $restriction), ['lift_reason' => 'Attempted unauthorized decision'])->assertForbidden();
+    $this->actingAs($user)->postJson(route('staff.request-restrictions.store'), phaseThreeRestriction($restriction->resident_id))->assertForbidden();
+    $this->postJson(route('staff.request-restrictions.review', $restriction))->assertForbidden();
+    $this->postJson(route('staff.request-restrictions.lift', $restriction), ['lift_reason' => 'Attempted unauthorized decision'])->assertForbidden();
     expect($restriction->fresh()->status)->toBe('pending_review');
 })->with(['staff', 'viewer', 'resident']);
 it('rejects forged review metadata unrelated cases and invalid document scope', function () {
     $account = User::factory()->resident()->create();
     $case = Incident::factory()->create();
-    $this->actingAs(User::factory()->create(['role' => 'admin']))->postJson(route('admin.request-restrictions.store'), phaseThreeRestriction($account->resident_id, ['status' => 'active', 'reviewed_by' => 1, 'affected_document_type' => 'Unsupported']))->assertUnprocessable()->assertJsonValidationErrors(['status', 'reviewed_by', 'affected_document_type']);
-    $this->postJson(route('admin.request-restrictions.store'), phaseThreeRestriction($account->resident_id, ['incident_id' => $case->id]))->assertUnprocessable()->assertJsonValidationErrors('incident_id');
+    $this->actingAs(User::factory()->superAdmin()->create(['role' => 'admin']))->postJson(route('staff.request-restrictions.store'), phaseThreeRestriction($account->resident_id, ['status' => 'active', 'reviewed_by' => 1, 'affected_document_type' => 'Unsupported']))->assertUnprocessable()->assertJsonValidationErrors(['status', 'reviewed_by', 'affected_document_type']);
+    $this->postJson(route('staff.request-restrictions.store'), phaseThreeRestriction($account->resident_id, ['incident_id' => $case->id]))->assertUnprocessable()->assertJsonValidationErrors('incident_id');
     $this->assertDatabaseEmpty('resident_request_restrictions');
 });
 it('prevents reactivation of lifted or already ended restrictions', function (string $condition) {
     $restriction = ResidentRequestRestriction::factory()->create($condition === 'lifted' ? ['status' => 'lifted'] : ['ends_at' => now()->subMinute()]);
-    $this->actingAs(User::factory()->create(['role' => 'admin']))->postJson(route('admin.request-restrictions.review', $restriction))->assertUnprocessable()->assertJsonValidationErrors('restriction');
+    $this->actingAs(User::factory()->superAdmin()->create(['role' => 'admin']))->postJson(route('staff.request-restrictions.review', $restriction))->assertUnprocessable()->assertJsonValidationErrors('restriction');
 })->with(['lifted', 'past end']);
 it('enforces reviewed restrictions during certificate issuance without changing existing QR verification', function () {
     Storage::fake('public');
@@ -110,5 +110,5 @@ it('keeps incident and BPO details out of resident pages exports and other resid
     $this->actingAs($account, 'resident')->get(route('portal.account'))->assertOk()->assertDontSee('Secret case allegation')->assertDontSee('Secret protection order')->assertDontSee('Secret restriction notes');
     $request = $other->resident->documentRequests()->create(['reference_code' => 'REQ-OTHER-PRIVATE', 'document_type' => 'Barangay Clearance', 'full_name' => $other->resident->full_name, 'address' => $other->resident->address, 'status' => 'pending']);
     $this->getJson(route('portal.request.status', $request->reference_code))->assertNotFound();
-    $this->actingAs(User::factory()->create(['role' => 'staff']))->get(route('admin.residents.export'))->assertOk()->assertDontSee('Secret case allegation')->assertDontSee('Secret protection order')->assertDontSee('Secret restriction notes');
+    $this->actingAs(User::factory()->assignedOperations()->create(['role' => 'staff']), 'web')->get(route('staff.residents.export'))->assertOk()->assertDontSee('Secret case allegation')->assertDontSee('Secret protection order')->assertDontSee('Secret restriction notes');
 });

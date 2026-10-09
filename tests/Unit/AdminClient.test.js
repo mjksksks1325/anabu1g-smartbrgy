@@ -8,12 +8,17 @@ const script = readFileSync(new URL('../../public/js/admin.js', import.meta.url)
 async function client() {
   const fields = new Map();
   const windowEvents = new Map();
+  const documentEvents = new Map();
   const context = vm.createContext({
     console, URLSearchParams, Blob, URL, FormData,
     document: {
       cookie: '', hidden: false,
       getElementById: id => fields.get(id) ?? null,
-      querySelector: () => null, querySelectorAll: () => [], addEventListener() {},
+      querySelector: () => null, querySelectorAll: () => [], addEventListener(type, handler) {
+        const handlers = documentEvents.get(type) || [];
+        handlers.push(handler);
+        documentEvents.set(type, handlers);
+      },
     },
     window: { AUTHENTICATED_USER: { id: 1, name: 'Admin', role: 'admin' }, addEventListener(type, handler) { windowEvents.set(type, handler); } },
     localStorage: { removeItem() {}, setItem() {}, getItem() { return null; } },
@@ -24,13 +29,13 @@ async function client() {
   await new Promise(resolve => setImmediate(resolve));
   context.messages = [];
   vm.runInContext('showToast = (message, type) => messages.push({ message, type });', context);
-  return { context, fields, windowEvents };
+  return { context, fields, windowEvents, documentEvents };
 }
 
 test('workspace screen switching records clean URLs and back navigation restores the active screen', async () => {
   const { context, fields, windowEvents } = await client();
   const pushed = [];
-  context.window.ADMIN_SCREEN_ROUTES = { dashboard: 'http://localhost/admin', records: 'http://localhost/admin/residents' };
+  context.window.ADMIN_SCREEN_ROUTES = { dashboard: 'http://localhost/admin', records: 'http://localhost/staff/residents' };
   context.window.location = { href: 'http://localhost/admin', pathname: '/admin' };
   context.window.history = { pushState(state, title, url) {
     pushed.push({ state, url });
@@ -53,7 +58,7 @@ test('workspace screen switching records clean URLs and back navigation restores
   vm.runInContext('currentUserAccess = "Staff Access"; showLoadingBar = () => {}; toggleNavigation = () => {}; refreshDashboardStats = () => {};', context);
 
   context.showScreen('records', navigation[1]);
-  assert.equal(pushed[0].url, 'http://localhost/admin/residents');
+  assert.equal(pushed[0].url, 'http://localhost/staff/residents');
   assert.equal(navigation[1].current, 'page');
   assert.equal(screens[1].classes.has('active'), true);
   context.window.location.pathname = '/admin';
@@ -63,8 +68,8 @@ test('workspace screen switching records clean URLs and back navigation restores
   assert.equal(navigation[0].current, 'page');
   assert.equal(screens[0].classes.has('active'), true);
   assert.equal(screens[1].classes.has('active'), false);
-  context.window.location.pathname = '/admin/residents';
-  context.window.location.href = 'http://localhost/admin/residents';
+  context.window.location.pathname = '/staff/residents';
+  context.window.location.href = 'http://localhost/staff/residents';
   windowEvents.get('popstate')();
   assert.equal(navigation[1].current, 'page');
   assert.equal(pushed.length, 1);
@@ -140,7 +145,7 @@ test('a failed photo upload retries the saved resident instead of creating a dup
   await context.saveResident();
   await context.saveResident();
   assert.equal(requests[0].options.method, 'POST');
-  assert.equal(requests[2].url, '/admin/residents/12');
+  assert.equal(requests[2].url, '/staff/residents/12');
   assert.equal(requests[2].options.method, 'PATCH');
   assert.ok(requests[1].options.body instanceof FormData);
   assert.equal(requests[1].options.headers['Content-Type'], undefined);
@@ -360,7 +365,7 @@ test('voters csv import prevents duplicate submits and renders validation errors
   const pending = context.importVotersCsv();
   await context.importVotersCsv();
   assert.equal(requests.length, 1);
-  assert.equal(requests[0].url, '/admin/voter-registrations-import');
+  assert.equal(requests[0].url, '/staff/voter-registrations-import');
   assert.equal(requests[0].options.method, 'POST');
   assert.equal(requests[0].options.body instanceof FormData, true);
   resolve({ ok: false, json: async () => ({ errors: { file: ['CSV row 2: <script>invalid</script>'] } }) });
@@ -382,4 +387,174 @@ test('successful voters csv import clears the file and refreshes the list', asyn
   assert.equal(file.value, '');
   assert.equal(context.window.importRefreshPage, 1);
   assert.equal(output.textContent, 'Na-import ang 2 voter records.');
+});
+
+
+test('welcome greeting appears once after login and stays silent on page navigation', async () => {
+  const { context } = await client();
+  vm.runInContext('currentUserName = "Super Admin";', context);
+
+  context.showPersonnelLoginGreeting();
+  assert.equal(context.messages.length, 0);
+  context.window.PERSONNEL_LOGIN_GREETING = true;
+  context.showPersonnelLoginGreeting();
+  context.showPersonnelLoginGreeting();
+  assert.equal(context.messages.length, 1);
+  assert.equal(context.messages[0].message, 'Welcome back, Super Admin!');
+  assert.equal(context.window.PERSONNEL_LOGIN_GREETING, false);
+});
+
+
+test('super admin switches across all Records screens through browser history without reloading or greeting', async () => {
+  const { context, fields } = await client();
+  const ids = ['records', 'voters', 'certificates', 'request-records', 'incidents'];
+  const pushed = [];
+  const screens = ids.map(id => {
+    const classes = new Set();
+    const element = { classes, classList: { add: name => classes.add(name), remove: name => classes.delete(name) },
+      setAttribute() {}, focus() {}, querySelector: () => null };
+    fields.set('screen-' + id, element);
+    return element;
+  });
+  const navigation = ids.map(id => ({
+    current: '', getAttribute: name => name === 'data-screen' ? id : null,
+    setAttribute(name, value) { if (name === 'aria-current') this.current = value; },
+    classList: { add() {}, remove() {} },
+  }));
+  context.document.querySelectorAll = selector => selector === '.content' ? screens : selector === '.nav-item' ? navigation : [];
+  context.window.AUTHENTICATED_USER.is_super_admin = true;
+  context.window.ADMIN_SCREEN_ROUTES = Object.fromEntries(ids.map(id => [id, `http://localhost/staff/${id}`]));
+  context.window.location = { href: 'http://localhost/admin', pathname: '/admin' };
+  context.window.history = { pushState(state, title, url) {
+    pushed.push(url);
+    context.window.location.pathname = new URL(url).pathname;
+  } };
+  vm.runInContext(`currentUserAccess = "Full Access";
+    showLoadingBar = toggleNavigation = renderCertKanban = loadRequestRecords = loadRestrictions = loadIncidents = loadVoterRegistry = () => {};`, context);
+
+  ids.forEach((id, index) => {
+    context.showScreen(id, navigation[index]);
+    assert.equal(navigation[index].current, 'page');
+    assert.equal(screens[index].classes.has('active'), true);
+    assert.equal(screens.filter(screen => screen.classes.has('active')).length, 1);
+  });
+
+  assert.deepEqual(pushed, ids.map(id => `http://localhost/staff/${id}`));
+  assert.equal(context.messages.length, 0);
+  assert.equal(context.window.location.href, 'http://localhost/admin');
+});
+
+
+test('workspace shortcuts use Livewire navigation and keep permission checks before navigation', async () => {
+  const { context, fields } = await client();
+  const destinations = [];
+  fields.set('screen-records', {});
+  fields.set('screen-audit', {});
+  context.window.ADMIN_SCREEN_ROUTES = { records: '/staff/residents', audit: '/admin/audit' };
+  context.window.Livewire = { navigate: url => destinations.push(url) };
+  vm.runInContext('currentUserAccess = "Staff Access";', context);
+
+  context.showScreen('records', null);
+  context.showScreen('audit', null);
+
+  assert.deepEqual(destinations, ['/staff/residents']);
+  assert.equal(context.messages[0].type, 'red');
+});
+
+test('navigation away stops workspace refresh timers and ignores workspace initialization on IoT pages', async () => {
+  const { context, documentEvents } = await client();
+  const cleared = [];
+  context.clearInterval = timer => cleared.push(timer);
+  vm.runInContext('clockTimer = 21; auditRefreshTimer = 22; documentRequestLiveTimer = 23;', context);
+
+  documentEvents.get('livewire:navigating').forEach(handler => handler());
+  await context.initializePersonnelWorkspace();
+  context.toggleNavigation(false);
+
+  assert.deepEqual(cleared, [21, 22, 23]);
+  assert.equal(vm.runInContext('clockTimer', context), null);
+  assert.equal(context.messages.length, 0);
+});
+
+
+test('returning from an IoT page initializes the new workspace and its data again', async () => {
+  const { context, fields, documentEvents } = await client();
+  context.document.body = { classList: { contains: () => true } };
+  context.initializations = [];
+  vm.runInContext(`loadPuroks = async () => {};
+    launchApp = (name, role) => initializations.push({ name, role });
+    startDocumentRequestLiveRefresh = refreshIssuedCertificates = populateManualResidentDropdown = loadVoterRegistry = () => {};
+    loadResidents = async () => {};`, context);
+
+  fields.set('app', {});
+  await context.initializePersonnelWorkspace();
+  documentEvents.get('livewire:navigating').forEach(handler => handler());
+  fields.delete('app');
+  await context.initializePersonnelWorkspace();
+  fields.set('app', {});
+  await context.initializePersonnelWorkspace();
+
+  assert.equal(context.initializations.length, 2);
+  assert.equal(context.initializations[1].name, 'Admin');
+  assert.equal(context.initializations[1].role, 'admin');
+});
+
+
+test('assigned page access controls navigation independently of legacy role profiles', async () => {
+  const { context } = await client();
+  context.window.PERSONNEL_SCREEN_ACCESS = { dashboard: false, demographics: true, records: false };
+  context.window.PERSONNEL_PERMISSIONS = ['demographics.view'];
+  const links = ['dashboard', 'demographics', 'records'].map(screen => ({ dataset: { screen }, style: {} }));
+  context.document.querySelectorAll = selector => selector === '.nav-item[data-screen]' ? links : [];
+  context.applyAccessControl('Full Access');
+  assert.deepEqual(links.map(link => link.style.display), ['none', '', 'none']);
+  context.showScreen('records', null);
+  assert.equal(context.messages.at(-1).type, 'red');
+  assert.equal(context.hasStaffPermission('records.update'), false);
+});
+
+test('staff presets remain editable and action selection maintains page dependencies', async () => {
+  const { context, fields } = await client();
+  const inputs = ['records.view', 'records.update', 'incidents.submit', 'vawc.view'].map(permission => ({ dataset: { staffPermission: permission }, checked: false }));
+  fields.set('staff-access-preset', { value: 'Secretary / Assistant' });
+  context.window.STAFF_PERMISSION_PRESETS = { Tanod: ['incidents.submit'] };
+  context.document.querySelectorAll = selector => selector === '[data-staff-permission]' ? inputs : selector === '[data-staff-permission^="records."]' ? inputs.slice(0, 2) : [];
+  context.document.querySelector = selector => selector === '[data-staff-permission="records.view"]' ? inputs[0] : null;
+  context.applyStaffPreset('Tanod');
+  assert.deepEqual(inputs.map(input => input.checked), [false, false, true, false]);
+  inputs[1].checked = true;
+  context.changeStaffAssignment(inputs[1]);
+  assert.equal(inputs[0].checked, true);
+  assert.equal(fields.get('staff-access-preset').value, '');
+  inputs[0].checked = false;
+  context.changeStaffAssignment(inputs[0]);
+  assert.equal(inputs[1].checked, false);
+  assert.equal(inputs[2].checked, true);
+});
+
+
+for (const photo of [
+  { name: 'report.pdf', type: 'application/pdf', size: 100 },
+  { name: 'photo.jpg', type: 'text/plain', size: 100 },
+  { name: 'photo.png', type: 'image/png', size: 5 * 1024 * 1024 + 1 },
+]) {
+  test(`invalid resident photo ${photo.name} is cleared before any record save`, async () => {
+    const { context, fields } = await client();
+    const input = { value: 'selected-file', files: [photo] };
+    fields.set('res-photo', input);
+    let requests = 0;
+    context.fetch = () => { requests++; };
+    await context.saveResident();
+    assert.equal(requests, 0);
+    assert.equal(input.value, '');
+    assert.equal(context.messages[0].type, 'red');
+  });
+}
+
+test('resident photo picker allows supported images and no selection', async () => {
+  const { context } = await client();
+  for (const [name, type] of [['face.JPG', 'image/jpeg'], ['face.png', 'image/png'], ['face.webp', 'image/webp']]) {
+    assert.equal(context.validateResidentPhoto({ files: [{ name, type, size: 5 * 1024 * 1024 }] }), true);
+  }
+  assert.equal(context.validateResidentPhoto({ files: [] }), true);
 });

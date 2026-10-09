@@ -7,17 +7,12 @@ use App\Models\VoterRegistration;
 
 class VoterRegistrationPolicy
 {
-    private function isStaff(User $user): bool
-    {
-        return in_array($user->role, ['admin', 'staff'], true);
-    }
-
     /**
      * Determine whether the user can view any models.
      */
     public function viewAny(User $user): bool
     {
-        return $this->isStaff($user);
+        return $user->hasPermission('voters.view');
     }
 
     /**
@@ -25,7 +20,7 @@ class VoterRegistrationPolicy
      */
     public function view(User $user, VoterRegistration $voterRegistration): bool
     {
-        return $this->isStaff($user);
+        return $user->hasPermission('voters.view');
     }
 
     /**
@@ -33,7 +28,7 @@ class VoterRegistrationPolicy
      */
     public function create(User $user): bool
     {
-        return $this->isStaff($user);
+        return $user->hasPermission('voters.create');
     }
 
     /**
@@ -41,7 +36,7 @@ class VoterRegistrationPolicy
      */
     public function update(User $user, VoterRegistration $voterRegistration): bool
     {
-        return $this->isStaff($user);
+        return $user->hasPermission('voters.update');
     }
 
     /**

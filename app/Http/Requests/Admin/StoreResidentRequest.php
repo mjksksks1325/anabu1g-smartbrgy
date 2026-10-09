@@ -14,6 +14,13 @@ class StoreResidentRequest extends FormRequest
      */
     public function authorize(): bool
     {
+        if ($this->has('new_household') && ! ($this->user()?->hasPermission('households.create') ?? false)) {
+            return false;
+        }
+        if (($this->filled('household_id') || $this->boolean('is_household_head')) && ! ($this->user()?->hasPermission('households.update') ?? false)) {
+            return false;
+        }
+
         return $this->user()?->can('create', Resident::class) ?? false;
     }
 

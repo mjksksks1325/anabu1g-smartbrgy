@@ -151,7 +151,7 @@
 </head>
 
 <body>
-<nav class="certificate-navigation" aria-label="Certificate navigation"><a href="{{ route('admin.document-requests.index') }}">Back to certificates</a><span>Barangay Anabu I-G / Print preview</span></nav>
+<nav class="certificate-navigation" aria-label="Certificate navigation"><a href="{{ route('staff.document-requests.index') }}">Back to certificates</a><span>Barangay Anabu I-G / Print preview</span></nav>
 
 <button class="print-btn" onclick="window.print()">
      Print Barangay ID
@@ -185,7 +185,7 @@
 
     <div class="id-body">
 
-        <img class="photo-placeholder" src="{{ $certificate->photo_path ? route('admin.issued-certificates.photo', $certificate) : asset('images/official-placeholder.svg') }}" alt="{{ $certificate->photo_path ? 'Resident photo at issuance' : 'Resident photo not provided' }}">
+        <img class="photo-placeholder" src="{{ $certificate->photo_path ? route('staff.issued-certificates.photo', $certificate) : asset('images/official-placeholder.svg') }}" alt="{{ $certificate->photo_path ? 'Resident photo at issuance' : 'Resident photo not provided' }}">
 
         <div class="details">
 

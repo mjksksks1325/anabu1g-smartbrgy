@@ -119,7 +119,7 @@
 </head>
 
 <body>
-<nav class="certificate-navigation" aria-label="Certificate navigation"><a href="{{ route('admin.document-requests.index') }}">Back to certificates</a><span>Barangay Anabu I-G / Print preview</span></nav>
+<nav class="certificate-navigation" aria-label="Certificate navigation"><a href="{{ route('staff.document-requests.index') }}">Back to certificates</a><span>Barangay Anabu I-G / Print preview</span></nav>
 
 <button class="print-btn" onclick="window.print()">
      Print Certificate of Indigency

@@ -23,26 +23,26 @@ function incidentPayload(array $overrides = []): array
 it('requires authentication for every incident endpoint', function () {
     $incident = Incident::factory()->create();
 
-    $this->getJson(route('admin.incidents.index'))->assertUnauthorized();
-    $this->postJson(route('admin.incidents.store'), incidentPayload())->assertUnauthorized();
-    $this->getJson(route('admin.incidents.show', $incident))->assertUnauthorized();
-    $this->patchJson(route('admin.incidents.update', $incident), [])->assertUnauthorized();
-    $this->deleteJson(route('admin.incidents.destroy', $incident))->assertUnauthorized();
+    $this->getJson(route('staff.incidents.index'))->assertUnauthorized();
+    $this->postJson(route('staff.incidents.store'), incidentPayload())->assertUnauthorized();
+    $this->getJson(route('staff.incidents.show', $incident))->assertUnauthorized();
+    $this->patchJson(route('staff.incidents.update', $incident), [])->assertUnauthorized();
+    $this->deleteJson(route('staff.incidents.destroy', $incident))->assertUnauthorized();
 });
 
 it('forbids viewers from incident records', function () {
-    $viewer = User::factory()->create(['role' => 'viewer']);
+    $viewer = User::factory()->assignedOperations()->create(['role' => 'viewer']);
 
-    $this->actingAs($viewer)->getJson(route('admin.incidents.index'))->assertForbidden();
-    $this->actingAs($viewer)->postJson(route('admin.incidents.store'), incidentPayload())->assertForbidden();
+    $this->actingAs($viewer)->getJson(route('staff.incidents.index'))->assertForbidden();
+    $this->actingAs($viewer)->postJson(route('staff.incidents.store'), incidentPayload())->assertForbidden();
 });
 
 it('files a validated incident with a private attachment', function () {
     Storage::fake('local');
-    $staff = User::factory()->create(['role' => 'staff']);
+    $staff = User::factory()->assignedOperations()->create(['role' => 'staff']);
     $attachment = UploadedFile::fake()->image('evidence.jpg');
 
-    $response = $this->actingAs($staff)->post(route('admin.incidents.store'), [
+    $response = $this->actingAs($staff)->post(route('staff.incidents.store'), [
         ...incidentPayload(),
         'attachments' => [$attachment],
     ], ['Accept' => 'application/json']);
@@ -60,9 +60,9 @@ it('files a validated incident with a private attachment', function () {
 
 it('rejects invalid incident data and unsafe attachments', function () {
     Storage::fake('local');
-    $staff = User::factory()->create();
+    $staff = User::factory()->assignedOperations()->create();
 
-    $this->actingAs($staff)->post(route('admin.incidents.store'), [
+    $this->actingAs($staff)->post(route('staff.incidents.store'), [
         ...incidentPayload([
             'occurred_date' => today()->addDay()->toDateString(),
             'details' => 'Short',
@@ -76,7 +76,7 @@ it('rejects invalid incident data and unsafe attachments', function () {
 });
 
 it('filters incident reports and returns authoritative summary counts', function () {
-    $staff = User::factory()->create();
+    $staff = User::factory()->assignedOperations()->create();
     Incident::factory()->for($staff, 'reporter')->create([
         'incident_type' => 'Theft',
         'severity' => 'high',
@@ -89,7 +89,7 @@ it('filters incident reports and returns authoritative summary counts', function
         'resolved_at' => now(),
     ]);
 
-    $this->actingAs($staff)->getJson(route('admin.incidents.index', [
+    $this->actingAs($staff)->getJson(route('staff.incidents.index', [
         'search' => 'Theft',
         'status' => 'under_investigation',
         'severity' => 'high',
@@ -102,16 +102,16 @@ it('filters incident reports and returns authoritative summary counts', function
 });
 
 it('requires resolution notes before resolving an incident', function () {
-    $staff = User::factory()->create();
+    $staff = User::factory()->assignedOperations()->create();
     $incident = Incident::factory()->for($staff, 'reporter')->create();
 
-    $this->actingAs($staff)->patchJson(route('admin.incidents.update', $incident), [
+    $this->actingAs($staff)->patchJson(route('staff.incidents.update', $incident), [
         ...incidentPayload(),
         'status' => 'resolved',
         'resolution_notes' => '',
     ])->assertUnprocessable()->assertJsonValidationErrors('resolution_notes');
 
-    $this->actingAs($staff)->patchJson(route('admin.incidents.update', $incident), [
+    $this->actingAs($staff)->patchJson(route('staff.incidents.update', $incident), [
         ...incidentPayload(),
         'status' => 'resolved',
         'resolution_notes' => 'Both parties reached a documented settlement.',
@@ -123,12 +123,12 @@ it('requires resolution notes before resolving an incident', function () {
 });
 
 it('allows only administrators to archive incidents', function () {
-    $staff = User::factory()->create(['role' => 'staff']);
-    $admin = User::factory()->create(['role' => 'admin']);
+    $staff = User::factory()->assignedOperations()->create(['role' => 'staff']);
+    $admin = User::factory()->superAdmin()->create();
     $incident = Incident::factory()->for($staff, 'reporter')->create();
 
-    $this->actingAs($staff)->deleteJson(route('admin.incidents.destroy', $incident))->assertForbidden();
-    $this->actingAs($admin)->deleteJson(route('admin.incidents.destroy', $incident))->assertOk();
+    $this->actingAs($staff)->deleteJson(route('staff.incidents.destroy', $incident))->assertForbidden();
+    $this->actingAs($admin)->deleteJson(route('staff.incidents.destroy', $incident))->assertOk();
 
     $this->assertSoftDeleted($incident);
 });
@@ -136,7 +136,7 @@ it('allows only administrators to archive incidents', function () {
 it('serves incident attachments only to authorized staff', function () {
     Storage::fake('local');
     Storage::disk('local')->put('incident-attachments/evidence.pdf', 'evidence');
-    $staff = User::factory()->create();
+    $staff = User::factory()->assignedOperations()->create();
     $incident = Incident::factory()->for($staff, 'reporter')->create([
         'attachments' => [[
             'name' => 'evidence.pdf',
@@ -146,8 +146,8 @@ it('serves incident attachments only to authorized staff', function () {
         ]],
     ]);
 
-    $this->get(route('admin.incidents.attachments.show', [$incident, 0]))->assertRedirect(route('login'));
-    $this->actingAs($staff)->get(route('admin.incidents.attachments.show', [$incident, 0]))
+    $this->get(route('staff.incidents.attachments.show', [$incident, 0]))->assertRedirect(route('login'));
+    $this->actingAs($staff)->get(route('staff.incidents.attachments.show', [$incident, 0]))
         ->assertOk()
         ->assertDownload('evidence.pdf');
 });

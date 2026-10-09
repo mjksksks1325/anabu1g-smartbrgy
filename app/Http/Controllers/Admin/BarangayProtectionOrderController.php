@@ -6,6 +6,7 @@ use App\Actions\RecordCaseActivity;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SaveBarangayProtectionOrderRequest;
 use App\Models\BarangayProtectionOrder;
+use App\Models\Incident;
 use App\Models\Resident;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -32,6 +33,7 @@ class BarangayProtectionOrderController extends Controller
     public function store(SaveBarangayProtectionOrderRequest $request): JsonResponse
     {
         return DB::transaction(function () use ($request): JsonResponse {
+            Incident::query()->whereKey($request->validated('incident_id'))->update(['is_sensitive' => true]);
             $order = BarangayProtectionOrder::query()->create([...$this->partyNames($request->validated()), 'created_by' => $request->user()->id, 'updated_by' => $request->user()->id]);
             app(RecordCaseActivity::class)->handle($request->user(), 'admin.protection-orders.store', (string) $order->id, array_keys($request->validated()));
 
@@ -51,6 +53,7 @@ class BarangayProtectionOrderController extends Controller
             ]), 'updated_by' => $request->user()->id]);
             $changed = array_keys($order->getDirty());
             $order->save();
+            Incident::query()->whereKey($order->incident_id)->update(['is_sensitive' => true]);
             app(RecordCaseActivity::class)->handle($request->user(), 'admin.protection-orders.update', (string) $order->id, $changed);
             if ($previous !== $order->status) {
                 app(RecordCaseActivity::class)->handle($request->user(), 'admin.protection-orders.status-changed', (string) $order->id, ['status']);

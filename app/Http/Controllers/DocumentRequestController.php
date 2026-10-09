@@ -37,7 +37,7 @@ class DocumentRequestController extends Controller
         return DB::transaction(function () use ($request, $validated): JsonResponse {
             $resident = Resident::query()->whereKey($request->user()->resident_id)->lockForUpdate()->firstOrFail();
             if (app(CheckRequestRestrictions::class)->active($resident, CertificateType::from($validated['document_type'])) !== null) {
-                throw ValidationException::withMessages(['document_type' => ResidentRequestRestriction::MESSAGE]);
+                throw ValidationException::withMessages(['document_type' => __(ResidentRequestRestriction::MESSAGE)]);
             }
             $referenceCode = 'REQ-'.now()->format('Y').'-'.strtoupper(Str::random(6));
             $attachmentPath = $request->file('attachment')?->store(
@@ -60,7 +60,7 @@ class DocumentRequestController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Document request submitted successfully.',
+                'message' => __('Document request submitted successfully.'),
                 'reference_code' => $documentRequest->reference_code,
                 'status' => $documentRequest->status,
             ]);
@@ -70,14 +70,14 @@ class DocumentRequestController extends Controller
     public function status(Request $request, string $referenceCode): JsonResponse
     {
         $user = $request->user();
-        abort_unless($user->canUseResidentPortal(), 403, EnsureResidentAccount::ASSISTANCE);
+        abort_unless($user->canUseResidentPortal(), 403, __(EnsureResidentAccount::ASSISTANCE));
         $query = $user->resident->documentRequests();
         $documentRequest = $query->where('reference_code', $referenceCode)->first();
 
         if (! $documentRequest) {
             return response()->json([
                 'success' => false,
-                'message' => 'Request not found.',
+                'message' => __('Request not found.'),
             ], 404);
         }
 

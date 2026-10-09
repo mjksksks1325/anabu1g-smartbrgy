@@ -16,7 +16,7 @@ function resetPortalSession() {
     document.getElementById('btn-proceed-terms').disabled = true;
     document.getElementById('tnc-scroll').scrollTop = 0;
     const notice = document.getElementById('tnc-notice');
-    notice.textContent = 'I-scroll hanggang dulo ng terms para ma-check ang kahon sa ibaba.';
+    portalSetText(notice, 'I-scroll hanggang dulo ng terms para ma-check ang kahon sa ibaba.');
     notice.classList.remove('is-read');
     for (const id of ['status-code', 'f-name', 'f-address', 'f-email', 'f-dob', 'f-purpose', 'f-business']) {
         const field = document.getElementById(id);
@@ -25,7 +25,7 @@ function resetPortalSession() {
         field.removeAttribute('aria-invalid');
     }
     for (const id of ['status-result', 'conf-summary', 'review-summary', 'conf-code', 'conf-code-mini', 'form-doc-label', 'form-doc-fee']) {
-        document.getElementById(id).textContent = '';
+        portalClearText(document.getElementById(id));
     }
     document.getElementById('business-field').style.display = 'none';
     document.querySelectorAll('.cert-btn').forEach(button => button.setAttribute('aria-pressed', 'false'));

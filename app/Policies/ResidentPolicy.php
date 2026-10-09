@@ -7,17 +7,12 @@ use App\Models\User;
 
 class ResidentPolicy
 {
-    private function isStaff(User $user): bool
-    {
-        return in_array($user->role, ['admin', 'staff'], true);
-    }
-
     /**
      * Determine whether the user can view any models.
      */
     public function viewAny(User $user): bool
     {
-        return $this->isStaff($user);
+        return $user->hasAnyPermission(['records.view', 'demographics.view', 'households.view']);
     }
 
     /**
@@ -25,7 +20,7 @@ class ResidentPolicy
      */
     public function view(User $user, Resident $resident): bool
     {
-        return $this->isStaff($user);
+        return $user->hasAnyPermission(['records.view', 'demographics.view']);
     }
 
     /**
@@ -33,7 +28,7 @@ class ResidentPolicy
      */
     public function create(User $user): bool
     {
-        return $this->isStaff($user);
+        return $user->hasPermission('records.create');
     }
 
     /**
@@ -41,7 +36,7 @@ class ResidentPolicy
      */
     public function update(User $user, Resident $resident): bool
     {
-        return $this->isStaff($user);
+        return $user->hasPermission('records.update');
     }
 
     /**
@@ -49,7 +44,7 @@ class ResidentPolicy
      */
     public function delete(User $user, Resident $resident): bool
     {
-        return $this->isStaff($user);
+        return $user->hasPermission('records.archive');
     }
 
     /**
@@ -57,7 +52,7 @@ class ResidentPolicy
      */
     public function restore(User $user, Resident $resident): bool
     {
-        return $this->isStaff($user);
+        return $user->hasPermission('records.archive');
     }
 
     /**

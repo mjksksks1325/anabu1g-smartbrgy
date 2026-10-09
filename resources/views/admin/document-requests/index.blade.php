@@ -37,7 +37,7 @@
 
                 <td>
                     <a
-                        href="{{ route('admin.document-requests.show', $request) }}"
+                        href="{{ route('staff.document-requests.show', $request) }}"
                         class="civic-link"
                     >
                         View

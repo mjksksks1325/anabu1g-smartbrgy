@@ -3,7 +3,7 @@ function escapePortalText(value = '') {
 }
 
 function portalSummaryList(rows) {
-    return '<dl class="summary-list">' + rows.map(([label, value]) => `<dt>${escapePortalText(label)}</dt><dd>${escapePortalText(value || 'Wala')}</dd>`).join('') + '</dl>';
+    return '<dl class="summary-list">' + rows.map(([label, value]) => `<dt>${portalHtml(label)}</dt><dd>${value ? (['Dokumento', 'Fee'].includes(label) ? portalHtml(value) : (label === 'Valid ID' && value === 'Walang in-upload' ? portalHtml('Walang in-upload') : escapePortalText(value))) : portalHtml('Wala')}</dd>`).join('') + '</dl>';
 }
 
 function renderConfirmationSummary(summary) {
@@ -23,7 +23,7 @@ function toast(msg, type='') {
     const t = document.createElement('div');
 
     t.className = 'toast ' + type;
-    t.textContent = msg;
+    portalSetText(t, msg);
 
     wrap.appendChild(t);
 
@@ -105,10 +105,10 @@ function showCopiedReference() {
     const button = document.querySelector('.copy-code-button');
     if (!button) return;
     button.classList.add('is-copied');
-    button.textContent = 'Nakopya na';
+    portalSetText(button, 'Nakopya na');
     setTimeout(() => {
         button.classList.remove('is-copied');
-        button.textContent = 'Kopyahin ang code';
+        portalSetText(button, 'Kopyahin ang code');
     }, 2500);
 }
 

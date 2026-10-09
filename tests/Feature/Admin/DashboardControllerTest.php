@@ -7,14 +7,14 @@ use App\Models\Resident;
 use App\Models\User;
 
 it('requires staff access for the dashboard summary', function () {
-    $this->getJson(route('admin.dashboard.summary'))->assertUnauthorized();
+    $this->getJson(route('staff.dashboard.summary'))->assertUnauthorized();
 
-    $viewer = User::factory()->create(['role' => 'viewer']);
-    $this->actingAs($viewer)->getJson(route('admin.dashboard.summary'))->assertForbidden();
+    $viewer = User::factory()->assignedOperations()->create(['role' => 'viewer']);
+    $this->actingAs($viewer)->getJson(route('staff.dashboard.summary'))->assertForbidden();
 });
 
 it('returns database-backed dashboard totals and recent activity', function () {
-    $staff = User::factory()->create();
+    $staff = User::factory()->assignedOperations()->create();
     Resident::factory()->count(2)->create(['status' => 'active']);
     Resident::factory()->create(['status' => 'inactive']);
     $resident = Resident::factory()->create(['status' => 'active']);
@@ -52,7 +52,7 @@ it('returns database-backed dashboard totals and recent activity', function () {
         'resolved_at' => now(),
     ]);
 
-    $this->actingAs($staff)->getJson(route('admin.dashboard.summary'))
+    $this->actingAs($staff)->getJson(route('staff.dashboard.summary'))
         ->assertOk()
         ->assertJsonPath('summary.active_residents', 3)
         ->assertJsonPath('summary.issued_certificates', 1)

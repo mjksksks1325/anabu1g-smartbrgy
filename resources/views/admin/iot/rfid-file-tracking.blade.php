@@ -9,7 +9,7 @@
 </div>
 <div class="notice">RFID scans and cabinet events will appear here after trusted Raspberry Pi integration is connected. No scan can be simulated from this page.</div>
 <div class="iot-rfid-content">
-<form class="filter-panel" method="GET" action="{{ route('admin.rfid-files.index') }}">
+<form class="filter-panel" method="GET" action="{{ route('staff.rfid-files.index') }}">
     <label>Search file, RFID tag, or employee<input type="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="File reference or name"></label>
     <label>Action<select name="action"><option value="">All actions</option><option value="removed" @selected(($filters['action'] ?? '') === 'removed')>Removed</option><option value="returned" @selected(($filters['action'] ?? '') === 'returned')>Returned</option></select></label>
     <label>Date<input type="date" name="date" value="{{ $filters['date'] ?? '' }}"></label>

@@ -25,7 +25,7 @@ class RecordAdministrativeAction
             $response = $next($request);
 
             if ($response->getStatusCode() < 400 && ! $request->session()->has('errors')) {
-                $name = $request->route()->getName();
+                $name = preg_replace('/^staff\./', 'admin.', $request->route()->getName());
                 if (str_starts_with($name, 'admin.incidents.') || str_starts_with($name, 'admin.protection-orders.') || str_starts_with($name, 'admin.request-restrictions.')) {
                     return $this->privateCaseResponse($request, $response);
                 }
@@ -65,7 +65,7 @@ class RecordAdministrativeAction
 
     private function privateCaseResponse(Request $request, Response $response): Response
     {
-        if ($request->routeIs('admin.incidents.*', 'admin.protection-orders.*', 'admin.request-restrictions.*')) {
+        if ($request->routeIs('staff.incidents.*', 'staff.protection-orders.*', 'admin.protection-orders.*', 'staff.request-restrictions.*')) {
             $response->headers->set('Cache-Control', 'no-store, private');
         }
 

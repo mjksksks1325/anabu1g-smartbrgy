@@ -177,12 +177,12 @@ test('public verification attempts are rate limited', function () {
 
 test('staff can issue a private expiring code but no activation secrets appear in resident feeds or audits', function () {
     $resident = Resident::factory()->create();
-    $this->actingAs(User::factory()->create(['role' => 'staff']));
-    $response = $this->postJson(route('admin.residents.portal-activation', $resident))->assertOk();
+    $this->actingAs(User::factory()->assignedOperations()->create(['role' => 'staff']));
+    $response = $this->postJson(route('staff.residents.portal-activation', $resident))->assertOk();
     $code = $response->json('activation_code');
     expect($resident->fresh()->portal_registration_hash)->toBe(hash('sha256', $code));
-    $this->getJson(route('admin.residents.index'))->assertDontSee($code)->assertDontSee(hash('sha256', $code));
-    $this->getJson(route('admin.residents.show', $resident))->assertJsonPath('portal_account.registered', false)->assertDontSee(hash('sha256', $code));
+    $this->getJson(route('staff.residents.index'))->assertDontSee($code)->assertDontSee(hash('sha256', $code));
+    $this->getJson(route('staff.residents.show', $resident))->assertJsonPath('portal_account.registered', false)->assertDontSee(hash('sha256', $code));
     $this->getJson(route('admin.audit.index'))->assertForbidden();
     $this->assertDatabaseMissing('administrative_audits', ['record' => $code]);
     $this->assertDatabaseCount('residents', 1);
@@ -190,16 +190,16 @@ test('staff can issue a private expiring code but no activation secrets appear i
 
 test('viewer and resident accounts cannot issue activation codes', function (string $role) {
     $resident = Resident::factory()->create();
-    $user = $role === 'resident' ? User::factory()->resident()->create() : User::factory()->create(['role' => $role]);
-    $response = $this->actingAs($user, $role === 'resident' ? 'resident' : 'web')
-        ->postJson(route('admin.residents.portal-activation', $resident));
+    $user = $role === 'resident' ? User::factory()->resident()->create() : User::factory()->assignedOperations()->create(['role' => $role]);
+    $response = $this->actingAs($user, 'web')
+        ->postJson(route('staff.residents.portal-activation', $resident));
     $response->assertForbidden();
     expect($resident->fresh()->portal_registration_hash)->toBeNull();
 })->with(['viewer', 'resident']);
 
 test('only administrators can suspend portal accounts and staff cannot convert them into employees', function () {
     $residentUser = User::factory()->resident()->create();
-    $this->actingAs(User::factory()->create(['role' => 'staff']))->patchJson(route('admin.residents.portal-account', $residentUser->resident), ['is_active' => false])->assertForbidden();
+    $this->actingAs(User::factory()->assignedOperations()->create(['role' => 'staff']))->patchJson(route('admin.residents.portal-account', $residentUser->resident), ['is_active' => false])->assertForbidden();
     $this->actingAs(User::factory()->superAdmin()->create())->patchJson(route('admin.residents.portal-account', $residentUser->resident), ['is_active' => false])->assertOk();
     expect($residentUser->fresh()->is_active)->toBeFalse();
     $this->patchJson(route('admin.users.update', $residentUser), ['name' => $residentUser->name, 'email' => $residentUser->email, 'role' => 'admin', 'is_active' => true])->assertForbidden();
@@ -209,7 +209,7 @@ test('only administrators can suspend portal accounts and staff cannot convert t
 test('guest and employee accounts cannot submit resident portal requests', function () {
     $this->postJson(route('portal.request.store'), [])->assertUnauthorized();
     foreach (['admin', 'staff', 'viewer'] as $role) {
-        $this->actingAs(User::factory()->create(['role' => $role]))->postJson(route('portal.request.store'), [])->assertUnauthorized();
+        $this->actingAs(User::factory()->assignedOperations()->create(['role' => $role]))->postJson(route('portal.request.store'), [])->assertUnauthorized();
     }
     $this->assertDatabaseEmpty('document_requests');
 });
@@ -224,8 +224,8 @@ test('a resident login uses the portal and preserves login auditing', function (
 });
 
 test('resident accounts cannot read administrative data', function (string $route) {
-    $this->actingAs(User::factory()->resident()->create(), 'resident')->getJson(route($route))->assertForbidden();
-})->with(['admin.dashboard', 'admin.dashboard.summary', 'admin.residents.index', 'admin.users.index', 'admin.voter-registrations.index', 'admin.incidents.index', 'admin.audit.index', 'admin.issued-certificates.index', 'admin.document-requests.index', 'admin.puroks.index']);
+    $this->actingAs(User::factory()->resident()->create(), 'resident')->getJson(route($route))->assertUnauthorized();
+})->with(['admin.dashboard', 'staff.dashboard.summary', 'staff.residents.index', 'admin.users.index', 'staff.voter-registrations.index', 'staff.incidents.index', 'admin.audit.index', 'staff.issued-certificates.index', 'staff.document-requests.index', 'staff.puroks.index']);
 
 test('request history and status are scoped to the authenticated resident', function () {
     $user = User::factory()->resident()->create();
@@ -270,8 +270,8 @@ test('request history keeps its second page while exposing only that page to pol
 test('request history polling reflects administrative status changes and escapes private remarks', function () {
     $user = User::factory()->resident()->create();
     $documentRequest = portalRequestFor($user->resident, 'REQ-CHANGED');
-    $staff = User::factory()->create(['role' => 'staff']);
-    $this->actingAs($staff)->patchJson(route('admin.document-requests.update-status', $documentRequest), [
+    $staff = User::factory()->assignedOperations()->create(['role' => 'staff']);
+    $this->actingAs($staff)->patchJson(route('staff.document-requests.update-status', $documentRequest), [
         'status' => 'approved', 'remarks' => '<script>unsafe()</script>',
     ])->assertOk();
 
@@ -289,7 +289,7 @@ test('request history polling requires an eligible resident account and a bounde
     $url = route('portal.account.statuses', ['ids' => [$documentRequest->id]]);
 
     $this->getJson($url)->assertUnauthorized();
-    $this->actingAs(User::factory()->create(['role' => 'staff']))->getJson($url)->assertUnauthorized();
+    $this->actingAs(User::factory()->assignedOperations()->create(['role' => 'staff']))->getJson($url)->assertUnauthorized();
     $this->actingAs($user, 'resident')->getJson(route('portal.account.statuses', ['ids' => range(1, 16)]))
         ->assertUnprocessable()->assertJsonValidationErrors('ids');
     $user->resident->update(['status' => 'inactive']);
@@ -304,9 +304,9 @@ test('request history explains each status, rejection reason, and collection ste
 
     $this->actingAs($user, 'resident')->get(route('portal.account'))
         ->assertOk()
-        ->assertSeeInOrder(['REQ-READY', 'Ready for release', 'Paano kunin', 'Dalhin ang valid ID at ang reference number na REQ-READY'])
-        ->assertSeeInOrder(['REQ-REJECTED', 'Not approved', 'Dahilan', 'Kulang ang &lt;b&gt;detalye&lt;/b&gt; ng request.'], false)
-        ->assertSeeInOrder(['REQ-PENDING', 'Received', 'Hinihintay pa ang review ng barangay staff'])
+        ->assertSeeInOrder(['REQ-READY', '>Ready for release</span>', '>How to collect</span>', '>Bring a valid ID and reference number</span> REQ-READY'], false)
+        ->assertSeeInOrder(['REQ-REJECTED', '>Not approved</span>', '>Reason</span>', 'Kulang ang &lt;b&gt;detalye&lt;/b&gt; ng request.'], false)
+        ->assertSeeInOrder(['REQ-PENDING', 'Received', 'Received. Waiting for barangay staff to review your request.'])
         ->assertDontSee('<b>detalye</b>', false);
 });
 
@@ -317,7 +317,7 @@ test('a rejected login shows its message beside the email field', function () {
 
     $this->get(route('portal.login'))
         ->assertSee('aria-invalid="true" aria-describedby="resident-email-error"', false)
-        ->assertSee('<p class="field-error" id="resident-email-error">', false);
+        ->assertSee('<p class="field-error" id="resident-email-error" data-portal-message>', false);
 });
 
 test('request history marks requests that need resident attention', function () {
@@ -365,12 +365,12 @@ test('archive and restore retain linked accounts and history while enforcing cur
     $account = User::factory()->resident()->create();
     $resident = $account->resident;
     portalRequestFor($resident, 'REQ-RETAINED');
-    $staff = User::factory()->create(['role' => 'staff']);
-    $this->actingAs($staff)->deleteJson(route('admin.residents.destroy', $resident))->assertOk();
-    $this->getJson(route('admin.residents.index'))->assertJsonCount(0, 'data');
-    $this->getJson(route('admin.residents.index', ['status' => 'archived']))->assertJsonPath('data.0.id', $resident->id);
+    $staff = User::factory()->assignedOperations()->create(['role' => 'staff']);
+    $this->actingAs($staff)->deleteJson(route('staff.residents.destroy', $resident))->assertOk();
+    $this->getJson(route('staff.residents.index'))->assertJsonCount(0, 'data');
+    $this->getJson(route('staff.residents.index', ['status' => 'archived']))->assertJsonPath('data.0.id', $resident->id);
     $this->actingAs($account->fresh(), 'resident')->get(route('portal.account'))->assertForbidden()->assertSee('Please visit Barangay');
-    $this->actingAs($staff)->patchJson(route('admin.residents.restore', $resident->id))->assertOk();
+    $this->actingAs($staff)->patchJson(route('staff.residents.restore', $resident->id))->assertOk();
     $this->actingAs($account->fresh(), 'resident')->get(route('portal.account'))->assertOk()->assertSee('REQ-RETAINED');
     $this->assertDatabaseCount('document_requests', 1);
     $this->assertDatabaseHas('administrative_audits', ['action' => 'admin.residents.restore']);
@@ -392,10 +392,10 @@ test('public services derive supported fees from CertificateType and request lin
 
 test('resident accounts cannot use employee settings or change their master record', function () {
     $user = User::factory()->resident()->create();
-    $this->actingAs($user, 'resident')->get(route('profile.edit'))->assertForbidden();
+    $this->actingAs($user, 'web')->get(route('profile.edit'))->assertForbidden();
     $this->get(route('appearance.edit'))->assertForbidden();
     $this->withSession(['auth.password_confirmed_at' => time()])->get(route('security.edit'))->assertForbidden();
-    $this->patchJson(route('admin.residents.update', $user->resident), ['first_name' => 'Forged'])->assertForbidden();
+    $this->patchJson(route('staff.residents.update', $user->resident), ['first_name' => 'Forged'])->assertForbidden();
     expect($user->resident->fresh()->first_name)->not->toBe('Forged');
 });
 
@@ -418,7 +418,7 @@ test('malformed registration identity fields return validation errors', function
 });
 
 test('case variants of an existing account email cannot register a second user', function () {
-    User::factory()->create(['email' => 'Already@Example.test']);
+    User::factory()->assignedOperations()->create(['email' => 'Already@Example.test']);
     $resident = portalRegistrationResident();
     $this->post(route('portal.register.verify'), ['resident_number' => $resident->resident_number, 'activation_code' => 'private-test-activation-code']);
     $this->post(route('portal.register.store'), portalAccountInput(['email' => '  ALREADY@example.TEST  ']))->assertSessionHasErrors('email');
@@ -453,7 +453,7 @@ test('portal account suspension and reactivation have distinct safe audit events
         $this->assertDatabaseHas('administrative_audits', ['action' => 'admin.residents.portal-account.'.$action, 'type' => 'security', 'record' => (string) $account->resident_id]);
     }
     $this->getJson(route('admin.users.index'))->assertDontSee($account->email);
-    $this->getJson(route('admin.residents.show', $account->resident))
+    $this->getJson(route('staff.residents.show', $account->resident))
         ->assertJsonPath('portal_account.registered', true)->assertJsonPath('portal_account.is_active', true)
         ->assertDontSee($account->email)->assertDontSee($account->password)->assertDontSee($account->remember_token);
 });
@@ -478,9 +478,10 @@ test('resident password recovery reuses Fortify without creating another account
 
 test('activation code rotation invalidates the previous code and pending proof', function () {
     $resident = portalRegistrationResident();
-    $staff = User::factory()->create(['role' => 'staff']);
+    $staff = User::factory()->assignedOperations()->create(['role' => 'staff']);
     $oldHash = $resident->portal_registration_hash;
-    $response = $this->actingAs($staff)->postJson(route('admin.residents.portal-activation', $resident))->assertOk();
+    $response = $this->actingAs($staff)->postJson(route('staff.residents.portal-activation', $resident))->assertOk();
+    expect($response->json('activation_code'))->toHaveLength(8)->toMatch('/^[A-Z0-9]{8}$/');
     expect($resident->fresh()->portal_registration_hash)->not->toBe($oldHash);
     expect($resident->fresh()->portal_registration_hash)->toBe(hash('sha256', $response->json('activation_code')));
     expect($resident->fresh()->portal_registration_expires_at->isFuture())->toBeTrue();
@@ -489,5 +490,30 @@ test('activation code rotation invalidates the previous code and pending proof',
 test('guests cannot retrieve status or protected request attachments', function () {
     $request = portalRequestFor(Resident::factory()->create(), 'REQ-PRIVATE');
     $this->getJson(route('portal.request.status', $request->reference_code))->assertUnauthorized();
-    $this->getJson(route('admin.document-requests.attachment', $request))->assertUnauthorized();
+    $this->getJson(route('staff.document-requests.attachment', $request))->assertUnauthorized();
 });
+
+test('activation code is visible while typing and accepts previously issued long codes', function () {
+    $response = $this->get(route('portal.register'))->assertOk();
+
+    $document = new DOMDocument;
+    @$document->loadHTML($response->getContent());
+    $input = (new DOMXPath($document))->query('//input[@name="activation_code"]')->item(0);
+    expect($input)->not->toBeNull();
+    expect($input->getAttribute('type'))->toBe('text');
+    expect($input->getAttribute('autocomplete'))->toBe('one-time-code');
+    expect((int) $input->getAttribute('maxlength'))->toBeGreaterThanOrEqual(32);
+});
+
+test('short activation codes ignore letter case and existing long codes still verify', function (string $issuedCode, string $typedCode) {
+    $resident = portalRegistrationResident(['portal_registration_hash' => hash('sha256', $issuedCode)]);
+
+    $this->post(route('portal.register.verify'), ['resident_number' => $resident->resident_number, 'activation_code' => $typedCode])
+        ->assertRedirect(route('portal.register'))
+        ->assertSessionHas('resident_verification.resident_id', $resident->id)
+        ->assertSessionHas('resident_verification.hash', hash('sha256', $issuedCode));
+})->with([
+    ['A7K2M9Q4', 'A7K2M9Q4'],
+    ['A7K2M9Q4', '  a7k2m9q4  '],
+    ['AbCdEfGhIjKlMnOpQrStUvWxYz123456', 'AbCdEfGhIjKlMnOpQrStUvWxYz123456'],
+]);

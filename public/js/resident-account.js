@@ -22,9 +22,10 @@ async function ensurePortalIdentity() {
         return true;
     } catch (error) {
         if (generation !== residentIdentityGeneration) return false;
+        const message = error instanceof TypeError ? 'Please contact the barangay for account assistance.' : error.message;
         const feedback = document.getElementById('portal-form-error');
-        if (feedback) { feedback.textContent = error.message; feedback.hidden = false; }
-        if (typeof toast === 'function') toast(error.message, 'red');
+        if (feedback) { portalSetText(feedback, message); feedback.hidden = false; }
+        if (typeof toast === 'function') toast(message, 'red');
         return false;
     }
 }
@@ -41,7 +42,7 @@ window.addEventListener('pagehide', clearResidentClientState);
 window.addEventListener('pageshow', event => {
     document.querySelectorAll('[data-resident-form]').forEach(form => {
         form.removeAttribute('data-submitting');
-        form.querySelectorAll('button[type="submit"]').forEach(button => { button.disabled = false; if (button.dataset.label) button.textContent = button.dataset.label; });
+        form.querySelectorAll('button[type="submit"]').forEach(button => { button.disabled = false; if (button.dataset.label) portalSetText(button, button.dataset.label); });
     });
     if (event.persisted) { clearResidentClientState(); window.location.reload(); }
 });
@@ -54,8 +55,8 @@ if (residentThemeButton) {
     const updateResidentThemeButton = () => {
         const dark = document.body.classList.contains('dark-mode');
         residentThemeButton.setAttribute('aria-pressed', String(dark));
-        residentThemeButton.setAttribute('aria-label', dark ? 'Light mode' : 'Dark mode');
-        residentThemeButton.setAttribute('title', dark ? 'Light mode' : 'Dark mode');
+        portalSetAttribute(residentThemeButton, 'aria-label', dark ? 'Light mode' : 'Dark mode');
+        portalSetAttribute(residentThemeButton, 'title', dark ? 'Light mode' : 'Dark mode');
     };
     updateResidentThemeButton();
     residentThemeButton.addEventListener('click', () => {
@@ -70,7 +71,9 @@ document.querySelectorAll('[data-password-toggle]').forEach(button => {
     button.addEventListener('click', () => {
         const isVisible = field.type === 'password';
         field.type = isVisible ? 'text' : 'password';
-        button.textContent = isVisible ? 'Hide' : 'Show';
+        const label = isVisible ? 'Hide password' : 'Show password';
+        portalSetAttribute(button, 'aria-label', label);
+        portalSetAttribute(button, 'title', label);
         button.setAttribute('aria-pressed', String(isVisible));
     });
 });
@@ -103,7 +106,7 @@ document.querySelectorAll('[data-resident-form]').forEach(form => {
         form.setAttribute('data-submitting', 'true');
         form.querySelectorAll('button').forEach(button => { button.disabled = true; });
         const button = form.querySelector('button[type="submit"]');
-        if (button) { button.dataset.label = button.textContent; button.textContent = 'Please wait...'; }
+        if (button) { button.dataset.label = button.textContent; portalSetText(button, 'Please wait...'); }
         if (form.hasAttribute('data-resident-logout-form')) clearResidentClientState();
     });
 });

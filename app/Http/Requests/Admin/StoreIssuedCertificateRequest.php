@@ -3,7 +3,6 @@
 namespace App\Http\Requests\Admin;
 
 use App\CertificateType;
-use App\Models\DocumentRequest;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -15,7 +14,7 @@ class StoreIssuedCertificateRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return $this->user()?->can('viewAny', DocumentRequest::class) ?? false;
+        return $this->user()?->hasPermission('documents.issue') ?? false;
     }
 
     /**

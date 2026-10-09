@@ -9,7 +9,7 @@
         <nav class="civic-nav" aria-label="Main navigation">
             <a href="{{ route('home') }}">Resident services</a>
             @auth
-                <a href="{{ route('admin.dashboard') }}">Administration</a>
+                <a href="{{ route(auth()->user()->role === 'admin' ? 'admin.dashboard' : 'staff.dashboard') }}">Administration</a>
             @else
                 <a href="{{ route('login') }}">Staff sign in</a>
             @endauth

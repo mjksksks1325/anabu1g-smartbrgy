@@ -15,6 +15,7 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Contracts\LoginResponse;
 use Laravel\Fortify\Contracts\LogoutResponse;
+use Laravel\Fortify\Contracts\TwoFactorLoginResponse;
 use Laravel\Fortify\Fortify;
 
 class FortifyServiceProvider extends ServiceProvider
@@ -26,6 +27,7 @@ class FortifyServiceProvider extends ServiceProvider
     {
         $this->app->singleton(LogoutResponse::class, PortalLogoutResponse::class);
         $this->app->singleton(LoginResponse::class, AccountLoginResponse::class);
+        $this->app->singleton(TwoFactorLoginResponse::class, AccountLoginResponse::class);
     }
 
     /**
@@ -40,11 +42,11 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::authenticateUsing(function (Request $request): ?User {
             $user = User::query()->whereRaw('LOWER(email) = ?', [Str::lower(trim((string) $request->input('email')))])->first();
 
-            if ($user?->isResidentAccount()) {
+            if (! $user?->canLoginAsPersonnel()) {
                 return null;
             }
 
-            return $user && $user->is_active && Hash::check($request->input('password'), $user->password)
+            return Hash::check($request->input('password'), $user->password)
                 ? $user
                 : null;
         });

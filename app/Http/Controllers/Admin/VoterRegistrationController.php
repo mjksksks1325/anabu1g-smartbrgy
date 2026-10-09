@@ -108,7 +108,7 @@ class VoterRegistrationController extends Controller
 
     public function template(): Response
     {
-        Gate::authorize('create', VoterRegistration::class);
+        Gate::authorize('voters.import');
 
         return response(implode(',', ReadVotersCsv::HEADERS)."\r\n", 200, [
             'Content-Type' => 'text/csv; charset=UTF-8',
@@ -119,7 +119,7 @@ class VoterRegistrationController extends Controller
 
     public function import(Request $request, ReadVotersCsv $reader): JsonResponse
     {
-        Gate::authorize('create', VoterRegistration::class);
+        Gate::authorize('voters.import');
         $request->validate(['file' => ['required', 'file', 'max:5120', 'extensions:csv', 'mimes:csv,txt']]);
         $rows = $reader->read($request->file('file'));
         $rowNumber = 0;

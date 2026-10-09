@@ -7,62 +7,36 @@ use App\Models\User;
 
 class IncidentPolicy
 {
-    private function isStaff(User $user): bool
-    {
-        return $user->is_active && $user->resident_id === null && in_array($user->role, ['admin', 'staff'], true);
-    }
-
-    /**
-     * Determine whether the user can view any models.
-     */
     public function viewAny(User $user): bool
     {
-        return $this->isStaff($user);
+        return $user->hasAnyPermission(['incidents.view', 'vawc.view']);
     }
 
-    /**
-     * Determine whether the user can view the model.
-     */
     public function view(User $user, Incident $incident): bool
     {
-        return $this->isStaff($user);
+        return $user->hasPermission($incident->isRestricted() ? 'vawc.view' : 'incidents.view');
     }
 
-    /**
-     * Determine whether the user can create models.
-     */
     public function create(User $user): bool
     {
-        return $this->isStaff($user);
+        return $user->hasAnyPermission(['incidents.submit', 'vawc.submit']);
     }
 
-    /**
-     * Determine whether the user can update the model.
-     */
     public function update(User $user, Incident $incident): bool
     {
-        return $this->isStaff($user);
+        return $user->hasPermission($incident->isRestricted() ? 'vawc.update' : 'incidents.update');
     }
 
-    /**
-     * Determine whether the user can delete the model.
-     */
     public function delete(User $user, Incident $incident): bool
     {
-        return $this->isStaff($user) && $user->role === 'admin';
+        return $user->hasPermission($incident->isRestricted() ? 'vawc.archive' : 'incidents.archive');
     }
 
-    /**
-     * Determine whether the user can restore the model.
-     */
     public function restore(User $user, Incident $incident): bool
     {
-        return $this->isStaff($user) && $user->role === 'admin';
+        return $this->delete($user, $incident);
     }
 
-    /**
-     * Determine whether the user can permanently delete the model.
-     */
     public function forceDelete(User $user, Incident $incident): bool
     {
         return false;
