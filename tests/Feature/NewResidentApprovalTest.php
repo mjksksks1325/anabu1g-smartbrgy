@@ -281,7 +281,10 @@ test('review result email reaches the application email with reference decision 
     app()->setLocale($locale);
     $mail = $notification->toMail(new AnonymousNotifiable);
     if ($decision === 'approved') {
-        expect($mail->viewData['actionUrl'])->toBe(route('portal.register', ['step' => 'activation']));
+        expect($mail->viewData['actionUrl'])->toBe(route('portal.register'));
+        $this->get($mail->viewData['actionUrl'])->assertOk()->assertViewHas('stage', 'name')
+            ->assertSee('name="full_name"', false);
+        app()->setLocale($locale);
     }
     $html = view($mail->view['html'], $mail->viewData)->render();
     $text = view($mail->view['text'], $mail->viewData)->render();
