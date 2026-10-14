@@ -56,14 +56,19 @@ test('invalid profile uploads preserve the existing resident photo', function (s
     $photo = match ($kind) {
         'missing' => null,
         'type' => UploadedFile::fake()->create('document.svg', 1, 'image/svg+xml'),
+        'pdf' => UploadedFile::fake()->create('document.pdf', 1, 'application/pdf'),
+        'extension' => UploadedFile::fake()->image('photo.jpg'),
         'size' => UploadedFile::fake()->image('large.jpg')->size(5121),
         'dimensions' => UploadedFile::fake()->image('wide.jpg', 6001, 1),
     };
+    if ($kind === 'extension') {
+        $photo->name = 'photo.pdf';
+    }
     $this->actingAs($account, 'resident')->post(route('portal.profile.photo.store'), ['photo' => $photo])
         ->assertSessionHasErrors('photo');
     expect($account->resident->fresh()->photo_path)->toBe('resident-photos/existing.jpg');
     expect(Storage::disk('local')->allFiles())->toBe(['resident-photos/existing.jpg']);
-})->with(['missing', 'type', 'size', 'dimensions']);
+})->with(['missing', 'type', 'pdf', 'extension', 'size', 'dimensions']);
 
 test('guests and staff sessions cannot use resident profile photo endpoints', function (string $condition) {
     Storage::fake('local');

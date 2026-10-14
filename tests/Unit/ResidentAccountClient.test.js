@@ -60,6 +60,7 @@ function residentClient() {
     sessionStorage: { getItem: key => saved.get(key), setItem: (key, value) => saved.set(key, value), removeItem: key => saved.delete(key) },
   });
   vm.runInContext(readFileSync(new URL('../../public/js/portal-localization.js', import.meta.url), 'utf8'), context);
+  vm.runInContext(readFileSync(new URL('../../public/js/password-visibility.js', import.meta.url), 'utf8'), context);
   vm.runInContext(readFileSync(new URL('../../public/js/resident-account.js', import.meta.url), 'utf8'), context);
   return { context, fields, passwordToggle, privateContent, submit, cancel, logout, form, dialog, listeners, saved, menuButton, theme, bodyClasses, documentListeners };
 }

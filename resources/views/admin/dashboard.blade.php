@@ -15,6 +15,8 @@
 <script defer data-navigate-once src="{{ asset('js/household-profiling.js') }}?v={{ filemtime(public_path('js/household-profiling.js')) }}"></script>
 <script defer data-navigate-once src="{{ asset('js/case-management.js') }}?v={{ filemtime(public_path('js/case-management.js')) }}"></script>
 <script defer data-navigate-once src="{{ asset('js/personnel-password-confirmation.js') }}?v={{ filemtime(public_path('js/personnel-password-confirmation.js')) }}"></script>
+<link rel="stylesheet" href="{{ asset('css/password-visibility.css') }}?v={{ filemtime(public_path('css/password-visibility.css')) }}">
+<script defer data-navigate-once src="{{ asset('js/password-visibility.js') }}?v={{ filemtime(public_path('js/password-visibility.js')) }}"></script>
 </head>
 <body class="light-mode" data-personnel-layout="admin" data-personnel-super-admin="{{ auth()->user()->isSuperAdmin() ? 'true' : 'false' }}">
 <script>window.PersonnelNavigation.syncStyles();</script>
@@ -246,6 +248,7 @@
 
     <!-- RESIDENT RECORDS -->
     <div class="content{{ $activeScreen === 'records' ? ' active' : '' }}" id="screen-records">
+      @can('records.review')<p><a wire:navigate class="btn btn-outline" href="{{ route('staff.resident-applications.index') }}">Review new resident applications <span class="badge">{{ $pendingRegistrationsCount ?? 0 }} pending</span></a></p>@endcan
       <div class="page-header-row">
         <div class="page-header"><h1>{{ auth()->user()->hasPermission('records.view') ? 'Resident Records' : 'Households' }}</h1><p>All registered residents — Barangay Anabu I-G</p></div>
         <button data-action-permission="records.create" class="btn btn-green" onclick="openAddResident()" @if(!auth()->user()->hasAnyPermission(['records.create'])) hidden style="display:none;" @endif> New Resident</button>
@@ -990,7 +993,7 @@
     <div class="form-group"><div class="form-label">Incident Details *</div><textarea class="form-input" id="inc-details" rows="4" placeholder="Describe what happened..."></textarea></div>
     <div class="form-group">
       <div class="form-label">Attachments <span style="color:var(--text-muted);font-weight:400;">(optional — photos/PDF)</span></div>
-      <input class="form-input" type="file" id="inc-attachments" accept="image/*,.pdf" multiple style="padding:6px;cursor:pointer;"/>
+      <input class="form-input" type="file" id="inc-attachments" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" multiple style="padding:6px;cursor:pointer;"/>
       <div id="inc-attachments-preview" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
     </div>
     <input type="hidden" id="inc-edit-id" value=""/>
@@ -1094,7 +1097,7 @@
     </div>
     <div class="form-group user-account-password">
       <label for="adduser-password" class="form-label">Password</label>
-      <input class="form-input" id="adduser-password" type="password" minlength="12" autocomplete="new-password">
+      <span class="password-visibility-field"><input class="form-input" id="adduser-password" type="password" minlength="12" autocomplete="new-password"><x-password-toggle target="adduser-password" /></span>
       <p class="card-sub" id="adduser-pass-label">At least 12 characters. Leave blank when editing to keep the current password.</p>
     </div>
     </div>

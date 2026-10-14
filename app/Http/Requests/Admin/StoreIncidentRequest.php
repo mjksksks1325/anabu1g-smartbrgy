@@ -45,7 +45,7 @@ class StoreIncidentRequest extends FormRequest
             'respondent_resident_id' => [$submissionOnly ? 'prohibited' : 'nullable', 'integer', Rule::exists('residents', 'id')->whereNull('deleted_at')],
             'remarks' => [$submissionOnly ? 'prohibited' : 'nullable', 'string', 'max:5000'],
             'attachments' => ['nullable', 'array', 'max:5'],
-            'attachments.*' => ['file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
+            'attachments.*' => ['bail', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'extensions:jpg,jpeg,png,webp', 'max:5120'],
             ...array_fill_keys(['reported_by', 'updated_by', 'actor', 'actor_id', 'user_id', 'staff_permissions', 'role', 'permissions', 'status', 'resolution_notes', 'resolved_at', 'approved', 'approved_by', 'approved_at', 'approval_status', 'incident_number', 'created_at', 'updated_at', 'deleted_at', 'protection_orders', 'protection_order_id', 'bpo_id', 'bpo_links', 'restrictions', 'request_restrictions', 'restriction_id'], ['prohibited']),
         ];
     }
@@ -83,7 +83,9 @@ class StoreIncidentRequest extends FormRequest
             'attachments.max' => 'You can attach up to five files per report.',
             'attachments.*.file' => 'Attachment :position could not be uploaded. Please select the file again.',
             'attachments.*.uploaded' => 'Attachment :position could not be uploaded. Please select a file up to 5 MB and try again.',
-            'attachments.*.mimes' => 'Attachment :position must be a JPG, PNG, WebP image or PDF file. Other file types are not supported.',
+            'attachments.*.image' => 'Attachment :position must be a JPG, PNG or WebP image. Other file types are not supported.',
+            'attachments.*.extensions' => 'Attachment :position must have a JPG, PNG or WebP filename extension.',
+            'attachments.*.mimes' => 'Attachment :position must be a JPG, PNG or WebP image. Other file types are not supported.',
             'attachments.*.max' => 'Attachment :position is too large. Each file must be 5 MB or smaller.',
         ];
     }

@@ -36,7 +36,7 @@ class ResidentPortalActivationNotification extends Notification
             ], [
                 'residentNumber' => $this->residentNumber,
                 'activationCode' => $this->activationCode,
-                'registrationUrl' => route('portal.register'),
+                'registrationUrl' => route('portal.register', ['step' => 'activation']),
             ]);
     }
 }

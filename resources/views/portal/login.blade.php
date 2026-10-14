@@ -21,7 +21,7 @@
             </div>
             <div class="form-group">
                 <label class="form-label" for="resident-password"><span data-portal-i18n="Password">{{ __('Password') }}</span></label>
-                <span class="resident-password-field"><input class="form-input" id="resident-password" name="password" type="password" autocomplete="current-password" required><button class="resident-password-toggle" type="button" data-password-toggle="resident-password" aria-controls="resident-password" aria-pressed="false" data-portal-i18n-aria-label="Show password" aria-label="{{ __('Show password') }}" data-portal-i18n-title="Show password" title="{{ __('Show password') }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path class="password-eye-slash" d="m3 3 18 18"/></svg></button></span>
+                <span class="password-visibility-field resident-password-field"><input class="form-input" id="resident-password" name="password" type="password" autocomplete="current-password" required><x-password-toggle target="resident-password" :resident="true" /></span>
             </div>
             <label class="resident-remember"><input name="remember" type="checkbox" value="1"> <span data-portal-i18n="Manatiling naka-log in sa device na ito. Huwag gamitin sa shared o pampublikong computer.">{{ __('Manatiling naka-log in sa device na ito. Huwag gamitin sa shared o pampublikong computer.') }}</span></label>
             <button class="btn btn-green btn-full" type="submit"><span data-portal-i18n="Log in securely">{{ __('Log in securely') }}</span> <span aria-hidden="true">&#8594;</span></button>

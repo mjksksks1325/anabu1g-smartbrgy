@@ -139,7 +139,7 @@ test('request board centers cards and adapts columns while date fields fit mobil
 
     expect($staffStyles)->toContain('repeat(4, minmax(0, 1fr))', 'repeat(2, minmax(0, 1fr))', '.cert-kanban { grid-template-columns: 1fr; }', '.cert-card { text-align: center; overflow-wrap: anywhere; }', '#modal-addres input[type="date"] { width: 100%; min-width: 0; max-width: 100%;');
     expect($portalStyles)->toContain('.auth-layout input[type="date"] { width: 100%; min-width: 0; max-width: 100%;');
-    expect($login)->toContain('data-password-toggle="resident-password"', 'aria-label="Show password"', 'class="password-eye-slash"');
+    expect($login)->toContain('<x-password-toggle target="resident-password" :resident="true" />');
 });
 
 test('user management modal uses the staff theme with a scrolling body and responsive permission cards', function () {

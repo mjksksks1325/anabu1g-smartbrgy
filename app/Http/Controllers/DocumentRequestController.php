@@ -31,7 +31,7 @@ class DocumentRequestController extends Controller
             'document_type' => ['required', 'string', Rule::in(CertificateType::values())],
             'purpose' => 'required|string|max:255',
             'business_name' => 'nullable|string|max:255',
-            'attachment' => 'nullable|file|mimes:jpg,jpeg,png,webp|max:5120',
+            'attachment' => 'nullable|file|image|mimes:jpg,jpeg,png,webp|extensions:jpg,jpeg,png,webp|max:5120',
         ]);
 
         return DB::transaction(function () use ($request, $validated): JsonResponse {

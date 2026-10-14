@@ -14,6 +14,12 @@
 <div class="auth-layout">
     <section class="card card-accent" aria-labelledby="register-title">
         <div class="card-body">
+            @if($stage === 'name')
+                <div class="registration-path-option">
+                    <div><strong><span data-portal-i18n="No resident record yet?">{{ __('No resident record yet?') }}</span></strong><p><span data-portal-i18n="Submit your details for barangay review.">{{ __('Submit your details for barangay review.') }}</span></p></div>
+                    <a class="btn btn-outline" href="{{ route('portal.new-resident.create') }}"><span data-portal-i18n="Apply as a new resident">{{ __('Apply as a new resident') }}</span></a>
+                </div>
+            @endif
             <ol class="progress-steps" data-portal-i18n-aria-label="Mga hakbang sa pag-create ng account" aria-label="{{ __('Mga hakbang sa pag-create ng account') }}">
                 @foreach($stepLabels as $index => $label)
                     <li @class(['done' => $index + 1 < $stepNumber]) @if($index + 1 === $stepNumber) aria-current="step" @endif><span><span data-portal-i18n="{{ $label }}">{{ __($label) }}</span></span></li>
@@ -42,13 +48,13 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="registration-password"><span data-portal-i18n="Password">{{ __('Password') }}</span></label>
-                        <input class="form-input" id="registration-password" name="password" type="password" required minlength="12" maxlength="255" autocomplete="new-password" aria-describedby="password-help" @error('password') aria-invalid="true" @enderror>
+                        <span class="password-visibility-field resident-password-field"><input class="form-input" id="registration-password" name="password" type="password" required minlength="12" maxlength="255" autocomplete="new-password" aria-describedby="password-help" @error('password') aria-invalid="true" @enderror><x-password-toggle target="registration-password" :resident="true" /></span>
                         @error('password')<p class="field-error" data-portal-message>{{ $message }}</p>@enderror
                         <p id="password-help" class="form-note"><span data-portal-i18n="Hindi bababa sa 12 characters, may uppercase at lowercase letter, at may number.">{{ __('Hindi bababa sa 12 characters, may uppercase at lowercase letter, at may number.') }}</span></p>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="registration-confirmation"><span data-portal-i18n="Ulitin ang password">{{ __('Ulitin ang password') }}</span></label>
-                        <input class="form-input" id="registration-confirmation" name="password_confirmation" type="password" required autocomplete="new-password">
+                        <span class="password-visibility-field resident-password-field"><input class="form-input" id="registration-confirmation" name="password_confirmation" type="password" required autocomplete="new-password"><x-password-toggle target="registration-confirmation" :resident="true" /></span>
                     </div>
                     <button class="btn btn-green btn-full" type="submit"><span data-portal-i18n="Create account">{{ __('Create account') }}</span></button>
                 </form>

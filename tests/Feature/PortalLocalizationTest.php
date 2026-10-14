@@ -13,6 +13,25 @@ beforeEach(function () {
     $this->withCredentials();
 });
 
+test('requirements request buttons have clean translated text and document specific accessible names', function (string $locale) {
+    $response = $this->withCookie(PortalLocalization::COOKIE, $locale)->get(route('portal.information'))->assertOk();
+    $document = new DOMDocument;
+    @$document->loadHTML($response->getContent());
+    $xpath = new DOMXPath($document);
+    $buttons = $xpath->query('//li[@class="service-item"]/a');
+    expect($buttons->length)->toBeGreaterThan(0);
+    foreach ($buttons as $button) {
+        expect(trim($button->textContent))->toBe(__('Request'));
+        expect($button->hasAttribute('aria-label'))->toBeFalse();
+        $labelIds = explode(' ', $button->getAttribute('aria-labelledby'));
+        expect($labelIds)->toHaveCount(2);
+        foreach ($labelIds as $labelId) {
+            expect($xpath->query('//*[@id="'.$labelId.'"]'))->toHaveCount(1);
+        }
+        expect($button->getAttribute('href'))->toStartWith(route('portal.request.create').'?service=');
+    }
+})->with(['en', 'fil']);
+
 test('resident locale defaults to English and ignores unsupported cookie values', function (?string $locale) {
     if ($locale !== null) {
         $this->withCookie(PortalLocalization::COOKIE, $locale);

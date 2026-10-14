@@ -32,9 +32,9 @@
     <ul class="service-list">
         @foreach($services as $service)
             <li class="service-item">
-                <h3><span data-portal-i18n="{{ $service->value }}">{{ __($service->value) }}</span></h3>
+                <h3 id="service-document-{{ $loop->index }}"><span data-portal-i18n="{{ $service->value }}">{{ __($service->value) }}</span></h3>
                 <p class="service-fee"><span class="service-fee-label"><span data-portal-i18n="Fee:">{{ __('Fee:') }}</span> </span><span data-portal-i18n="{{ $service->feeLabel() }}">{{ __($service->feeLabel()) }}</span></p>
-                <a class="btn btn-outline btn-small" href="{{ route('portal.request.create', ['service' => $service->portalCode()]) }}" aria-label="Request <span data-portal-i18n="{{ $service->value }}">{{ __($service->value) }}</span>"><span data-portal-i18n="Request">{{ __('Request') }}</span></a>
+                <a class="btn btn-outline btn-small" href="{{ route('portal.request.create', ['service' => $service->portalCode()]) }}" aria-labelledby="service-request-{{ $loop->index }} service-document-{{ $loop->index }}"><span id="service-request-{{ $loop->index }}" data-portal-i18n="Request">{{ __('Request') }}</span></a>
             </li>
         @endforeach
     </ul>

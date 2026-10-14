@@ -1403,6 +1403,7 @@ function openModal(id) {
   const element = document.getElementById(id);
   if (!element) return;
   modalTrigger = document.activeElement;
+  window.PasswordVisibility?.hide(element);
   element.classList.add('show');
   element.setAttribute('role', 'dialog');
   element.setAttribute('aria-modal', 'true');
@@ -1410,7 +1411,7 @@ function openModal(id) {
   if (title) { if (!title.id) title.id = id + '-title'; element.setAttribute('aria-labelledby', title.id); }
   element.querySelector('input:not([type="hidden"]), select, textarea, button, [tabindex="0"]')?.focus();
 }
-function closeModal(id) { if (id === 'modal-view-resident') document.getElementById('resident-activation-result')?.replaceChildren(); const el = document.getElementById(id); if (el) el.classList.remove('show'); modalTrigger?.focus(); }
+function closeModal(id) { if (id === 'modal-view-resident') document.getElementById('resident-activation-result')?.replaceChildren(); const el = document.getElementById(id); if (el) { window.PasswordVisibility?.hide(el); el.classList.remove('show'); } modalTrigger?.focus(); }
 document.addEventListener('click', function(e) { if (e.target.classList.contains('modal-overlay')) closeModal(e.target.id); });
 
 // ═══════════════════════════════════════

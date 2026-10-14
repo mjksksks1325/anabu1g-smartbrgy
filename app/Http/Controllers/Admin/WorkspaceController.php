@@ -5,12 +5,14 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\DocumentRequest;
 use App\Models\Incident;
+use App\Models\ResidentRegistrationApplication;
 use App\Models\ResidentRequestRestriction;
 use App\StaffPermissions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 
 class WorkspaceController extends Controller
@@ -78,6 +80,8 @@ class WorkspaceController extends Controller
         $screenRoutes['dashboard'] = $request->user()->role === 'admin' ? 'admin.dashboard' : 'staff.dashboard';
 
         return view('admin.dashboard', [
+            'pendingRegistrationsCount' => $request->user()->hasPermission('records.review') && Schema::hasTable('resident_registration_applications')
+                ? ResidentRegistrationApplication::where('status', 'pending')->count() : 0,
             'requests' => $request->user()->hasPermission('documents.view') ? DocumentRequest::latest()->get() : collect(),
             'activeScreen' => $screen,
             'screenRoutes' => array_map(fn (string $name): string => route($name), $screenRoutes),

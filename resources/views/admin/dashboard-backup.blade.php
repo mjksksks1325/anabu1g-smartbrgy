@@ -6,6 +6,8 @@
 <title>SmartBrgy — Barangay Anabu I-G, Imus City</title>
 <link rel="icon" type="image/jpeg" href="{{ asset('images/anabu-logo.jpg') }}">
 <link rel="stylesheet" href="{{ asset('css/admin.css') }}">
+<link rel="stylesheet" href="{{ asset('css/password-visibility.css') }}?v={{ filemtime(public_path('css/password-visibility.css')) }}">
+<script defer data-navigate-once src="{{ asset('js/password-visibility.js') }}?v={{ filemtime(public_path('js/password-visibility.js')) }}"></script>
 </head>
 <body>
 <div id="loading-bar"></div>
@@ -40,7 +42,7 @@
       <div class="form-group"><div class="form-label">Purpose / Reason *</div><input class="form-input" id="portal-purpose" placeholder="Example: Employment, Loan, Scholarship..."/></div>
       <div class="form-group">
         <div class="form-label">Proof of Residency <span style="color:var(--text-muted);font-weight:400;">(optional — photo/PDF)</span></div>
-        <input class="form-input" type="file" id="portal-attachment" accept="image/*,.pdf" style="padding:6px;cursor:pointer;"/>
+        <input class="form-input" type="file" id="portal-attachment" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" style="padding:6px;cursor:pointer;"/>
         <div id="portal-attachment-preview" style="display:none;margin-top:8px;"></div>
       </div>
       <div style="font-size:11px;color:var(--text-muted);margin-bottom:14px;">⚠️ Your information is kept strictly confidential.</div>
@@ -1512,7 +1514,7 @@
     <div class="form-group"><div class="form-label">Incident Details *</div><textarea class="form-input" id="inc-details" rows="4" placeholder="Describe what happened..."></textarea></div>
     <div class="form-group">
       <div class="form-label">Attachments <span style="color:var(--text-muted);font-weight:400;">(optional — photos/PDF)</span></div>
-      <input class="form-input" type="file" id="inc-attachments" accept="image/*,.pdf" multiple style="padding:6px;cursor:pointer;"/>
+      <input class="form-input" type="file" id="inc-attachments" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" multiple style="padding:6px;cursor:pointer;"/>
       <div id="inc-attachments-preview" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
     </div>
     <input type="hidden" id="inc-edit-id" value=""/>
@@ -1579,7 +1581,7 @@
     <div class="form-group"><div class="form-label">Role *</div><select class="form-input" id="adduser-role"><option>Barangay Captain</option><option>Barangay Secretary</option><option>Records Officer</option><option>Barangay Clerk</option><option>Tanod Captain</option><option>Data Encoder</option></select></div>
     <div class="form-group"><div class="form-label">Access Level</div><select class="form-input" id="adduser-access"><option>Full Access</option><option>Records & Certificates</option><option>Certificates Only</option><option>Incidents Only</option><option>View Only</option></select></div>
     <div class="form-group"><div class="form-label">Username</div><input class="form-input" id="adduser-username" placeholder="firstname.lastname"/></div>
-    <div class="form-group"><div class="form-label">Password <span id="adduser-pass-label" style="color:var(--text-muted);font-weight:400;">(leave blank to keep current)</span></div><input class="form-input" id="adduser-password" type="password" placeholder="Min. 8 characters"/></div>
+    <div class="form-group"><div class="form-label">Password <span id="adduser-pass-label" style="color:var(--text-muted);font-weight:400;">(leave blank to keep current)</span></div><span class="password-visibility-field"><input class="form-input" id="adduser-password" type="password" placeholder="Min. 8 characters"/><x-password-toggle target="adduser-password" /></span></div>
     <div class="setting-row"><div><div class="setting-label">Face ID Enrollment</div><div class="setting-sub">Enroll facial recognition after account creation</div></div><div class="toggle on" id="adduser-facetoggle"><div class="toggle-knob"></div></div></div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('modal-adduser')">Cancel</button>

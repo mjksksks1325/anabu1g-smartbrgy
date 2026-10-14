@@ -26,7 +26,7 @@ class RecordAdministrativeAction
 
             if ($response->getStatusCode() < 400 && ! $request->session()->has('errors')) {
                 $name = preg_replace('/^staff\./', 'admin.', $request->route()->getName());
-                if (str_starts_with($name, 'admin.incidents.') || str_starts_with($name, 'admin.protection-orders.') || str_starts_with($name, 'admin.request-restrictions.')) {
+                if (str_starts_with($name, 'admin.resident-applications.') || str_starts_with($name, 'admin.incidents.') || str_starts_with($name, 'admin.protection-orders.') || str_starts_with($name, 'admin.request-restrictions.')) {
                     return $this->privateCaseResponse($request, $response);
                 }
                 if ($name === 'admin.residents.portal-account') {

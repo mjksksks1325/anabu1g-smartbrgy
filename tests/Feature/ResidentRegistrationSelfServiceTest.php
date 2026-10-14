@@ -10,6 +10,50 @@ use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Mailer\Exception\TransportException;
 use Tests\TestCase;
 
+test('account registration rejects a photo with a PDF filename extension', function () {
+    Storage::fake('local');
+    $resident = selfServiceResident([
+        'portal_registration_hash' => hash('sha256', 'ABCD1234'),
+        'portal_registration_expires_at' => now()->addHour(),
+    ]);
+    $this->post(route('portal.register.verify'), ['resident_number' => $resident->resident_number, 'activation_code' => 'ABCD1234'])
+        ->assertRedirect(route('portal.register'));
+    $photo = UploadedFile::fake()->image('photo.jpg');
+    $photo->name = 'photo.pdf';
+    $this->post(route('portal.register.store'), [
+        'email' => 'jane@example.test', 'password' => 'ResidentPassword123!',
+        'password_confirmation' => 'ResidentPassword123!', 'photo' => $photo,
+    ])->assertSessionHasErrors('photo');
+    expect($resident->portalAccount()->exists())->toBeFalse();
+    expect(Storage::disk('local')->allFiles())->toBeEmpty();
+});
+
+test('email continuation opens activation inputs across refresh without granting verification', function () {
+    $url = route('portal.register', ['step' => 'activation']);
+    foreach (range(1, 2) as $visit) {
+        $this->get($url)->assertOk()->assertViewHas('stage', 'code')
+            ->assertSee('name="resident_number"', false)->assertSee('name="activation_code"', false)
+            ->assertDontSee('name="full_name"', false)->assertDontSee('name="password"', false)
+            ->assertSessionMissing('resident_verification');
+    }
+    $this->get(route('portal.register', ['step' => 'account']))->assertViewHas('stage', 'name');
+});
+
+test('activation continuation requires a valid code before opening account setup', function () {
+    $resident = selfServiceResident([
+        'portal_registration_hash' => hash('sha256', 'ABCD1234'),
+        'portal_registration_expires_at' => now()->addHour(),
+    ]);
+    $this->get(route('portal.register', ['step' => 'activation']))->assertViewHas('stage', 'code');
+    $this->post(route('portal.register.verify'), [
+        'resident_number' => $resident->resident_number, 'activation_code' => 'WRONG123',
+    ])->assertRedirect(route('portal.registration.denied'))->assertSessionMissing('resident_verification');
+    $this->post(route('portal.register.verify'), [
+        'resident_number' => $resident->resident_number, 'activation_code' => 'ABCD1234',
+    ])->assertRedirect(route('portal.register'));
+    $this->get(route('portal.register'))->assertViewHas('stage', 'account')->assertSee('name="password"', false);
+});
+
 function selfServiceResident(array $attributes = []): Resident
 {
     return Resident::factory()->create([
@@ -84,6 +128,7 @@ test('eligible resident receives a bound activation email and creates an account
             && $notification->residentNumber === $resident->resident_number
             && $mail->viewData['residentNumber'] === $resident->resident_number
             && $mail->viewData['activationCode'] === $notification->activationCode
+            && $mail->viewData['registrationUrl'] === route('portal.register', ['step' => 'activation'])
             && in_array('mail', $channels, true);
     });
     expect($code)->toBeString()->toHaveLength(8)->toMatch('/^[A-Z0-9]{8}$/');

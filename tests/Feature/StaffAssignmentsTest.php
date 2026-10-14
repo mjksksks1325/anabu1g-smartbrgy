@@ -176,7 +176,7 @@ test('custom incident types cannot bypass tanod restricted case protection', fun
 
 test('tanod can submit each supported attachment type', function (string $extension, string $mime) {
     Storage::fake('local');
-    $attachment = in_array($extension, ['jpg', 'png'], true)
+    $attachment = in_array($extension, ['jpg', 'png', 'webp'], true)
         ? UploadedFile::fake()->image('incident.'.$extension)
         : UploadedFile::fake()->create('incident.'.$extension, 20, $mime);
 
@@ -190,7 +190,6 @@ test('tanod can submit each supported attachment type', function (string $extens
     'JPEG' => ['jpg', 'image/jpeg'],
     'PNG' => ['png', 'image/png'],
     'WebP' => ['webp', 'image/webp'],
-    'PDF' => ['pdf', 'application/pdf'],
 ]);
 
 test('tanod sees a clear attachment error and keeps report fields after an invalid upload', function () {
@@ -200,10 +199,10 @@ test('tanod sees a clear attachment error and keeps report fields after an inval
     $this->actingAs(assignedStaff(['incidents.submit']))->from(route('staff.incidents.index'))
         ->post(route('staff.incidents.store'), submissionPayload(['attachments' => [$invalid], 'severity' => 'high']))
         ->assertRedirect(route('staff.incidents.index'))->assertSessionHasErrors([
-            'attachments.0' => 'Attachment 1 must be a JPG, PNG, WebP image or PDF file. Other file types are not supported.',
+            'attachments.0' => 'Attachment 1 must be a JPG, PNG or WebP image. Other file types are not supported.',
         ]);
 
-    $this->withCookie(config('session.cookie'), session()->getId())->get(route('staff.incidents.index'))->assertOk()->assertSee('Attachment 1 must be a JPG, PNG, WebP image or PDF file.')
+    $this->withCookie(config('session.cookie'), session()->getId())->get(route('staff.incidents.index'))->assertOk()->assertSee('Attachment 1 must be a JPG, PNG or WebP image.')
         ->assertSee('id="incident-attachment-error"', false)->assertSee('aria-invalid="true"', false)
         ->assertSee('Select the attachments again before resubmitting.')
         ->assertSee('value="high" selected', false)->assertSee('An ordinary incident reported by the patrol.');

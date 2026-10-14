@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\HouseholdProfilingImportController;
 use App\Http\Controllers\Admin\IncidentController;
 use App\Http\Controllers\Admin\IssuedCertificateController;
 use App\Http\Controllers\Admin\PurokController;
+use App\Http\Controllers\Admin\ResidentApplicationReviewController;
 use App\Http\Controllers\Admin\ResidentController;
 use App\Http\Controllers\Admin\ResidentPhotoController;
 use App\Http\Controllers\Admin\ResidentPortalAccountController;
@@ -25,6 +26,7 @@ use App\Http\Controllers\DocumentRequestController;
 use App\Http\Controllers\EmployeeSessionController;
 use App\Http\Controllers\LegacyPersonnelRouteController;
 use App\Http\Controllers\PortalLocaleController;
+use App\Http\Controllers\ResidentApplicationController;
 use App\Http\Controllers\ResidentPortalController;
 use App\Http\Controllers\ResidentProfilePhotoController;
 use App\Http\Controllers\ResidentRegistrationController;
@@ -68,6 +70,9 @@ Route::get('/portal/officials', [ResidentPortalController::class, 'officials'])-
 Route::middleware(EnsureGuestResidentPortal::class)->group(function () {
     Route::get('/portal/login', [ResidentPortalController::class, 'login'])->name('portal.login');
     Route::post('/portal/login', [ResidentSessionController::class, 'store'])->middleware('throttle:resident-login')->name('portal.login.store');
+    Route::get('/portal/register/new-resident', [ResidentApplicationController::class, 'create'])->name('portal.new-resident.create');
+    Route::get('/portal/register/new-resident/status', [ResidentApplicationController::class, 'status'])->name('portal.new-resident.status');
+    Route::post('/portal/register/new-resident', [ResidentApplicationController::class, 'store'])->middleware('throttle:resident-registration')->name('portal.new-resident.store');
     Route::get('/portal/register', [ResidentRegistrationController::class, 'create'])->name('portal.register');
     Route::post('/portal/register/reset', [ResidentRegistrationController::class, 'reset'])->name('portal.register.reset');
     Route::post('/portal/register/name', [ResidentRegistrationController::class, 'verifyName'])->middleware('throttle:resident-registration')->name('portal.register.name');
@@ -131,6 +136,9 @@ Route::middleware(['auth:web', 'can:operate-personnel', EnsureStaffAccess::class
 
     Route::post('/residents/{resident}/portal-activation', [ResidentPortalAccountController::class, 'store'])->name('residents.portal-activation');
 
+    Route::get('/resident-applications', [ResidentApplicationReviewController::class, 'index'])->name('resident-applications.index');
+    Route::post('/resident-applications/{application}/review', [ResidentApplicationReviewController::class, 'update'])->name('resident-applications.update');
+    Route::get('/resident-applications/{application}/photo', [ResidentApplicationReviewController::class, 'photo'])->name('resident-applications.photo');
     Route::get('/residents', WorkspaceController::class)->defaults('screen', 'records')->name('residents.index');
     Route::post('/resident-profiling-imports/preview', [HouseholdProfilingImportController::class, 'preview'])->name('resident-profiling-imports.preview');
     Route::post('/resident-profiling-imports/review', [HouseholdProfilingImportController::class, 'review'])->name('resident-profiling-imports.review');

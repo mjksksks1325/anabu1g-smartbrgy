@@ -39,7 +39,7 @@ class ResidentRegistrationController extends Controller
         $sentAt = is_array($codeSent) ? ($codeSent['sent_at'] ?? null) : $codeSent;
         $codeSent = is_int($sentAt) && $sentAt > now()->subDay()->timestamp;
         $stage = $resident && ! $resident->portalAccount()->exists() ? 'account'
-            : ($codeSent ? 'code' : ($identity ? 'email' : ($name ? 'details' : 'name')));
+            : ($request->query('step') === 'activation' || $codeSent ? 'code' : ($identity ? 'email' : ($name ? 'details' : 'name')));
 
         return view('portal.register', [
             'verified' => $stage === 'account',

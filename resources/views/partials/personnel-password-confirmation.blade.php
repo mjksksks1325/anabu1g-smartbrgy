@@ -5,7 +5,7 @@
     <form method="POST" action="{{ route('staff.password.confirm') }}">
         @csrf
         <label for="personnel-confirm-password">Password</label>
-        <input id="personnel-confirm-password" name="password" type="password" autocomplete="current-password" required autofocus>
+        <span class="password-visibility-field"><input id="personnel-confirm-password" name="password" type="password" autocomplete="current-password" required autofocus><x-password-toggle target="personnel-confirm-password" /></span>
         <p class="personnel-confirm-error" role="alert" hidden></p>
         <div class="personnel-confirm-actions">
             <button type="button" data-confirm-cancel>Cancel</button>

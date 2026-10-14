@@ -558,3 +558,14 @@ test('resident photo picker allows supported images and no selection', async () 
   }
   assert.equal(context.validateResidentPhoto({ files: [] }), true);
 });
+
+test('opening and closing user management remasks passwords through the shared visibility control', async () => {
+  const { context, fields } = await client();
+  const masked = [];
+  const modal = { classList: { add() {}, remove() {} }, setAttribute() {}, querySelector: () => null };
+  fields.set('modal-adduser', modal);
+  context.window.PasswordVisibility = { hide: root => masked.push(root) };
+  context.openModal('modal-adduser');
+  context.closeModal('modal-adduser');
+  assert.deepEqual(masked, [modal, modal]);
+});

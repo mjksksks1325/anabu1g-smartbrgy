@@ -378,3 +378,45 @@ body.dark-mode .portal-hero-photo img { filter: brightness(.72); }
 .auth-layout .form-group { min-width: 0; }
 .auth-layout input[type="date"] { width: 100%; min-width: 0; max-width: 100%; min-height: 44px; box-sizing: border-box; }
 .auth-layout input[type="date"]::-webkit-date-and-time-value { text-align: left; }
+
+.new-resident-layout { grid-template-columns: minmax(0, 1fr) minmax(260px, .4fr); align-items: start; gap: 24px; }
+.new-resident-card { min-width: 0; }
+.new-resident-intro { padding-bottom: 22px; border-bottom: 1px solid var(--line); }
+.new-resident-intro h2 { margin: 0 0 10px; font-size: 24px; }
+.new-resident-intro p { margin: 0 0 10px; color: var(--muted); }
+.new-resident-intro small, .new-resident-optional { color: var(--muted); font-size: 12px; font-weight: 400; }
+.new-resident-section { min-width: 0; margin: 24px 0 0; padding: 0; border: 0; }
+.new-resident-section legend { display: flex; align-items: center; gap: 10px; width: 100%; margin-bottom: 18px; padding: 0; font-weight: 700; font-size: 17px; color: var(--ink); }
+.new-resident-section-number { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--civic-blue-soft); color: var(--civic-blue); font-size: 13px; }
+.new-resident-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 20px; }
+.new-resident-fields .form-group { min-width: 0; margin: 0; }
+.new-resident-fields .form-input { width: 100%; min-width: 0; max-width: 100%; min-height: 46px; box-sizing: border-box; }
+.new-resident-fields textarea { resize: vertical; }
+.new-resident-field-wide { grid-column: 1 / -1; }
+.new-resident-upload { padding: 18px; border: 1px dashed var(--line); border-radius: 7px; background: var(--surface-alt); }
+.new-resident-upload input { width: 100%; min-width: 0; }
+.new-resident-upload .form-note { margin: 10px 0 0; }
+.new-resident-form-actions { display: flex; justify-content: flex-end; margin-top: 26px; padding-top: 22px; border-top: 1px solid var(--line); }
+.new-resident-form-actions .btn { min-height: 48px; }
+.new-resident-secondary-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 13px; }
+.new-resident-status { display: grid; gap: 14px; }
+.new-resident-status h2 { margin: 0; font-size: 17px; color: var(--muted); }
+.new-resident-status p { margin: 0; }
+.new-resident-reference { font-family: var(--civic-font-display); font-size: 25px; overflow-wrap: anywhere; }
+.new-resident-status-badge { justify-self: start; padding: 7px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--civic-blue-soft); color: var(--civic-blue); font-size: 13px; font-weight: 700; }
+.new-resident-status[data-application-state=approved] .new-resident-status-badge { background: rgba(8, 123, 64, .1); color: var(--civic-green); }
+.new-resident-review-note { padding: 16px; border-left: 3px solid var(--civic-blue); background: var(--surface-alt); }
+.new-resident-review-note > span { display: block; margin-bottom: 6px; font-weight: 700; }
+.new-resident-next-steps { display: grid; gap: 16px; margin: 20px 0 0; padding-left: 22px; }
+.new-resident-next-steps li { padding-left: 5px; }
+@media (max-width: 960px) { .new-resident-layout { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .new-resident-fields { grid-template-columns: 1fr; gap: 16px; } .new-resident-form-actions .btn, .new-resident-secondary-actions .btn { width: 100%; } .new-resident-section legend { font-size: 16px; } .new-resident-reference { font-size: 21px; } }
+
+body.dark-mode .new-resident-status[data-application-state=approved] .new-resident-status-badge { color: var(--civic-green-soft); }
+
+.registration-path-option { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 28px; padding: 18px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface-alt); }
+.registration-path-option > div { min-width: 0; }
+.registration-path-option strong { display: block; font-size: 15px; color: var(--ink); }
+.registration-path-option p { margin: 5px 0 0; color: var(--muted); font-size: 13px; }
+.registration-path-option .btn { flex-shrink: 0; min-height: 44px; text-align: center; }
+@media (max-width: 700px) { .registration-path-option { align-items: stretch; flex-direction: column; gap: 14px; } .registration-path-option .btn { width: 100%; } }

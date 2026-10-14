@@ -7,6 +7,17 @@ use App\StaffPermissions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
+test('tanod cannot upload PDFs even when renamed to an image', function (string $name) {
+    Storage::fake('local');
+    $tanod = User::factory()->create(['role' => 'staff', 'staff_permissions' => StaffPermissions::presets()['Tanod']]);
+    $file = UploadedFile::fake()->createWithContent($name, '%PDF-1.4 fake report');
+    $this->actingAs($tanod)->post(route('staff.incidents.store'), ordinaryTanodReport([
+        'attachments' => [new UploadedFile($file->getPathname(), $name, null, null, true)],
+    ]))->assertSessionHasErrors('attachments.0');
+    $this->assertDatabaseCount('incidents', 0);
+    expect(Storage::disk('local')->allFiles())->toBeEmpty();
+})->with(['report.pdf', 'report.jpg']);
+
 function ordinaryTanodReport(array $overrides = []): array
 {
     return [

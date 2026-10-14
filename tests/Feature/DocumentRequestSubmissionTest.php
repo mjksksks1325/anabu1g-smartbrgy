@@ -6,6 +6,19 @@ use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
+test('document request attachments reject PDF content and non-image extensions', function (string $kind) {
+    Storage::fake('local');
+    $file = $kind === 'extension' ? UploadedFile::fake()->image('photo.jpg')
+        : UploadedFile::fake()->createWithContent($kind === 'pdf' ? 'report.pdf' : 'report.jpg', '%PDF-1.4 fake report');
+    $source = $file;
+    $file = new UploadedFile($source->getPathname(), $kind === 'extension' ? 'photo.pdf' : $source->getClientOriginalName(), null, null, true);
+    $this->actingAs(User::factory()->resident()->create(), 'resident')->postJson(route('portal.request.store'), [
+        'document_type' => 'Certificate of Residency', 'purpose' => 'Proof of residence', 'attachment' => $file,
+    ])->assertUnprocessable()->assertJsonValidationErrors('attachment');
+    $this->assertDatabaseCount('document_requests', 0);
+    expect(Storage::disk('local')->allFiles())->toBeEmpty();
+})->with(['pdf', 'disguised', 'extension']);
+
 test('portal renders email as the required notification field', function () {
     $this->actingAs(User::factory()->resident()->create(), 'resident')->get(route('portal.request.create'))
         ->assertOk()

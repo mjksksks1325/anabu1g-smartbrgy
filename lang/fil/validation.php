@@ -57,5 +57,9 @@ return array_replace_recursive(require __DIR__.'/../en/validation.php', [
         'document_type' => 'dokumento', 'purpose' => 'layunin', 'business_name' => 'pangalan ng negosyo',
         'attachment' => 'kalakip na larawan', 'remember' => 'pagpapanatili ng login', 'locale' => 'wika',
         'ids' => 'mga request',
+        'first_name' => 'pangalan', 'middle_name' => 'gitnang pangalan', 'last_name' => 'apelyido',
+        'suffix' => 'suffix', 'gender' => 'kasarian', 'civil_status' => 'katayuang sibil',
+        'nationality' => 'nasyonalidad', 'address' => 'tirahan', 'contact_number' => 'contact number',
+        'residency_type' => 'uri ng paninirahan', 'purok' => 'purok', 'application' => 'aplikasyon',
     ],
 ]);

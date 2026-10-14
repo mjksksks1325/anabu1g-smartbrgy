@@ -5,6 +5,26 @@ use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
+it('rejects non-image evidence on incident creation and editing', function (string $kind) {
+    Storage::fake('local');
+    $file = match ($kind) {
+        'pdf' => UploadedFile::fake()->createWithContent('report.pdf', '%PDF-1.4 fake report'),
+        'disguised' => UploadedFile::fake()->createWithContent('photo.jpg', '%PDF-1.4 fake report'),
+        'extension' => UploadedFile::fake()->image('photo.jpg'),
+    };
+    $source = $file;
+    $file = new UploadedFile($source->getPathname(), $kind === 'extension' ? 'photo.pdf' : $source->getClientOriginalName(), null, null, true);
+    $this->actingAs(User::factory()->assignedOperations()->create())
+        ->postJson(route('staff.incidents.store'), incidentPayload(['attachments' => [$file]]))
+        ->assertUnprocessable()->assertJsonValidationErrors('attachments.0');
+    $this->assertDatabaseCount('incidents', 0);
+    $incident = Incident::factory()->create();
+    $this->patchJson(route('staff.incidents.update', $incident), incidentPayload(['status' => 'open', 'attachments' => [$file]]))
+        ->assertUnprocessable()->assertJsonValidationErrors('attachments.0');
+    expect($incident->fresh()->attachments)->toBeEmpty();
+    expect(Storage::disk('local')->allFiles())->toBeEmpty();
+})->with(['pdf', 'disguised', 'extension']);
+
 function incidentPayload(array $overrides = []): array
 {
     return [

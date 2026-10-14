@@ -13,6 +13,8 @@
     <link rel="stylesheet" href="{{ asset('css/figma-iot.css') }}?v={{ filemtime(public_path('css/figma-iot.css')) }}">
 <script src="{{ asset('js/personnel-navigation.js') }}?v={{ filemtime(public_path('js/personnel-navigation.js')) }}" data-navigate-once></script>
 <script defer data-navigate-once src="{{ asset('js/personnel-password-confirmation.js') }}?v={{ filemtime(public_path('js/personnel-password-confirmation.js')) }}"></script>
+<link rel="stylesheet" href="{{ asset('css/password-visibility.css') }}?v={{ filemtime(public_path('css/password-visibility.css')) }}">
+<script defer data-navigate-once src="{{ asset('js/password-visibility.js') }}?v={{ filemtime(public_path('js/password-visibility.js')) }}"></script>
 </head>
 <body data-personnel-layout="iot" data-personnel-super-admin="{{ auth()->user()->isSuperAdmin() ? 'true' : 'false' }}">
 <script>window.PersonnelNavigation.syncStyles();</script>
@@ -36,7 +38,7 @@
             @if(auth()->user()->hasAnyPermission(['records.view', 'voters.view', 'documents.view', 'eligibility.view', 'incidents.view', 'vawc.view', 'incidents.submit', 'vawc.submit']))
             <div class="sidebar-sec">
                 <div class="sidebar-label">Records</div>
-                @if(auth()->user()->hasAnyPermission(['records.view']))<a wire:navigate class="nav-item" href="{{ route('staff.residents.index') }}"><x-staff-icon name="document" />Resident Records</a>@endif
+                @if(auth()->user()->hasAnyPermission(['records.view']))<a wire:navigate @class(['nav-item', 'current active' => request()->routeIs('staff.residents.*', 'staff.resident-applications.*')]) aria-current="{{ request()->routeIs('staff.residents.*', 'staff.resident-applications.*') ? 'page' : 'false' }}" href="{{ route('staff.residents.index') }}"><x-staff-icon name="document" />Resident Records</a>@endif
                 @if(auth()->user()->hasAnyPermission(['voters.view']))<a wire:navigate class="nav-item" href="{{ route('staff.voters') }}"><x-staff-icon name="voters" />Voters</a>@endif
                 @if(auth()->user()->hasAnyPermission(['documents.view']))<a wire:navigate class="nav-item" href="{{ route('staff.document-requests.index') }}"><x-staff-icon name="certificate" />Certificates &amp; Clearances</a>@endif
                 @if(auth()->user()->hasAnyPermission(['eligibility.view', 'documents.view']))<a wire:navigate class="nav-item" href="{{ route('staff.request-eligibility') }}"><x-staff-icon name="clipboard" />Request Eligibility</a>@endif

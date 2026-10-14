@@ -25,7 +25,7 @@ class ResidentProfilePhotoController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $request->validate(['photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120', 'dimensions:max_width=6000,max_height=6000']]);
+        $request->validate(['photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'extensions:jpg,jpeg,png,webp', 'max:5120', 'dimensions:max_width=6000,max_height=6000']]);
         /** @var UploadedFile $photo */
         $photo = $request->file('photo');
         $path = $photo->store('resident-photos', 'local');

@@ -65,18 +65,6 @@ if (residentThemeButton) {
         try { sessionStorage.setItem('smartbrgy_portal_theme', dark ? 'dark' : 'light'); } catch (_) {}
     });
 }
-document.querySelectorAll('[data-password-toggle]').forEach(button => {
-    const field = document.getElementById(button.dataset.passwordToggle);
-    if (!field) return;
-    button.addEventListener('click', () => {
-        const isVisible = field.type === 'password';
-        field.type = isVisible ? 'text' : 'password';
-        const label = isVisible ? 'Hide password' : 'Show password';
-        portalSetAttribute(button, 'aria-label', label);
-        portalSetAttribute(button, 'title', label);
-        button.setAttribute('aria-pressed', String(isVisible));
-    });
-});
 const residentMenuButton = document.querySelector('[data-menu-toggle]');
 const residentNavigation = document.getElementById('site-nav');
 if (residentMenuButton && residentNavigation) {
