@@ -156,3 +156,13 @@ test('staff permission groups avoid pairing short page cards with long action li
     expect($view)->toContain("'title' => 'General pages'", "'title' => 'Records & services'", "'title' => 'Incidents & restricted cases'");
     expect($styles)->toContain('.staff-permission-grid-pages { grid-template-columns: repeat(3, minmax(0, 1fr)); }', '.staff-permission-grid-services { grid-template-columns: minmax(0, 1fr); }', '.staff-permission-grid-services .staff-permission-options { grid-template-columns: repeat(2, minmax(0, 1fr));', 'align-items: stretch;');
 });
+
+test('staff theme icon stays borderless and dark navigation keeps its dark highlight', function () {
+    $styles = file_get_contents(dirname(__DIR__, 2).'/public/css/figma-admin.css');
+
+    expect($styles)
+        ->toContain('#app.admin-interface button.dark-mode-toggle.staff-theme-icon {')
+        ->toContain('border: 0 !important; border-radius: 50% !important; background: transparent !important;')
+        ->toContain('html[data-theme=dark] #app.admin-interface .nav-item.active,')
+        ->toContain('html.dark #app.admin-interface .nav-item.active { background: #173a60; color: #a9d3ff; }');
+});
