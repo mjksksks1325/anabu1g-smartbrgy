@@ -55,7 +55,8 @@ test('dashboard and incident screens use authenticated database endpoints', func
         ->toContain("route('staff.rfid-files.index')")
         ->not->toContain('id="screen-cabinet"')
         ->not->toContain('id="screen-face"')
-        ->toContain("window.open('{{ route('home') }}','_blank')");
+        ->toContain('class="nav-item staff-settings-portal"')
+        ->toContain("href=\"{{ route('home') }}\" target=\"_blank\" rel=\"noopener\"");
     expect($adminScript)
         ->toContain("fetch('/staff/dashboard-summary'")
         ->toContain('fetch(`/staff/incidents?${query}`')

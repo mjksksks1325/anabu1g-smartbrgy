@@ -10,6 +10,10 @@
 <div id="toast-wrap" role="status" aria-live="polite"></div>
 <div id="loader" style="display:none;"><div class="spinner"></div><p><span data-portal-i18n="Sandali lang...">{{ __('Sandali lang...') }}</span></p></div>
 
+@if ($hasPendingOrdinaryIncidentReport)
+  <p class="alert alert-blue" role="status" data-portal-i18n="A pending incident report has been linked to your resident record and is awaiting barangay review. This does not mean that a violation has been established. You may continue with your document request.">{{ __('A pending incident report has been linked to your resident record and is awaiting barangay review. This does not mean that a violation has been established. You may continue with your document request.') }}</p>
+@endif
+
 <div class="request-layout">
   <section class="portal-request-flow" id="request-flow" aria-label="{{ __('Document request') }}" data-portal-i18n-aria-label="Document request">
 

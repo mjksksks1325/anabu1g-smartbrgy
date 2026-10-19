@@ -15,6 +15,9 @@ Route::prefix('iot/cabinets/{cabinet:identifier}')
         Route::get('/employee-enrollment/pending', [CabinetEventController::class, 'pendingEmployeeEnrollment'])
             ->name('api.iot.cabinets.employee-enrollment.pending');
 
+        Route::get('/access-authorizations', [CabinetEventController::class, 'accessAuthorizations'])
+            ->name('api.iot.cabinets.access-authorizations');
+
         Route::post('/employee-enrollment', [CabinetEventController::class, 'employeeEnrollment'])
             ->name('api.iot.cabinets.employee-enrollment');
     });

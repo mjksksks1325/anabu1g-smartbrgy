@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ app()->getLocale() }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -11,18 +11,19 @@
     <link rel="stylesheet" href="{{ asset('css/figma-tokens.css') }}?v={{ filemtime(public_path('css/figma-tokens.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/admin-iot.css') }}?v={{ filemtime(public_path('css/admin-iot.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/figma-iot.css') }}?v={{ filemtime(public_path('css/figma-iot.css')) }}">
+@include('partials.admin-localization-scripts')
 <script src="{{ asset('js/personnel-navigation.js') }}?v={{ filemtime(public_path('js/personnel-navigation.js')) }}" data-navigate-once></script>
 <script defer data-navigate-once src="{{ asset('js/personnel-password-confirmation.js') }}?v={{ filemtime(public_path('js/personnel-password-confirmation.js')) }}"></script>
 <link rel="stylesheet" href="{{ asset('css/password-visibility.css') }}?v={{ filemtime(public_path('css/password-visibility.css')) }}">
 <script defer data-navigate-once src="{{ asset('js/password-visibility.js') }}?v={{ filemtime(public_path('js/password-visibility.js')) }}"></script>
 </head>
-<body data-personnel-layout="iot" data-personnel-super-admin="{{ auth()->user()->isSuperAdmin() ? 'true' : 'false' }}">
+<body data-personnel-layout="iot" data-admin-localization data-personnel-super-admin="{{ auth()->user()->isSuperAdmin() ? 'true' : 'false' }}">
 <script>window.PersonnelNavigation.syncStyles();</script>
 <a class="skip-link" href="#main">Skip to main content</a>
 <header class="site-header">
     <a wire:navigate class="brand" href="{{ route(App\StaffPermissions::landing(auth()->user())) }}"><img src="{{ asset('images/anabu-logo.jpg') }}" alt="Barangay Anabu I-G seal"><span><strong>Barangay Anabu I-G</strong><small>STAFF WORKSPACE</small></span></a>
     <div class="workspace-title"><span>Staff workspace</span><strong>@yield('title')</strong></div>
-    <div class="header-actions"><button class="button quiet" id="iot-theme-toggle" type="button">Dark Mode</button>@if(auth()->user()->isSuperAdmin() || auth()->user()->hasPermission('rfid.view'))<a class="button quiet" href="{{ auth()->user()->isSuperAdmin() ? route('admin.smart-cabinet.index') : route('staff.rfid-files.index') }}">IoT status</a>@endif<span class="staff-initials" aria-label="{{ auth()->user()->name }}">{{ auth()->user()->initials() }}</span></div>
+    <div class="header-actions">@include('partials.admin-language-toggle')<button class="button quiet staff-theme-icon-button" id="iot-theme-toggle" type="button" aria-label="Dark Mode"><svg class="staff-theme-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg><svg class="staff-theme-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>@if(auth()->user()->isSuperAdmin() || auth()->user()->hasPermission('rfid.view'))<a class="button quiet" href="{{ auth()->user()->isSuperAdmin() ? route('admin.smart-cabinet.index') : route('staff.rfid-files.index') }}">IoT status</a>@endif<span class="staff-initials" aria-label="{{ auth()->user()->name }}">{{ auth()->user()->initials() }}</span></div>
 </header>
 <div class="workspace">
     <nav class="side-nav" aria-label="Staff navigation">
@@ -65,7 +66,7 @@
             <div class="sidebar-sec">
                 <a wire:navigate class="nav-item" href="{{ route('profile.edit') }}"><x-staff-icon name="people" />My profile</a>
                 <a wire:navigate class="nav-item" href="{{ route('security.edit') }}"><x-staff-icon name="shield" />Account security</a>
-                <a class="nav-item portal-link staff-settings-portal" href="{{ route('home') }}" target="_blank" rel="noopener"><x-staff-icon name="globe" />Portal ng Residente</a>
+                <a class="nav-item portal-link staff-settings-portal" href="{{ route('home') }}" target="_blank" rel="noopener"><x-staff-icon name="globe" />Resident Portal</a>
             </div>
 @if(auth()->user()->hasPermission('households.view') && !auth()->user()->hasPermission('records.view'))
 <a wire:navigate class="nav-item" data-screen="records" href="{{ route('staff.households.page') }}"><x-staff-icon name="people" />Households</a>
@@ -80,7 +81,7 @@
         @yield('content')
     </main>
 </div>
-<script>(() => { const themeButton = document.getElementById('iot-theme-toggle'); themeButton.textContent = document.documentElement.dataset.theme === 'dark' ? 'Light Mode' : 'Dark Mode'; themeButton.addEventListener('click', function () { const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = theme; document.documentElement.classList.toggle('dark', theme === 'dark'); themeButton.textContent = theme === 'dark' ? 'Light Mode' : 'Dark Mode'; try { localStorage.setItem('smartbrgy_theme', theme); } catch (_) {} }); })();</script>
+<script>(() => { const themeButton = document.getElementById('iot-theme-toggle'); const updateLabel = () => { const label = document.documentElement.dataset.theme === 'dark' ? 'Light Mode' : 'Dark Mode'; themeButton.setAttribute('aria-label', label); themeButton.title = label; }; updateLabel(); themeButton.addEventListener('click', function () { const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = theme; document.documentElement.classList.toggle('dark', theme === 'dark'); updateLabel(); try { localStorage.setItem('smartbrgy_theme', theme); } catch (_) {} }); })();</script>
 @livewireScripts
 @include('partials.personnel-password-confirmation')
 @include('partials.personnel-logout-confirmation')

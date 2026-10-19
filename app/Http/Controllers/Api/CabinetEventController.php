@@ -157,6 +157,32 @@ class CabinetEventController extends Controller
         ]);
     }
 
+    public function accessAuthorizations(CabinetDevice $cabinet): JsonResponse
+    {
+        $authorizations = EmployeeCabinetAccess::query()
+            ->with('user:id,name,role,is_active,resident_id')
+            ->where('is_active', true)
+            ->where('rfid_enrollment_status', EmployeeCabinetAccess::ENROLLED)
+            ->where('face_enrollment_status', EmployeeCabinetAccess::ENROLLED)
+            ->whereNotNull('rpi_employee_id')
+            ->whereHas('user', fn ($query) => $query
+                ->where('is_active', true)
+                ->whereNull('resident_id')
+                ->whereIn('role', ['admin', 'staff']))
+            ->orderBy('rpi_employee_id')
+            ->get()
+            ->filter(fn (EmployeeCabinetAccess $access): bool => $access->isEffective())
+            ->map(fn (EmployeeCabinetAccess $access): array => [
+                'rpi_employee_id' => $access->rpi_employee_id,
+                'main_door' => true,
+                'drawers' => $access->authorizedDrawers(),
+                'authorization_version' => $access->authorization_version,
+            ])
+            ->values();
+
+        return response()->json(['authorizations' => $authorizations]);
+    }
+
     public function employeeEnrollment(Request $request, CabinetDevice $cabinet): JsonResponse
     {
         $allowedFields = ['rpi_employee_id', 'rfid_enrolled', 'face_enrolled'];

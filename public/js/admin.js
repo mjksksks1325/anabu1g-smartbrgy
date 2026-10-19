@@ -394,7 +394,13 @@ function toggleTheme() {
   isLightMode = !isLightMode;
   document.body.classList.toggle('light-mode', isLightMode);
   const label = document.getElementById('theme-label');
-  if (label) label.textContent = isLightMode ? 'Dark Mode' : 'Light Mode';
+  const actionLabel = isLightMode ? 'Dark Mode' : 'Light Mode';
+  const themeButton = document.getElementById('theme-toggle');
+  if (label) label.textContent = actionLabel;
+  if (themeButton) {
+    themeButton.setAttribute('aria-label', actionLabel);
+    themeButton.title = actionLabel;
+  }
   try { localStorage.setItem('smartbrgy_theme', isLightMode ? 'light' : 'dark'); } catch (_) {}
   showToast(isLightMode ? 'Light mode na!' : 'Dark mode na!', 'green');
 }
@@ -455,7 +461,10 @@ function showScreen(id, el, updateHistory = true) {
   if (screen) { screen.setAttribute('tabindex', '-1'); screen.focus({ preventScroll: true }); }
   document.querySelectorAll('.nav-item').forEach(item => item.setAttribute('aria-current', item === el ? 'page' : 'false'));
   showLoadingBar();
-  if (id === 'dashboard') refreshDashboardStats();
+  if (id === 'dashboard') {
+    refreshDashboardStats();
+    startDashboardLiveRefresh();
+  }
   if (id === 'audit') {
     if (typeof reloadAuditLog === 'function') reloadAuditLog();
     else renderAuditLog();
@@ -1150,8 +1159,6 @@ function printCert(code) {
   const amount = priceMap[requestType] ?? 0;
 
   document.getElementById('print-document-request-id').value = req.id || '';
-  const expiry = document.getElementById('print-expiry');
-  if (expiry) expiry.value = '';
   document.getElementById('print-certificate-type').value = req.type || '';
   document.getElementById('print-resident-name').value = req.name || '';
   document.getElementById('print-purpose').value = req.purpose || '';
@@ -1207,8 +1214,7 @@ async function issueManualCertificate(event) {
         resident_id: Number(document.getElementById('manual-resident-id')?.value) || null,
         resident_name: document.getElementById('manual-resident-name')?.value.trim(),
         address: document.getElementById('manual-resident-address')?.value.trim() || null,
-        purpose: document.getElementById('manual-certificate-purpose')?.value.trim() || null,
-        expires_on: document.getElementById('manual-certificate-expiry')?.value || null
+        purpose: document.getElementById('manual-certificate-purpose')?.value.trim() || null
       })
     });
     const data = await response.json();
@@ -3207,7 +3213,7 @@ function openViewIncident(id) {
   if (typeof loadCaseHistory === 'function') void loadCaseHistory(id);
 }
 
-function openEditIncident(id) {
+async function openEditIncident(id) {
   const incident = INCIDENTS.find(item => item.id === id);
   if (!incident) return;
   const set = (elementId, value) => { const element = document.getElementById(elementId); if (element) element.value = value || ''; };
@@ -3235,9 +3241,13 @@ function openEditIncident(id) {
   toggleIncidentResolution();
   if (typeof prepareIncidentLinks === 'function') prepareIncidentLinks(incident);
   openModal('modal-incident');
+  if (typeof loadCaseStaff === 'function') {
+    await loadCaseStaff();
+    if (typeof prepareIncidentLinks === 'function') prepareIncidentLinks(incident);
+  }
 }
 
-function openAddIncident() {
+async function openAddIncident() {
   if (document.getElementById('inc-sensitive')) document.getElementById('inc-sensitive').checked = !hasStaffPermission('incidents.submit');
   ['inc-type','inc-location','inc-reported','inc-complainee','inc-time','inc-details','inc-edit-id','inc-resolution-notes'].forEach(id => {
     const element = document.getElementById(id);
@@ -3254,6 +3264,10 @@ function openAddIncident() {
   document.querySelector('#modal-incident .btn-danger').textContent = 'File Report';
   if (typeof prepareIncidentLinks === 'function') prepareIncidentLinks();
   openModal('modal-incident');
+  if (typeof loadCaseStaff === 'function') {
+    await loadCaseStaff();
+    if (typeof prepareIncidentLinks === 'function') prepareIncidentLinks();
+  }
 }
 
 function toggleIncidentResolution() {
@@ -3455,6 +3469,18 @@ async function refreshDocumentRequestsLive() {
 }
 
 let documentRequestLiveTimer = null;
+let dashboardLiveTimer = null;
+
+function startDashboardLiveRefresh() {
+  if (!hasStaffPermission('dashboard.view')) return;
+  if (dashboardLiveTimer) clearInterval(dashboardLiveTimer);
+
+  dashboardLiveTimer = setInterval(() => {
+    if (!document.hidden && document.getElementById('screen-dashboard')?.classList.contains('active')) {
+      void refreshDashboardStats();
+    }
+  }, 3000);
+}
 
 function startDocumentRequestLiveRefresh() {
   if (!hasStaffPermission('documents.view')) return;
@@ -3472,6 +3498,9 @@ function startDocumentRequestLiveRefresh() {
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && document.getElementById('app')) {
     refreshDocumentRequestsLive();
+    if (document.getElementById('screen-dashboard')?.classList.contains('active')) {
+      void refreshDashboardStats();
+    }
   }
 });
 
@@ -3498,7 +3527,7 @@ async function confirmPrintRelease() {
       {
         method: 'POST',
         credentials: 'same-origin',
-        body: JSON.stringify({ expires_on: document.getElementById('print-expiry')?.value || null }),
+        body: JSON.stringify({}),
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
@@ -4597,6 +4626,7 @@ async function initializePersonnelWorkspace() {
     if (['demographics.view', 'records.view', 'households.view', 'voters.view', 'documents.view'].some(hasStaffPermission)) await loadPuroks();
     if (initializationVersion !== workspaceInitializationVersion || document.getElementById('app') !== workspace) return;
     launchApp(authenticatedUser.name, authenticatedUser.role);
+    if (hasStaffPermission('dashboard.view')) startDashboardLiveRefresh();
     if (hasStaffPermission('documents.view')) { startDocumentRequestLiveRefresh(); void refreshIssuedCertificates(); }
     if (hasStaffPermission('records.view')) await loadResidents(residentCurrentPage);
     else if (['documents.view', 'voters.view', 'households.view'].some(hasStaffPermission)) {
@@ -4617,10 +4647,10 @@ async function initializePersonnelWorkspace() {
 document.addEventListener('livewire:navigated', initializePersonnelWorkspace);
 document.addEventListener('livewire:navigating', () => {
   workspaceInitializationVersion++;
-  [clockTimer, auditRefreshTimer, documentRequestLiveTimer].forEach(timer => {
+  [clockTimer, auditRefreshTimer, documentRequestLiveTimer, dashboardLiveTimer].forEach(timer => {
     if (timer !== null) clearInterval(timer);
   });
-  clockTimer = auditRefreshTimer = documentRequestLiveTimer = null;
+  clockTimer = auditRefreshTimer = documentRequestLiveTimer = dashboardLiveTimer = null;
 });
 
 function restoreAdminFiltersFromUrl() {

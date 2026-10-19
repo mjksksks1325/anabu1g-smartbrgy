@@ -16,6 +16,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $face_enrolled_at
  * @property int $authorization_version
  * @property string|null $rpi_employee_id
+ * @property string $drawer_access
  * @property User $user
  */
 class EmployeeCabinetAccess extends Model
@@ -25,6 +26,14 @@ class EmployeeCabinetAccess extends Model
     public const PENDING = 'pending';
 
     public const ENROLLED = 'enrolled';
+
+    public const DRAWERS_NONE = 'none';
+
+    public const DRAWER_1 = 'drawer_1';
+
+    public const DRAWER_2 = 'drawer_2';
+
+    public const DRAWERS_ALL = 'all';
 
     /** @use HasFactory<EmployeeCabinetAccessFactory> */
     use HasFactory;
@@ -46,6 +55,17 @@ class EmployeeCabinetAccess extends Model
             && in_array($this->user->role, ['admin', 'staff', 'viewer'], true)
             && $this->rfid_enrollment_status === self::ENROLLED
             && $this->face_enrollment_status === self::ENROLLED;
+    }
+
+    /** @return list<string> */
+    public function authorizedDrawers(): array
+    {
+        return match ($this->drawer_access) {
+            self::DRAWER_1 => ['drawer_1'],
+            self::DRAWER_2 => ['drawer_2'],
+            self::DRAWERS_ALL => ['drawer_1', 'drawer_2'],
+            default => [],
+        };
     }
 
     /** @return array<string, string> */

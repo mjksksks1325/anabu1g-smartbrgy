@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\CertificateType;
+use App\Models\Incident;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,9 +20,19 @@ class ResidentPortalController extends Controller
         return view('portal.index', ['services' => CertificateType::cases()]);
     }
 
-    public function createRequest(): View
+    public function createRequest(Request $request): View
     {
-        return view('portal.request', ['services' => CertificateType::cases()]);
+        $residentId = $request->user()->resident_id;
+        $hasPendingOrdinaryIncidentReport = $residentId !== null && Incident::query()
+            ->ordinary()
+            ->where('respondent_resident_id', $residentId)
+            ->whereIn('status', Incident::PENDING_STATUSES)
+            ->exists();
+
+        return view('portal.request', [
+            'services' => CertificateType::cases(),
+            'hasPendingOrdinaryIncidentReport' => $hasPendingOrdinaryIncidentReport,
+        ]);
     }
 
     public function login(Request $request): View

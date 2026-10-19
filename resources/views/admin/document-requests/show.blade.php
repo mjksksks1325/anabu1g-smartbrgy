@@ -181,7 +181,7 @@
                 <textarea id="rejection_reason" name="rejection_reason" class="form-input" rows="3" maxlength="1000">{{ old('rejection_reason', $documentRequest->rejection_reason) }}</textarea>
                 <p>Provide at least 10 characters explaining the decision.</p>
             </div>
-            <div style="display:flex; justify-content:flex-end; gap:10px;">
+            <div class="document-request-actions">
 
                 <a href="{{ route(App\StaffPermissions::landing(auth()->user())) }}"
                    class="btn btn-outline"

@@ -13,7 +13,7 @@
         'NATIONALITY' => $snapshot['nationality'] ?? '',
         'PURPOSE' => $certificate->purpose ?? '',
         'DATE ISSUE' => $certificate->issued_at?->format('F d, Y') ?? '',
-        'EXPIRATION DATE' => $certificate->expires_on?->format('F d, Y') ?? '',
+        'EXPIRATION DATE' => $certificate->validUntil()?->format('F d, Y') ?? '',
     ];
 @endphp
 <!DOCTYPE html>

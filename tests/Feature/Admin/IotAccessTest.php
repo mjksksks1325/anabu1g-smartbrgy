@@ -116,6 +116,44 @@ it('keeps cabinet permission separate from website role and enrollment', functio
     $this->assertDatabaseHas('administrative_audits', ['action' => 'admin.cabinet-access.enroll.initiated', 'type' => 'security']);
 });
 
+it('lets only super admins assign drawer access and records the authorization change', function () {
+    $superAdmin = User::factory()->superAdmin()->create();
+    $employee = User::factory()->assignedOperations()->create(['role' => 'staff']);
+    $access = EmployeeCabinetAccess::factory()->create([
+        'user_id' => $employee->id,
+        'drawer_access' => EmployeeCabinetAccess::DRAWERS_NONE,
+        'authorization_version' => 4,
+    ]);
+
+    $this->actingAs($superAdmin)->patch(route('admin.cabinet-access.drawer-access.update', $employee), ['drawer_access' => EmployeeCabinetAccess::DRAWER_1])
+        ->assertRedirect()->assertSessionHas('status');
+
+    expect($access->fresh()->drawer_access)->toBe(EmployeeCabinetAccess::DRAWER_1)
+        ->and($access->fresh()->authorization_version)->toBe(5);
+    $this->assertDatabaseHas('administrative_audits', [
+        'action' => 'admin.cabinet-access.drawer-assignment-changed',
+        'user_id' => $superAdmin->id,
+        'target_user_id' => $employee->id,
+        'before_assignments' => json_encode(['drawer_access' => 'none']),
+        'after_assignments' => json_encode(['drawer_access' => 'drawer_1']),
+    ]);
+    $this->get(route('admin.cabinet-access.index'))->assertOk()
+        ->assertSee('Main door access is automatic')
+        ->assertSee('All drawers (Drawer 1 and Drawer 2)');
+});
+
+it('rejects invalid drawer assignments and denies them to regular staff', function () {
+    $employee = User::factory()->assignedOperations()->create(['role' => 'staff']);
+    $superAdmin = User::factory()->superAdmin()->create();
+    $regularStaff = User::factory()->assignedOperations()->create(['role' => 'staff']);
+
+    $this->actingAs($superAdmin)->patch(route('admin.cabinet-access.drawer-access.update', $employee), ['drawer_access' => 'drawer_3'])
+        ->assertSessionHasErrors('drawer_access');
+    $this->actingAs($regularStaff)->patch(route('admin.cabinet-access.drawer-access.update', $employee), ['drawer_access' => 'all'])
+        ->assertForbidden();
+    $this->assertDatabaseEmpty('employee_cabinet_access');
+});
+
 it('rejects cabinet mutations by normal users', function () {
     $staff = User::factory()->assignedOperations()->create(['role' => 'staff']);
     $target = User::factory()->assignedOperations()->create(['role' => 'staff']);

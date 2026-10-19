@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Carbon;
 
 /**
- * @property Carbon|null $issued_at
- * @property Carbon|null $expires_on
+ * @property CarbonInterface|null $issued_at
+ * @property CarbonInterface|null $expires_on
  * @property array<string, string|null>|null $resident_snapshot
  * @property string|null $photo_path
  */
@@ -32,6 +32,28 @@ class IssuedCertificate extends Model
     ];
 
     protected $hidden = ['resident_snapshot', 'photo_path'];
+
+    public function validUntil(): ?CarbonInterface
+    {
+        $threeMonthLimit = $this->issued_at?->copy()->addMonthsNoOverflow(3)->startOfDay();
+
+        if ($threeMonthLimit === null) {
+            return $this->expires_on?->copy();
+        }
+
+        if ($this->expires_on === null || $threeMonthLimit->lt($this->expires_on)) {
+            return $threeMonthLimit;
+        }
+
+        return $this->expires_on->copy();
+    }
+
+    public function isExpired(): bool
+    {
+        $validUntil = $this->validUntil();
+
+        return $validUntil === null || $validUntil->lt(today());
+    }
 
     /**
      * @return BelongsTo<DocumentRequest, $this>

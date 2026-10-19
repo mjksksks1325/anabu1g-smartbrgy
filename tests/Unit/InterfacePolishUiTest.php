@@ -32,7 +32,7 @@ test('admin interface is light first with consistent professional surfaces', fun
 
     expect($dashboard)
         ->toContain('<body class="light-mode" data-personnel-layout="admin"')
-        ->toContain('<span id="theme-label">Dark Mode</span>')
+        ->toContain('<span id="theme-label" class="sr-only">Dark Mode</span>')
         ->toContain('<div class="card-title">Recent Activity</div>')
         ->not->toContain('<div class="card-title">ðŸ”” Recent Activity</div>');
     expect($script)->toContain("document.body?.classList?.contains('light-mode') ?? true")
@@ -61,6 +61,55 @@ test('staff dashboard, iot pages, and account settings share one staff palette',
         ->toContain('html[data-theme=dark] .main-content { background: var(--staff-bg); }')
         ->toContain('html[data-theme=dark] .eyebrow, html[data-theme=dark] .workspace-title span')
         ->not->toContain('html[data-theme=dark] { --civic-ink: #e6f0f8;');
+});
+
+test('resident and staff interfaces share the same brand colors and control tokens', function () {
+    $root = dirname(__DIR__, 2);
+    $tokens = file_get_contents($root.'/public/css/figma-tokens.css');
+    $shared = file_get_contents($root.'/public/css/government.css');
+    $staffLogin = file_get_contents($root.'/public/css/figma-auth.css');
+    $resident = file_get_contents($root.'/public/css/figma-portal.css');
+
+    expect($tokens)
+        ->toContain('--civic-control-height: 44px;', '--civic-control-radius: 6px;', '--civic-panel-radius: 7px;')
+        ->toContain('--civic-primary: #0754ae;', '--civic-primary-hover: #06478f;', '--civic-success: #087a43;')
+        ->toContain('--civic-blue: var(--civic-primary);', '--civic-blue: #80b7f8;');
+    expect($shared)->toContain('--staff-accent: var(--civic-primary);', '--staff-active-ink: var(--civic-blue);');
+    expect($staffLogin)->toContain('background: var(--civic-primary);', 'background: var(--civic-primary-hover);');
+    expect($resident)->toContain('.btn, .form-input { border-radius: var(--civic-control-radius);');
+});
+
+test('staff topbar keeps language and theme controls compact', function () {
+    $adminStyles = file_get_contents(dirname(__DIR__, 2).'/public/css/figma-admin.css');
+    $settingsStyles = file_get_contents(dirname(__DIR__, 2).'/public/css/government.css');
+
+    expect($adminStyles)
+        ->toContain('#app.admin-interface .admin-language-inline { flex-wrap: nowrap; white-space: nowrap; }')
+        ->toContain('#app.admin-interface button.dark-mode-toggle.staff-theme-icon { display: grid; flex: 0 0 36px; width: 36px; min-width: 36px; height: 36px; min-height: 36px; place-items: center; padding: 0; border: 0 !important; border-radius: 50% !important; background: transparent !important; box-shadow: none !important; color: var(--text-primary); white-space: nowrap; }')
+        ->toContain('#app.admin-interface .staff-theme-icon #theme-label { position: absolute;')
+        ->toContain('@media (min-width: 761px) and (max-width: 900px)')
+        ->toContain('#app.admin-interface .topbar-chip:not(.notif-badge-wrap) { display: none; }');
+    expect($settingsStyles)
+        ->toContain('.staff-settings-topbar-actions { display: flex; flex-wrap: nowrap;')
+        ->toContain('.staff-settings-topbar-actions .admin-language-inline { flex-wrap: nowrap;')
+        ->toContain('.staff-settings-topbar-actions button.staff-theme-icon-button,')
+        ->toContain('border: 0 !important; border-radius: 50% !important; background: transparent !important;');
+});
+
+test('staff active navigation remains dark blue when the html theme is dark', function () {
+    expect(file_get_contents(dirname(__DIR__, 2).'/public/css/figma-admin.css'))
+        ->toContain('html[data-theme=dark] #app.admin-interface .nav-item.active,')
+        ->toContain('html.dark #app.admin-interface .nav-item.active { background: #173a60; color: #a9d3ff; }');
+});
+
+test('staff theme icon stays borderless and dark navigation keeps its dark highlight', function () {
+    $styles = file_get_contents(dirname(__DIR__, 2).'/public/css/figma-admin.css');
+
+    expect($styles)
+        ->toContain('#app.admin-interface button.dark-mode-toggle.staff-theme-icon {')
+        ->toContain('border: 0 !important; border-radius: 50% !important; background: transparent !important;')
+        ->toContain('html[data-theme=dark] #app.admin-interface .nav-item.active,')
+        ->toContain('html.dark #app.admin-interface .nav-item.active { background: #173a60; color: #a9d3ff; }');
 });
 
 test('staff sidebars always show the orange scrollbar', function () {
@@ -155,14 +204,4 @@ test('staff permission groups avoid pairing short page cards with long action li
 
     expect($view)->toContain("'title' => 'General pages'", "'title' => 'Records & services'", "'title' => 'Incidents & restricted cases'");
     expect($styles)->toContain('.staff-permission-grid-pages { grid-template-columns: repeat(3, minmax(0, 1fr)); }', '.staff-permission-grid-services { grid-template-columns: minmax(0, 1fr); }', '.staff-permission-grid-services .staff-permission-options { grid-template-columns: repeat(2, minmax(0, 1fr));', 'align-items: stretch;');
-});
-
-test('staff theme icon stays borderless and dark navigation keeps its dark highlight', function () {
-    $styles = file_get_contents(dirname(__DIR__, 2).'/public/css/figma-admin.css');
-
-    expect($styles)
-        ->toContain('#app.admin-interface button.dark-mode-toggle.staff-theme-icon {')
-        ->toContain('border: 0 !important; border-radius: 50% !important; background: transparent !important;')
-        ->toContain('html[data-theme=dark] #app.admin-interface .nav-item.active,')
-        ->toContain('html.dark #app.admin-interface .nav-item.active { background: #173a60; color: #a9d3ff; }');
 });

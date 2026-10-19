@@ -46,8 +46,8 @@ test('resident activation email renders dedicated barangay branding and safe reg
     expect($links->length)->toBeGreaterThan(0);
 
     foreach ($links as $link) {
-        expect($link->getAttribute('href'))->toBe(route('portal.register'))
-            ->not->toContain($activationCode, $residentNumber, '?', '#');
+        expect($link->getAttribute('href'))->toBe(route('portal.register', ['step' => 'activation']))
+            ->not->toContain($activationCode, $residentNumber, '#');
     }
 
     expect($email->getHtmlBody())->toContain('src="cid:')

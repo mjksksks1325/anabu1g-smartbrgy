@@ -21,6 +21,8 @@ class Incident extends Model
 {
     public const STATUSES = ['open', 'under_review', 'referred', 'resolved', 'closed', 'pending', 'under_investigation', 'dismissed'];
 
+    public const PENDING_STATUSES = ['open', 'under_review', 'referred', 'pending', 'under_investigation'];
+
     public const SUBMISSION_CATEGORIES = [
         'Disturbance / altercation' => 'Reported disturbance / altercation',
         'Noise Complaint' => 'Noise complaint',
@@ -74,6 +76,19 @@ class Incident extends Model
         if (! $user->hasPermission('incidents.view')) {
             $query->where($restricted);
         }
+    }
+
+    /** @param Builder<Incident> $query */
+    public function scopeOrdinary(Builder $query): void
+    {
+        $query->whereNot(function (Builder $restricted): void {
+            $restricted->where('is_sensitive', true)
+                ->orWhereRaw("LOWER(incident_type) LIKE '%vawc%'")
+                ->orWhereRaw("LOWER(incident_type) LIKE '%bpo%'")
+                ->orWhereRaw("LOWER(incident_type) LIKE '%violence against women%'")
+                ->orWhereRaw("LOWER(incident_type) LIKE '%domestic violence%'")
+                ->orWhereHas('protectionOrders');
+        });
     }
 
     protected static function booted(): void

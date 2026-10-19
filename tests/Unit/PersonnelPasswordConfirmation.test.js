@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 const script = readFileSync(new URL('../../public/js/personnel-password-confirmation.js', import.meta.url), 'utf8');
 
 function popup() {
-  const events = new Map(), dialogEvents = new Map(), calls = [], destinations = [];
+  const events = new Map(), windowEvents = new Map(), dialogEvents = new Map(), calls = [], destinations = [], fullPageDestinations = [];
   const error = { hidden: true, textContent: '' }, submit = { disabled: false };
   const password = { value: 'password', focus() {} };
   const cancel = { addEventListener(type, handler) { this.click = handler; } };
@@ -18,21 +18,23 @@ function popup() {
     addEventListener: (type, handler) => dialogEvents.set(type, handler),
   };
   const context = vm.createContext({ URL, FormData: class { constructor(value) { this.form = value; } },
-    window: { location: { href: 'http://localhost/staff', assign: url => destinations.push(url) }, Livewire: { navigate: url => destinations.push(url) } },
+    window: { addEventListener(type, handler, options) { windowEvents.set(type, { handler, options }); }, location: { href: 'http://localhost/staff', assign: url => fullPageDestinations.push(url) }, Livewire: { navigate: url => destinations.push(url) } },
     document: { getElementById: () => dialog, addEventListener: (type, handler) => events.set(type, handler) },
     fetch: async (url, options) => { calls.push({ url, options }); return { ok: true, json: async () => ({ confirmed: false }) }; },
   });
   vm.runInContext(script, context);
   events.get('DOMContentLoaded')();
-  const click = { target: { closest: () => link }, button: 0, preventDefault() { this.prevented = true; }, stopImmediatePropagation() {} };
+  const click = { target: { closest: () => link }, button: 0, preventDefault() { this.prevented = true; }, stopImmediatePropagation() { this.stopped = true; } };
   const send = { target: form, preventDefault() {} };
-  return { context, events, dialogEvents, dialog, form, password, error, submit, cancel, link, click, send, destinations, calls };
+  return { context, events, windowEvents, dialogEvents, dialog, form, password, error, submit, cancel, link, click, send, destinations, fullPageDestinations, calls };
 }
 
 test('security opens a popup, cancel restores focus without navigating', async () => {
   const ui = popup();
-  await ui.events.get('click')(ui.click);
+  await ui.windowEvents.get('click').handler(ui.click);
   assert.equal(ui.dialog.open, true);
+  assert.equal(ui.windowEvents.get('click').options, true);
+  assert.equal(ui.click.stopped, true);
   ui.cancel.click();
   assert.equal(ui.dialog.open, false);
   assert.equal(ui.link.focused, true);
@@ -42,7 +44,7 @@ test('security opens a popup, cancel restores focus without navigating', async (
 
 test('invalid passwords keep the popup open and display the server validation message', async () => {
   const ui = popup();
-  await ui.events.get('click')(ui.click);
+  await ui.windowEvents.get('click').handler(ui.click);
   ui.context.fetch = async () => ({ ok: false, status: 422, json: async () => ({ errors: { password: ['Incorrect password.'] } }) });
   await ui.events.get('submit')(ui.send);
   assert.equal(ui.dialog.open, true);
@@ -54,24 +56,27 @@ test('invalid passwords keep the popup open and display the server validation me
 
 test('successful confirmation continues only the chosen account security destination', async () => {
   const ui = popup();
-  await ui.events.get('click')(ui.click);
+  await ui.windowEvents.get('click').handler(ui.click);
   ui.context.fetch = async () => ({ ok: true, status: 201 });
   await ui.events.get('submit')(ui.send);
   assert.equal(ui.dialog.open, false);
-  assert.deepEqual(ui.destinations, [ui.link.href]);
+  assert.deepEqual(ui.destinations, []);
+  assert.deepEqual(ui.fullPageDestinations, [ui.link.href]);
 });
 
-test('already confirmed passwords skip the popup', async () => {
+test('account security still asks for confirmation when the session is already confirmed', async () => {
   const ui = popup();
   ui.context.fetch = async () => ({ ok: true, json: async () => ({ confirmed: true }) });
-  await ui.events.get('click')(ui.click);
-  assert.equal(ui.dialog.open, false);
-  assert.deepEqual(ui.destinations, [ui.link.href]);
+  await ui.windowEvents.get('click').handler(ui.click);
+  assert.equal(ui.dialog.open, true);
+  assert.deepEqual(ui.destinations, []);
+  assert.deepEqual(ui.fullPageDestinations, []);
+  assert.equal(ui.calls.length, 0);
 });
 
 test('cancelling a pending confirmation prevents late navigation', async () => {
   const ui = popup();
-  await ui.events.get('click')(ui.click);
+  await ui.windowEvents.get('click').handler(ui.click);
   let finish;
   ui.context.fetch = () => new Promise(resolve => { finish = resolve; });
   const pending = ui.events.get('submit')(ui.send);
@@ -84,7 +89,7 @@ test('cancelling a pending confirmation prevents late navigation', async () => {
 test('other destinations and modified clicks retain their existing navigation', async () => {
   const ui = popup();
   ui.link.href = 'http://localhost/admin/settings';
-  await ui.events.get('click')(ui.click);
+  await ui.windowEvents.get('click').handler(ui.click);
   assert.equal(ui.click.prevented, undefined);
   assert.equal(ui.calls.length, 0);
 });
@@ -93,7 +98,7 @@ test('other destinations and modified clicks retain their existing navigation', 
 for (const [status, message] of [[419, 'Your session expired'], [429, 'Too many attempts']]) {
   test(`confirmation failure ${status} remains inside the popup`, async () => {
     const ui = popup();
-    await ui.events.get('click')(ui.click);
+    await ui.windowEvents.get('click').handler(ui.click);
     ui.context.fetch = async () => ({ ok: false, status, json: async () => ({}) });
     await ui.events.get('submit')(ui.send);
     assert.equal(ui.dialog.open, true);
@@ -104,7 +109,7 @@ for (const [status, message] of [[419, 'Your session expired'], [429, 'Too many 
 
 test('Escape clears the password and restores the Account Security link focus', async () => {
   const ui = popup();
-  await ui.events.get('click')(ui.click);
+  await ui.windowEvents.get('click').handler(ui.click);
   ui.password.value = 'typed password';
   ui.dialogEvents.get('cancel')();
   ui.dialog.close();
@@ -115,7 +120,7 @@ test('Escape clears the password and restores the Account Security link focus', 
 
 test('an unexpected successful HTML response cannot be treated as password confirmation', async () => {
   const ui = popup();
-  await ui.events.get('click')(ui.click);
+  await ui.windowEvents.get('click').handler(ui.click);
   ui.context.fetch = async () => ({ ok: true, status: 200, json: async () => { throw new Error('HTML response'); } });
   await ui.events.get('submit')(ui.send);
   assert.equal(ui.dialog.open, true);

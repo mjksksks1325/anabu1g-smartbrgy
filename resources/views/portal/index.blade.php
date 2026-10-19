@@ -83,7 +83,7 @@
     <div class="notice-row">
         <article class="notice-callout">
             <h3><span data-portal-i18n="Barangay Anabu I-G">{{ __('Barangay Anabu I-G') }}</span></h3>
-            <p><span data-portal-i18n="Wala pang inilalathalang anunsiyo ang Barangay Anabu I-G sa portal na ito. Bumalik dito para sa mga susunod na update.">{{ __('Wala pang inilalathalang anunsiyo ang Barangay Anabu I-G sa portal na ito. Bumalik dito para sa mga susunod na update.') }}</span></p>
+            <p><span data-portal-i18n="Follow the Barangay Anabu I-G Facebook account for announcements.">{{ __('Follow the Barangay Anabu I-G Facebook account for announcements.') }}</span> <a href="https://www.facebook.com/barangayanabu.ig" target="_blank" rel="noopener noreferrer"><span data-portal-i18n="Open the Barangay Facebook account">{{ __('Open the Barangay Facebook account') }}</span></a></p>
         </article>
         <article class="notice-callout">
             <h3><span data-portal-i18n="Lungsod ng Imus">{{ __('Lungsod ng Imus') }}</span></h3>

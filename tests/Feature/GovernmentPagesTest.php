@@ -77,9 +77,15 @@ it('renders a paginated request list and rejection reason on its detail page', f
 
     $this->actingAs($staff)->get(route('staff.document-requests.list'))
         ->assertSee('REQ-PAGE-001')->assertSee('&lt;script&gt;', false)->assertDontSee('<script>alert(1)</script>', false);
-    $this->get(route('staff.document-requests.show', $request))
+    $response = $this->get(route('staff.document-requests.show', $request))
         ->assertSee('name="rejection_reason"', false)->assertSee('class="side-nav"', false)
         ->assertDontSee('<option value="released"', false);
+    $document = new DOMDocument;
+    @$document->loadHTML($response->getContent());
+    $xpath = new DOMXPath($document);
+    $actions = $xpath->query('//button[@type="submit" and contains(normalize-space(.), "Update Request")]/..')->item(0);
+    expect($actions)->not->toBeNull();
+    expect($xpath->query('./a[normalize-space(.)="Cancel"]', $actions)->length)->toBe(1);
 });
 
 it('keeps document request pages inside the staff workspace', function () {
@@ -158,6 +164,7 @@ it('keeps every personnel menu icon identical to the RFID sidebar', function () 
             expect($icon)->not->toBeNull();
             $label = trim(preg_replace('/\s+/', ' ', $link->textContent));
             $label = trim(preg_replace('/\s+0$/', '', $label));
+            $label = str_replace('Portal ng Residente', 'Resident Portal', $label);
             $icons[$label] = preg_replace('/>\s+</', '><', $document->saveXML($icon));
         }
 

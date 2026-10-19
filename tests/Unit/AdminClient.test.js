@@ -123,12 +123,11 @@ test('resident editing only supplies explicit nationality and indigency verifica
   assert.equal(payload.is_verified_indigent, true);
 });
 
-test('online release resets expiration between requests and displays the voter certification fee', async () => {
+test('online release displays the voter certification fee without a custom expiration control', async () => {
   const { context, fields } = await client();
-  for (const id of ['print-document-request-id', 'print-certificate-type', 'print-resident-name', 'print-purpose', 'print-amount-paid', 'print-expiry']) fields.set(id, { value: '2026-12-31' });
+  for (const id of ['print-document-request-id', 'print-certificate-type', 'print-resident-name', 'print-purpose', 'print-amount-paid']) fields.set(id, { value: '2026-12-31' });
   vm.runInContext("CERT_REQUESTS.push({ code: 'TEST', id: 2, type: 'Registered Voter Certification' }); openModal = () => {};", context);
   context.printCert('TEST');
-  assert.equal(fields.get('print-expiry').value, '');
   assert.equal(fields.get('print-amount-paid').value, 'PHP 25.00');
 });
 

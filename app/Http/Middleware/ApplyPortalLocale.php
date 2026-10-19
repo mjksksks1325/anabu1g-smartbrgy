@@ -16,8 +16,12 @@ class ApplyPortalLocale
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $preference = $request->cookie(PortalLocalization::COOKIE);
-        app()->setLocale($request->is('portal', 'portal/*') && in_array($preference, PortalLocalization::LOCALES, true) ? $preference : 'en');
+        $isResidentPortal = $request->is('portal', 'portal/*');
+        $isPersonnelWorkspace = $request->is('staff', 'staff/*', 'admin', 'admin/*');
+        $cookie = $isPersonnelWorkspace ? PortalLocalization::ADMIN_COOKIE : PortalLocalization::COOKIE;
+        $preference = $request->cookie($cookie);
+
+        app()->setLocale(($isResidentPortal || $isPersonnelWorkspace) && in_array($preference, PortalLocalization::LOCALES, true) ? $preference : 'en');
 
         return $next($request);
     }

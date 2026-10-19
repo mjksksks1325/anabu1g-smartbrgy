@@ -41,7 +41,7 @@
       <div class="form-group"><div class="form-label">Email Address <span style="color:var(--text-muted);font-weight:400;">(para sa notification)</span></div><input class="form-input" type="email" id="portal-email" placeholder="example@gmail.com"/></div>
       <div class="form-group"><div class="form-label">Purpose / Reason *</div><input class="form-input" id="portal-purpose" placeholder="Example: Employment, Loan, Scholarship..."/></div>
       <div class="form-group">
-        <div class="form-label">Proof of Residency <span style="color:var(--text-muted);font-weight:400;">(optional — photo/PDF)</span></div>
+        <div class="form-label">Proof of Residency <span style="color:var(--text-muted);font-weight:400;">(optional — JPG, PNG, WebP; up to 5 MB)</span></div>
         <input class="form-input" type="file" id="portal-attachment" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" style="padding:6px;cursor:pointer;"/>
         <div id="portal-attachment-preview" style="display:none;margin-top:8px;"></div>
       </div>
@@ -281,7 +281,7 @@
           <div><div class="card-title">👴👵 Senior Citizens Register (60+)</div><div class="card-sub">Auto-updated when a resident reaches age 60 based on date of birth</div></div>
           <span class="badge badge-senior">🔄 Auto-Updated</span>
         </div>
-        <div id="senior-citizens-list"></div>
+        <div id="senior-citizens-list" class="table-scroll" tabindex="0" role="region" aria-label="Senior citizens register"></div>
         <div style="margin-top:10px;padding:10px;background:var(--senior-bg);border:1px solid var(--senior-border);border-radius:var(--radius-sm);font-size:11.5px;color:var(--senior-color);">
           ℹ️ <strong>Automated Process:</strong> The system checks each resident's date of birth. Upon reaching age 60, they are automatically added to this register and receive a Senior Citizen badge on their profile.
         </div>
@@ -1513,7 +1513,7 @@
     <div class="form-group"><div class="form-label">Severity</div><select class="form-input" id="inc-severity"><option>Low</option><option>Medium</option><option>High</option></select></div>
     <div class="form-group"><div class="form-label">Incident Details *</div><textarea class="form-input" id="inc-details" rows="4" placeholder="Describe what happened..."></textarea></div>
     <div class="form-group">
-      <div class="form-label">Attachments <span style="color:var(--text-muted);font-weight:400;">(optional — photos/PDF)</span></div>
+      <div class="form-label">Attachments <span style="color:var(--text-muted);font-weight:400;">(optional — JPG, PNG, WebP; up to 5 MB each)</span></div>
       <input class="form-input" type="file" id="inc-attachments" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" multiple style="padding:6px;cursor:pointer;"/>
       <div id="inc-attachments-preview" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
     </div>

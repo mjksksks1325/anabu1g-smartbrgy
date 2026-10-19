@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminLocaleController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BarangayProtectionOrderController;
 use App\Http\Controllers\Admin\DashboardController;
@@ -99,6 +100,10 @@ Route::middleware(EnsureResidentAccount::class)->group(function () {
 });
 
 Route::get('/staff/access-pending', [StaffSubmissionController::class, 'pending'])->middleware(['auth:web', 'can:operate-personnel'])->name('staff.access-pending');
+Route::post('/staff/locale', AdminLocaleController::class)
+    ->name('staff.locale');
+Route::get('/staff/translations.js', [AdminLocaleController::class, 'catalog'])
+    ->name('staff.translations');
 
 Route::middleware(['auth:web', 'can:operate-personnel', EnsureStaffAccess::class, RecordAdministrativeAction::class])->prefix('staff')->name('staff.')->group(function () {
 
@@ -211,6 +216,7 @@ Route::middleware(['auth:web', 'can:access-personnel', RecordAdministrativeActio
         Route::get('/smart-cabinet', SmartCabinetController::class)->name('smart-cabinet.index');
         Route::get('/employee-cabinet-access', [EmployeeCabinetAccessController::class, 'index'])->name('cabinet-access.index');
         Route::patch('/employee-cabinet-access/{user}', [EmployeeCabinetAccessController::class, 'update'])->name('cabinet-access.update');
+        Route::patch('/employee-cabinet-access/{user}/drawer-access', [EmployeeCabinetAccessController::class, 'updateDrawerAccess'])->name('cabinet-access.drawer-access.update');
         Route::patch('/employee-cabinet-access/{user}/rpi-employee-id', [EmployeeCabinetAccessController::class, 'updateRpiEmployeeId'])->name('cabinet-access.rpi-employee-id.update');
         Route::post('/employee-cabinet-access/{user}/enrollment/{method}', [EmployeeCabinetAccessController::class, 'enroll'])->name('cabinet-access.enroll');
         Route::get('/audit-log', AuditLogController::class)->name('audit.index');

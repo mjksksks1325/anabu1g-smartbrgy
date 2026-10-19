@@ -3,11 +3,6 @@
   const initializedDialogs = new WeakSet();
   let returnFocus = null;
 
-  function navigate(url) {
-    if (window.Livewire?.navigate) window.Livewire.navigate(url);
-    else window.location.assign(url);
-  }
-
   function errorMessage(dialog, message) {
     const error = dialog.querySelector('[role="alert"]');
     error.textContent = message;
@@ -23,7 +18,7 @@
     returnFocus = null;
   }
 
-  document.addEventListener('click', async event => {
+  window.addEventListener('click', event => {
     const dialog = document.getElementById('personnel-password-confirmation');
     if (!dialog || typeof dialog.showModal !== 'function') return;
     const link = event.target.closest('a[href]');
@@ -33,22 +28,10 @@
     if (destination.origin !== securityUrl.origin || destination.pathname !== securityUrl.pathname) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    const version = ++attempt;
+    attempt++;
     returnFocus = link;
-    try {
-      const response = await fetch(dialog.dataset.statusUrl, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
-      if (!response.ok) throw new Error('Unable to check password confirmation. Please try confirming your password.');
-      const status = await response.json();
-      if (version !== attempt || !dialog.isConnected) return;
-      if (status.confirmed === true) { navigate(destination.href); return; }
-      dialog.dataset.destination = destination.href;
-      dialog.showModal();
-    } catch (error) {
-      if (version !== attempt || !dialog.isConnected) return;
-      dialog.dataset.destination = destination.href;
-      dialog.showModal();
-      errorMessage(dialog, error.message);
-    }
+    dialog.dataset.destination = destination.href;
+    dialog.showModal();
   }, true);
 
   document.addEventListener('submit', async event => {
@@ -73,7 +56,7 @@
       }
       const destination = dialog.dataset.destination;
       dialog.close();
-      navigate(destination);
+      window.location.assign(destination);
     } catch (error) {
       if (version === attempt && dialog.isConnected && dialog.open) {
         errorMessage(dialog, error.message);

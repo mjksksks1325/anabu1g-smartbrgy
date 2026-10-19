@@ -219,6 +219,60 @@ it('returns the next active employee requiring cabinet enrollment', function () 
         ]);
 });
 
+it('returns automatic main door access and only assigned drawers to the authenticated cabinet', function () {
+    $cabinet = CabinetDevice::factory()->create(['api_token_hash' => hash('sha256', 'device-token')]);
+    $mainDoorOnly = User::factory()->create(['role' => 'staff', 'is_active' => true]);
+    EmployeeCabinetAccess::factory()->create([
+        'user_id' => $mainDoorOnly->id,
+        'rpi_employee_id' => 'EMP001',
+        'is_active' => true,
+        'rfid_enrollment_status' => EmployeeCabinetAccess::ENROLLED,
+        'face_enrollment_status' => EmployeeCabinetAccess::ENROLLED,
+        'drawer_access' => EmployeeCabinetAccess::DRAWERS_NONE,
+        'authorization_version' => 2,
+    ]);
+    $drawerEmployee = User::factory()->create(['role' => 'staff', 'is_active' => true]);
+    EmployeeCabinetAccess::factory()->create([
+        'user_id' => $drawerEmployee->id,
+        'rpi_employee_id' => 'EMP002',
+        'is_active' => true,
+        'rfid_enrollment_status' => EmployeeCabinetAccess::ENROLLED,
+        'face_enrollment_status' => EmployeeCabinetAccess::ENROLLED,
+        'drawer_access' => EmployeeCabinetAccess::DRAWERS_ALL,
+        'authorization_version' => 7,
+    ]);
+    $notEnrolled = User::factory()->create(['role' => 'staff', 'is_active' => true]);
+    EmployeeCabinetAccess::factory()->create([
+        'user_id' => $notEnrolled->id,
+        'rpi_employee_id' => 'EMP003',
+        'is_active' => true,
+        'drawer_access' => EmployeeCabinetAccess::DRAWER_1,
+    ]);
+
+    $this->withHeader('X-Device-Token', 'device-token')
+        ->getJson(route('api.iot.cabinets.access-authorizations', $cabinet))
+        ->assertOk()->assertExactJson(['authorizations' => [
+            [
+                'rpi_employee_id' => 'EMP001',
+                'main_door' => true,
+                'drawers' => [],
+                'authorization_version' => 2,
+            ],
+            [
+                'rpi_employee_id' => 'EMP002',
+                'main_door' => true,
+                'drawers' => ['drawer_1', 'drawer_2'],
+                'authorization_version' => 7,
+            ],
+        ]]);
+});
+
+it('requires cabinet authentication to read drawer access authorizations', function () {
+    $cabinet = CabinetDevice::factory()->create(['api_token_hash' => hash('sha256', 'device-token')]);
+
+    $this->getJson(route('api.iot.cabinets.access-authorizations', $cabinet))->assertUnauthorized();
+});
+
 it('reports only the missing credential when enrollment is partially complete', function () {
     $cabinet = CabinetDevice::factory()->create([
         'api_token_hash' => hash('sha256', 'device-token'),

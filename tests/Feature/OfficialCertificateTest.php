@@ -43,7 +43,8 @@ test('official certificates preserve all historical details and private photos t
     $this->postJson(route('staff.residents.photo.store', $resident), ['photo' => UploadedFile::fake()->image('replacement.png')])->assertOk();
     expect(Storage::disk('local')->get($certificate->photo_path))->toBe($originalPhoto);
     $print = $this->get(route('staff.issued-certificates.print', $certificate))->assertOk();
-    foreach (['Province of Cavite', 'OFFICE OF THE SANGGUNIANG BARANGAY', 'Test Resident', 'Example Street, Anabu I-G', 'February 12, 1990', 'Female', 'Single', 'Test nationality', 'Test assistance', 'October 03, 2026', 'December 31, 2026', 'EXPIRATION DATE', 'Resident photo at issuance', 'registered voter'] as $text) {
+    expect($certificate->expires_on?->toDateString())->toBe('2027-01-03');
+    foreach (['Province of Cavite', 'OFFICE OF THE SANGGUNIANG BARANGAY', 'Test Resident', 'Example Street, Anabu I-G', 'February 12, 1990', 'Female', 'Single', 'Test nationality', 'Test assistance', 'October 03, 2026', 'January 03, 2027', 'EXPIRATION DATE', 'Resident photo at issuance', 'registered voter'] as $text) {
         $print->assertSee($text);
     }
     $print->assertDontSee('Changed address')->assertSee(route('staff.issued-certificates.photo', $certificate));
@@ -60,7 +61,7 @@ test('official certificates preserve all historical details and private photos t
     $this->get(route('staff.issued-certificates.photo', $certificate))->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff');
     $this->postJson(route('staff.document-requests.issue', $request))->assertConflict();
     $verification = $this->getJson(route('certificate.verify', $certificate->verification_code))->assertOk();
-    expect(array_keys($verification->json('certificate')))->toBe(['certificate_number', 'verification_code', 'certificate_type', 'resident_name', 'purpose', 'issued_at', 'issued_by']);
+    expect(array_keys($verification->json('certificate')))->toBe(['certificate_number', 'verification_code', 'certificate_type', 'resident_name', 'purpose', 'issued_at', 'issued_by', 'expires_on']);
     $this->getJson(route('certificate.verify', 'INVALID-CODE'))->assertNotFound();
     $other = User::factory()->resident()->create();
     $this->actingAs($other, 'web')->get(route('staff.issued-certificates.print', $certificate))->assertForbidden();
@@ -68,9 +69,10 @@ test('official certificates preserve all historical details and private photos t
     $this->actingAs($other, 'resident')->getJson(route('portal.request.status', $request->reference_code))->assertNotFound();
 })->with([CertificateType::RegisteredVoterCertification, CertificateType::CertificateOfIndigency]);
 
-test('official certificates allow missing legacy photos and nationality without inventing expiry', function () {
+test('official certificates set a three month expiry when optional resident data is missing', function () {
     Storage::fake('local');
     Storage::fake('public');
+    $this->travelTo('2026-10-03 09:00:00');
     $resident = Resident::factory()->create(['is_in_good_standing' => true]);
     VoterRegistration::factory()->create(['resident_id' => $resident->id]);
     $staff = User::factory()->assignedOperations()->create();
@@ -79,7 +81,7 @@ test('official certificates allow missing legacy photos and nationality without 
         'resident_id' => $resident->id, 'resident_name' => $resident->full_name, 'address' => $resident->address,
     ])->assertOk();
     $certificate = IssuedCertificate::query()->sole();
-    expect($certificate->expires_on)->toBeNull()->and($certificate->resident_snapshot['nationality'])->toBeNull();
+    expect($certificate->expires_on?->toDateString())->toBe('2027-01-03')->and($certificate->resident_snapshot['nationality'])->toBeNull();
     $this->get(route('staff.issued-certificates.print', $certificate))->assertOk()->assertSee('Resident photo not provided')->assertDontSee('Filipino');
     $this->get(route('staff.issued-certificates.photo', $certificate))->assertNotFound();
 });
@@ -110,13 +112,44 @@ test('official certificate assertions require verified linked records', function
     $this->assertDatabaseEmpty('document_requests');
 })->with(['not indigent', 'inactive voter', 'tampered voter', 'missing voter', 'not good standing', 'inactive resident', 'unlinked']);
 
-test('staff supplied expiration dates reject malformed and past dates', function (string $expiry) {
+test('staff cannot override the three month certificate validity period', function () {
+    Storage::fake('public');
+    $this->travelTo('2026-10-03 09:00:00');
     $this->actingAs(User::factory()->assignedOperations()->create())->postJson(route('staff.issued-certificates.store'), [
         'certificate_type' => CertificateType::BarangayClearance->value,
-        'resident_name' => 'Test Resident', 'address' => 'Test address', 'expires_on' => $expiry,
-    ])->assertUnprocessable()->assertJsonValidationErrors('expires_on');
-    $this->assertDatabaseEmpty('issued_certificates');
-})->with(['2020-01-01', 'invalid', '2026-02-31']);
+        'resident_name' => 'Test Resident', 'address' => 'Test address', 'expires_on' => '2030-01-01',
+    ])->assertOk();
+    $certificate = IssuedCertificate::query()->sole();
+
+    expect($certificate->expires_on?->toDateString())->toBe('2027-01-03');
+});
+
+test('certificate QR verification expires after three months and hides certificate details', function () {
+    $this->travelTo('2026-10-03 09:00:00');
+    $certificate = IssuedCertificate::query()->create([
+        'certificate_number' => 'CERT-EXPIRY-TEST',
+        'verification_code' => 'EXPIRYTESTCODE',
+        'certificate_type' => CertificateType::BarangayClearance->value,
+        'resident_name' => 'Private Verification Name',
+        'issued_at' => now(),
+        'expires_on' => '2030-01-01',
+    ]);
+
+    $this->travelTo('2027-01-03 23:59:00');
+    $this->getJson(route('certificate.verify', $certificate->verification_code))
+        ->assertOk()
+        ->assertJsonPath('certificate.expires_on', '2027-01-03');
+
+    $this->travelTo('2027-01-04 00:00:00');
+    $this->getJson(route('certificate.verify', $certificate->verification_code))
+        ->assertStatus(410)
+        ->assertJsonPath('status', 'expired')
+        ->assertDontSee('Private Verification Name');
+    $this->get(route('certificate.verify', $certificate->verification_code))
+        ->assertStatus(410)
+        ->assertSee('Expired Barangay Document')
+        ->assertDontSee('Private Verification Name');
+});
 
 test('registered voter certificates reject unverified voter records before issuing', function (string $condition) {
     Storage::fake('public');
@@ -207,6 +240,7 @@ test('the ID card reuses its private photo while keeping its identification fiel
     ]);
     $this->actingAs(User::factory()->assignedOperations()->create())->get(route('staff.issued-certificates.print', $certificate))
         ->assertOk()->assertSee('BARANGAY RESIDENT IDENTIFICATION CARD')->assertSeeText('ID No.:')->assertSeeText('CERT-ID-TEST')
+        ->assertSeeText('Valid Until:')->assertSeeText($certificate->validUntil()?->format('M d, Y'))
         ->assertSee(route('staff.issued-certificates.photo', $certificate))->assertSee('Resident photo at issuance')
         ->assertSee('City of Imus footer logo')->assertSee('Certificate authenticity QR code')->assertDontSeeText('IDPRINTVERIFY');
 });

@@ -68,14 +68,12 @@ class IssuedCertificateController extends Controller
         IssueCertificate $issueCertificate,
     ): JsonResponse|RedirectResponse {
         Gate::authorize('documents.issue');
-        $validated = $request->validate(['expires_on' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:today']]);
         try {
             $certificate = $issueCertificate->handle(
                 attributes: [
                     'certificate_type' => $documentRequest->document_type,
                     'resident_name' => $documentRequest->full_name,
                     'purpose' => $documentRequest->purpose,
-                    'expires_on' => $validated['expires_on'] ?? null,
                 ],
                 documentRequest: $documentRequest,
                 issuedBy: $request->user()->name,

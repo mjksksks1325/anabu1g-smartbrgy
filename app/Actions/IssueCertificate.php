@@ -26,7 +26,6 @@ class IssueCertificate
      *     resident_id?: int|null,
      *     resident_name: string,
      *     address?: string,
-     *     expires_on?: string|null,
      *     purpose?: string|null
      * }  $attributes
      */
@@ -89,7 +88,8 @@ class IssueCertificate
                     throw CertificateIssuanceException::requestNotReady();
                 }
 
-                $certificateNumber = 'CERT-'.now()->format('Y').'-'.Str::upper(Str::random(8));
+                $issuedAt = now();
+                $certificateNumber = 'CERT-'.$issuedAt->format('Y').'-'.Str::upper(Str::random(8));
                 $verificationCode = Str::upper(Str::random(16));
                 $verificationUrl = route('certificate.verify', ['code' => $verificationCode]);
                 $qrStoragePath = 'qrcodes/'.$certificateNumber.'.svg';
@@ -118,8 +118,8 @@ class IssueCertificate
                     'resident_name' => $resident === null ? $attributes['resident_name'] : $resident->full_name,
                     'purpose' => $attributes['purpose'] ?? null,
                     'amount_paid' => $certificateType->fee(),
-                    'issued_at' => now(),
-                    'expires_on' => $attributes['expires_on'] ?? null,
+                    'issued_at' => $issuedAt,
+                    'expires_on' => $issuedAt->copy()->addMonthsNoOverflow(3)->toDateString(),
                     'photo_path' => $photoStoragePath,
                     'resident_snapshot' => [
                         'full_name' => $resident === null ? $attributes['resident_name'] : $resident->full_name,

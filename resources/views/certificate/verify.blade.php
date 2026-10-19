@@ -14,6 +14,13 @@
 
 <main id="main-content" tabindex="-1" class="civic-verification civic-surface">
 
+    @if ($isExpired)
+    <div class="status">
+        <div class="status-icon"></div>
+        <div class="status-title">Expired Barangay Document</div>
+        <div class="status-sub">This document is no longer valid. Contact Barangay Anabu I-G if you need a current copy.</div>
+    </div>
+    @else
     <div class="status">
         <div class="status-icon"></div>
 
@@ -56,6 +63,11 @@
     </div>
 
     <div class="detail">
+        <div class="label">Valid Until</div>
+        <div class="value">{{ $certificate->validUntil()?->format('F d, Y') }}</div>
+    </div>
+
+    <div class="detail">
         <div class="label">Issued By</div>
         <div class="value">
             {{ $certificate->issued_by ?: 'Barangay Staff' }}
@@ -68,6 +80,7 @@
             {{ $certificate->verification_code }}
         </div>
     </div>
+    @endif
 
     <div class="footer">
         SmartBrgy — Barangay Anabu I-G, Imus City

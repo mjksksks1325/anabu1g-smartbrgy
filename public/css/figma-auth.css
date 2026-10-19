@@ -3,6 +3,11 @@
 .staff-auth-gov > div { display: flex; align-items: center; justify-content: space-between; max-width: 1280px; min-height: 36px; margin: auto; padding: 5px 32px; font-size: 12px; }
 .staff-auth-gov strong { margin-right: 10px; color: #fff; letter-spacing: .08em; }
 .staff-auth-gov span span { margin-right: 10px; color: #6082a3; }
+.staff-auth-gov .admin-locale-toggle { display: inline-flex; align-items: center; gap: 2px; margin: 0 auto 0 18px; padding: 2px; border: 1px solid #405a70; border-radius: 6px; background: #132536; }
+.staff-auth-gov .admin-locale-toggle > span { color: #7f96aa; font-size: 11px; }
+.staff-auth-gov .admin-locale-toggle button { min-height: 28px; padding: 4px 7px; border: 0; border-radius: 4px; background: transparent; color: #d5e2ec; font: 700 11px var(--civic-font-body); cursor: pointer; }
+.staff-auth-gov .admin-locale-toggle button[aria-pressed="true"] { background: var(--civic-primary); color: #fff; }
+.staff-auth-gov .admin-locale-short { display: none; }
 .staff-auth-page .civic-auth { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 70px; max-width: 1280px; min-height: calc(100vh - 39px); margin: auto; padding: 50px 32px; border: 0; border-radius: 0; background: transparent; overflow: visible; }
 .staff-auth-page .civic-auth-aside { display: block; padding: 0; background: none; color: var(--civic-ink); }
 .staff-auth-brand { display: flex; align-items: center; gap: 14px; margin-bottom: 42px; }
@@ -28,8 +33,8 @@
 .staff-auth-page .civic-auth-form [data-flux-control]::placeholder { color: #9db3c6; }
 .staff-auth-page .civic-auth-form [data-flux-control]:focus { border-color: #8dc4ff; outline-color: #8dc4ff; }
 .staff-login-form [data-flux-subheading] { color: var(--civic-muted); }
-.staff-login-form button[type="submit"] { min-height: 48px; background: #1767b9; border-color: #1767b9; color: #fff; font-weight: 700; }
-.staff-login-form button[type="submit"]:hover { background: #217bd2; }
+.staff-login-form button[type="submit"] { min-height: 48px; background: var(--civic-primary); border-color: var(--civic-primary); color: #fff; font-weight: 700; }
+.staff-login-form button[type="submit"]:hover { background: var(--civic-primary-hover); border-color: var(--civic-primary-hover); }
 .staff-login-security { padding-top: 22px; border-top: 1px solid var(--civic-line); color: var(--civic-muted); font-size: 12px; }
 .staff-login-links { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: -3px; font-size: 12px; }
 .staff-login-links a { color: var(--civic-blue); text-decoration: none; }
@@ -38,6 +43,10 @@
 .staff-login-security::before { content: ""; position: absolute; top: 24px; left: 2px; width: 14px; height: 12px; border: 2px solid var(--civic-green); border-radius: 3px; }
 .staff-login-security::after { content: ""; position: absolute; top: 18px; left: 6px; width: 6px; height: 8px; border: 2px solid var(--civic-green); border-bottom: 0; border-radius: 6px 6px 0 0; }
 .staff-auth-page .civic-auth-form input { font-family: var(--civic-font-body); }
+.staff-auth-page .civic-auth-form :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea)[data-flux-control] { min-height: var(--civic-control-height); border-radius: var(--civic-control-radius); font-weight: 400; }
+.staff-auth-page .civic-auth-form [data-flux-button] { min-height: var(--civic-control-height); border-radius: var(--civic-control-radius); font: 700 var(--civic-control-font-size)/1.4 var(--civic-font-body); white-space: normal; }
+.staff-auth-page .civic-auth-form [data-flux-label] { font: 600 13px/1.5 var(--civic-font-body); }
+.staff-auth-page .civic-auth-form button[type="submit"] { background: var(--civic-primary); color: #fff; }
 
 @media (max-width: 850px) {
     .staff-auth-page .civic-auth { grid-template-columns: 1fr; gap: 36px; align-content: center; max-width: 620px; padding-block: 42px; }
@@ -48,6 +57,8 @@
 @media (max-width: 600px) {
     .staff-auth-gov > div { padding-inline: 16px; }
     .staff-auth-gov > div > span:last-child { font-size: 0; }
+    .staff-auth-gov .admin-locale-full { display: none; }
+    .staff-auth-gov .admin-locale-short { display: inline; }
     .staff-auth-page .civic-auth { min-height: calc(100vh - 39px); margin: 0; padding: 32px 16px 48px; }
     .staff-auth-brand img { width: 50px; height: 50px; }
     .staff-auth-brand strong { font-size: 17px; }
@@ -57,3 +68,9 @@
     .staff-auth-features > div { padding-left: 14px; }
     .staff-auth-page .civic-auth-form { padding: 30px 24px; }
 }
+
+.staff-auth-gov .admin-language-inline { gap: 10px; margin-inline: 18px auto; padding: 0; border: 0; border-radius: 0; background: transparent; }
+.staff-auth-gov .admin-language-inline > span { color: #aebfd3; }
+.staff-auth-gov .admin-language-inline button { min-height: 28px; padding: 4px 0; border: 0; border-radius: 0; background: transparent; color: #d5e2ec; font-weight: 500; text-decoration: none; text-underline-offset: 3px; }
+.staff-auth-gov .admin-language-inline button[aria-pressed="true"] { background: transparent; color: #fff; font-weight: 700; text-decoration: underline; }
+.staff-auth-gov .admin-language-inline button:focus-visible { outline: 2px solid #8dc4ff; outline-offset: 3px; }

@@ -60,6 +60,21 @@ it('searches linked residents and filters cases by category dates assignment and
     $this->actingAs($staff)->getJson(route('staff.incidents.index', ['search' => 'UniqueLinkedSurname', 'status' => 'referred', 'incident_type' => 'Property Dispute', 'date_from' => today()->toDateString(), 'date_to' => today()->toDateString(), 'assigned_to' => $staff->id, 'per_page' => 1]))->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.id', $case->id);
     $this->getJson(route('staff.incidents.index', ['search' => $case->incident_number]))->assertJsonPath('total', 1);
 });
+it('returns searchable resident matches and assignable staff to incident managers', function () {
+    $manager = User::factory()->assignedOperations()->create(['role' => 'staff']);
+    $assignable = User::factory()->assignedOperations()->create(['role' => 'staff', 'name' => 'Case Follow-up Staff']);
+    $inactive = User::factory()->assignedOperations()->create(['role' => 'staff', 'is_active' => false, 'name' => 'Inactive Staff']);
+    $residentAccount = User::factory()->resident()->create(['name' => 'Resident Portal Account']);
+    $resident = Resident::factory()->create(['first_name' => 'UniqueSearchable', 'last_name' => 'Resident']);
+
+    $this->actingAs($manager)->getJson(route('staff.case-residents', ['search' => 'UniqueSearchable']))
+        ->assertOk()->assertJsonPath('data.0.id', $resident->id)->assertJsonPath('data.0.full_name', $resident->full_name)->assertJsonPath('data.0.resident_number', $resident->resident_number);
+    $this->getJson(route('staff.incidents.options'))->assertOk()
+        ->assertJsonFragment(['id' => $manager->id, 'name' => $manager->name])
+        ->assertJsonFragment(['id' => $assignable->id, 'name' => 'Case Follow-up Staff'])
+        ->assertJsonMissing(['id' => $inactive->id, 'name' => 'Inactive Staff'])
+        ->assertJsonMissing(['id' => $residentAccount->id, 'name' => 'Resident Portal Account']);
+});
 it('rejects invalid resident links and assignment to non-staff accounts', function () {
     $staff = User::factory()->assignedOperations()->create();
     $residentAccount = User::factory()->resident()->create();

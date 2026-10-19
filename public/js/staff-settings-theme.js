@@ -9,11 +9,14 @@ if (typeof document !== 'undefined') {
     const syncThemeButton = () => {
         const button = document.getElementById('staff-settings-theme-toggle');
         if (!button) return;
+        let label = 'Dark Mode';
         try {
-            button.textContent = localStorage.getItem('smartbrgy_theme') === 'dark' ? 'Light Mode' : 'Dark Mode';
+            label = localStorage.getItem('smartbrgy_theme') === 'dark' ? 'Light Mode' : 'Dark Mode';
         } catch (_) {
-            button.textContent = 'Dark Mode';
+            label = 'Dark Mode';
         }
+        button.setAttribute('aria-label', label);
+        button.title = label;
     };
 
     document.addEventListener('DOMContentLoaded', syncThemeButton);

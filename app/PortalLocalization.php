@@ -10,6 +10,8 @@ class PortalLocalization
 
     public const COOKIE = 'portal_locale';
 
+    public const ADMIN_COOKIE = 'admin_locale';
+
     /**
      * Only static interface copy is sent to the browser. Resident data stays out of the catalog.
      *

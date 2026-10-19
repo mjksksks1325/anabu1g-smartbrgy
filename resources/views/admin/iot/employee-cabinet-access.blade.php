@@ -2,7 +2,7 @@
 @section('title', 'Employee Cabinet Access')
 @section('content')
 <div class="eyebrow">Administration / Cabinet Authorization</div>
-<div class="page-heading"><div><h1>Employee Cabinet Access</h1><p>Manage cabinet permission separately from website roles. Both RFID and face enrollment are required for effective access.</p></div></div>
+<div class="page-heading"><div><h1>Employee Cabinet Access</h1><p>Manage cabinet permission separately from website roles. The main door is automatic after activation and enrollment; assign which drawers each employee may open.</p></div></div>
 <div class="notice">Enrollment requests are recorded as pending until Raspberry Pi integration is available. They do not enroll a credential or open a cabinet.</div>
 @unless($hasCompletedEnrollment)<div class="notice">No employees have completed cabinet enrollment yet.</div>@endunless
 <form class="filter-panel compact" method="GET" action="{{ route('admin.cabinet-access.index') }}"><label>Find employee<input type="search" name="search" value="{{ $search }}" placeholder="Name or email"></label><button class="button" type="submit">Search</button></form>
@@ -12,11 +12,21 @@
     <details class="employee-card"><summary class="employee-intro"><div><h3>{{ $employee->name }}</h3><p>Employee #{{ $employee->id }} · {{ $employee->email }} · {{ ucfirst($employee->role) }} · Website {{ $employee->is_active ? 'active' : 'inactive' }}</p></div><span class="pill {{ $access?->isEffective() ? 'success' : 'neutral' }}">{{ $access?->isEffective() ? 'Effective access' : 'No effective access' }}</span><span class="employee-expand-hint" aria-hidden="true">Details</span></summary>
     <div class="employee-card-body">
     <div class="detail-grid"><div><dt>Cabinet permission</dt><dd>{{ $access?->is_active ? 'Enabled' : 'Disabled' }}</dd></div><div><dt>RFID enrollment</dt><dd>{{ str_replace('_', ' ', ucfirst($access?->rfid_enrollment_status ?? 'not_started')) }} · {{ $access?->rfid_enrolled_at?->format('M j, Y g:i A') ?? 'No completion date' }}</dd></div><div><dt>Face enrollment</dt><dd>{{ str_replace('_', ' ', ucfirst($access?->face_enrollment_status ?? 'not_started')) }} · {{ $access?->face_enrolled_at?->format('M j, Y g:i A') ?? 'No completion date' }}</dd></div><div><dt>Authorization version</dt><dd>{{ $access?->authorization_version ?? '—' }} · Updated {{ $access?->updated_at?->format('M j, Y g:i A') ?? 'Never' }}</dd></div></div>
+    <div class="drawer-access-current"><strong>Current drawer access</strong><span>{{ match ($access?->drawer_access ?? 'none') { 'drawer_1' => 'Drawer 1', 'drawer_2' => 'Drawer 2', 'all' => 'All drawers', default => 'No drawers assigned' } }}</span><small>Main door access is automatic after cabinet access is enabled and required enrollments are complete.</small></div>
+    <form class="drawer-access-form" method="POST" action="{{ route('admin.cabinet-access.drawer-access.update', $employee) }}">
+        @csrf @method('PATCH')
+          <div><label for="drawer-access-{{ $employee->id }}">Assign drawer access</label><select id="drawer-access-{{ $employee->id }}" name="drawer_access" aria-describedby="drawer-access-hint-{{ $employee->id }}"><option value="none" @selected(($access?->drawer_access ?? 'none') === 'none')>No drawers assigned</option><option value="drawer_1" @selected(($access?->drawer_access ?? 'none') === 'drawer_1')>Drawer 1</option><option value="drawer_2" @selected(($access?->drawer_access ?? 'none') === 'drawer_2')>Drawer 2</option><option value="all" @selected(($access?->drawer_access ?? 'none') === 'all')>All drawers (Drawer 1 and Drawer 2)</option></select></div>
+        <button class="button quiet" type="submit">Save drawer access</button>
+          <small id="drawer-access-hint-{{ $employee->id }}">No drawers assigned means the employee may use only the main door after cabinet access and enrollment are complete.</small>
+          @error('drawer_access')<small class="field-error">{{ $message }}</small>@enderror
+    </form>
     <div class="employee-mapping-status"><strong>RPi Employee ID</strong><span>{{ $access?->rpi_employee_id ?? 'Not linked' }}</span></div>
     <form class="employee-mapping-form" method="POST" action="{{ route('admin.cabinet-access.rpi-employee-id.update', $employee) }}">
         @csrf @method('PATCH')
-        <div><label for="rpi-employee-id-{{ $employee->id }}">Link RPi Employee ID</label><input id="rpi-employee-id-{{ $employee->id }}" name="rpi_employee_id" type="text" value="{{ $access?->rpi_employee_id }}" maxlength="32" placeholder="EMP001" autocomplete="off" aria-describedby="rpi-employee-hint-{{ $employee->id }}"><small id="rpi-employee-hint-{{ $employee->id }}">Use the stable FaceLock employee ID, not the RFID card UID. Clear and save to unlink.</small></div>
+          <div><label for="rpi-employee-id-{{ $employee->id }}">Link RPi Employee ID</label><input id="rpi-employee-id-{{ $employee->id }}" name="rpi_employee_id" type="text" value="{{ $access?->rpi_employee_id }}" maxlength="32" placeholder="EMP001" autocomplete="off" aria-describedby="rpi-employee-hint-{{ $employee->id }}"></div>
         <button class="button quiet" type="submit">Save RPi ID</button>
+          <small id="rpi-employee-hint-{{ $employee->id }}">Use the stable FaceLock employee ID, not the RFID card UID. Clear and save to unlink.</small>
+          @error('rpi_employee_id')<small class="field-error">{{ $message }}</small>@enderror
     </form>
     <div class="employee-actions">
     @if($access?->is_active)

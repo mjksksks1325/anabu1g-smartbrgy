@@ -54,6 +54,46 @@ class EmployeeCabinetAccessController extends Controller
         return back()->with('status', $validated['is_active'] ? 'Cabinet access enabled. Enrollment is still required.' : 'Cabinet access deactivated. Historical records are retained.');
     }
 
+    public function updateDrawerAccess(Request $request, User $user): RedirectResponse
+    {
+        $validated = $request->validate([
+            'drawer_access' => ['required', Rule::in([
+                EmployeeCabinetAccess::DRAWER_1,
+                EmployeeCabinetAccess::DRAWER_2,
+                EmployeeCabinetAccess::DRAWERS_ALL,
+                EmployeeCabinetAccess::DRAWERS_NONE,
+            ])],
+        ]);
+        $this->ensureEmployee($user);
+
+        DB::transaction(function () use ($request, $user, $validated): void {
+            $access = EmployeeCabinetAccess::query()->firstOrCreate(['user_id' => $user->id]);
+            $before = $access->drawer_access ?? EmployeeCabinetAccess::DRAWERS_NONE;
+            if ($before === $validated['drawer_access']) {
+                return;
+            }
+
+            $access->drawer_access = $validated['drawer_access'];
+            $access->authorization_version++;
+            $access->save();
+
+            DB::table('administrative_audits')->insert([
+                'user_id' => $request->user()->id,
+                'actor' => $request->user()->name,
+                'action' => 'admin.cabinet-access.drawer-assignment-changed',
+                'type' => 'security',
+                'record' => (string) $user->id,
+                'target_user_id' => $user->id,
+                'before_assignments' => json_encode(['drawer_access' => $before], JSON_THROW_ON_ERROR),
+                'after_assignments' => json_encode(['drawer_access' => $validated['drawer_access']], JSON_THROW_ON_ERROR),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        });
+
+        return back()->with('status', 'Drawer access assignment saved. The main door remains automatic after enrollment.');
+    }
+
     public function updateRpiEmployeeId(Request $request, User $user): RedirectResponse
     {
         $this->ensureEmployee($user);

@@ -10,11 +10,24 @@ function setCaseResident(prefix, id = '', name = '') {
   select.innerHTML = `<option value="">${prefix === 'restriction-person' ? 'Select resident' : 'External person / no resident link'}</option>` + (id ? `<option value="${Number(id)}" selected>${escapeText(name || `Selected resident #${Number(id)}`)}</option>` : '');
   const search = document.getElementById(`${prefix}-search`);
   if (search) search.value = '';
+  const results = document.getElementById(`${prefix}-results`);
+  if (results) {
+    results.replaceChildren();
+    results.hidden = true;
+  }
+  const selection = document.getElementById(`${prefix}-selection`);
+  if (selection) selection.textContent = id ? `Linked: ${name || `Resident #${Number(id)}`}` : 'Search, then choose a matching resident.';
   caseResidentVersions.set(prefix, (caseResidentVersions.get(prefix) || 0) + 1);
 }
 
 function searchCaseResidents(prefix) {
   clearTimeout(caseResidentTimers.get(prefix));
+  if (prefix === 'inc-complainant' || prefix === 'inc-respondent') {
+    const select = document.getElementById(`${prefix}-resident`);
+    const selection = document.getElementById(`${prefix}-selection`);
+    if (select) select.value = '';
+    if (selection) selection.textContent = 'Choose a matching resident below, or leave unlinked.';
+  }
   const version = (caseResidentVersions.get(prefix) || 0) + 1;
   caseResidentVersions.set(prefix, version);
   caseResidentTimers.set(prefix, setTimeout(() => loadCaseResidents(prefix, version), 250));
@@ -23,21 +36,79 @@ function searchCaseResidents(prefix) {
 async function loadCaseResidents(prefix, version = caseResidentVersions.get(prefix)) {
   const select = document.getElementById(`${prefix}-resident`);
   const term = document.getElementById(`${prefix}-search`)?.value.trim();
-  if (!select || !term) return;
+  const results = document.getElementById(`${prefix}-results`);
+  const selection = document.getElementById(`${prefix}-selection`);
+  if (!select || !term) {
+    if (results) {
+      results.replaceChildren();
+      results.hidden = true;
+    }
+    return;
+  }
+  if (results) {
+    results.replaceChildren();
+    const loading = document.createElement('div');
+    loading.className = 'incident-resident-result-message';
+    loading.textContent = 'Searching residents…';
+    results.append(loading);
+    results.hidden = false;
+  }
+  if (selection) selection.textContent = 'Choose a matching resident below, or leave unlinked.';
   try {
     const result = await householdApi(`/staff/case-residents?${new URLSearchParams({ search: term, per_page: 15 })}`);
     if (version !== caseResidentVersions.get(prefix)) return;
     const selected = select.value;
     const previous = selected ? select.options[select.selectedIndex]?.textContent : '';
     const rows = result.data || [];
-    select.innerHTML = `<option value="">${prefix === 'restriction-person' ? 'Select resident' : 'External person / no resident link'}</option>` + rows.map(person => `<option value="${Number(person.id)}" ${String(person.id) === selected ? 'selected' : ''}>${escapeText(person.full_name)} ? ${escapeText(person.resident_number)} ? ${escapeText(person.date_of_birth || '')}</option>`).join('') + (selected && !rows.some(person => String(person.id) === selected) ? `<option value="${Number(selected)}" selected>${escapeText(previous)}</option>` : '');
-  } catch (error) { if (version === caseResidentVersions.get(prefix)) showToast(error.message, 'red'); }
+    select.innerHTML = `<option value="">${prefix === 'restriction-person' ? 'Select resident' : 'External person / no resident link'}</option>` + rows.map(person => `<option value="${Number(person.id)}" ${String(person.id) === selected ? 'selected' : ''}>${escapeText(person.full_name)} — ${escapeText(person.resident_number)}${person.date_of_birth ? ` — ${escapeText(person.date_of_birth)}` : ''}</option>`).join('') + (selected && !rows.some(person => String(person.id) === selected) ? `<option value="${Number(selected)}" selected>${escapeText(previous)}</option>` : '');
+    if (results) {
+      results.replaceChildren();
+      if (rows.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'incident-resident-result-message';
+        empty.textContent = 'No matching residents found.';
+        results.append(empty);
+      } else {
+        rows.forEach(person => {
+          const option = document.createElement('button');
+          option.type = 'button';
+          option.className = 'incident-resident-result';
+          option.setAttribute('role', 'option');
+          option.setAttribute('aria-selected', String(String(person.id) === selected));
+          option.textContent = `${person.full_name} — ${person.resident_number}${person.date_of_birth ? ` — ${person.date_of_birth}` : ''}`;
+          option.addEventListener('click', () => {
+            select.value = String(person.id);
+            if (selection) selection.textContent = `Linked: ${person.full_name} — ${person.resident_number}`;
+            results.replaceChildren();
+            results.hidden = true;
+          });
+          results.append(option);
+        });
+      }
+      results.hidden = false;
+    }
+  } catch (error) {
+    if (version !== caseResidentVersions.get(prefix)) return;
+    if (results) {
+      results.replaceChildren();
+      const message = document.createElement('div');
+      message.className = 'incident-resident-result-message incident-resident-result-error';
+      message.textContent = error.message || 'Could not search residents.';
+      results.append(message);
+      results.hidden = false;
+    } else {
+      showToast(error.message, 'red');
+    }
+  }
 }
 
 async function loadCaseStaff() {
-  if (!document.getElementById('inc-assigned-to')) return;
+  const assignedSelect = document.getElementById('inc-assigned-to');
+  if (!assignedSelect) return false;
+  assignedSelect.replaceChildren(new Option('Loading staff…', ''));
   try {
     const result = await householdApi('/staff/incident-options');
+    if (!Array.isArray(result.staff)) throw new Error('Staff options were not returned.');
     for (const id of ['inc-assigned-to', 'incident-assignee-filter']) {
       const select = document.getElementById(id);
       if (!select) continue;
@@ -45,7 +116,12 @@ async function loadCaseStaff() {
       select.innerHTML = `<option value="">${id === 'inc-assigned-to' ? 'Unassigned' : 'All assigned staff'}</option>` + result.staff.map(staff => `<option value="${Number(staff.id)}">${escapeText(staff.name)}</option>`).join('');
       select.value = selected;
     }
-  } catch (error) { showToast(error.message, 'red'); }
+    return true;
+  } catch (error) {
+    assignedSelect.replaceChildren(new Option('Staff list unavailable', ''));
+    showToast(error.message, 'red');
+    return false;
+  }
 }
 
 function prepareIncidentLinks(incident = {}) {

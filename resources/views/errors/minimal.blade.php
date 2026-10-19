@@ -6,8 +6,9 @@
     <title>@yield('title') | Barangay Anabu I-G</title>
     <link rel="icon" type="image/jpeg" href="{{ asset('images/anabu-logo.jpg') }}">
     <link rel="stylesheet" href="{{ asset('css/government.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/figma-tokens.css') }}?v={{ filemtime(public_path('css/figma-tokens.css')) }}">
 </head>
-<body class="civic-page">
+<body class="civic-page civic-error-page">
     @include('partials.civic-header')
     <main class="civic-main" id="main-content" tabindex="-1">
         <div class="civic-surface">

@@ -21,7 +21,7 @@ test('requirements request buttons have clean translated text and document speci
     $buttons = $xpath->query('//li[@class="service-item"]/a');
     expect($buttons->length)->toBeGreaterThan(0);
     foreach ($buttons as $button) {
-        expect(trim($button->textContent))->toBe(__('Request'));
+        expect(trim($button->textContent))->toBe($locale === 'fil' ? 'Mag-request' : 'Request');
         expect($button->hasAttribute('aria-label'))->toBeFalse();
         $labelIds = explode(' ', $button->getAttribute('aria-labelledby'));
         expect($labelIds)->toHaveCount(2);
@@ -30,6 +30,27 @@ test('requirements request buttons have clean translated text and document speci
         }
         expect($button->getAttribute('href'))->toStartWith(route('portal.request.create').'?service=');
     }
+})->with(['en', 'fil']);
+
+test('new resident choices translate their labels without changing stored option values', function (string $locale) {
+    $response = $this->withCookie(PortalLocalization::COOKIE, $locale)->get(route('portal.new-resident.create'))->assertOk();
+    $document = new DOMDocument;
+    @$document->loadHTML('<?xml encoding="UTF-8">'.$response->getContent());
+    $xpath = new DOMXPath($document);
+    $labels = ['Male' => 'Lalaki', 'Female' => 'Babae', 'Single' => 'Walang asawa', 'Married' => 'May asawa', 'Widowed' => 'Balo', 'Separated' => 'Hiwalay'];
+    foreach ($labels as $value => $filipino) {
+        $option = $xpath->query('//select[@name="gender" or @name="civil_status"]/option[@value="'.$value.'"]')->item(0);
+        expect($option)->not->toBeNull();
+        expect(trim($option->textContent))->toBe($locale === 'fil' ? $filipino : $value);
+        expect($option->getAttribute('data-portal-i18n'))->toBe($value);
+    }
+})->with(['en', 'fil']);
+
+test('login guidance uses the current identity checks and links to new resident registration', function (string $locale) {
+    $response = $this->withCookie(PortalLocalization::COOKIE, $locale)->get(route('portal.login'))->assertOk();
+    $response->assertSee(route('portal.new-resident.create'), false)
+        ->assertDontSee('huling 4 na digit ng contact number na nasa record')
+        ->assertDontSee('the last four digits of the contact number in your record');
 })->with(['en', 'fil']);
 
 test('resident locale defaults to English and ignores unsupported cookie values', function (?string $locale) {
@@ -51,6 +72,16 @@ test('locale preference uses a persistent private cookie without changing regist
     expect($cookie->isHttpOnly())->toBeTrue()->and($cookie->getSameSite())->toBe('lax')->and($cookie->getExpiresTime())->toBeGreaterThan(now()->addMonths(11)->timestamp);
     $this->withCookie(PortalLocalization::COOKIE, 'fil')->get(route('portal.login', ['next' => 'request', 'service' => 'CR']))
         ->assertOk()->assertSee('<html lang="fil">', false)->assertSee('Mag-log in')->assertSessionHas('portal_service', 'CR');
+});
+
+test('admin locale preference falls back safely when the referer is malformed', function () {
+    $admin = User::factory()->superAdmin()->create();
+
+    $this->actingAs($admin)
+        ->withHeader('Referer', 'http://[')
+        ->post(route('staff.locale'), ['locale' => 'fil'])
+        ->assertRedirect(route('staff.dashboard'))
+        ->assertCookie(PortalLocalization::ADMIN_COOKIE, 'fil');
 });
 
 test('public resident pages render translated copy and the shared toggle', function (string $locale, string $label) {

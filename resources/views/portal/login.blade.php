@@ -36,8 +36,9 @@
             <ul class="plain-list">
                 <li><span data-portal-i18n="buong pangalan">{{ __('buong pangalan') }}</span></li>
                 <li><span data-portal-i18n="petsa ng kapanganakan">{{ __('petsa ng kapanganakan') }}</span></li>
-                <li><span data-portal-i18n="huling 4 na digit ng contact number na nasa record">{{ __('huling 4 na digit ng contact number na nasa record') }}</span></li>
+                <li><span data-portal-i18n="Email address">{{ __('Email address') }}</span></li>
             </ul>
+            <p><span data-portal-i18n="No resident record yet?">{{ __('No resident record yet?') }}</span> <a href="{{ route('portal.new-resident.create') }}"><span data-portal-i18n="Apply as a new resident">{{ __('Apply as a new resident') }}</span></a></p>
             <p class="auth-links"><a class="btn btn-outline btn-full" href="{{ route('portal.register') }}"><span data-portal-i18n="Create resident account">{{ __('Create resident account') }}</span> <span aria-hidden="true">&#8594;</span></a></p>
         </section>
         <section>

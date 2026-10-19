@@ -213,6 +213,11 @@
                 {{ \Carbon\Carbon::parse($certificate->issued_at)->format('M d, Y') }}
             </div>
 
+            <div class="field">
+                <strong>Valid Until:</strong>
+                {{ $certificate->validUntil()?->format('M d, Y') }}
+            </div>
+
         </div>
 
     </div>

@@ -4,12 +4,14 @@
         <script src="{{ asset('js/staff-settings-theme.js') }}?v={{ filemtime(public_path('js/staff-settings-theme.js')) }}"></script>
         @include('partials.head')
         <link rel="stylesheet" href="{{ asset('css/figma-tokens.css') }}?v={{ filemtime(public_path('css/figma-tokens.css')) }}">
+        <meta name="csrf-token" content="{{ csrf_token() }}">
+        @include('partials.admin-localization-scripts')
         <script src="{{ asset('js/personnel-navigation.js') }}?v={{ filemtime(public_path('js/personnel-navigation.js')) }}" data-navigate-once></script>
         <script defer data-navigate-once src="{{ asset('js/personnel-password-confirmation.js') }}?v={{ filemtime(public_path('js/personnel-password-confirmation.js')) }}"></script>
         <link rel="stylesheet" href="{{ asset('css/password-visibility.css') }}?v={{ filemtime(public_path('css/password-visibility.css')) }}">
         <script defer data-navigate-once src="{{ asset('js/password-visibility.js') }}?v={{ filemtime(public_path('js/password-visibility.js')) }}"></script>
     </head>
-    <body class="civic-settings min-h-screen bg-white dark:bg-zinc-800" data-personnel-layout="settings" data-personnel-super-admin="{{ auth()->user()->isSuperAdmin() ? 'true' : 'false' }}">
+    <body class="civic-settings min-h-screen bg-white dark:bg-zinc-800" data-admin-localization data-personnel-layout="settings" data-personnel-super-admin="{{ auth()->user()->isSuperAdmin() ? 'true' : 'false' }}">
         <script>window.PersonnelNavigation.syncStyles();</script>
         <flux:sidebar sticky collapsible="mobile" class="civic-settings-sidebar border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
             <flux:sidebar.header>

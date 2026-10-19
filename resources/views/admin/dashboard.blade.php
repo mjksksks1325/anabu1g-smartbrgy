@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ app()->getLocale() }}">
 <head>
 <meta charset="UTF-8"/>
 <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="{{ asset('css/government.css') }}?v={{ filemtime(public_path('css/government.css')) }}">
 <link rel="stylesheet" href="{{ asset('css/figma-tokens.css') }}?v={{ filemtime(public_path('css/figma-tokens.css')) }}">
 <link rel="stylesheet" href="{{ asset('css/figma-admin.css') }}?v={{ filemtime(public_path('css/figma-admin.css')) }}">
+@include('partials.admin-localization-scripts')
 <script src="{{ asset('js/personnel-navigation.js') }}?v={{ filemtime(public_path('js/personnel-navigation.js')) }}" data-navigate-once></script>
 <script defer data-navigate-once src="{{ asset('js/admin.js') }}?v={{ filemtime(public_path('js/admin.js')) }}"></script>
 <script defer data-navigate-once src="{{ asset('js/household-profiling.js') }}?v={{ filemtime(public_path('js/household-profiling.js')) }}"></script>
@@ -18,7 +19,7 @@
 <link rel="stylesheet" href="{{ asset('css/password-visibility.css') }}?v={{ filemtime(public_path('css/password-visibility.css')) }}">
 <script defer data-navigate-once src="{{ asset('js/password-visibility.js') }}?v={{ filemtime(public_path('js/password-visibility.js')) }}"></script>
 </head>
-<body class="light-mode" data-personnel-layout="admin" data-personnel-super-admin="{{ auth()->user()->isSuperAdmin() ? 'true' : 'false' }}">
+<body class="light-mode" data-personnel-layout="admin" data-admin-localization data-personnel-super-admin="{{ auth()->user()->isSuperAdmin() ? 'true' : 'false' }}">
 <script>window.PersonnelNavigation.syncStyles();</script>
 <script>try { if (localStorage.getItem('smartbrgy_theme') === 'dark') document.body.classList.remove('light-mode'); } catch (_) {}</script>
 <div id="loading-bar"></div>
@@ -39,9 +40,12 @@
     <div class="topbar-sep"></div>
     <div class="topbar-status"><span>Staff workspace</span><strong id="topbar-screen-name">Dashboard</strong></div>
     <div class="topbar-right">
-      <div class="dark-mode-toggle" id="theme-toggle" onclick="toggleTheme()">
-        <span id="theme-label">Dark Mode</span>
-      </div>
+      @include('partials.admin-language-toggle')
+      <button class="dark-mode-toggle staff-theme-icon" id="theme-toggle" type="button" onclick="toggleTheme()" aria-label="Dark Mode">
+        <svg class="staff-theme-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+        <svg class="staff-theme-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <span id="theme-label" class="sr-only">Dark Mode</span>
+      </button>
       @if(auth()->user()->isSuperAdmin() || auth()->user()->hasPermission('rfid.view'))<a wire:navigate class="topbar-chip" href="{{ auth()->user()->isSuperAdmin() ? route('admin.smart-cabinet.index') : route('staff.rfid-files.index') }}">IoT status</a>@endif
       <button type="button" class="topbar-chip notif-badge-wrap" onclick="toggleNotifPanel()" id="notif-chip" aria-label="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></svg><span class="notif-count" id="notif-count">0</span></button>
       <div class="topbar-chip" id="clock-display" hidden>--:--:--</div>
@@ -128,10 +132,10 @@
 
 <a wire:navigate class="nav-item" href="{{ route('profile.edit') }}"><x-staff-icon name="people" />My profile</a>
         <a wire:navigate class="nav-item" href="{{ route('security.edit') }}"><x-staff-icon name="shield" />Account security</a>
-        <div class="nav-item" onclick="window.open('{{ route('home') }}','_blank')" style="margin-top:8px;border-top:1px solid var(--border-color);padding-top:8px;">
+        <a class="nav-item staff-settings-portal" href="{{ route('home') }}" target="_blank" rel="noopener">
           <x-staff-icon name="globe" />
-          Portal ng Residente
-        </div>
+          {{ __('Resident Portal') }}
+        </a>
       </div>
       </div>
       <div class="sidebar-footer">
@@ -239,7 +243,7 @@
           <div><div class="card-title">Senior Citizens Register (60+)</div><div class="card-sub">Auto-updated when a resident reaches age 60 based on date of birth</div></div>
           <span class="badge badge-senior"> Auto-Updated</span>
         </div>
-        <div id="senior-citizens-list"></div>
+        <div id="senior-citizens-list" class="table-scroll" tabindex="0" role="region" aria-label="Senior citizens register"></div>
         <div style="margin-top:10px;padding:10px;background:var(--senior-bg);border:1px solid var(--senior-border);border-radius:var(--radius-sm);font-size:11.5px;color:var(--senior-color);">
           ℹ <strong>Automated Process:</strong> The system checks each resident's date of birth. Upon reaching age 60, they are automatically added to this register and receive a Senior Citizen badge on their profile.
         </div>
@@ -340,7 +344,7 @@
       </div>
 
       <!-- Summary Stats -->
-      <div class="stats-grid stats-grid-4" style="margin-bottom:16px;">
+      <div class="stats-grid stats-grid-4" style="margin-bottom:16px;" role="region" aria-label="Document request summary" tabindex="0">
         <div class="stat-card green"><div class="stat-label">Released Requests</div><div class="stat-value" id="cert-today">0</div><div class="stat-sub">Released / Completed</div><div class="stat-icon"><x-staff-icon name="check" /></div></div>
         <div class="stat-card amber"><div class="stat-label">Pending / Processing</div><div class="stat-value" id="cert-pending">0</div><div class="stat-sub">In progress</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div></div>
         <div class="stat-card blue"><div class="stat-label">Ready to Print</div><div class="stat-value" id="cert-ready">0</div><div class="stat-sub">Awaiting release</div><div class="stat-icon"><x-staff-icon name="document" /></div></div>
@@ -638,8 +642,7 @@
     </div>
 
     <div class="form-group">
-      <label for="print-expiry">EXPIRATION DATE (optional; approved barangay validity only)</label>
-      <input type="date" id="print-expiry" class="form-input">
+      <p class="form-note">{{ __('Certificate and QR verification are valid for three months from the issue date.') }}</p>
     </div>
     <div class="form-group">
       <label>PAYMENT</label>
@@ -955,9 +958,8 @@
       <div class="form-group"><div class="form-label">Full Name ng Resident</div><input class="form-input" id="manual-resident-name" maxlength="255" required placeholder="Type the resident's full name..."/></div>
       <div class="form-group"><div class="form-label">Address ng Resident</div><input class="form-input" id="manual-resident-address" maxlength="1000" row="2" required placeholder="Type the resident's address..."/></div>
       <div class="form-group"><div class="form-label">Purpose / Reason</div><input class="form-input" id="manual-certificate-purpose" maxlength="500" placeholder="Employment, Loan, Scholarship..."/></div>
-      <div class="form-group"><label class="form-label" for="manual-certificate-expiry">Expiration date (optional; approved barangay validity only)</label><input class="form-input" type="date" id="manual-certificate-expiry"></div>
       <div class="form-group"><div class="form-label">Payment</div><input class="form-input" id="manual-certificate-fee" value="{{ \App\CertificateType::BarangayClearance->feeLabel() }}" readonly/></div>
-      <div style="background:var(--green-dim);border:1px solid var(--border-green);border-radius:var(--radius-sm);padding:10px;font-size:11.5px;color:var(--text-secondary);margin-bottom:14px;"> The official fee is set by the server. A unique QR verification code is generated automatically.</div>
+      <div style="background:var(--green-dim);border:1px solid var(--border-green);border-radius:var(--radius-sm);padding:10px;font-size:11.5px;color:var(--text-secondary);margin-bottom:14px;">{{ __('The official fee is set by the server. Certificate and QR verification are valid for three months from the issue date.') }}</div>
       <div class="modal-footer">
         <button type="button" class="btn" onclick="closeModal('modal-cert-issue')">Cancel</button>
         <button type="submit" class="btn btn-green" data-action-permission="documents.issue" id="manual-certificate-submit"> Issue & Print</button>
@@ -981,18 +983,18 @@
     <div class="form-group"><div class="form-label">Location *</div><input class="form-input" id="inc-location" placeholder="Purok, Street..."/></div>
     <div class="form-group"><div class="form-label">Complainant / Reporter</div><input class="form-input" id="inc-reported" placeholder="Full name of complainant or Anonymous"/></div>
     <div class="form-group"><div class="form-label">Ine-reklamo</div><input class="form-input" id="inc-complainee" placeholder="Buong pangalan ng ine-reklamo"/></div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label" for="inc-complainant-search">Link complainant resident (optional)</label><input class="form-input" id="inc-complainant-search" placeholder="Search name / resident number" oninput="searchCaseResidents('inc-complainant')"/><select class="form-input" id="inc-complainant-resident"><option value="">External person / no resident link</option></select></div>
-      <div class="form-group"><label class="form-label" for="inc-respondent-search">Link respondent resident (optional)</label><input class="form-input" id="inc-respondent-search" placeholder="Search name / resident number" oninput="searchCaseResidents('inc-respondent')"/><select class="form-input" id="inc-respondent-resident"><option value="">External person / no resident link</option></select></div>
+      <div class="form-row incident-resident-link-row">
+      <div class="form-group incident-resident-link"><label class="form-label" for="inc-complainant-search">Link complainant resident (optional)</label><input class="form-input" id="inc-complainant-search" autocomplete="off" placeholder="Search name / resident number" aria-controls="inc-complainant-results" aria-autocomplete="list" oninput="searchCaseResidents('inc-complainant')"/><div class="incident-resident-results" id="inc-complainant-results" role="listbox" aria-label="Matching complainant residents" hidden></div><select class="form-input" id="inc-complainant-resident" aria-label="Linked complainant resident"><option value="">External person / no resident link</option></select><small class="incident-resident-selection" id="inc-complainant-selection" aria-live="polite">Search, then choose a matching resident.</small></div>
+      <div class="form-group incident-resident-link"><label class="form-label" for="inc-respondent-search">Link respondent resident (optional)</label><input class="form-input" id="inc-respondent-search" autocomplete="off" placeholder="Search name / resident number" aria-controls="inc-respondent-results" aria-autocomplete="list" oninput="searchCaseResidents('inc-respondent')"/><div class="incident-resident-results" id="inc-respondent-results" role="listbox" aria-label="Matching respondent residents" hidden></div><select class="form-input" id="inc-respondent-resident" aria-label="Linked respondent resident"><option value="">External person / no resident link</option></select><small class="incident-resident-selection" id="inc-respondent-selection" aria-live="polite">Search, then choose a matching resident.</small></div>
     </div>
-    <div class="form-group"><label class="form-label" for="inc-assigned-to">Assigned staff</label><select class="form-input" id="inc-assigned-to"><option value="">Unassigned</option></select></div>
+    <div class="form-group"><label class="form-label" for="inc-assigned-to">Assigned staff</label><select class="form-input" id="inc-assigned-to"><option value="">Loading staff…</option></select><small class="incident-resident-selection">Staff responsible for follow-up and case updates.</small></div>
     <div class="form-group"><label class="form-label" for="inc-remarks">Internal remarks</label><textarea class="form-input" id="inc-remarks" rows="2"></textarea></div>
     <div class="form-group"><div class="form-label">Severity</div><select class="form-input" id="inc-severity"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></div>
     <div class="form-group" id="inc-status-group" style="display:none;"><div class="form-label">Status *</div><select class="form-input" id="inc-status" onchange="toggleIncidentResolution()"><option value="open">Open</option><option value="under_review">Under Review</option><option value="referred">Referred</option><option value="resolved">Resolved</option><option value="closed">Closed</option><option value="pending">Pending (legacy)</option><option value="under_investigation">Under Investigation (legacy)</option><option value="dismissed">Dismissed (legacy)</option></select></div>
     <div class="form-group" id="inc-resolution-group" style="display:none;"><div class="form-label">Resolution Notes *</div><textarea class="form-input" id="inc-resolution-notes" rows="3" placeholder="Ilagay ang resolution o kasunduan..."></textarea></div>
     <div class="form-group"><div class="form-label">Incident Details *</div><textarea class="form-input" id="inc-details" rows="4" placeholder="Describe what happened..."></textarea></div>
     <div class="form-group">
-      <div class="form-label">Attachments <span style="color:var(--text-muted);font-weight:400;">(optional — photos/PDF)</span></div>
+      <div class="form-label">Attachments <span style="color:var(--text-muted);font-weight:400;">(optional — JPG, PNG, WebP; up to 5 MB each)</span></div>
       <input class="form-input" type="file" id="inc-attachments" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" multiple style="padding:6px;cursor:pointer;"/>
       <div id="inc-attachments-preview" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
     </div>
