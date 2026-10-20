@@ -40,7 +40,7 @@
           <h4><span data-portal-i18n="Your Responsibilities">{{ __('Your Responsibilities') }}</span></h4>
           <ol><li><span data-portal-i18n="Provide true and complete information.">{{ __('Provide true and complete information.') }}</span></li><li><span data-portal-i18n="Do not use the portal for false, misleading, or unlawful requests.">{{ __('Do not use the portal for false, misleading, or unlawful requests.') }}</span></li><li><span data-portal-i18n="Understand that online submission is subject to staff review and does not guarantee immediate approval.">{{ __('Understand that online submission is subject to staff review and does not guarantee immediate approval.') }}</span></li><li><span data-portal-i18n="Bring a valid ID and required documents when claiming the requested document.">{{ __('Bring a valid ID and required documents when claiming the requested document.') }}</span></li></ol>
           <h4><span data-portal-i18n="Fees and Validity">{{ __('Fees and Validity') }}</span></h4>
-          <p><span data-portal-i18n="Applicable document fees are paid at the Barangay Hall. Online requests remain valid for 30 days from submission. After that period, a new request may be required.">{{ __('Applicable document fees are paid at the Barangay Hall. Online requests remain valid for 30 days from submission. After that period, a new request may be required.') }}</span></p>
+          <p><span data-portal-i18n="Applicable document fees are paid at the Barangay Hall. Online requests remain valid for 30 days from submission. Issued certificates are valid for three months from issue; Barangay IDs are valid for one year. QR verification follows the document's validity period.">{{ __('Applicable document fees are paid at the Barangay Hall. Online requests remain valid for 30 days from submission. Issued certificates are valid for three months from issue; Barangay IDs are valid for one year. QR verification follows the document\'s validity period.') }}</span></p>
           <h4><span data-portal-i18n="Contact">{{ __('Contact') }}</span></h4>
           <p><span data-portal-i18n="For questions, visit Barangay Hall, Barangay Anabu I-G, Imus City, Cavite, Monday to Friday, 8:00 AM to 5:00 PM.">{{ __('For questions, visit Barangay Hall, Barangay Anabu I-G, Imus City, Cavite, Monday to Friday, 8:00 AM to 5:00 PM.') }}</span></p>
           <p class="terms-meta"><span data-portal-i18n="Last updated: May 2025 | Version 1.0 | Barangay Anabu I-G">{{ __('Last updated: May 2025 | Version 1.0 | Barangay Anabu I-G') }}</span></p>
@@ -144,15 +144,15 @@
       </div>
       <div class="card-body">
         <ul class="plain-list" style="margin-bottom:18px;">
-          <li><span data-portal-i18n="JPG, PNG, o WebP lang, hanggang 5 MB.">{{ __('JPG, PNG, o WebP lang, hanggang 5 MB.') }}</span></li>
+          <li><span data-portal-i18n="Supported image files only, up to 5 MB. Documents are not accepted.">{{ __('Supported image files only, up to 5 MB. Documents are not accepted.') }}</span></li>
           <li><span data-portal-i18n="Kunan nang buo ang ID. Dapat malinaw ang pangalan at litrato, walang silaw o blur.">{{ __('Kunan nang buo ang ID. Dapat malinaw ang pangalan at litrato, walang silaw o blur.') }}</span></li>
           <li><span data-portal-i18n="Dalhin pa rin ang original na valid ID pagkuha ng dokumento sa Barangay Hall.">{{ __('Dalhin pa rin ang original na valid ID pagkuha ng dokumento sa Barangay Hall.') }}</span></li>
         </ul>
         <label class="sr-only" for="f-attachment"><span data-portal-i18n="Litrato ng valid ID">{{ __('Litrato ng valid ID') }}</span></label>
-        <input type="file" id="f-attachment" accept="image/jpeg,image/png,image/webp" class="sr-only" tabindex="-1" onchange="previewAttachment(this)">
+        <input type="file" id="f-attachment" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.avif,.heic,.heif,image/jpeg,image/png,image/gif,image/bmp,image/webp,image/avif,image/heic,image/heif" class="sr-only" tabindex="-1" onchange="previewAttachment(this)">
         <button type="button" id="att-dropzone" class="upload-box" aria-describedby="attachment-help" onclick="document.getElementById('f-attachment').click()" ondragover="event.preventDefault();this.classList.add('is-dragover')" ondragleave="this.classList.remove('is-dragover')" ondrop="handleAttachmentDrop(event)">
           <strong><span data-portal-i18n="Pumili ng litrato ng ID">{{ __('Pumili ng litrato ng ID') }}</span></strong>
-          <span id="attachment-help"><span data-portal-i18n="O kumuha gamit ang camera ng phone. JPG, PNG, o WebP, hanggang 5 MB.">{{ __('O kumuha gamit ang camera ng phone. JPG, PNG, o WebP, hanggang 5 MB.') }}</span></span>
+          <span id="attachment-help"><span data-portal-i18n="You can also take a photo with your phone camera. Supported image files only, up to 5 MB.">{{ __('You can also take a photo with your phone camera. Supported image files only, up to 5 MB.') }}</span></span>
         </button>
         <div id="att-preview" class="attachment-preview" style="display:none;">
           <div class="attachment-preview-inner">

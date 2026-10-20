@@ -260,6 +260,20 @@ test('replacing an attachment with an invalid image clears stale previews', () =
   assert.equal(input.value, '');
 });
 
+test('resident attachment preview accepts supported image formats and rejects documents', () => {
+  const { context, element } = portal();
+  const input = element('f-attachment');
+  input.files = [{ name: 'evidence.gif', size: 1000, type: 'image/gif' }];
+  context.previewAttachment(input);
+  assert.equal(element('att-preview').style.display, 'block');
+
+  input.files = [{ name: 'report.pdf', size: 1000, type: 'application/pdf' }];
+  context.previewAttachment(input);
+  assert.equal(input.value, '');
+  assert.equal(element('att-preview').style.display, 'none');
+  assert.match(context.messages.at(-1).message, /image file/i);
+});
+
 test('rapid repeated taps submit only once and escape the confirmation', async () => {
   const { context, element } = portal();
   element('f-name').value = '<img src=x onerror=alert(1)>';

@@ -7,6 +7,7 @@ use App\Models\IssuedCertificate;
 use App\Models\Resident;
 use App\Models\User;
 use App\Models\VoterRegistration;
+use App\PortalLocalization;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -85,6 +86,44 @@ test('official certificates set a three month expiry when optional resident data
     $this->get(route('staff.issued-certificates.print', $certificate))->assertOk()->assertSee('Resident photo not provided')->assertDontSee('Filipino');
     $this->get(route('staff.issued-certificates.photo', $certificate))->assertNotFound();
 });
+
+test('barangay IDs remain valid for one year and their QR verification expires after that date', function () {
+    Storage::fake('public');
+    $this->travelTo('2026-10-03 09:00:00');
+    $staff = User::factory()->assignedOperations()->create();
+
+    $this->actingAs($staff)->postJson(route('staff.issued-certificates.store'), [
+        'certificate_type' => CertificateType::BarangayId->value,
+        'resident_name' => 'Test Resident',
+        'address' => 'Anabu I-G',
+    ])->assertOk();
+
+    $certificate = IssuedCertificate::query()->sole();
+    expect($certificate->expires_on?->toDateString())->toBe('2027-10-03')
+        ->and($certificate->validUntil()?->toDateString())->toBe('2027-10-03');
+    $this->get(route('staff.issued-certificates.print', $certificate))
+        ->assertOk()->assertSeeText('Oct 03, 2027');
+
+    $this->travelTo('2027-10-03 23:59:00');
+    $this->getJson(route('certificate.verify', $certificate->verification_code))->assertOk();
+
+    $this->travelTo('2027-10-04 00:00:00');
+    $this->getJson(route('certificate.verify', $certificate->verification_code))
+        ->assertStatus(410)->assertJsonPath('status', 'expired');
+});
+
+test('resident request terms distinguish certificate and Barangay ID validity periods in both languages', function (string $locale, string $expected) {
+    $account = User::factory()->resident()->create();
+
+    $this->withCookie(PortalLocalization::COOKIE, $locale)
+        ->actingAs($account, 'resident')
+        ->get(route('portal.request.create'))
+        ->assertOk()
+        ->assertSeeText($expected);
+})->with([
+    'English' => ['en', 'Issued certificates are valid for three months from issue; Barangay IDs are valid for one year.'],
+    'Filipino' => ['fil', 'May bisa nang tatlong buwan mula sa pag-isyu ang mga sertipiko, at isang taon naman ang Barangay ID.'],
+]);
 
 test('official certificate assertions require verified linked records', function (string $condition) {
     Storage::fake('public');

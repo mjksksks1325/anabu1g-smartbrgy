@@ -42,9 +42,9 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="registration-photo"><span data-portal-i18n="Resident photo *">{{ __('Resident photo *') }}</span></label>
-                        <input class="form-input" id="registration-photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" required aria-describedby="registration-photo-help" @error('photo') aria-invalid="true" @enderror>
+                        <input class="form-input" id="registration-photo" name="photo" type="file" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.avif,.heic,.heif,image/jpeg,image/png,image/gif,image/bmp,image/webp,image/avif,image/heic,image/heif" required aria-describedby="registration-photo-help" @error('photo') aria-invalid="true" @enderror>
                         @error('photo')<p class="field-error" data-portal-message>{{ $message }}</p>@enderror
-                        <p class="form-note" id="registration-photo-help"><span data-portal-i18n="Mag-upload ng malinaw na larawan ng inyong mukha. JPG, PNG, o WebP; hanggang 5 MB. Piliin ulit ang larawan kung may kailangang itama sa form.">{{ __('Mag-upload ng malinaw na larawan ng inyong mukha. JPG, PNG, o WebP; hanggang 5 MB. Piliin ulit ang larawan kung may kailangang itama sa form.') }}</span></p>
+                        <p class="form-note" id="registration-photo-help"><span data-portal-i18n="Upload a clear photo of your face. Supported image files only, up to 5 MB. Select the photo again if you need to correct the form.">{{ __('Upload a clear photo of your face. Supported image files only, up to 5 MB. Select the photo again if you need to correct the form.') }}</span></p>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="registration-password"><span data-portal-i18n="Password">{{ __('Password') }}</span></label>
@@ -131,7 +131,7 @@
                 <li><span data-portal-i18n="Buong pangalan tulad ng nasa barangay record">{{ __('Buong pangalan tulad ng nasa barangay record') }}</span></li>
                 <li><span data-portal-i18n="Petsa ng kapanganakan">{{ __('Petsa ng kapanganakan') }}</span></li>
                 <li><span data-portal-i18n="Email address na nabubuksan ninyo">{{ __('Email address na nabubuksan ninyo') }}</span></li>
-                <li><span data-portal-i18n="Malinaw na resident photo (JPG, PNG, o WebP; hanggang 5 MB)">{{ __('Malinaw na resident photo (JPG, PNG, o WebP; hanggang 5 MB)') }}</span></li>
+                <li><span data-portal-i18n="Clear resident photo (supported image files; up to 5 MB)">{{ __('Clear resident photo (supported image files; up to 5 MB)') }}</span></li>
             </ul>
         </section>
         <section>

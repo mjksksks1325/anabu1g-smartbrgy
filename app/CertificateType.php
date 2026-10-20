@@ -31,6 +31,11 @@ enum CertificateType: string
         };
     }
 
+    public function validityPeriodInMonths(): int
+    {
+        return $this === self::BarangayId ? 12 : 3;
+    }
+
     /**
      * The fee as residents read it in the portal.
      */

@@ -47,8 +47,8 @@
                         <legend><span class="new-resident-section-number" aria-hidden="true">4</span><span data-portal-i18n="Resident photo">{{ __('Resident photo') }}</span></legend>
                         <div class="new-resident-upload">
                             <label class="form-label" for="application-photo"><span data-portal-i18n="Resident photo">{{ __('Resident photo') }}</span> *</label>
-                            <input class="form-input" type="file" id="application-photo" name="photo" accept="image/jpeg,image/png,image/webp" required aria-describedby="application-photo-help @error('photo') application-photo-error @enderror" @error('photo') aria-invalid="true" @enderror>
-                            <p class="form-note" id="application-photo-help"><span data-portal-i18n="JPG, PNG or WebP only, up to 5 MB. Select the photo again after a validation error or correction.">{{ __('JPG, PNG or WebP only, up to 5 MB. Select the photo again after a validation error or correction.') }}</span></p>
+                            <input class="form-input" type="file" id="application-photo" name="photo" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.avif,.heic,.heif,image/jpeg,image/png,image/gif,image/bmp,image/webp,image/avif,image/heic,image/heif" required aria-describedby="application-photo-help @error('photo') application-photo-error @enderror" @error('photo') aria-invalid="true" @enderror>
+                            <p class="form-note" id="application-photo-help"><span data-portal-i18n="Supported image files only, up to 5 MB. Documents are not accepted. Select the photo again after a validation error or correction.">{{ __('Supported image files only, up to 5 MB. Documents are not accepted. Select the photo again after a validation error or correction.') }}</span></p>
                             @error('photo')<p class="field-error" id="application-photo-error" data-portal-message>{{ $message }}</p>@enderror
                         </div>
                     </fieldset>

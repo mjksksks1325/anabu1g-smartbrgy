@@ -42,7 +42,7 @@
       <div class="form-group"><div class="form-label">Purpose / Reason *</div><input class="form-input" id="portal-purpose" placeholder="Example: Employment, Loan, Scholarship..."/></div>
       <div class="form-group">
         <div class="form-label">Proof of Residency <span style="color:var(--text-muted);font-weight:400;">(optional — JPG, PNG, WebP; up to 5 MB)</span></div>
-        <input class="form-input" type="file" id="portal-attachment" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" style="padding:6px;cursor:pointer;"/>
+        <input class="form-input" type="file" id="portal-attachment" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.avif,.heic,.heif,image/jpeg,image/png,image/gif,image/bmp,image/webp,image/avif,image/heic,image/heif" style="padding:6px;cursor:pointer;"/>
         <div id="portal-attachment-preview" style="display:none;margin-top:8px;"></div>
       </div>
       <div style="font-size:11px;color:var(--text-muted);margin-bottom:14px;">⚠️ Your information is kept strictly confidential.</div>
@@ -1514,7 +1514,7 @@
     <div class="form-group"><div class="form-label">Incident Details *</div><textarea class="form-input" id="inc-details" rows="4" placeholder="Describe what happened..."></textarea></div>
     <div class="form-group">
       <div class="form-label">Attachments <span style="color:var(--text-muted);font-weight:400;">(optional — JPG, PNG, WebP; up to 5 MB each)</span></div>
-      <input class="form-input" type="file" id="inc-attachments" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" multiple style="padding:6px;cursor:pointer;"/>
+      <input class="form-input" type="file" id="inc-attachments" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.avif,.heic,.heif,image/jpeg,image/png,image/gif,image/bmp,image/webp,image/avif,image/heic,image/heif" multiple style="padding:6px;cursor:pointer;"/>
       <div id="inc-attachments-preview" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
     </div>
     <input type="hidden" id="inc-edit-id" value=""/>

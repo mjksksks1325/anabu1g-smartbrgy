@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\CertificateType;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -35,14 +36,17 @@ class IssuedCertificate extends Model
 
     public function validUntil(): ?CarbonInterface
     {
-        $threeMonthLimit = $this->issued_at?->copy()->addMonthsNoOverflow(3)->startOfDay();
+        $certificateType = CertificateType::tryFromLabel((string) $this->certificate_type);
+        $validityLimit = $this->issued_at?->copy()
+            ->addMonthsNoOverflow($certificateType?->validityPeriodInMonths() ?? 3)
+            ->startOfDay();
 
-        if ($threeMonthLimit === null) {
+        if ($validityLimit === null) {
             return $this->expires_on?->copy();
         }
 
-        if ($this->expires_on === null || $threeMonthLimit->lt($this->expires_on)) {
-            return $threeMonthLimit;
+        if ($this->expires_on === null || $validityLimit->lt($this->expires_on)) {
+            return $validityLimit;
         }
 
         return $this->expires_on->copy();

@@ -38,8 +38,8 @@
         <label class="staff-submission-wide">Factual description (required)<textarea name="details" aria-describedby="incident-description-help" minlength="10" maxlength="5000" required>{{ old('details') }}</textarea></label>
         <p class="staff-submission-wide" id="incident-description-help">Describe what you observed or what was reported to you. Distinguish observations from allegations. Do not state that a person is guilty.</p>
         <label class="staff-submission-wide">Immediate action taken (optional)<textarea name="immediate_action" maxlength="1000" placeholder="Record any immediate action you took, if applicable.">{{ old('immediate_action') }}</textarea></label>
-        <label class="staff-submission-wide">Attachments (optional)<input type="file" name="attachments[]" multiple accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" aria-describedby="incident-attachment-help{{ $errors->has('attachments') || $errors->has('attachments.*') ? ' incident-attachment-error' : '' }}" @if($errors->has('attachments') || $errors->has('attachments.*')) aria-invalid="true" @endif></label>
-        <p class="staff-submission-wide" id="incident-attachment-help">Up to five JPG, PNG or WebP images, 5 MB each.</p>
+        <label class="staff-submission-wide">Attachments (optional)<input type="file" name="attachments[]" multiple accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.avif,.heic,.heif,image/jpeg,image/png,image/gif,image/bmp,image/webp,image/avif,image/heic,image/heif" aria-describedby="incident-attachment-help{{ $errors->has('attachments') || $errors->has('attachments.*') ? ' incident-attachment-error' : '' }}" @if($errors->has('attachments') || $errors->has('attachments.*')) aria-invalid="true" @endif></label>
+        <p class="staff-submission-wide" id="incident-attachment-help">Up to five supported image files, 5 MB each. Documents are not accepted.</p>
         @if($errors->has('attachments') || $errors->has('attachments.*'))
             <div class="notice error staff-submission-wide" id="incident-attachment-error" role="alert">
                 @error('attachments')<p>{{ $message }}</p>@enderror

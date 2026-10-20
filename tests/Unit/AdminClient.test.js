@@ -535,6 +535,7 @@ test('staff presets remain editable and action selection maintains page dependen
 for (const photo of [
   { name: 'report.pdf', type: 'application/pdf', size: 100 },
   { name: 'photo.jpg', type: 'text/plain', size: 100 },
+  { name: 'photo.svg', type: 'image/svg+xml', size: 100 },
   { name: 'photo.png', type: 'image/png', size: 5 * 1024 * 1024 + 1 },
 ]) {
   test(`invalid resident photo ${photo.name} is cleared before any record save`, async () => {
@@ -550,9 +551,9 @@ for (const photo of [
   });
 }
 
-test('resident photo picker allows supported images and no selection', async () => {
+test('resident photo picker allows supported image formats and no selection', async () => {
   const { context } = await client();
-  for (const [name, type] of [['face.JPG', 'image/jpeg'], ['face.png', 'image/png'], ['face.webp', 'image/webp']]) {
+  for (const [name, type] of [['face.JPG', 'image/jpeg'], ['face.png', 'image/png'], ['face.gif', 'image/gif'], ['face.bmp', 'image/bmp'], ['face.webp', 'image/webp'], ['face.avif', 'image/avif'], ['face.heic', 'image/heic'], ['face.heif', 'image/heif']]) {
     assert.equal(context.validateResidentPhoto({ files: [{ name, type, size: 5 * 1024 * 1024 }] }), true);
   }
   assert.equal(context.validateResidentPhoto({ files: [] }), true);

@@ -13,9 +13,13 @@ function clearAttachment() {
 function previewAttachment(input) {
     const file = input.files[0];
     if (!file) return;
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+    const supportedImageExtension = /\.(jpe?g|png|gif|bmp|webp|avif|heic|heif)$/i.test(file.name);
+    const isSupportedImage = file.type
+        ? file.type.startsWith('image/') && file.type !== 'image/svg+xml' && supportedImageExtension
+        : supportedImageExtension;
+    if (!isSupportedImage || file.size > 5 * 1024 * 1024) {
         clearAttachment();
-        toast('Pumili ng JPG, PNG, o WebP na hindi lalampas sa 5 MB.', 'red');
+        toast('Pumili ng image file na hindi lalampas sa 5 MB. Hindi puwede ang PDF at iba pang document file.', 'red');
         return;
     }
     if (attachmentPreviewUrl) URL.revokeObjectURL(attachmentPreviewUrl);

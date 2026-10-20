@@ -26,6 +26,20 @@ test('a resident without a photo can upload it from profile into the admin resid
     $this->assertDatabaseHas('residents', ['id' => $account->resident_id, 'photo_path' => $photoPath]);
 });
 
+test('resident photo uploads preserve supported image bytes and formats', function (string $extension) {
+    Storage::fake('local');
+    $account = User::factory()->resident()->create();
+    $photo = UploadedFile::fake()->image('profile.'.$extension);
+    $originalContent = $photo->getContent();
+
+    $this->actingAs($account, 'resident')->post(route('portal.profile.photo.store'), ['photo' => $photo])
+        ->assertRedirect(route('portal.profile'))->assertSessionHas('status');
+
+    $photoPath = $account->resident->fresh()->photo_path;
+    expect(pathinfo($photoPath, PATHINFO_EXTENSION))->toBe($extension);
+    expect(Storage::disk('local')->get($photoPath))->toBe($originalContent);
+})->with(['gif', 'bmp']);
+
 test('photo upload and preview are scoped to the signed-in resident despite supplied resident identifiers', function () {
     Storage::fake('local');
     $account = User::factory()->resident()->create();

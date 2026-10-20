@@ -642,7 +642,7 @@
     </div>
 
     <div class="form-group">
-      <p class="form-note">{{ __('Certificate and QR verification are valid for three months from the issue date.') }}</p>
+      <p class="form-note">{{ __('Certificates and QR verification are valid for three months from issue. Barangay IDs and their QR verification are valid for one year.') }}</p>
     </div>
     <div class="form-group">
       <label>PAYMENT</label>
@@ -697,7 +697,7 @@
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label" for="res-nationality">Nationality</label><input class="form-input" id="res-nationality" maxlength="100" placeholder="Not provided"></div>
-      <div class="form-group"><label class="form-label" for="res-photo">Resident photo (JPG, PNG, WebP; up to 5 MB)</label><input class="form-input" type="file" id="res-photo" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" onchange="validateResidentPhoto(this)"><img id="res-photo-preview" alt="Current resident photo" style="max-width:90px;max-height:100px;display:none"></div>
+      <div class="form-group"><label class="form-label" for="res-photo">Resident photo (supported image files; up to 5 MB)</label><input class="form-input" type="file" id="res-photo" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.avif,.heic,.heif,image/jpeg,image/png,image/gif,image/bmp,image/webp,image/avif,image/heic,image/heif" onchange="validateResidentPhoto(this)"><img id="res-photo-preview" alt="Current resident photo" style="max-width:90px;max-height:100px;display:none"></div>
       <div class="form-group"><label><input type="checkbox" id="res-verified-indigent"> Indigency verified by barangay staff</label></div>
       <div class="form-group"><div class="form-label">Civil Status</div><select class="form-input" id="res-civil"><option>Single</option><option>Married</option><option>Widowed</option><option>Separated</option></select></div>
       <div class="form-group"><div class="form-label">Purok / Zone *</div><select class="form-input" id="res-purok"><option>Purok 1 - Sampaguita</option><option>Purok 2 - Rosal</option><option>Purok 3 - Camia</option><option>Purok 4 - Ilang-Ilang</option><option>Purok 5 - Mabini</option></select></div>
@@ -959,7 +959,7 @@
       <div class="form-group"><div class="form-label">Address ng Resident</div><input class="form-input" id="manual-resident-address" maxlength="1000" row="2" required placeholder="Type the resident's address..."/></div>
       <div class="form-group"><div class="form-label">Purpose / Reason</div><input class="form-input" id="manual-certificate-purpose" maxlength="500" placeholder="Employment, Loan, Scholarship..."/></div>
       <div class="form-group"><div class="form-label">Payment</div><input class="form-input" id="manual-certificate-fee" value="{{ \App\CertificateType::BarangayClearance->feeLabel() }}" readonly/></div>
-      <div style="background:var(--green-dim);border:1px solid var(--border-green);border-radius:var(--radius-sm);padding:10px;font-size:11.5px;color:var(--text-secondary);margin-bottom:14px;">{{ __('The official fee is set by the server. Certificate and QR verification are valid for three months from the issue date.') }}</div>
+      <div style="background:var(--green-dim);border:1px solid var(--border-green);border-radius:var(--radius-sm);padding:10px;font-size:11.5px;color:var(--text-secondary);margin-bottom:14px;">{{ __('The official fee is set by the server. Certificates and QR verification are valid for three months from issue. Barangay IDs and their QR verification are valid for one year.') }}</div>
       <div class="modal-footer">
         <button type="button" class="btn" onclick="closeModal('modal-cert-issue')">Cancel</button>
         <button type="submit" class="btn btn-green" data-action-permission="documents.issue" id="manual-certificate-submit"> Issue & Print</button>
@@ -994,8 +994,8 @@
     <div class="form-group" id="inc-resolution-group" style="display:none;"><div class="form-label">Resolution Notes *</div><textarea class="form-input" id="inc-resolution-notes" rows="3" placeholder="Ilagay ang resolution o kasunduan..."></textarea></div>
     <div class="form-group"><div class="form-label">Incident Details *</div><textarea class="form-input" id="inc-details" rows="4" placeholder="Describe what happened..."></textarea></div>
     <div class="form-group">
-      <div class="form-label">Attachments <span style="color:var(--text-muted);font-weight:400;">(optional — JPG, PNG, WebP; up to 5 MB each)</span></div>
-      <input class="form-input" type="file" id="inc-attachments" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" multiple style="padding:6px;cursor:pointer;"/>
+      <div class="form-label">Attachments <span style="color:var(--text-muted);font-weight:400;">(optional — supported image files only; up to 5 MB each)</span></div>
+      <input class="form-input" type="file" id="inc-attachments" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.avif,.heic,.heif,image/jpeg,image/png,image/gif,image/bmp,image/webp,image/avif,image/heic,image/heif" multiple style="padding:6px;cursor:pointer;"/>
       <div id="inc-attachments-preview" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
     </div>
     <input type="hidden" id="inc-edit-id" value=""/>

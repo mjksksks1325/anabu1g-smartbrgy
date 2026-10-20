@@ -46,7 +46,7 @@ test('incident upload instructions match the image-only picker', function () {
     $xpath = new DOMXPath($document);
     $input = $xpath->query('//input[@id="inc-attachments"]')->item(0);
     expect($input)->not->toBeNull();
-    expect($input->getAttribute('accept'))->toBe('.jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp');
+    expect($input->getAttribute('accept'))->toContain('.jpg,.jpeg,.png,.gif,.bmp,.webp,.avif,.heic,.heif', 'image/jpeg,image/png,image/gif,image/bmp,image/webp,image/avif,image/heic,image/heif');
     $label = $xpath->query('//input[@id="inc-attachments"]/preceding-sibling::div[1]')->item(0);
-    expect($label->textContent)->toContain('JPG, PNG, WebP', '5 MB')->not->toContain('PDF');
+    expect($label->textContent)->toContain('supported image files only', '5 MB')->not->toContain('PDF');
 });

@@ -499,3 +499,69 @@ input:is([type="date"], [type="time"]) { min-width: 0; max-width: 100%; box-sizi
 .form-input { min-height: var(--civic-control-height); font-weight: 400; }
 body.dark-mode .site-main .btn-outline { background: var(--civic-soft); border-color: var(--civic-line); color: var(--civic-ink); }
 body.dark-mode .site-main .btn-outline:hover { background: var(--civic-card); border-color: var(--civic-blue); }
+
+/* Keep the resident home actions visible without making the mobile hero feel empty. */
+@media (max-width: 700px) {
+    body.has-hero-header .portal-band,
+    body.dark-mode.has-hero-header .portal-band {
+        min-height: max(520px, calc(100svh - 220px));
+    }
+
+    body.has-hero-header .portal-band-inner {
+        justify-content: center;
+        padding: 36px 16px 32px;
+    }
+
+    body.has-hero-header .portal-hero-photo img,
+    body.dark-mode.has-hero-header .portal-hero-photo img {
+        object-position: 62% center;
+    }
+
+    body.has-hero-header .portal-hero-photo::after {
+        background: linear-gradient(180deg, rgba(3, 23, 55, .42) 0%, rgba(3, 23, 55, .62) 38%, rgba(3, 23, 55, .92) 100%);
+    }
+
+    body.has-hero-header .portal-hero-actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    body.has-hero-header .portal-hero-actions .btn {
+        min-height: 46px;
+        padding-inline: 10px;
+        font-size: 13px;
+    }
+
+    .portal-band + .container .digital-services { margin-top: 18px; }
+    .digital-services { margin-bottom: 30px; }
+    .portal-service-card { min-height: 76px; padding: 14px 42px 14px 14px; }
+    .home-section { margin-top: 40px; }
+    .office-section { margin-top: 40px; padding-top: 24px; }
+    .site-footer-inner { gap: 20px; }
+}
+
+@media (max-width: 360px) {
+    body.has-hero-header .portal-hero-actions { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Keep hotline numbers on one line and prevent fee amounts clipping on phones. */
+@media (max-width: 700px) {
+    .hotline-list li {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 8px 12px;
+    }
+
+    .hotline-list li > span { min-width: 0; }
+    .hotline-list a { white-space: nowrap; font-size: 17px; }
+    .doc-rates-table { width: 100%; max-width: 100%; }
+    .doc-rates-table :is(th, td):last-child { width: 104px; padding-inline: 8px; font-size: 13px; }
+    .doc-rates-table tbody th { overflow-wrap: anywhere; }
+}
+
+@media (max-width: 380px) {
+    .hotline-list li { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+    .hotline-list a { justify-self: start; font-size: 18px; }
+    .doc-rates-table :is(th, td):last-child { width: 98px; font-size: 12px; }
+}

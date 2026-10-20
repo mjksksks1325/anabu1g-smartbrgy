@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('restrictions:expire')->hourly()->withoutOverlapping();
+Schedule::command('certificates:purge-expired')->dailyAt('02:00')->withoutOverlapping();

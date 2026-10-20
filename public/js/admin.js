@@ -3806,10 +3806,13 @@ function setResidentPhotoPreview(residentId) {
 function validateResidentPhoto(input) {
   const photo = input?.files?.[0];
   if (!photo) return true;
-  const supportedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-  if ((photo.type && !supportedTypes.includes(photo.type)) || (photo.name && !/\.(jpe?g|png|webp)$/i.test(photo.name))) {
+  const supportedImageExtension = !photo.name || /\.(jpe?g|png|gif|bmp|webp|avif|heic|heif)$/i.test(photo.name);
+  const isSupportedImage = photo.type
+    ? photo.type.startsWith('image/') && photo.type !== 'image/svg+xml' && supportedImageExtension
+    : supportedImageExtension;
+  if (!isSupportedImage) {
     input.value = '';
-    showToast('Resident photo: JPG, PNG, or WebP images only.', 'red');
+    showToast('Resident photo must be an image file. PDF and other document files are not supported.', 'red');
     return false;
   }
   if (photo.size > 5 * 1024 * 1024) {

@@ -174,21 +174,25 @@ test('custom incident types cannot bypass tanod restricted case protection', fun
     $this->assertDatabaseCount('incidents', 0);
 });
 
-test('tanod can submit each supported attachment type', function (string $extension, string $mime) {
+test('tanod can submit raster image attachments without converting them', function (string $extension, string $mime) {
     Storage::fake('local');
-    $attachment = in_array($extension, ['jpg', 'png', 'webp'], true)
+    $attachment = in_array($extension, ['jpg', 'png', 'gif', 'bmp', 'webp'], true)
         ? UploadedFile::fake()->image('incident.'.$extension)
         : UploadedFile::fake()->create('incident.'.$extension, 20, $mime);
+    $originalContent = $attachment->getContent();
 
     $this->actingAs(assignedStaff(['incidents.submit']))->post(route('staff.incidents.store'), submissionPayload(['attachments' => [$attachment]]))
         ->assertRedirect(route('staff.incidents.index', ['submitted' => 1]))->assertSessionHasNoErrors()->assertSessionHas('staff_incident_confirmation');
 
     $stored = Incident::query()->sole()->attachments[0];
     expect($stored['name'])->toBe('incident.'.$extension);
+    expect(Storage::disk('local')->get($stored['path']))->toBe($originalContent);
     Storage::disk('local')->assertExists($stored['path']);
 })->with([
     'JPEG' => ['jpg', 'image/jpeg'],
     'PNG' => ['png', 'image/png'],
+    'GIF' => ['gif', 'image/gif'],
+    'BMP' => ['bmp', 'image/bmp'],
     'WebP' => ['webp', 'image/webp'],
 ]);
 
@@ -199,10 +203,10 @@ test('tanod sees a clear attachment error and keeps report fields after an inval
     $this->actingAs(assignedStaff(['incidents.submit']))->from(route('staff.incidents.index'))
         ->post(route('staff.incidents.store'), submissionPayload(['attachments' => [$invalid], 'severity' => 'high']))
         ->assertRedirect(route('staff.incidents.index'))->assertSessionHasErrors([
-            'attachments.0' => 'Attachment 1 must be a JPG, PNG or WebP image. Other file types are not supported.',
+            'attachments.0' => 'Attachment 1 must be an image file. Documents and other file types are not supported.',
         ]);
 
-    $this->withCookie(config('session.cookie'), session()->getId())->get(route('staff.incidents.index'))->assertOk()->assertSee('Attachment 1 must be a JPG, PNG or WebP image.')
+    $this->withCookie(config('session.cookie'), session()->getId())->get(route('staff.incidents.index'))->assertOk()->assertSee('Attachment 1 must be an image file. Documents and other file types are not supported.')
         ->assertSee('id="incident-attachment-error"', false)->assertSee('aria-invalid="true"', false)
         ->assertSee('Select the attachments again before resubmitting.')
         ->assertSee('value="high" selected', false)->assertSee('An ordinary incident reported by the patrol.');

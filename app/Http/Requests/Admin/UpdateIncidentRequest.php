@@ -44,7 +44,7 @@ class UpdateIncidentRequest extends FormRequest
             'respondent_resident_id' => ['nullable', 'integer', Rule::exists('residents', 'id')->whereNull('deleted_at')],
             'remarks' => ['nullable', 'string', 'max:5000'],
             'attachments' => ['nullable', 'array', 'max:5'],
-            'attachments.*' => ['bail', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'extensions:jpg,jpeg,png,webp', 'max:5120'],
+            'attachments.*' => ['bail', 'file', 'image', 'mimes:jpg,jpeg,png,gif,bmp,webp,avif,heic,heif', 'extensions:jpg,jpeg,png,gif,bmp,webp,avif,heic,heif', 'max:5120'],
         ];
     }
 

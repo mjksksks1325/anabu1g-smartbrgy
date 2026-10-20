@@ -143,6 +143,20 @@ test('resident portal hero photo is full bleed with the copy overlapping it', fu
         ->toContain('.portal-hero { position: relative; z-index: 1;');
 });
 
+test('resident portal mobile hero keeps actions visible and sections compact', function () {
+    expect(file_get_contents(dirname(__DIR__, 2).'/public/css/figma-portal.css'))
+        ->toContain('body.has-hero-header .portal-band-inner {')
+        ->toContain('justify-content: center;')
+        ->toContain('grid-template-columns: repeat(2, minmax(0, 1fr));')
+        ->toContain('.digital-services { margin-bottom: 30px; }')
+        ->toContain('.home-section { margin-top: 40px; }');
+});
+
+test('resident portal mobile hotlines and fee amounts stay aligned and visible', function () {
+    expect(file_get_contents(dirname(__DIR__, 2).'/public/css/figma-portal.css'))
+        ->toContain('.hotline-list li {', 'grid-template-columns: minmax(0, 1fr) auto;', '.hotline-list a { white-space: nowrap; font-size: 17px; }', '.doc-rates-table :is(th, td):last-child { width: 104px; padding-inline: 8px; font-size: 13px; }', 'width: 98px; font-size: 12px;');
+});
+
 test('resident portal office card and map stretch to the same height', function () {
     expect(file_get_contents(dirname(__DIR__, 2).'/public/css/figma-portal.css'))
         ->toContain('.office-section { align-items: stretch; }')

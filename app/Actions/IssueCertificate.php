@@ -119,7 +119,7 @@ class IssueCertificate
                     'purpose' => $attributes['purpose'] ?? null,
                     'amount_paid' => $certificateType->fee(),
                     'issued_at' => $issuedAt,
-                    'expires_on' => $issuedAt->copy()->addMonthsNoOverflow(3)->toDateString(),
+                    'expires_on' => $issuedAt->copy()->addMonthsNoOverflow($certificateType->validityPeriodInMonths())->toDateString(),
                     'photo_path' => $photoStoragePath,
                     'resident_snapshot' => [
                         'full_name' => $resident === null ? $attributes['resident_name'] : $resident->full_name,

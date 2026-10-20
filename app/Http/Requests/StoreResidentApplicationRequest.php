@@ -30,7 +30,7 @@ class StoreResidentApplicationRequest extends FormRequest
             'contact_number' => ['nullable', 'regex:/^(?:\\+63|0)9\\d{9}$/'],
             'residency_type' => ['required', Rule::in(['Homeowner', 'Renter', 'Boarder'])],
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')],
-            'photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'extensions:jpg,jpeg,png,webp', 'max:5120', 'dimensions:max_width=6000,max_height=6000'],
+            'photo' => ['required', 'image', 'mimes:jpg,jpeg,png,gif,bmp,webp,avif,heic,heif', 'extensions:jpg,jpeg,png,gif,bmp,webp,avif,heic,heif', 'max:5120', 'dimensions:max_width=6000,max_height=6000'],
             ...array_fill_keys(['status', 'role', 'is_active', 'resident_id', 'reviewed_by', 'reviewed_at', 'reference', 'remarks', 'staff_permissions', 'portal_registration_hash', 'is_in_good_standing', 'is_verified_indigent', 'password'], ['prohibited']),
         ];
     }
