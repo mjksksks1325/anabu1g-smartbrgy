@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Actions\ReadVotersCsv;
+use App\Actions\WriteRecordsSpreadsheet;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreVoterRegistrationRequest;
 use App\Http\Requests\Admin\UpdateVoterRegistrationRequest;
@@ -22,7 +23,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class VoterRegistrationController extends Controller
 {
@@ -123,9 +124,10 @@ class VoterRegistrationController extends Controller
         $request->validate(['file' => ['required', 'file', 'max:5120', 'extensions:csv', 'mimes:csv,txt']]);
         $rows = $reader->read($request->file('file'));
         $rowNumber = 0;
+        $skipped = [];
 
         try {
-            DB::transaction(function () use ($request, $rows, &$rowNumber): void {
+            DB::transaction(function () use ($request, $rows, &$rowNumber, &$skipped): void {
                 foreach ($rows as $row) {
                     $rowNumber = $row['row'];
                     $fields = $row['fields'];
@@ -133,9 +135,15 @@ class VoterRegistrationController extends Controller
                     if ($resident === null) {
                         throw ValidationException::withMessages(['resident_number' => 'Resident Number does not match an existing active resident record.']);
                     }
+                    $comelecVoterNumber = mb_strtoupper(preg_replace('/\s+/u', '', $fields['comelec_voter_number']) ?? '');
+                    if ($this->voterAlreadyExists($resident, $comelecVoterNumber)) {
+                        $skipped[] = ['row' => $rowNumber, 'resident_number' => $resident->resident_number, 'reason' => 'Already registered in the voters list.'];
+
+                        continue;
+                    }
                     $data = [
                         'resident_id' => $resident->id,
-                        'comelec_voter_number' => mb_strtoupper(preg_replace('/\s+/u', '', $fields['comelec_voter_number']) ?? ''),
+                        'comelec_voter_number' => $comelecVoterNumber,
                         'precinct_number' => preg_replace('/\s+/u', ' ', $fields['precinct_number']),
                         'cluster_number' => preg_replace('/\s+/u', ' ', $fields['cluster_number']),
                         'registration_date' => $fields['registration_date'],
@@ -159,7 +167,19 @@ class VoterRegistrationController extends Controller
             throw ValidationException::withMessages(['file' => "CSV row {$rowNumber}: a voter record already exists. Reload the voters list before retrying."]);
         }
 
-        return response()->json(['message' => 'Voters imported successfully.', 'imported' => count($rows)], 201);
+        $imported = count($rows) - count($skipped);
+
+        return response()->json([
+            'message' => $skipped === [] ? 'Voters imported successfully.' : "{$imported} voter(s) imported. ".count($skipped).' existing record(s) were skipped.',
+            'imported' => $imported,
+            'skipped' => $skipped,
+        ], 201);
+    }
+
+    private function voterAlreadyExists(Resident $resident, string $comelecVoterNumber): bool
+    {
+        return VoterRegistration::query()->where('resident_id', $resident->id)->exists()
+            || ($comelecVoterNumber !== '' && VoterRegistration::query()->where('comelec_voter_number_hash', VoterRegistration::identifierHash($comelecVoterNumber))->exists());
     }
 
     /** @param array<string, mixed> $validated */
@@ -283,7 +303,7 @@ class VoterRegistrationController extends Controller
         ]);
     }
 
-    public function export(Request $request): StreamedResponse
+    public function export(Request $request, WriteRecordsSpreadsheet $spreadsheet): BinaryFileResponse
     {
         Gate::authorize('viewAny', VoterRegistration::class);
         $validated = $request->validate([
@@ -293,29 +313,17 @@ class VoterRegistrationController extends Controller
         ]);
         $registrations = $this->registrationQuery($validated);
 
-        return response()->streamDownload(function () use ($registrations): void {
-            $output = fopen('php://output', 'w');
-
-            if ($output === false) {
-                return;
-            }
-
-            fputcsv($output, ['Resident ID', 'Full Name', 'Age', 'Purok', 'Voter Eligibility', 'Precinct No.', 'Cluster No.']);
-
-            foreach ($registrations->cursor() as $registration) {
-                fputcsv($output, array_map($this->csvValue(...), [
-                    $registration->resident->resident_number,
-                    $registration->resident->full_name,
-                    $registration->resident->age,
-                    $registration->resident->purok,
-                    $this->voterEligibility($registration->resident->age)['label'],
-                    $registration->precinct_number,
-                    $registration->cluster_number,
-                ]));
-            }
-
-            fclose($output);
-        }, 'voters-'.today()->toDateString().'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+        return $spreadsheet->download('Voters List', 'voters-'.today()->toDateString().'.xlsx', [
+            'Resident ID', 'Full Name', 'Age', 'Purok', 'Voter Eligibility', 'Precinct No.', 'Cluster No.',
+        ], $registrations->lazy(500)->map(fn (VoterRegistration $registration): array => [
+            $registration->resident->resident_number,
+            $registration->resident->full_name,
+            $registration->resident->age,
+            $registration->resident->purok,
+            $this->voterEligibility($registration->resident->age)['label'],
+            $registration->precinct_number,
+            $registration->cluster_number,
+        ]), $request->user()->name);
     }
 
     /** @param array<string, mixed> $filters
@@ -431,12 +439,5 @@ class VoterRegistrationController extends Controller
             'ip_hash' => $request->ip() ? hash_hmac('sha256', $request->ip(), $key) : null,
             'user_agent_hash' => $request->userAgent() ? hash_hmac('sha256', $request->userAgent(), $key) : null,
         ]);
-    }
-
-    private function csvValue(mixed $value): string
-    {
-        $value = (string) ($value ?? '');
-
-        return preg_match('/^[=+\-@]/', $value) === 1 ? "'{$value}" : $value;
     }
 }

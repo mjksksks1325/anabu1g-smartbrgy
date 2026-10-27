@@ -19,11 +19,14 @@ class Profile extends Component
 
     public string $email = '';
 
+    public bool $embedded = false;
+
     /**
      * Mount the component.
      */
-    public function mount(): void
+    public function mount(bool $embedded = false): void
     {
+        $this->embedded = $embedded;
         $this->name = Auth::user()->name;
         $this->email = Auth::user()->email;
     }
@@ -45,6 +48,12 @@ class Profile extends Component
 
         $user->save();
 
+        if ($this->embedded) {
+            $this->dispatch('profile-updated');
+
+            return;
+        }
+
         Flux::toast(variant: 'success', text: __('Profile updated.'));
     }
 
@@ -62,6 +71,12 @@ class Profile extends Component
         }
 
         $user->sendEmailVerificationNotification();
+
+        if ($this->embedded) {
+            $this->dispatch('profile-notification', message: __('A new verification link has been sent to your email address.'));
+
+            return;
+        }
 
         Flux::toast(text: __('A new verification link has been sent to your email address.'));
     }

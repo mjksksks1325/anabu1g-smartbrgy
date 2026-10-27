@@ -7,12 +7,14 @@ use App\Models\DocumentRequest;
 use App\Models\Incident;
 use App\Models\IssuedCertificate;
 use App\Models\Resident;
+use App\Models\ResidentRegistrationApplication;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Schema;
 
 class DashboardController extends Controller
 {
@@ -30,14 +32,31 @@ class DashboardController extends Controller
         $recentRequests = $documents ? $this->recentDocumentRequestActivity() : [];
         $recentIncidents = $incidents ? Incident::query()->visibleTo($user)
             ->latest()
-            ->limit(6)
-            ->get(['incident_number', 'incident_type', 'status', 'created_at'])
+            ->limit(30)
+            ->get(['id', 'incident_number', 'incident_type', 'status', 'created_at'])
             ->map(fn (Incident $incident): array => [
                 'type' => 'incident',
+                'record_id' => $incident->id,
+                'reference' => $incident->incident_number,
                 'title' => 'Incident '.str_replace('_', ' ', $incident->status),
                 'detail' => $incident->incident_number.' — '.$incident->incident_type,
                 'occurred_at' => $incident->created_at,
             ]) : collect();
+        $recentApplications = $user->hasPermission('records.review') && Schema::hasTable('resident_registration_applications')
+            ? ResidentRegistrationApplication::query()
+                ->where('status', 'pending')
+                ->latest()
+                ->limit(10)
+                ->get(['id', 'reference', 'details', 'created_at'])
+                ->map(fn (ResidentRegistrationApplication $application): array => [
+                    'type' => 'application',
+                    'record_id' => $application->id,
+                    'reference' => $application->reference,
+                    'title' => 'New resident registration application',
+                    'detail' => $application->reference.' — '.ResidentRegistrationApplication::fullName($application->details),
+                    'occurred_at' => $application->created_at,
+                ])
+            : collect();
 
         return response()->json([
             'summary' => [
@@ -52,9 +71,9 @@ class DashboardController extends Controller
                 ->groupBy('document_type')
                 ->orderByDesc('aggregate')
                 ->pluck('aggregate', 'document_type') : [],
-            'recent_activity' => Collection::make([...$recentRequests, ...$recentIncidents])
+            'recent_activity' => Collection::make([...$recentRequests, ...$recentIncidents, ...$recentApplications])
                 ->sortByDesc('occurred_at')
-                ->take(6)
+                ->take(30)
                 ->values()
                 ->map(fn (array $activity): array => [
                     ...$activity,
@@ -77,7 +96,7 @@ class DashboardController extends Controller
                 'admin.document-requests.issue',
             ])
             ->latest('created_at')
-            ->limit(12)
+            ->limit(60)
             ->get(['actor', 'action', 'record', 'created_at']);
 
         $requestIds = $auditEntries
@@ -102,6 +121,8 @@ class DashboardController extends Controller
 
                 return [
                     'type' => 'request',
+                    'record_id' => $documentRequest->id,
+                    'reference' => $documentRequest->reference_code,
                     'title' => 'Document request '.$action.' by '.$entry->actor,
                     'detail' => $documentRequest->reference_code.' — '.$documentRequest->document_type,
                     'occurred_at' => Carbon::parse($entry->created_at),
@@ -116,15 +137,17 @@ class DashboardController extends Controller
         $newRequests = DocumentRequest::query()
             ->whereNotIn('id', $auditedRequestIds)
             ->latest()
-            ->limit(6)
-            ->get(['reference_code', 'document_type', 'status', 'created_at'])
+            ->limit(30)
+            ->get(['id', 'reference_code', 'document_type', 'status', 'created_at'])
             ->map(fn (DocumentRequest $documentRequest): array => [
                 'type' => 'request',
+                'record_id' => $documentRequest->id,
+                'reference' => $documentRequest->reference_code,
                 'title' => 'Document request '.str_replace('_', ' ', $documentRequest->status),
                 'detail' => $documentRequest->reference_code.' — '.$documentRequest->document_type,
                 'occurred_at' => $documentRequest->created_at,
             ]);
 
-        return $staffActivity->concat($newRequests)->take(6)->values()->all();
+        return $staffActivity->concat($newRequests)->take(30)->values()->all();
     }
 }

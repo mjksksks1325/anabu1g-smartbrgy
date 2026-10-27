@@ -109,7 +109,7 @@ function renderProfilingPreview() {
   document.getElementById('profiling-preview').hidden = false;
   document.getElementById('profiling-errors').textContent = '';
   const summary = profilingPreview.summary;
-  document.getElementById('profiling-summary').textContent = `${summary.households} households · ${summary.residents} residents · ${summary.heads} heads · ${summary.duplicates} possible/exact duplicates · ${summary.invalid} invalid/unresolved rows · ${summary.ready} ready`;
+  document.getElementById('profiling-summary').textContent = `${summary.households} households · ${summary.residents} residents · ${summary.heads} heads · ${summary.duplicates} possible/exact duplicates · ${Number(summary.existing || 0)} already in the system (skipped) · ${summary.invalid} invalid/unresolved rows · ${summary.ready} ready`;
   const groups = new Map();
   profilingPreview.rows.forEach(row => {
     const group = row.fields.household_group || 'Unassigned group — review required';
@@ -125,7 +125,7 @@ function renderProfilingPreview() {
 
 function renderProfilingRow(row) {
   const createDisabled = row.matches.some(match => match.exact);
-  return `<details class="resident-account-panel"><summary>Row ${Number(row.source_row)}: ${escapeText(`${row.fields.first_name} ${row.fields.last_name}`)} — ${row.is_head ? 'Head' : escapeText(row.fields.relationship_to_household_head || 'Relationship unspecified')} — ${escapeText(row.action)}</summary>
+  return `<details class="resident-account-panel"><summary>Row ${Number(row.source_row)}: ${escapeText(`${row.fields.first_name} ${row.fields.last_name}`)} — ${row.is_head ? 'Head' : escapeText(row.fields.relationship_to_household_head || 'Relationship unspecified')} — ${row.already_exists && row.action === 'skip' ? 'Already in the system — skipped' : escapeText(row.action)}</summary>
     <div class="resident-table-error">${row.errors.map(escapeText).join('<br>')}</div>
     <div class="form-group"><label class="form-label" for="profiling-action-${row.id}">Duplicate resolution / row action</label><select class="form-input" id="profiling-action-${row.id}" onchange="updateProfilingRow(${row.id},'action',this.value)">
       <option value="resolve" ${row.action === 'resolve' ? 'selected' : ''}>Choose an action</option><option value="create" ${createDisabled ? 'disabled' : ''} ${row.action === 'create' ? 'selected' : ''}>Create as a new resident</option><option value="link" ${!row.matches.length ? 'disabled' : ''} ${row.action === 'link' ? 'selected' : ''}>Link existing resident</option><option value="skip" ${row.action === 'skip' ? 'selected' : ''}>Skip</option></select></div>
@@ -147,7 +147,7 @@ function profilingReviewPayload(resetRows = false) {
 async function reviewHouseholdProfiling(resetRows = false) {
   if (!profilingPreview || profilingBusy) return;
   resetRows = resetRows || profilingMappingChanged;
-  if (resetRows && !confirm('Rebuild the preview from the selected columns? Current row corrections will be reset.')) return;
+  if (resetRows && !(await confirmAction('Rebuild the preview from the selected columns? Current row corrections will be reset.', { title: 'Rebuild preview', confirmLabel: 'Rebuild preview', danger: true }))) return;
   invalidateProfilingPreview();
   setProfilingBusy(true);
   try {

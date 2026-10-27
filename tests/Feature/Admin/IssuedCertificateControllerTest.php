@@ -62,11 +62,11 @@ it('lists issued certificates with reprint and verification links', function () 
     $this->actingAs($user)
         ->getJson(route('staff.issued-certificates.index'))
         ->assertOk()
-        ->assertJsonPath('0.certificate_number', 'CERT-2026-HISTORY')
-        ->assertJsonPath('0.resident_name', 'Maria Santos')
-        ->assertJsonPath('0.source', 'onsite')
-        ->assertJsonPath('0.print_url', route('staff.issued-certificates.print', $certificate))
-        ->assertJsonPath('0.verification_url', route('certificate.verify', 'HISTORYVERIFYCODE'));
+        ->assertJsonPath('data.0.certificate_number', 'CERT-2026-HISTORY')
+        ->assertJsonPath('data.0.resident_name', 'Maria Santos')
+        ->assertJsonPath('data.0.source', 'onsite')
+        ->assertJsonPath('data.0.print_url', route('staff.issued-certificates.print', $certificate))
+        ->assertJsonPath('data.0.verification_url', route('certificate.verify', 'HISTORYVERIFYCODE'));
 });
 
 it('issues every supported online request with the server fee and a real QR file', function (
@@ -310,7 +310,11 @@ it('renders the matching print template for every certificate type', function (
         ->assertSee(asset($certificate->qr_code_path))->assertDontSeeText($certificate->verification_code);
 
     if ($certificateType === CertificateType::BarangayId) {
-        $response->assertSeeText($certificate->certificate_number);
+        $response->assertSeeText($certificate->certificate_number)
+            ->assertSeeText('BARANGAY RESIDENT IDENTIFICATION CARD')
+            ->assertSeeText('Valid Until:')
+            ->assertSeeText('Scan QR code to verify')
+            ->assertSee('size: 85.6mm 54mm', false);
     } else {
         $response->assertDontSeeText($certificate->certificate_number)->assertDontSeeText('Certificate No.:');
     }
@@ -388,4 +392,41 @@ it('forbids view-only accounts from listing printing or issuing certificates', f
     $this->postJson(route('staff.document-requests.issue', $request))->assertForbidden();
     $this->assertDatabaseCount('issued_certificates', 1);
     expect($request->fresh()->status)->toBe('ready_for_release');
+});
+
+it('paginates issued certificate history and filters it by search, type, source and date', function () {
+    $user = User::factory()->assignedOperations()->create();
+    $online = DocumentRequest::query()->create(['reference_code' => 'REQ-ONLINE-1', 'document_type' => CertificateType::CertificateOfResidency->value, 'full_name' => 'Online Resident', 'address' => 'Anabu I-G', 'status' => 'released', 'source' => 'online']);
+    foreach (range(1, 12) as $number) {
+        IssuedCertificate::query()->create([
+            'certificate_number' => sprintf('CERT-2026-%04d', $number),
+            'verification_code' => sprintf('VERIFYCODE%06d', $number),
+            'certificate_type' => CertificateType::BarangayClearance->value,
+            'resident_name' => "Walk-in Resident {$number}",
+            'amount_paid' => 25,
+            'issued_at' => '2026-09-01 09:00:00',
+            'issued_by' => 'Records Officer',
+        ]);
+    }
+    IssuedCertificate::query()->create([
+        'document_request_id' => $online->id,
+        'certificate_number' => 'CERT-2026-ONLINE',
+        'verification_code' => 'VERIFYONLINECODE',
+        'certificate_type' => CertificateType::CertificateOfResidency->value,
+        'resident_name' => 'Online Resident',
+        'amount_paid' => 25,
+        'issued_at' => '2026-10-05 09:00:00',
+        'issued_by' => 'Records Officer',
+    ]);
+
+    $this->actingAs($user)->getJson(route('staff.issued-certificates.index'))
+        ->assertOk()->assertJsonPath('total', 13)->assertJsonPath('per_page', 10)->assertJsonCount(10, 'data')->assertJsonPath('last_page', 2)
+        ->assertJsonPath('data.0.certificate_number', 'CERT-2026-ONLINE');
+    $this->getJson(route('staff.issued-certificates.index', ['page' => 2]))->assertJsonCount(3, 'data');
+    $this->getJson(route('staff.issued-certificates.index', ['search' => 'Walk-in Resident 12']))->assertJsonPath('total', 1);
+    $this->getJson(route('staff.issued-certificates.index', ['certificate_type' => CertificateType::CertificateOfResidency->value]))->assertJsonPath('total', 1);
+    $this->getJson(route('staff.issued-certificates.index', ['source' => 'online']))->assertJsonPath('total', 1)->assertJsonPath('data.0.source', 'online');
+    $this->getJson(route('staff.issued-certificates.index', ['source' => 'onsite']))->assertJsonPath('total', 12);
+    $this->getJson(route('staff.issued-certificates.index', ['date_from' => '2026-10-01', 'date_to' => '2026-10-31']))->assertJsonPath('total', 1);
+    $this->getJson(route('staff.issued-certificates.index', ['source' => 'mail', 'date_from' => '2026-10-31', 'date_to' => '2026-10-01']))->assertJsonValidationErrors(['source', 'date_to']);
 });

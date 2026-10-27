@@ -56,10 +56,6 @@ test('a bad voter csv row rolls back every imported record and its audit', funct
     $row = votersCsvRow($second, '9999-8888-7777');
     if ($problem === 'unknown') {
         $row[0] = 'UNKNOWN-RESIDENT';
-    } elseif ($problem === 'duplicate resident') {
-        $row[0] = $first->resident_number;
-    } elseif ($problem === 'duplicate number') {
-        $row[1] = '1234-5678-9012';
     } elseif ($problem === 'invalid date') {
         $row[4] = '10/04/2026';
     } elseif ($problem === 'future date') {
@@ -79,19 +75,41 @@ test('a bad voter csv row rolls back every imported record and its audit', funct
 
     $this->assertDatabaseCount('voter_registrations', 0);
     $this->assertDatabaseCount('voter_registration_audits', 0);
-})->with(['unknown', 'duplicate resident', 'duplicate number', 'invalid date', 'future date', 'inactive', 'underage', 'archived']);
+})->with(['unknown', 'invalid date', 'future date', 'inactive', 'underage', 'archived']);
 
-test('voter csv import does not overwrite existing voters', function () {
+test('voter csv import skips existing voters without overwriting them and imports the new ones', function () {
+    $this->travelTo('2026-10-04');
     $staff = User::factory()->assignedOperations()->create();
     $resident = Resident::factory()->create(['date_of_birth' => '1990-01-01']);
     $existing = VoterRegistration::factory()->for($resident)->create(['precinct_number' => 'OLD']);
+    $newResident = Resident::factory()->create(['date_of_birth' => '1992-01-01']);
 
     $this->actingAs($staff)->post(route('staff.voter-registrations.import'), [
-        'file' => votersCsvFile([votersCsvRow($resident)]),
-    ], ['Accept' => 'application/json'])->assertUnprocessable()->assertJsonValidationErrors('file');
+        'file' => votersCsvFile([votersCsvRow($resident), votersCsvRow($newResident, '9999-8888-7777')]),
+    ], ['Accept' => 'application/json'])->assertCreated()
+        ->assertJsonPath('imported', 1)
+        ->assertJsonPath('skipped.0.row', 2)
+        ->assertJsonPath('skipped.0.resident_number', $resident->resident_number);
 
     expect($existing->fresh()->precinct_number)->toBe('OLD');
+    $this->assertDatabaseCount('voter_registrations', 2);
+    $this->assertDatabaseHas('voter_registrations', ['resident_id' => $newResident->id]);
+});
+
+test('voter csv import skips rows repeated within the same file or reusing a registered comelec number', function () {
+    $this->travelTo('2026-10-04');
+    $staff = User::factory()->assignedOperations()->create();
+    $first = Resident::factory()->create(['date_of_birth' => '1990-01-01']);
+    $second = Resident::factory()->create(['date_of_birth' => '1992-01-01']);
+
+    $this->actingAs($staff)->post(route('staff.voter-registrations.import'), [
+        'file' => votersCsvFile([votersCsvRow($first), votersCsvRow($first, '5555-4444-3333'), votersCsvRow($second)]),
+    ], ['Accept' => 'application/json'])->assertCreated()
+        ->assertJsonPath('imported', 1)
+        ->assertJsonCount(2, 'skipped');
+
     $this->assertDatabaseCount('voter_registrations', 1);
+    $this->assertDatabaseCount('voter_registration_audits', 1);
 });
 
 test('voter import rejects invalid files and missing headers', function (string $contents) {

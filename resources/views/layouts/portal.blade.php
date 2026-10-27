@@ -16,6 +16,8 @@
 <script src="{{ asset('js/portal-localization.js') }}?v={{ filemtime(public_path('js/portal-localization.js')) }}"></script>
 <link rel="stylesheet" href="{{ asset('css/password-visibility.css') }}?v={{ filemtime(public_path('css/password-visibility.css')) }}">
 <script defer data-navigate-once src="{{ asset('js/password-visibility.js') }}?v={{ filemtime(public_path('js/password-visibility.js')) }}"></script>
+<link rel="stylesheet" href="{{ asset('css/form-feedback.css') }}?v={{ filemtime(public_path('css/form-feedback.css')) }}">
+<script defer data-navigate-once src="{{ asset('js/form-feedback.js') }}?v={{ filemtime(public_path('js/form-feedback.js')) }}"></script>
 </head>
 <body{!! $__env->hasSection('hero-header') ? ' class="has-hero-header"' : '' !!}>
 <script>try { if (sessionStorage.getItem('smartbrgy_portal_theme') === 'dark') document.body.classList.add('dark-mode'); } catch (_) {}</script>
@@ -94,5 +96,6 @@
 @endif
 @stack('scripts')
 <script src="{{ asset('js/resident-account.js') }}?v={{ filemtime(public_path('js/resident-account.js')) }}"></script>
+<script src="{{ asset('js/resident-photo-input.js') }}?v={{ filemtime(public_path('js/resident-photo-input.js')) }}"></script>
 </body>
 </html>

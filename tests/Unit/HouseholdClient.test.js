@@ -29,7 +29,7 @@ function householdClient(fetch) {
   const toasts = [];
   const context = vm.createContext({
     document: { getElementById: getField }, Option: FakeOption,
-    URLSearchParams, setTimeout, clearTimeout, fetch, confirm: () => true,
+    URLSearchParams, setTimeout, clearTimeout, fetch, confirmAction: async () => true, adminText: text => text,
     PUROK_DATA: [], getCheckedSpecialGroups: () => [], csrfRequestHeaders: () => ({ 'X-CSRF-TOKEN': 'test-token' }),
     showToast: message => toasts.push(message), hasStaffPermission: () => true,
     escapeText: value => String(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]))
@@ -155,7 +155,7 @@ test('selected household heads remain available when resident search results cha
 test('cancelling a head move leaves the draft unassigned', async () => {
   const { context, fields, getField } = householdClient(async () => ({ ok: true, json: async () => ({ data: [{ id: 1, full_name: 'Existing Head', resident_number: 'RES-1', status: 'active', household_id: 8 }], current_page: 1, last_page: 1 }) }));
   ['household-head', 'household-resident-id', 'household-purok'].forEach(id => fields.set(id, new FakeSelect()));
-  context.confirm = () => false;
+  context.confirmAction = async () => false;
   context.newManagedHousehold();
   await new Promise(resolve => setImmediate(resolve));
   context.selectManagedHouseholdHead('1');
@@ -167,6 +167,7 @@ test('demographics displays database totals without the removed average card', (
   const { context, getField, fields } = householdClient();
   context.RESIDENTS = [];
   context.isSenior = () => false;
+  context.adminText = text => text;
   context.DEMOGRAPHIC_SUMMARY = { total: 3, seniors: 1, households: { total_residents: 4, male: 1, female: 3, total_households: 2, registered_voters: 2, average_household_size: 1.5 } };
   const statsCode = source.slice(source.indexOf('function renderDemographicsStats()'), source.indexOf('function renderDemographics()'));
   vm.runInContext(statsCode, context);
@@ -189,20 +190,25 @@ test('API mapping retains household information for resident edits', () => {
   assert.equal(resident.isHouseholdHead, false);
 });
 
-test('household lookup preserves the selected household across search and pagination', async () => {
-  const { context, fields, getField } = householdClient(async () => ({ ok: true, json: async () => ({ data: [{ id: 2, household_number: 'HH-000002', head: null, address: 'Other address' }], current_page: 2, last_page: 3 }) }));
+test('household lookup in the resident form keeps the selected household and lists matches without pagination', async () => {
+  const requested = [];
+  const { context, fields, getField } = householdClient(async url => { requested.push(url); return { ok: true, json: async () => ({ data: [{ id: 2, household_number: 'HH-000002', head: null, address: 'Other address' }], total: 150, current_page: 1, last_page: 2 }) }; });
   const select = new FakeSelect();
   select.add(new FakeOption('HH-000001', '1'));
   select.value = '1';
   fields.set('res-household-id', select);
   getField('res-household-search').value = 'Other';
 
-  await context.loadResidentHouseholds(2);
+  await context.loadResidentHouseholds();
 
   assert.equal(select.value, '1');
   assert.equal(select.options.length, 3);
   assert.match(select.options[2].textContent, /No household head assigned/);
-  assert.match(getField('res-household-pagination').innerHTML, /Page 2 of 3/);
+  const params = new URL(requested[0], 'http://localhost').searchParams;
+  assert.equal(params.get('per_page'), '100');
+  assert.equal(params.get('page'), '1');
+  assert.equal(getField('res-household-hint').hidden, false);
+  assert.match(getField('res-household-hint').textContent, /Showing the first 1 of 150 households/);
 });
 
 test('out of order household searches cannot replace newer lookup results', async () => {

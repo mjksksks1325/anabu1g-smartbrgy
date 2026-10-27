@@ -4,22 +4,48 @@
 
     function adminMessage(source) {
         const catalogs = window.ADMIN_I18N?.catalogs;
-        if (!catalogs) return { source };
-        if (Object.hasOwn(catalogs.en ?? {}, source)) return { source };
+        if (!catalogs) return { source, replacements: {} };
+        if (Object.hasOwn(catalogs.en ?? {}, source)) return { source, replacements: {} };
 
         for (const locale of ['en', 'fil']) {
             for (const [key, translated] of Object.entries(catalogs[locale] ?? {})) {
-                if (translated === source) return { source: key };
+                if (translated === source) return { source: key, replacements: {} };
+                if (!translated.includes(':')) continue;
+
+                const names = [];
+                const pattern = translated.split(/(:[a-z_]+)/g).map(part => {
+                    if (/^:[a-z_]+$/.test(part)) {
+                        names.push(part.slice(1));
+
+                        return '(.+?)';
+                    }
+
+                    return part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                }).join('');
+                const match = source.match(new RegExp('^' + pattern + '$'));
+                if (match) {
+                    return {
+                        source: key,
+                        replacements: Object.fromEntries(names.map((name, index) => [name, match[index + 1]])),
+                    };
+                }
             }
         }
 
-        return { source };
+        return { source, replacements: {} };
     }
 
-    function adminTranslate(source) {
+    function adminTranslate(source, replacements = {}) {
         const catalogs = window.ADMIN_I18N?.catalogs;
-        return catalogs?.[window.ADMIN_I18N.locale]?.[source] ?? catalogs?.en?.[source] ?? source;
+        let text = catalogs?.[window.ADMIN_I18N?.locale]?.[source] ?? catalogs?.en?.[source] ?? source;
+        for (const [name, value] of Object.entries(replacements)) {
+            text = text.replaceAll(':' + name, String(value));
+        }
+
+        return text;
     }
+
+    window.adminTranslate = adminTranslate;
 
     function translateAdminText(root = document) {
         if (!document.body?.hasAttribute('data-admin-localization') || !window.ADMIN_I18N?.catalogs) return;
@@ -42,7 +68,7 @@
                 originalMessages.set(node, message);
             }
 
-            const value = message.leading + adminTranslate(message.source) + message.trailing;
+            const value = message.leading + adminTranslate(message.source, message.replacements) + message.trailing;
             if (node.nodeValue !== value) node.nodeValue = value;
         }
 

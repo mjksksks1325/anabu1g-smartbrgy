@@ -42,7 +42,8 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="registration-photo"><span data-portal-i18n="Resident photo *">{{ __('Resident photo *') }}</span></label>
-                        <input class="form-input" id="registration-photo" name="photo" type="file" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.avif,.heic,.heif,image/jpeg,image/png,image/gif,image/bmp,image/webp,image/avif,image/heic,image/heif" required aria-describedby="registration-photo-help" @error('photo') aria-invalid="true" @enderror>
+                        <input class="form-input" id="registration-photo" name="photo" type="file" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.avif,.heic,.heif,image/jpeg,image/png,image/gif,image/bmp,image/webp,image/avif,image/heic,image/heif" data-resident-image-only data-error-target="registration-photo-client-error" required aria-describedby="registration-photo-help registration-photo-client-error" @error('photo') aria-invalid="true" @enderror>
+                        <p class="field-error" id="registration-photo-client-error" hidden role="alert" aria-live="polite"><span data-portal-i18n="Choose an image file only (up to 5 MB). Documents are not accepted.">{{ __('Choose an image file only (up to 5 MB). Documents are not accepted.') }}</span></p>
                         @error('photo')<p class="field-error" data-portal-message>{{ $message }}</p>@enderror
                         <p class="form-note" id="registration-photo-help"><span data-portal-i18n="Upload a clear photo of your face. Supported image files only, up to 5 MB. Select the photo again if you need to correct the form.">{{ __('Upload a clear photo of your face. Supported image files only, up to 5 MB. Select the photo again if you need to correct the form.') }}</span></p>
                     </div>

@@ -46,10 +46,7 @@ class StoreResidentRequest extends FormRequest
             'contact_number' => ['nullable', 'regex:/^(?:\+63|0)9\d{9}$/'],
             'residency_type' => ['required', Rule::in(['Homeowner', 'Renter', 'Boarder'])],
             'special_groups' => ['sometimes', 'array'],
-            'special_groups.*' => [Rule::in([
-                'PWD', 'Solo Parent', 'Indigenous People', '4Ps Beneficiary',
-                'Teenage Mother', 'Out-of-School Youth', 'Unemployed Adult', 'Malnourished Child',
-            ])],
+            'special_groups.*' => [Rule::in(Resident::SPECIAL_GROUPS)],
             'status' => ['sometimes', Rule::in(['active', 'inactive'])],
             'is_in_good_standing' => ['sometimes', 'boolean'],
             'confirm_duplicate' => ['sometimes', 'boolean'],
@@ -59,6 +56,16 @@ class StoreResidentRequest extends FormRequest
             'new_household' => ['sometimes', 'array:address,purok_id'],
             'new_household.address' => ['required_with:new_household', 'string', 'max:1000'],
             'new_household.purok_id' => ['nullable', 'integer', Rule::exists('puroks', 'id')->where('is_active', true)],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'contact_number.regex' => 'Enter 11 digits starting with 09 (09XXXXXXXXX) or +639 followed by 9 digits (+639XXXXXXXXX).',
         ];
     }
 

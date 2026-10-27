@@ -53,6 +53,7 @@ test('staff dashboard, iot pages, and account settings share one staff palette',
     expect($shared)
         ->toContain('html[data-theme=dark], html.dark, body:not(.light-mode) #app.admin-interface {')
         ->toContain('--staff-bg: oklch(17% .025 240);')
+        ->toContain('--staff-nav-active-bg: #173a60;', '--staff-nav-active-ink: #a9d3ff;')
         ->toContain('.dark body.civic-settings .civic-settings-main { background: var(--staff-bg); }');
     expect($dashboard)
         ->toContain('--bg-base: var(--staff-bg);')
@@ -97,9 +98,21 @@ test('staff topbar keeps language and theme controls compact', function () {
 });
 
 test('staff active navigation remains dark blue when the html theme is dark', function () {
-    expect(file_get_contents(dirname(__DIR__, 2).'/public/css/figma-admin.css'))
+    $root = dirname(__DIR__, 2);
+    $admin = file_get_contents($root.'/public/css/figma-admin.css');
+    $iot = file_get_contents($root.'/public/css/figma-iot.css');
+    $settings = file_get_contents($root.'/public/css/government.css');
+
+    expect($admin)
         ->toContain('html[data-theme=dark] #app.admin-interface .nav-item.active,')
-        ->toContain('html.dark #app.admin-interface .nav-item.active { background: #173a60; color: #a9d3ff; }');
+        ->toContain('html.dark #app.admin-interface .nav-item.active { background: var(--staff-nav-active-bg); color: var(--staff-nav-active-ink); }');
+    expect($iot)
+        ->toContain('html[data-theme=dark] .side-nav a.current { background: var(--staff-nav-active-bg); color: var(--staff-nav-active-ink); }')
+        ->toContain('html[data-theme=dark] .notice:not(.success):not(.error) { background: var(--staff-soft); border-color: var(--staff-border); color: var(--staff-nav-active-ink); }')
+        ->toContain('html[data-theme=dark] .pill.neutral, html[data-theme=dark] .document-requests-index .civic-status, html[data-theme=dark] .document-request-detail .badge-blue { background: var(--staff-soft); border-color: var(--staff-border); color: var(--staff-nav-active-ink); }');
+    expect($settings)
+        ->toContain('.dark .staff-settings-navigation .nav-item.active { background: var(--staff-nav-active-bg); color: var(--staff-nav-active-ink); }')
+        ->toContain('.dark body.civic-settings .civic-settings-sidebar [data-flux-sidebar-item][data-current] { background: var(--staff-nav-active-bg); color: var(--staff-nav-active-ink); }');
 });
 
 test('staff theme icon stays borderless and dark navigation keeps its dark highlight', function () {
@@ -109,7 +122,7 @@ test('staff theme icon stays borderless and dark navigation keeps its dark highl
         ->toContain('#app.admin-interface button.dark-mode-toggle.staff-theme-icon {')
         ->toContain('border: 0 !important; border-radius: 50% !important; background: transparent !important;')
         ->toContain('html[data-theme=dark] #app.admin-interface .nav-item.active,')
-        ->toContain('html.dark #app.admin-interface .nav-item.active { background: #173a60; color: #a9d3ff; }');
+        ->toContain('html.dark #app.admin-interface .nav-item.active { background: var(--staff-nav-active-bg); color: var(--staff-nav-active-ink); }');
 });
 
 test('staff sidebars always show the orange scrollbar', function () {
@@ -148,6 +161,10 @@ test('resident portal mobile hero keeps actions visible and sections compact', f
         ->toContain('body.has-hero-header .portal-band-inner {')
         ->toContain('justify-content: center;')
         ->toContain('grid-template-columns: repeat(2, minmax(0, 1fr));')
+        ->toContain('body.has-hero-header .portal-hero-actions .btn span {')
+        ->toContain('font-size: inherit;')
+        ->toContain('font-size: 16px;')
+        ->toContain('.portal-service-card > span:not(.service-icon):not(.service-start) { font-size: 12px; line-height: 1.45; }')
         ->toContain('.digital-services { margin-bottom: 30px; }')
         ->toContain('.home-section { margin-top: 40px; }');
 });
@@ -155,6 +172,18 @@ test('resident portal mobile hero keeps actions visible and sections compact', f
 test('resident portal mobile hotlines and fee amounts stay aligned and visible', function () {
     expect(file_get_contents(dirname(__DIR__, 2).'/public/css/figma-portal.css'))
         ->toContain('.hotline-list li {', 'grid-template-columns: minmax(0, 1fr) auto;', '.hotline-list a { white-space: nowrap; font-size: 17px; }', '.doc-rates-table :is(th, td):last-child { width: 104px; padding-inline: 8px; font-size: 13px; }', 'width: 98px; font-size: 12px;');
+});
+
+test('resident portal keeps narrow-screen controls usable and avoids a tall mobile landscape hero', function () {
+    $styles = file_get_contents(dirname(__DIR__, 2).'/public/css/figma-portal.css');
+
+    expect($styles)
+        ->toContain('.gov-actions .theme-toggle {', 'width: 44px;', 'height: 44px;', 'min-height: 44px;')
+        ->toContain('bottom: max(12px, env(safe-area-inset-bottom));')
+        ->toContain('@media (max-width: 380px) {')
+        ->toContain('.btn-row { grid-template-columns: minmax(0, 1fr); }')
+        ->toContain('@media (max-width: 700px) and (max-height: 520px) and (orientation: landscape)')
+        ->toContain('min-height: max(380px, calc(100svh - 96px));');
 });
 
 test('resident portal office card and map stretch to the same height', function () {

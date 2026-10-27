@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Actions\ManageHouseholds;
 use App\Actions\ResidentIdentity;
+use App\Actions\WriteRecordsSpreadsheet;
 use App\CertificateType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreResidentRequest;
@@ -19,7 +20,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ResidentController extends Controller
 {
@@ -42,46 +43,30 @@ class ResidentController extends Controller
         return response()->json($residents);
     }
 
-    public function export(Request $request): StreamedResponse
+    public function export(Request $request, WriteRecordsSpreadsheet $spreadsheet): BinaryFileResponse
     {
         Gate::authorize('viewAny', Resident::class);
         $residents = $this->residentQuery($request);
 
-        return response()->streamDownload(function () use ($residents): void {
-            $output = fopen('php://output', 'w');
-
-            if ($output === false) {
-                return;
-            }
-
-            fputcsv($output, [
-                'Resident ID', 'Full Name', 'Date of Birth', 'Gender', 'Civil Status',
-                'Purok', 'Address', 'Contact Number', 'Residency Type', 'Status',
-                'Household Number', 'Household Head', 'Relationship to Household Head',
-            ]);
-
-            foreach ($residents->lazy(500) as $resident) {
-                fputcsv($output, array_map($this->csvValue(...), [
-                    $resident->resident_number,
-                    $resident->full_name,
-                    $resident->date_of_birth->toDateString(),
-                    $resident->gender,
-                    $resident->civil_status,
-                    $resident->purok,
-                    $resident->address,
-                    $resident->contact_number,
-                    $resident->residency_type,
-                    $resident->trashed() ? 'archived' : $resident->status,
-                    $resident->household?->household_number,
-                    $resident->household?->head?->full_name,
-                    $resident->relationship_to_household_head,
-                ]));
-            }
-
-            fclose($output);
-        }, 'resident-records-'.today()->toDateString().'.csv', [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-        ]);
+        return $spreadsheet->download('Resident Records', 'resident-records-'.today()->toDateString().'.xlsx', [
+            'Resident ID', 'Full Name', 'Date of Birth', 'Gender', 'Civil Status',
+            'Purok', 'Address', 'Contact Number', 'Residency Type', 'Status',
+            'Household Number', 'Household Head', 'Relationship to Household Head',
+        ], $residents->lazy(500)->map(fn (Resident $resident): array => [
+            $resident->resident_number,
+            $resident->full_name,
+            $resident->date_of_birth->toDateString(),
+            $resident->gender,
+            $resident->civil_status,
+            $resident->purok,
+            $resident->address,
+            $resident->contact_number,
+            $resident->residency_type,
+            $resident->trashed() ? 'archived' : $resident->status,
+            $resident->household?->household_number,
+            $resident->household?->head?->full_name,
+            $resident->relationship_to_household_head,
+        ]), $request->user()->name);
     }
 
     /**
@@ -241,34 +226,21 @@ class ResidentController extends Controller
         ]);
     }
 
-    public function requestRecordsExport(): StreamedResponse
+    public function requestRecordsExport(Request $request, WriteRecordsSpreadsheet $spreadsheet): BinaryFileResponse
     {
         Gate::authorize('eligibility.export');
 
-        return response()->streamDownload(function (): void {
-            $output = fopen('php://output', 'w');
-
-            if ($output === false) {
-                return;
-            }
-
-            fputcsv($output, ['Reference Code', 'Resident ID', 'Resident', 'Document', 'Source', 'Status', 'Requested At']);
-            foreach (DocumentRequest::query()->with('resident')->latest()->cursor() as $documentRequest) {
-                fputcsv($output, array_map($this->csvValue(...), [
-                    $documentRequest->reference_code,
-                    $documentRequest->resident?->resident_number,
-                    $documentRequest->full_name,
-                    $documentRequest->document_type,
-                    $documentRequest->source,
-                    $documentRequest->status,
-                    $documentRequest->created_at?->toDateTimeString(),
-                ]));
-            }
-
-            fclose($output);
-        }, 'request-records-'.today()->toDateString().'.csv', [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-        ]);
+        return $spreadsheet->download('Request Records', 'request-records-'.today()->toDateString().'.xlsx', [
+            'Reference Code', 'Resident ID', 'Resident', 'Document', 'Source', 'Status', 'Requested At',
+        ], DocumentRequest::query()->with('resident')->latest()->lazy(500)->map(fn (DocumentRequest $documentRequest): array => [
+            $documentRequest->reference_code,
+            $documentRequest->resident?->resident_number,
+            $documentRequest->full_name,
+            $documentRequest->document_type,
+            $documentRequest->source,
+            $documentRequest->status,
+            $documentRequest->created_at?->toDateTimeString(),
+        ]), $request->user()->name);
     }
 
     /** @param array<string, mixed> $attributes */
@@ -306,14 +278,9 @@ class ResidentController extends Controller
             ->when(in_array($status, ['active', 'inactive'], true), fn (Builder $query) => $query->where('status', $status))
             ->when($status === 'senior', fn (Builder $query) => $query->whereDate('date_of_birth', '<=', today()->subYears(60)))
             ->when($request->filled('purok'), fn (Builder $query) => $query->where('purok', $request->string('purok')->toString()))
+            ->when($request->string('special_group')->toString() === 'Senior Citizen', fn (Builder $query) => $query->whereDate('date_of_birth', '<=', today()->subYears(60)))
+            ->when(in_array($request->string('special_group')->toString(), Resident::SPECIAL_GROUPS, true), fn (Builder $query) => $query->whereJsonContains('special_groups', $request->string('special_group')->toString()))
             ->orderBy('last_name')
             ->orderBy('first_name');
-    }
-
-    private function csvValue(mixed $value): string
-    {
-        $value = (string) ($value ?? '');
-
-        return preg_match('/^[=+\-@]/', $value) === 1 ? "'{$value}" : $value;
     }
 }

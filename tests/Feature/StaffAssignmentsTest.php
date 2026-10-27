@@ -42,6 +42,29 @@ test('superadmin assigns editable presets and records actor target and before af
     $this->get(route('admin.users.index'))->assertOk()->assertSee('Staff access assignments')->assertSee('Tanod');
 });
 
+test('superadmin account can store staff access assignments and retains full superadmin access', function () {
+    $super = User::factory()->superAdmin()->create(['staff_permissions' => []]);
+    $permissions = ['records.view', 'records.update'];
+
+    $this->actingAs($super)->patchJson(route('admin.users.update', $super), [
+        'name' => $super->name,
+        'email' => $super->email,
+        'role' => 'admin',
+        'is_active' => true,
+        'staff_permissions' => $permissions,
+    ])->assertOk();
+
+    $updated = $super->fresh();
+    expect($updated->staff_permissions)->toEqualCanonicalizing($permissions)
+        ->and($updated->isSuperAdmin())->toBeTrue()
+        ->and($updated->hasPermission('users.view'))->toBeTrue();
+    $this->assertDatabaseHas('administrative_audits', [
+        'user_id' => $super->id,
+        'target_user_id' => $super->id,
+        'action' => 'admin.users.permissions-changed',
+    ]);
+});
+
 test('staff cannot assign their own or another account permissions', function () {
     $staff = assignedStaff(StaffPermissions::keys());
     $target = assignedStaff([]);

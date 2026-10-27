@@ -66,7 +66,7 @@ it('previews CSV households without creating records and imports to the shared d
     $this->getJson(route('staff.residents.index', ['search' => 'Juan', 'status' => 'active', 'per_page' => 1]))->assertJsonPath('total', 1)->assertJsonPath('data.0.household.household_number', 'HH-000001');
     $this->getJson(route('staff.puroks.index'))->assertJsonPath('data.0.households_count', 1)->assertJsonPath('demographics.households.total_residents', 2)->assertJsonPath('demographics.households.total_households', 1)->assertJsonPath('demographics.households.average_household_size', 2);
     $this->getJson(route('staff.households.show', Household::query()->sole()))->assertJsonPath('household_size', 2)->assertJsonPath('head.full_name', 'Juan Dela Cruz');
-    $this->get(route('staff.residents.export'))->assertOk()->assertDownload('resident-records-'.today()->toDateString().'.csv');
+    $this->get(route('staff.residents.export'))->assertOk()->assertDownload('resident-records-'.today()->toDateString().'.xlsx');
     $this->assertDatabaseHas('administrative_audits', ['action' => 'admin.resident-profiling-imports.store']);
     $this->postJson(route('staff.resident-profiling-imports.store'), $payload)->assertUnprocessable()->assertJsonValidationErrors('file');
 });
@@ -124,6 +124,22 @@ it('detects exact and archived duplicates and never creates them after confirmat
     $this->assertDatabaseCount('residents', 1);
     $this->assertDatabaseCount('households', 0);
 })->with([false, true]);
+
+it('automatically skips residents that already exist and imports the rest', function () {
+    Resident::factory()->create(['first_name' => 'Juan', 'middle_name' => null, 'last_name' => 'Dela Cruz', 'suffix' => null, 'date_of_birth' => '1980-05-14']);
+    $this->actingAs(User::factory()->assignedOperations()->create());
+    $preview = $this->postJson(route('staff.resident-profiling-imports.preview'), ['file' => profilingFile([profilingRow(), profilingRow(['household_group' => 'Family 2', 'first_name' => 'Pedro', 'last_name' => 'Santos', 'date_of_birth' => '1985-02-03'])])])
+        ->assertOk()
+        ->assertJsonPath('rows.0.action', 'skip')
+        ->assertJsonPath('rows.0.already_exists', true)
+        ->assertJsonPath('rows.1.action', 'create')
+        ->assertJsonPath('summary.existing', 1)
+        ->assertJsonPath('summary.invalid', 0);
+
+    $this->postJson(route('staff.resident-profiling-imports.store'), profilingPayload($preview->json()))->assertCreated()->assertJsonPath('result.skipped', 1);
+    $this->assertDatabaseCount('residents', 2);
+    $this->assertDatabaseHas('residents', ['first_name' => 'Pedro', 'last_name' => 'Santos']);
+});
 
 it('links an existing resident without overwriting verified fields or request history', function () {
     $existing = Resident::factory()->create(['first_name' => 'Juan', 'middle_name' => null, 'last_name' => 'Dela Cruz', 'suffix' => null, 'date_of_birth' => '1980-05-14', 'address' => 'Verified address', 'contact_number' => '09170000000']);

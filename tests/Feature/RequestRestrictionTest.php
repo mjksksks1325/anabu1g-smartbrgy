@@ -110,5 +110,6 @@ it('keeps incident and BPO details out of resident pages exports and other resid
     $this->actingAs($account, 'resident')->get(route('portal.account'))->assertOk()->assertDontSee('Secret case allegation')->assertDontSee('Secret protection order')->assertDontSee('Secret restriction notes');
     $request = $other->resident->documentRequests()->create(['reference_code' => 'REQ-OTHER-PRIVATE', 'document_type' => 'Barangay Clearance', 'full_name' => $other->resident->full_name, 'address' => $other->resident->address, 'status' => 'pending']);
     $this->getJson(route('portal.request.status', $request->reference_code))->assertNotFound();
-    $this->actingAs(User::factory()->assignedOperations()->create(['role' => 'staff']), 'web')->get(route('staff.residents.export'))->assertOk()->assertDontSee('Secret case allegation')->assertDontSee('Secret protection order')->assertDontSee('Secret restriction notes');
+    $export = spreadsheetSheetXml($this->actingAs(User::factory()->assignedOperations()->create(['role' => 'staff']), 'web')->get(route('staff.residents.export'))->assertOk());
+    expect($export)->not->toContain('Secret case allegation')->not->toContain('Secret protection order')->not->toContain('Secret restriction notes');
 });

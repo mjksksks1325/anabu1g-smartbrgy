@@ -9,7 +9,8 @@
 <section class="panel employee-access-panel"><div class="panel-heading"><h2>Employee permissions</h2><span>{{ $employees->total() }} employees</span></div>
 @forelse($employees as $employee)
     @php($access = $employee->cabinetAccess)
-    <details class="employee-card"><summary class="employee-intro"><div><h3>{{ $employee->name }}</h3><p>Employee #{{ $employee->id }} · {{ $employee->email }} · {{ ucfirst($employee->role) }} · Website {{ $employee->is_active ? 'active' : 'inactive' }}</p></div><span class="pill {{ $access?->isEffective() ? 'success' : 'neutral' }}">{{ $access?->isEffective() ? 'Effective access' : 'No effective access' }}</span><span class="employee-expand-hint" aria-hidden="true">Details</span></summary>
+    <article class="employee-card"><div class="employee-intro"><div><h3>{{ $employee->name }}</h3><p>Employee #{{ $employee->id }} &middot; {{ $employee->email }} &middot; {{ ucfirst($employee->role) }} &middot; Website {{ $employee->is_active ? 'active' : 'inactive' }}</p></div><span class="pill {{ $access?->isEffective() ? 'success' : 'neutral' }}">{{ $access?->isEffective() ? 'Effective access' : 'No effective access' }}</span><button class="button quiet employee-details-trigger" type="button" onclick="document.getElementById('employee-details-{{ $employee->id }}').showModal()">Details</button></div>
+    <dialog class="employee-details-dialog" id="employee-details-{{ $employee->id }}" aria-labelledby="employee-details-title-{{ $employee->id }}"><div class="employee-details-heading"><div><h2 id="employee-details-title-{{ $employee->id }}">{{ $employee->name }}</h2><p>Employee #{{ $employee->id }} &middot; {{ $employee->email }} &middot; {{ ucfirst($employee->role) }}</p></div><button class="button quiet" type="button" onclick="document.getElementById('employee-details-{{ $employee->id }}').close()">Close</button></div>
     <div class="employee-card-body">
     <div class="detail-grid"><div><dt>Cabinet permission</dt><dd>{{ $access?->is_active ? 'Enabled' : 'Disabled' }}</dd></div><div><dt>RFID enrollment</dt><dd>{{ str_replace('_', ' ', ucfirst($access?->rfid_enrollment_status ?? 'not_started')) }} · {{ $access?->rfid_enrolled_at?->format('M j, Y g:i A') ?? 'No completion date' }}</dd></div><div><dt>Face enrollment</dt><dd>{{ str_replace('_', ' ', ucfirst($access?->face_enrollment_status ?? 'not_started')) }} · {{ $access?->face_enrolled_at?->format('M j, Y g:i A') ?? 'No completion date' }}</dd></div><div><dt>Authorization version</dt><dd>{{ $access?->authorization_version ?? '—' }} · Updated {{ $access?->updated_at?->format('M j, Y g:i A') ?? 'Never' }}</dd></div></div>
     <div class="drawer-access-current"><strong>Current drawer access</strong><span>{{ match ($access?->drawer_access ?? 'none') { 'drawer_1' => 'Drawer 1', 'drawer_2' => 'Drawer 2', 'all' => 'All drawers', default => 'No drawers assigned' } }}</span><small>Main door access is automatic after cabinet access is enabled and required enrollments are complete.</small></div>
@@ -37,7 +38,7 @@
     @endif
     @foreach(['rfid' => 'Request RFID enrollment', 'face' => 'Request face enrollment'] as $method => $label)
         <form method="POST" action="{{ route('admin.cabinet-access.enroll', [$employee, $method]) }}">@csrf<button class="button quiet" type="submit" @disabled(! $employee->is_active || ! $access?->is_active || $access->{$method.'_enrollment_status'} !== 'not_started')>{{ $label }}</button></form>
-    @endforeach</div></div></details>
+    @endforeach</div></div></dialog></article>
 @empty
     <div class="empty-state"><strong>No employees found</strong><p>Try another name or email.</p></div>
 @endforelse

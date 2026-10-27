@@ -101,13 +101,13 @@ class Incident extends Model
     /** @return BelongsTo<User, $this> */
     public function reporter(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'reported_by');
+        return $this->belongsTo(User::class, 'reported_by')->withTrashed();
     }
 
     /** @return BelongsTo<User, $this> */
     public function assignee(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'assigned_to');
+        return $this->belongsTo(User::class, 'assigned_to')->withTrashed();
     }
 
     /** @return HasMany<IncidentEvent, $this> */

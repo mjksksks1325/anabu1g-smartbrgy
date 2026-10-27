@@ -381,8 +381,8 @@ it('exports household columns while preserving resident filters and formula prot
 
     $response = $this->actingAs(User::factory()->assignedOperations()->create())->get(route('staff.residents.export', ['search' => 'Included', 'status' => 'active']));
 
-    $response->assertOk()->assertDownload('resident-records-'.today()->toDateString().'.csv');
-    expect($response->streamedContent())->toContain('Household Number')->toContain('Household Head')->toContain('Relationship to Household Head')->toContain('HH-000321')->toContain('Head Garcia')->toContain("'=DANGEROUS")->not->toContain('Excluded');
+    $response->assertOk()->assertDownload('resident-records-'.today()->toDateString().'.xlsx');
+    expect(spreadsheetSheetXml($response))->toContain('Household Number')->toContain('Household Head')->toContain('Relationship to Household Head')->toContain('HH-000321')->toContain('Head Garcia')->toContain('>=DANGEROUS')->not->toContain('<f>')->not->toContain('Excluded');
 });
 
 it('provides household size and demographic query support excluding archived members', function () {

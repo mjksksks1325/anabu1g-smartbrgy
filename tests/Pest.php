@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 /*
@@ -47,4 +48,17 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+/**
+ * Read the worksheet XML of a branded .xlsx export so tests can assert on cell text.
+ */
+function spreadsheetSheetXml(TestResponse $response): string
+{
+    $zip = new ZipArchive;
+    $zip->open($response->baseResponse->getFile()->getPathname());
+    $xml = (string) $zip->getFromName('xl/worksheets/sheet1.xml');
+    $zip->close();
+
+    return $xml;
 }

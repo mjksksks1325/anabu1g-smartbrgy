@@ -57,3 +57,20 @@ it('includes the accessible confirmation popup across personnel layouts', functi
         ->assertSee('data-status-url="'.route('password.confirmation').'"', false)
         ->assertSee('action="'.route('staff.password.confirm').'"', false);
 })->with(['staff.dashboard', 'staff.rfid-files.index', 'profile.edit']);
+
+it('keeps account security links out of Livewire navigation so the password popup stays mounted', function (string $route, bool $superAdmin) {
+    $user = $superAdmin ? User::factory()->superAdmin()->create() : User::factory()->assignedOperations()->create();
+    $response = $this->actingAs($user)->get(route($route))->assertOk();
+    $document = new DOMDocument;
+    @$document->loadHTML($response->getContent());
+    $links = (new DOMXPath($document))->query('//a[@href="'.route('security.edit').'"]');
+
+    expect($links->length)->toBeGreaterThan(0);
+    foreach ($links as $link) {
+        expect($link->hasAttribute('wire:navigate'))->toBeFalse();
+    }
+})->with([
+    ['admin.dashboard', true],
+    ['staff.dashboard', false],
+    ['profile.edit', false],
+]);

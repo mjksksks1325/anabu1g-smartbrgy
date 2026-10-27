@@ -30,6 +30,12 @@ class Resident extends Model
     /** @use HasFactory<ResidentFactory> */
     use HasFactory, SoftDeletes;
 
+    /** @var list<string> */
+    public const SPECIAL_GROUPS = [
+        'PWD', 'Solo Parent', 'Indigenous People', '4Ps Beneficiary',
+        'Teenage Mother', 'Out-of-School Youth', 'Unemployed Adult', 'Malnourished Child',
+    ];
+
     protected $fillable = [
         'first_name', 'middle_name', 'last_name', 'suffix', 'date_of_birth',
         'gender', 'civil_status', 'purok', 'address', 'contact_number',

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\CabinetAccessEventController;
+use App\Http\Controllers\Api\CabinetCredentialRevocationController;
 use App\Http\Controllers\Api\CabinetEventController;
 use App\Http\Middleware\AuthenticateCabinetDevice;
 use Illuminate\Support\Facades\Route;
@@ -20,4 +21,10 @@ Route::prefix('iot/cabinets/{cabinet:identifier}')
 
         Route::post('/employee-enrollment', [CabinetEventController::class, 'employeeEnrollment'])
             ->name('api.iot.cabinets.employee-enrollment');
+
+        Route::get('/employee-deprovisionments/pending', [CabinetCredentialRevocationController::class, 'pending'])
+            ->name('api.iot.cabinets.employee-deprovisionments.pending');
+        Route::post('/employee-deprovisionments/{requestId}/acknowledge', [CabinetCredentialRevocationController::class, 'acknowledge'])
+            ->whereUuid('requestId')
+            ->name('api.iot.cabinets.employee-deprovisionments.acknowledge');
     });

@@ -13,9 +13,12 @@
     <link rel="stylesheet" href="{{ asset('css/figma-iot.css') }}?v={{ filemtime(public_path('css/figma-iot.css')) }}">
 @include('partials.admin-localization-scripts')
 <script src="{{ asset('js/personnel-navigation.js') }}?v={{ filemtime(public_path('js/personnel-navigation.js')) }}" data-navigate-once></script>
+<script defer data-navigate-once src="{{ asset('js/rfid-file-tracking.js') }}?v={{ filemtime(public_path('js/rfid-file-tracking.js')) }}"></script>
 <script defer data-navigate-once src="{{ asset('js/personnel-password-confirmation.js') }}?v={{ filemtime(public_path('js/personnel-password-confirmation.js')) }}"></script>
 <link rel="stylesheet" href="{{ asset('css/password-visibility.css') }}?v={{ filemtime(public_path('css/password-visibility.css')) }}">
 <script defer data-navigate-once src="{{ asset('js/password-visibility.js') }}?v={{ filemtime(public_path('js/password-visibility.js')) }}"></script>
+<link rel="stylesheet" href="{{ asset('css/form-feedback.css') }}?v={{ filemtime(public_path('css/form-feedback.css')) }}">
+<script defer data-navigate-once src="{{ asset('js/form-feedback.js') }}?v={{ filemtime(public_path('js/form-feedback.js')) }}"></script>
 </head>
 <body data-personnel-layout="iot" data-admin-localization data-personnel-super-admin="{{ auth()->user()->isSuperAdmin() ? 'true' : 'false' }}">
 <script>window.PersonnelNavigation.syncStyles();</script>
@@ -64,8 +67,6 @@
             </div>
         @endif
             <div class="sidebar-sec">
-                <a wire:navigate class="nav-item" href="{{ route('profile.edit') }}"><x-staff-icon name="people" />My profile</a>
-                <a wire:navigate class="nav-item" href="{{ route('security.edit') }}"><x-staff-icon name="shield" />Account security</a>
                 <a class="nav-item portal-link staff-settings-portal" href="{{ route('home') }}" target="_blank" rel="noopener"><x-staff-icon name="globe" />Resident Portal</a>
             </div>
 @if(auth()->user()->hasPermission('households.view') && !auth()->user()->hasPermission('records.view'))

@@ -266,8 +266,12 @@ async function loadRestrictions(page = 1) {
 }
 
 async function reviewRestriction(id, button) {
-  if (button.disabled || !confirm('Confirm that you reviewed this decision and authorize its document restriction?')) return;
+  if (button.disabled) return;
   button.disabled = true;
+  if (!(await confirmAction('Confirm that you reviewed this decision and authorize its document restriction?', { title: 'Authorize document restriction', confirmLabel: 'Authorize' }))) {
+    button.disabled = false;
+    return;
+  }
   try { const result = await householdApi(`/staff/request-restrictions/${Number(id)}/review`, 'POST', {}); showToast(result.message, 'green'); await loadRestrictions(); }
   catch (error) { showToast(error.message, 'red'); }
   finally { button.disabled = false; }

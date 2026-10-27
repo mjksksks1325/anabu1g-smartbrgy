@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\WriteRecordsSpreadsheet;
 use App\Models\DocumentRequest;
 use App\Models\Resident;
 use App\Models\User;
@@ -320,7 +321,7 @@ it('returns paginated resident request history with authoritative standing filte
         ->assertJsonPath('summary.needs_review', 1);
 });
 
-it('exports request history as a formula-safe csv file', function () {
+it('exports request history as a branded formula-safe excel file', function () {
     $staff = User::factory()->assignedOperations()->create();
     DocumentRequest::query()->create([
         'reference_code' => 'REQ-EXPORT-001',
@@ -332,13 +333,15 @@ it('exports request history as a formula-safe csv file', function () {
 
     $response = $this->actingAs($staff)->get(route('staff.request-records.export'));
 
-    $response->assertOk()->assertDownload('request-records-'.today()->toDateString().'.csv');
-    expect($response->streamedContent())
+    $response->assertOk()->assertDownload('request-records-'.today()->toDateString().'.xlsx');
+    expect(spreadsheetSheetXml($response))
+        ->toContain('Request Records')
         ->toContain('REQ-EXPORT-001')
-        ->toContain("'=DANGEROUS");
+        ->toContain('t="inlineStr"><is><t xml:space="preserve">=DANGEROUS</t>')
+        ->not->toContain('<f>');
 });
 
-it('exports the current resident filters as a formula-safe CSV file', function () {
+it('exports the current resident filters as a branded formula-safe excel file', function () {
     $staff = User::factory()->assignedOperations()->create();
     Resident::factory()->create([
         'first_name' => 'Maria',
@@ -359,9 +362,48 @@ it('exports the current resident filters as a formula-safe CSV file', function (
     ]));
 
     $response->assertOk()
-        ->assertDownload('resident-records-'.today()->toDateString().'.csv');
-    expect($response->streamedContent())
+        ->assertDownload('resident-records-'.today()->toDateString().'.xlsx')
+        ->assertHeader('Content-Type', WriteRecordsSpreadsheet::CONTENT_TYPE);
+    $zip = new ZipArchive;
+    $zip->open($response->baseResponse->getFile()->getPathname());
+    expect($zip->locateName('xl/media/logo.jpg'))->not->toBeFalse();
+    $zip->close();
+    expect(spreadsheetSheetXml($response))
+        ->toContain('Barangay Anabu I-G, City of Imus, Province of Cavite')
+        ->toContain('Resident Records')
+        ->toContain('Prepared by '.$staff->name)
         ->toContain('Maria Santos')
-        ->toContain("'=HYPERLINK")
+        ->toContain('=HYPERLINK(&quot;https://example.test&quot;)')
+        ->not->toContain('<f>')
         ->not->toContain('Excluded Resident');
 });
+
+it('filters resident records by the special group opened from demographics', function () {
+    $staff = User::factory()->assignedOperations()->create();
+    Resident::factory()->create(['first_name' => 'Pwd', 'last_name' => 'Member', 'special_groups' => ['PWD'], 'date_of_birth' => '1990-01-01']);
+    Resident::factory()->create(['first_name' => 'Solo', 'last_name' => 'Parent', 'special_groups' => ['Solo Parent'], 'date_of_birth' => '1990-01-01']);
+    Resident::factory()->create(['first_name' => 'Elder', 'last_name' => 'Senior', 'special_groups' => [], 'date_of_birth' => today()->subYears(65)->toDateString()]);
+
+    $this->actingAs($staff)->getJson(route('staff.residents.index', ['special_group' => 'PWD']))
+        ->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.first_name', 'Pwd');
+    $this->getJson(route('staff.residents.index', ['special_group' => 'Senior Citizen']))
+        ->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.first_name', 'Elder');
+    $this->getJson(route('staff.residents.index', ['special_group' => 'Unknown Group']))
+        ->assertOk()->assertJsonPath('total', 3);
+});
+
+it('accepts only 09 or +639 mobile numbers when creating or editing a resident', function (string $contactNumber, bool $valid) {
+    $staff = User::factory()->assignedOperations()->create();
+    $resident = Resident::factory()->create(['contact_number' => null]);
+
+    $store = $this->actingAs($staff)->postJson(route('staff.residents.store'), residentPayload(['contact_number' => $contactNumber]));
+    $update = $this->patchJson(route('staff.residents.update', $resident), [...residentPayload(['first_name' => $resident->first_name, 'last_name' => $resident->last_name, 'date_of_birth' => $resident->date_of_birth->toDateString()]), 'contact_number' => $contactNumber]);
+
+    if ($valid) {
+        $store->assertCreated();
+        $update->assertOk();
+    } else {
+        $store->assertJsonValidationErrors(['contact_number' => 'Enter 11 digits starting with 09']);
+        $update->assertJsonValidationErrors(['contact_number' => 'Enter 11 digits starting with 09']);
+    }
+})->with([['09171234567', true], ['+639171234567', true], ['9171234567', false], ['0817123456', false], ['+6391712345678', false]]);

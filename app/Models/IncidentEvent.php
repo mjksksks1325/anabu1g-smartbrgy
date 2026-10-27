@@ -12,7 +12,7 @@ class IncidentEvent extends Model
     /** @return BelongsTo<User, $this> */
     public function actor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class, 'user_id')->withTrashed();
     }
 
     /** @return array<string, string> */

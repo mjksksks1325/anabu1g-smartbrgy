@@ -36,7 +36,8 @@
                 @csrf
                 <div class="form-group">
                     <label class="form-label" for="profile-photo"><span data-portal-i18n="Piliin ang larawan">{{ __('Piliin ang larawan') }}</span></label>
-                    <input class="form-input" id="profile-photo" name="photo" type="file" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.avif,.heic,.heif,image/jpeg,image/png,image/gif,image/bmp,image/webp,image/avif,image/heic,image/heif" required aria-describedby="profile-photo-help" @error('photo') aria-invalid="true" @enderror>
+                    <input class="form-input" id="profile-photo" name="photo" type="file" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.avif,.heic,.heif,image/jpeg,image/png,image/gif,image/bmp,image/webp,image/avif,image/heic,image/heif" data-resident-image-only data-error-target="profile-photo-client-error" required aria-describedby="profile-photo-help profile-photo-client-error" @error('photo') aria-invalid="true" @enderror>
+                    <p class="field-error" id="profile-photo-client-error" hidden role="alert" aria-live="polite"><span data-portal-i18n="Choose an image file only (up to 5 MB). Documents are not accepted.">{{ __('Choose an image file only (up to 5 MB). Documents are not accepted.') }}</span></p>
                     @error('photo')<p class="field-error" data-portal-message>{{ $message }}</p>@enderror
                     <p class="form-note" id="profile-photo-help"><span data-portal-i18n="Supported image files only, up to 5 MB. Documents are not accepted. Select the photo again if the upload fails.">{{ __('Supported image files only, up to 5 MB. Documents are not accepted. Select the photo again if the upload fails.') }}</span></p>
                 </div>

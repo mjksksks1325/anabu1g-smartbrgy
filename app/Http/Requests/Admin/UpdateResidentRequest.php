@@ -68,6 +68,16 @@ class UpdateResidentRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'contact_number.regex' => 'Enter 11 digits starting with 09 (09XXXXXXXXX) or +639 followed by 9 digits (+639XXXXXXXXX).',
+        ];
+    }
+
     protected function prepareForValidation(): void
     {
         $this->merge([

@@ -14,7 +14,7 @@ function profilingClient(fetch) {
   };
   const context = vm.createContext({
     document: { getElementById: field, querySelectorAll: () => [] }, fetch, FormData, URLSearchParams,
-    csrfRequestHeaders: () => ({ 'X-CSRF-TOKEN': 'test-token' }), confirm: () => true,
+    csrfRequestHeaders: () => ({ 'X-CSRF-TOKEN': 'test-token' }), confirmAction: async () => true,
     escapeText: value => String(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character])),
   });
   vm.runInContext(source, context);

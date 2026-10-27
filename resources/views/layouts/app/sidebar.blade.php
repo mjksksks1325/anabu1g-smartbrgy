@@ -10,6 +10,8 @@
         <script defer data-navigate-once src="{{ asset('js/personnel-password-confirmation.js') }}?v={{ filemtime(public_path('js/personnel-password-confirmation.js')) }}"></script>
         <link rel="stylesheet" href="{{ asset('css/password-visibility.css') }}?v={{ filemtime(public_path('css/password-visibility.css')) }}">
         <script defer data-navigate-once src="{{ asset('js/password-visibility.js') }}?v={{ filemtime(public_path('js/password-visibility.js')) }}"></script>
+        <link rel="stylesheet" href="{{ asset('css/form-feedback.css') }}?v={{ filemtime(public_path('css/form-feedback.css')) }}">
+        <script defer data-navigate-once src="{{ asset('js/form-feedback.js') }}?v={{ filemtime(public_path('js/form-feedback.js')) }}"></script>
     </head>
     <body class="civic-settings min-h-screen bg-white dark:bg-zinc-800" data-admin-localization data-personnel-layout="settings" data-personnel-super-admin="{{ auth()->user()->isSuperAdmin() ? 'true' : 'false' }}">
         <script>window.PersonnelNavigation.syncStyles();</script>
@@ -59,8 +61,6 @@
                     </div>
                 @endif
                 <div class="sidebar-sec staff-settings-account-links">
-                    <a wire:navigate @class(['nav-item', 'active' => request()->routeIs('profile.edit')]) href="{{ route('profile.edit') }}" aria-current="{{ request()->routeIs('profile.edit') ? 'page' : 'false' }}"><x-staff-icon name="people" />My profile</a>
-                    <a wire:navigate @class(['nav-item', 'active' => request()->routeIs('security.edit')]) href="{{ route('security.edit') }}" aria-current="{{ request()->routeIs('security.edit') ? 'page' : 'false' }}"><x-staff-icon name="shield" />Account security</a>
                     <a class="nav-item staff-settings-portal" href="{{ route('home') }}" target="_blank" rel="noopener"><x-staff-icon name="globe" />Portal ng Residente</a>
                 </div>
             @if(auth()->user()->hasPermission('households.view') && !auth()->user()->hasPermission('records.view'))

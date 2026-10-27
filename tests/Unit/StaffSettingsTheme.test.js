@@ -24,7 +24,7 @@ for (const [savedTheme, expectedTheme] of [[null, 'light'], ['light', 'light'], 
 test('settings theme button updates the shared theme and its label', () => {
     const preferences = new Map([['smartbrgy_theme', 'light']]);
     const handlers = new Map();
-    const button = { textContent: '' };
+    const button = { title: '', attributes: {}, setAttribute(name, value) { this.attributes[name] = value; } };
     const applied = [];
     const document = {
         getElementById: () => button,
@@ -42,9 +42,11 @@ test('settings theme button updates the shared theme and its label', () => {
     });
 
     handlers.get('DOMContentLoaded')();
-    assert.equal(button.textContent, 'Dark Mode');
+    assert.equal(button.attributes['aria-label'], 'Dark Mode');
+    assert.equal(button.title, 'Dark Mode');
     handlers.get('click')({ target: { closest: () => button } });
     assert.equal(preferences.get('smartbrgy_theme'), 'dark');
-    assert.equal(button.textContent, 'Light Mode');
+    assert.equal(button.attributes['aria-label'], 'Light Mode');
+    assert.equal(button.title, 'Light Mode');
     assert.deepEqual(applied, ['dark']);
 });

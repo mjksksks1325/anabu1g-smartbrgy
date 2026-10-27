@@ -18,6 +18,8 @@
 <script defer data-navigate-once src="{{ asset('js/personnel-password-confirmation.js') }}?v={{ filemtime(public_path('js/personnel-password-confirmation.js')) }}"></script>
 <link rel="stylesheet" href="{{ asset('css/password-visibility.css') }}?v={{ filemtime(public_path('css/password-visibility.css')) }}">
 <script defer data-navigate-once src="{{ asset('js/password-visibility.js') }}?v={{ filemtime(public_path('js/password-visibility.js')) }}"></script>
+<link rel="stylesheet" href="{{ asset('css/form-feedback.css') }}?v={{ filemtime(public_path('css/form-feedback.css')) }}">
+<script defer data-navigate-once src="{{ asset('js/form-feedback.js') }}?v={{ filemtime(public_path('js/form-feedback.js')) }}"></script>
 </head>
 <body class="light-mode" data-personnel-layout="admin" data-admin-localization data-personnel-super-admin="{{ auth()->user()->isSuperAdmin() ? 'true' : 'false' }}">
 <script>window.PersonnelNavigation.syncStyles();</script>
@@ -60,11 +62,11 @@
       @if(auth()->user()->hasAnyPermission(['dashboard.view', 'demographics.view']))
       <div class="sidebar-sec">
         <div class="sidebar-label">Overview</div>
-        @if(auth()->user()->hasAnyPermission(['dashboard.view']))<a wire:navigate class="nav-item{{ $activeScreen === 'dashboard' ? ' active' : '' }}" data-perm="Dashboard" data-screen="dashboard" aria-current="{{ $activeScreen === 'dashboard' ? 'page' : 'false' }}" href="{{ route(auth()->user()->role === 'admin' ? 'admin.dashboard' : 'staff.dashboard') }}">
+        @if(auth()->user()->hasAnyPermission(['dashboard.view']))<a class="nav-item{{ $activeScreen === 'dashboard' ? ' active' : '' }}" onclick="showScreen('dashboard',this);return false" data-perm="Dashboard" data-screen="dashboard" aria-current="{{ $activeScreen === 'dashboard' ? 'page' : 'false' }}" href="{{ route(auth()->user()->role === 'admin' ? 'admin.dashboard' : 'staff.dashboard') }}">
           <x-staff-icon name="dashboard" />
           Dashboard
         </a>@endif
-        @if(auth()->user()->hasAnyPermission(['demographics.view']))<a wire:navigate class="nav-item{{ $activeScreen === 'demographics' ? ' active' : '' }}" data-perm="Records" data-screen="demographics" aria-current="{{ $activeScreen === 'demographics' ? 'page' : 'false' }}" href="{{ route('staff.demographics') }}">
+        @if(auth()->user()->hasAnyPermission(['demographics.view']))<a class="nav-item{{ $activeScreen === 'demographics' ? ' active' : '' }}" onclick="showScreen('demographics',this);return false" data-perm="Records" data-screen="demographics" aria-current="{{ $activeScreen === 'demographics' ? 'page' : 'false' }}" href="{{ route('staff.demographics') }}">
           <x-staff-icon name="people" />
           Demographics
         </a>@endif
@@ -73,24 +75,24 @@
       @if(auth()->user()->hasAnyPermission(['records.view', 'voters.view', 'documents.view', 'eligibility.view', 'incidents.view', 'vawc.view', 'incidents.submit', 'vawc.submit']))
       <div class="sidebar-sec">
         <div class="sidebar-label">Records</div>
-        @if(auth()->user()->hasAnyPermission(['records.view']))<a wire:navigate class="nav-item{{ $activeScreen === 'records' ? ' active' : '' }}" data-perm="Records" data-screen="records" aria-current="{{ $activeScreen === 'records' ? 'page' : 'false' }}" href="{{ route('staff.residents.index') }}">
+        @if(auth()->user()->hasAnyPermission(['records.view']))<a class="nav-item{{ $activeScreen === 'records' ? ' active' : '' }}" onclick="showScreen('records',this);return false" data-perm="Records" data-screen="records" aria-current="{{ $activeScreen === 'records' ? 'page' : 'false' }}" href="{{ route('staff.residents.index') }}">
           <x-staff-icon name="document" />
           Resident Records
         </a>@endif
-        @if(auth()->user()->hasAnyPermission(['voters.view']))<a wire:navigate class="nav-item{{ $activeScreen === 'voters' ? ' active' : '' }}" data-perm="Records" data-screen="voters" aria-current="{{ $activeScreen === 'voters' ? 'page' : 'false' }}" href="{{ route('staff.voters') }}">
+        @if(auth()->user()->hasAnyPermission(['voters.view']))<a class="nav-item{{ $activeScreen === 'voters' ? ' active' : '' }}" onclick="showScreen('voters',this);return false" data-perm="Records" data-screen="voters" aria-current="{{ $activeScreen === 'voters' ? 'page' : 'false' }}" href="{{ route('staff.voters') }}">
           <x-staff-icon name="voters" />
           Voters
         </a>@endif
-        @if(auth()->user()->hasAnyPermission(['documents.view']))<a wire:navigate class="nav-item{{ $activeScreen === 'certificates' ? ' active' : '' }}" data-perm="Certificates" data-screen="certificates" aria-current="{{ $activeScreen === 'certificates' ? 'page' : 'false' }}" href="{{ route('staff.document-requests.index') }}">
+        @if(auth()->user()->hasAnyPermission(['documents.view']))<a class="nav-item{{ $activeScreen === 'certificates' ? ' active' : '' }}" onclick="showScreen('certificates',this);return false" data-perm="Certificates" data-screen="certificates" aria-current="{{ $activeScreen === 'certificates' ? 'page' : 'false' }}" href="{{ route('staff.document-requests.index') }}">
           <x-staff-icon name="certificate" />
           Certificates & Clearances
           <span class="nav-badge" id="cert-nav-badge" style="display:none;">0</span>
         </a>@endif
-        @if(auth()->user()->hasAnyPermission(['eligibility.view', 'documents.view']))<a wire:navigate class="nav-item{{ $activeScreen === 'request-records' ? ' active' : '' }}" data-perm="Requests" data-screen="request-records" aria-current="{{ $activeScreen === 'request-records' ? 'page' : 'false' }}" href="{{ route('staff.request-eligibility') }}">
+        @if(auth()->user()->hasAnyPermission(['eligibility.view', 'documents.view']))<a class="nav-item{{ $activeScreen === 'request-records' ? ' active' : '' }}" onclick="showScreen('request-records',this);return false" data-perm="Requests" data-screen="request-records" aria-current="{{ $activeScreen === 'request-records' ? 'page' : 'false' }}" href="{{ route('staff.request-eligibility') }}">
           <x-staff-icon name="clipboard" />
           Request Eligibility
         </a>@endif
-        @if(auth()->user()->hasAnyPermission(['incidents.view', 'vawc.view', 'incidents.submit', 'vawc.submit']))<a wire:navigate class="nav-item{{ $activeScreen === 'incidents' ? ' active' : '' }}" data-perm="Incidents" data-screen="incidents" aria-current="{{ $activeScreen === 'incidents' ? 'page' : 'false' }}" href="{{ route('staff.incidents.index') }}">
+        @if(auth()->user()->hasAnyPermission(['incidents.view', 'vawc.view', 'incidents.submit', 'vawc.submit']))<a class="nav-item{{ $activeScreen === 'incidents' ? ' active' : '' }}" onclick="showScreen('incidents',this);return false" data-perm="Incidents" data-screen="incidents" aria-current="{{ $activeScreen === 'incidents' ? 'page' : 'false' }}" href="{{ route('staff.incidents.index') }}">
           <x-staff-icon name="alert" />
           Incident Reports
         </a>@endif
@@ -111,15 +113,15 @@
         <div class="sidebar-label">Administration</div>
         <a wire:navigate class="nav-item" href="{{ route('admin.smart-cabinet.index') }}"><x-staff-icon name="cabinet" />Smart Cabinet</a>
         <a wire:navigate class="nav-item" href="{{ route('admin.cabinet-access.index') }}"><x-staff-icon name="key" />Employee Cabinet Access</a>
-        <a wire:navigate class="nav-item{{ $activeScreen === 'audit' ? ' active' : '' }}" data-perm="Audit" data-screen="audit" aria-current="{{ $activeScreen === 'audit' ? 'page' : 'false' }}" href="{{ route('admin.audit') }}">
+        <a class="nav-item{{ $activeScreen === 'audit' ? ' active' : '' }}" onclick="showScreen('audit',this);return false" data-perm="Audit" data-screen="audit" aria-current="{{ $activeScreen === 'audit' ? 'page' : 'false' }}" href="{{ route('admin.audit') }}">
           <x-staff-icon name="audit" />
           Audit Log
         </a>
-        <a wire:navigate class="nav-item{{ $activeScreen === 'users' ? ' active' : '' }}" data-perm="Users" data-screen="users" aria-current="{{ $activeScreen === 'users' ? 'page' : 'false' }}" href="{{ route('admin.users.index') }}">
+        <a class="nav-item{{ $activeScreen === 'users' ? ' active' : '' }}" onclick="showScreen('users',this);return false" data-perm="Users" data-screen="users" aria-current="{{ $activeScreen === 'users' ? 'page' : 'false' }}" href="{{ route('admin.users.index') }}">
           <x-staff-icon name="user" />
           User Management
         </a>
-        <a wire:navigate class="nav-item{{ $activeScreen === 'settings' ? ' active' : '' }}" data-perm="Settings" data-screen="settings" aria-current="{{ $activeScreen === 'settings' ? 'page' : 'false' }}" href="{{ route('admin.settings') }}">
+        <a class="nav-item{{ $activeScreen === 'settings' ? ' active' : '' }}" onclick="showScreen('settings',this);return false" data-perm="Settings" data-screen="settings" aria-current="{{ $activeScreen === 'settings' ? 'page' : 'false' }}" href="{{ route('admin.settings') }}">
           <x-staff-icon name="settings" />
           Settings
         </a>
@@ -130,8 +132,6 @@
 <a wire:navigate class="nav-item" data-screen="records" href="{{ route('staff.households.page') }}"><x-staff-icon name="people" />Households</a>
       @endif
 
-<a wire:navigate class="nav-item" href="{{ route('profile.edit') }}"><x-staff-icon name="people" />My profile</a>
-        <a wire:navigate class="nav-item" href="{{ route('security.edit') }}"><x-staff-icon name="shield" />Account security</a>
         <a class="nav-item staff-settings-portal" href="{{ route('home') }}" target="_blank" rel="noopener">
           <x-staff-icon name="globe" />
           {{ __('Resident Portal') }}
@@ -147,46 +147,48 @@
     <div class="content{{ $activeScreen === 'dashboard' ? ' active' : '' }}" id="screen-dashboard" tabindex="-1">
       <div class="page-header-row">
         <div class="page-header"><h1><span>Dashboard</span></h1><p>Real-time overview — Barangay Anabu I-G, Imus City</p></div>
-        <div style="display:flex;gap:8px;">
+        <div class="dashboard-refresh-actions" style="display:flex;gap:8px;">
           <button class="btn btn-primary btn-sm" onclick="refreshDashboardStats()">⟳ Refresh</button>
         </div>
       </div>
+      <section class="card dashboard-quick-actions" aria-labelledby="dashboard-quick-actions-title">
+        <div class="card-header"><div><div class="card-title" id="dashboard-quick-actions-title">Quick Actions</div><div class="card-sub">Create a record or jump to a staff feature.</div></div></div>
+        <div class="dashboard-quick-action-list">
+          <button data-action-permission="records.create" class="btn btn-green" onclick="openDashboardResidentForm()" @if(!auth()->user()->hasAnyPermission(['records.create'])) hidden style="display:none;" @endif><x-staff-icon name="plus" />Register New Resident</button>
+          <button data-action-permission="documents.view" class="btn btn-primary" onclick="openDashboardFeature('certificates')" @if(!auth()->user()->hasAnyPermission(['documents.view'])) hidden style="display:none;" @endif><x-staff-icon name="document" />Issue Certificate</button>
+          <button data-action-permission="incidents.submit|vawc.submit" class="btn" onclick="openDashboardIncidentForm()" @if(!auth()->user()->hasAnyPermission(['incidents.submit', 'vawc.submit'])) hidden style="display:none;" @endif><x-staff-icon name="alert" />File Incident Report</button>
+        </div>
+      </section>
       <div class="stats-grid">
         <div data-action-permission="records.view|demographics.view" class="stat-card blue" @if(!auth()->user()->hasAnyPermission(['records.view', 'demographics.view'])) hidden style="display:none;" @endif><div class="stat-label">Active Residents</div><div class="stat-value" id="dash-stat-residents">0</div><div class="stat-sub" id="dash-sub-residents">Database records</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6m2 3a5 5 0 0 1 2 4v2"/></svg></div></div>
         <div data-action-permission="documents.view" class="stat-card green" @if(!auth()->user()->hasAnyPermission(['documents.view'])) hidden style="display:none;" @endif><div class="stat-label">Issued Certificates</div><div class="stat-value" id="dash-stat-issued">0</div><div class="stat-sub">Verified official records</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h9l3 3v15H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM14 3v4h4M8 12h8M8 16h8"/></svg></div></div>
         <div data-action-permission="documents.view" class="stat-card amber" @if(!auth()->user()->hasAnyPermission(['documents.view'])) hidden style="display:none;" @endif><div class="stat-label">Pending Requests</div><div class="stat-value" id="dash-stat-pending">0</div><div class="stat-sub" id="dash-sub-pending">No pending requests</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div></div>
         <div data-action-permission="incidents.view|vawc.view" class="stat-card red" @if(!auth()->user()->hasAnyPermission(['incidents.view', 'vawc.view'])) hidden style="display:none;" @endif><div class="stat-label">Incident Reports</div><div class="stat-value" id="dash-stat-incidents">0</div><div class="stat-sub" id="dash-sub-incidents">No incidents filed</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m12 3 10 18H2L12 3ZM12 9v5m0 3h.01"/></svg></div></div>
       </div>
-      <div class="two-col">
-        <div class="card" @cannot('documents.view') hidden style="display:none;" @endcannot>
-          <div class="card-header"><div><div class="card-title">Certificate Requests</div><div class="card-sub">Real-time na bilang ng bawat uri ng kahilingan</div></div><span class="badge badge-green">Live</span></div>
-          <div id="dash-chart"></div>
+      <div class="two-col dashboard-overview-grid">
+        <div class="card dashboard-chart-card" @cannot('documents.view') hidden style="display:none;" @endcannot>
+          <div class="card-header"><div><div class="card-title">Certificate Requests</div><div class="card-sub">{{ __('Real-time na bilang ng bawat uri ng kahilingan') }}</div></div><span class="badge badge-green">Live</span></div>
+          <div id="dash-chart" aria-label="Certificate requests by type"></div>
         </div>
-        <div class="card">
-          <div class="card-header"><div><div class="card-title">Recent Activity</div><div class="card-sub">Latest recorded activity</div></div><span class="badge badge-green">Live</span></div>
-          <div id="dash-recent-activity">
+        <div class="card dashboard-recent-card">
+          <div class="card-header"><div><div class="card-title">Recent Activity</div><div class="card-sub">Select an item to open its record.</div></div><span class="badge badge-green">Live</span></div>
+          <div id="dash-recent-activity" aria-live="polite">
             <div style="text-align:center;color:var(--text-muted);font-size:11px;padding:18px 0;">No recent activity.</div>
           </div>
+          <div id="dash-activity-pagination" class="dashboard-pagination" hidden></div>
         </div>
       </div>
-      <div class="three-col">
+      <div class="dashboard-secondary-grid">
         <div class="card" @cannot('demographics.view') hidden style="display:none;" @endcannot>
           <div class="card-header"><div class="card-title">Purok Breakdown</div></div>
-          <div style="display:flex;flex-direction:column;gap:9px;" id="dash-purok-breakdown"></div>
+          <div class="dashboard-purok-breakdown" id="dash-purok-breakdown"></div>
+          <p class="dashboard-interpretation" id="dash-purok-interpretation"></p>
         </div>
         <div class="card">
           <div class="card-header"><div class="card-title">System Status</div></div>
           <div class="sys-row" @cannot('documents.view') hidden style="display:none;" @endcannot><div class="sys-name">Document services</div><a class="btn btn-xs" href="{{ route('staff.document-requests.list') }}">View requests</a></div>
-          <div class="sys-row"><div class="sys-name">Account security</div><a class="btn btn-xs" href="{{ route('security.edit') }}">Manage</a></div>
-          <div class="sys-row"><div class="sys-name">Hardware integrations</div>@if(auth()->user()->isSuperAdmin() || auth()->user()->hasPermission('rfid.view'))<a class="btn btn-xs" href="{{ auth()->user()->isSuperAdmin() ? route('admin.smart-cabinet.index') : route('staff.rfid-files.index') }}">View status</a>@endif</div>
-        </div>
-        <div class="card">
-          <div class="card-header"><div class="card-title">Quick Actions</div></div>
-          <div style="display:flex;flex-direction:column;gap:7px;">
-            <button data-action-permission="records.create" class="btn btn-green btn-full" onclick="showScreen('records',findNavItem('records'));openAddResident()" @if(!auth()->user()->hasAnyPermission(['records.create'])) hidden style="display:none;" @endif><x-staff-icon name="plus" />Register New Resident</button>
-            <button class="btn btn-primary btn-full" onclick="showScreen('certificates',findNavItem('certificates'))"><x-staff-icon name="document" />Issue Certificate</button>
-            <button class="btn btn-full" onclick="showScreen('incidents',findNavItem('incidents'))"><x-staff-icon name="alert" />File Incident Report</button>
-          </div>
+          @if(auth()->user()->isSuperAdmin())<div class="sys-row"><div class="sys-name">Account and security settings</div><button class="btn btn-xs" type="button" onclick="showScreen('settings',findNavItem('settings'))">Manage</button></div>@endif
+          <div class="sys-row"><div class="sys-name">Hardware integrations</div>@if(auth()->user()->isSuperAdmin())<button class="btn btn-xs" type="button" onclick="openModal('modal-hardware-status')">View status</button>@elseif(auth()->user()->hasPermission('rfid.view'))<a class="btn btn-xs" href="{{ route('staff.rfid-files.index') }}">View status</a>@endif</div>
         </div>
       </div>
     </div>
@@ -202,12 +204,12 @@
       </div>
 
       <div class="stats-grid stats-grid-3" id="demographics-stats-grid">
-        <div class="stat-card blue"><div class="stat-label">Total Residents</div><div class="stat-value counter" id="demo-stat-total" data-target="0">0</div><div class="stat-sub">Based on registered residents</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6m2 3a5 5 0 0 1 2 4v2"/></svg></div></div>
-        <div class="stat-card green"><div class="stat-label">Male Residents</div><div class="stat-value counter" id="demo-stat-male" data-target="0">0</div><div class="stat-sub" id="demo-sub-male">—</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="7" r="4"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></svg></div></div>
-        <div class="stat-card blue"><div class="stat-label">Female Residents</div><div class="stat-value counter" id="demo-stat-female" data-target="0">0</div><div class="stat-sub" id="demo-sub-female">—</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="7" r="4"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></svg></div></div>
-        <div class="stat-card amber"><div class="stat-label">Senior Citizens</div><div class="stat-value counter" id="demo-stat-seniors" data-target="0">0</div><div class="stat-sub" id="demo-sub-seniors">Age 60 and above</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div></div>
-        <div class="stat-card green"><div class="stat-label">Total Households</div><div class="stat-value" id="demo-stat-households">0</div><div class="stat-sub">Registered households</div></div>
-        <div class="stat-card blue"><div class="stat-label">Registered Voters</div><div class="stat-value" id="demo-stat-voters">0</div><div class="stat-sub">Active registrations of non-archived residents</div></div>
+        <div class="stat-card demo-kpi demo-kpi-green"><div class="stat-label">Total Residents</div><div class="stat-value counter" id="demo-stat-total" data-target="0">0</div><div class="stat-sub">Based on registered residents</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6m2 3a5 5 0 0 1 2 4v2"/></svg></div></div>
+        <div class="stat-card demo-kpi demo-kpi-blue"><div class="stat-label">Male Residents</div><div class="stat-value counter" id="demo-stat-male" data-target="0">0</div><div class="stat-sub" id="demo-sub-male">—</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="7" r="4"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></svg></div></div>
+        <div class="stat-card demo-kpi demo-kpi-pink"><div class="stat-label">Female Residents</div><div class="stat-value counter" id="demo-stat-female" data-target="0">0</div><div class="stat-sub" id="demo-sub-female">—</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="7" r="4"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></svg></div></div>
+        <div class="stat-card demo-kpi demo-kpi-yellow"><div class="stat-label">Senior Citizens</div><div class="stat-value counter" id="demo-stat-seniors" data-target="0">0</div><div class="stat-sub" id="demo-sub-seniors">Age 60 and above</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div></div>
+        <div class="stat-card demo-kpi demo-kpi-purple"><div class="stat-label">Total Households</div><div class="stat-value" id="demo-stat-households">0</div><div class="stat-sub">Registered households</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></div></div>
+        <div class="stat-card demo-kpi demo-kpi-teal"><div class="stat-label">Registered Voters</div><div class="stat-value" id="demo-stat-voters">0</div><div class="stat-sub">Active registrations of non-archived residents</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="10" width="16" height="10" rx="1.5"/><path d="M9 10V4h6v6"/><path d="m10 7 1.5 1.5L14 6"/></svg></div></div>
       </div>
 
       <!-- Purok Population Cards -->
@@ -255,20 +257,28 @@
       @can('records.review')<p><a wire:navigate class="btn btn-outline" href="{{ route('staff.resident-applications.index') }}">Review new resident applications <span class="badge">{{ $pendingRegistrationsCount ?? 0 }} pending</span></a></p>@endcan
       <div class="page-header-row">
         <div class="page-header"><h1>{{ auth()->user()->hasPermission('records.view') ? 'Resident Records' : 'Households' }}</h1><p>All registered residents — Barangay Anabu I-G</p></div>
-        <button data-action-permission="records.create" class="btn btn-green" onclick="openAddResident()" @if(!auth()->user()->hasAnyPermission(['records.create'])) hidden style="display:none;" @endif> New Resident</button>
       </div>
-      <div class="search-row">
+      <div class="search-row resident-records-toolbar">
         <div class="search-wrap"><span class="si"></span><input class="search-input" @cannot('records.view') hidden @endcannot id="residents-search" placeholder="Search resident by name, ID, or purok..." oninput="filterResidents()"/></div>
-        <button data-action-permission="records.export" class="btn btn-primary btn-sm" onclick="exportResidents()" @if(!auth()->user()->hasAnyPermission(['records.export'])) hidden style="display:none;" @endif>Export CSV</button>
+        <button data-action-permission="records.create" class="btn btn-green" onclick="openAddResident()" @if(!auth()->user()->hasAnyPermission(['records.create'])) hidden style="display:none;" @endif> New Resident</button>
         <button data-action-permission="households.view" class="btn btn-sm" onclick="openHouseholdManagement()" @if(!auth()->user()->hasAnyPermission(['households.view'])) hidden style="display:none;" @endif>Manage Households</button>
         <button data-action-permission="records.import" class="btn btn-sm" onclick="openHouseholdProfilingImport()" @if(!auth()->user()->hasAnyPermission(['records.import'])) hidden style="display:none;" @endif>Import Residents / Household Profiling</button>
+        <button data-action-permission="records.export" class="btn btn-primary btn-sm" onclick="exportResidents()" @if(!auth()->user()->hasAnyPermission(['records.export'])) hidden style="display:none;" @endif>Export Excel</button>
       </div>
       <div class="status-bar" @cannot('records.view') hidden style="display:none;" @endcannot>
-        <div class="status-pill active" onclick="filterResidentStatus('',this)">All</div>
-        <div class="status-pill" onclick="filterResidentStatus('Active',this)">Active</div>
-        <div class="status-pill" onclick="filterResidentStatus('Inactive',this)">Inactive</div>
-        <div class="status-pill" onclick="filterResidentStatus('Senior',this)"> Senior Citizens</div>
-        <div class="status-pill" onclick="filterResidentStatus('Archived',this)">Archived</div>
+        <div class="status-pill active" data-resident-status="" onclick="filterResidentStatus('',this)">All</div>
+        <div class="status-pill" data-resident-status="active" onclick="filterResidentStatus('Active',this)">Active</div>
+        <div class="status-pill" data-resident-status="inactive" onclick="filterResidentStatus('Inactive',this)">Inactive</div>
+        <div class="status-pill" data-resident-status="senior" onclick="filterResidentStatus('Senior',this)">Senior Citizens</div>
+        <div class="status-pill" data-resident-status="archived" onclick="filterResidentStatus('Archived',this)">Archived</div>
+        <label class="resident-group-select" for="resident-group-filter"><span>Special group</span>
+          <select class="form-input" id="resident-group-filter" onchange="filterResidentSpecialGroup(this.value)">
+            <option value="">All special groups</option>
+            @foreach(['PWD' => 'Persons w/ Disability', 'Solo Parent' => 'Solo Parents', 'Indigenous People' => 'Indigenous People', '4Ps Beneficiary' => '4Ps Beneficiaries', 'Teenage Mother' => 'Teenage Mothers', 'Out-of-School Youth' => 'Out-of-School Youth', 'Unemployed Adult' => 'Unemployed Adults', 'Malnourished Child' => 'Malnourished Children'] as $group => $label)
+            <option value="{{ $group }}">{{ $label }}</option>
+            @endforeach
+          </select>
+        </label>
       </div>
       <div class="card" @cannot('records.view') hidden style="display:none;" @endcannot>
         <div class="table-scroll"><table class="tbl">
@@ -283,27 +293,25 @@
     <div class="content{{ $activeScreen === 'voters' ? ' active' : '' }}" id="screen-voters">
       <div class="page-header-row">
         <div class="page-header"><h1>Voters</h1><p>Listahan ng mga resident na botante, na itinatala ng barangay personnel.</p></div>
-        <div class="voter-header-actions">
-          <button data-action-permission="voters.create" class="btn btn-green" onclick="openVoterRegistration()" @if(!auth()->user()->hasAnyPermission(['voters.create'])) hidden style="display:none;" @endif>Add Voter</button>
-          <button data-action-permission="voters.import" class="btn btn-primary" onclick="openVotersImport()" @if(!auth()->user()->hasAnyPermission(['voters.import'])) hidden style="display:none;" @endif>Import CSV</button>
-          <button data-action-permission="voters.export" class="btn btn-primary" onclick="exportVoterRegistry()" @if(!auth()->user()->hasAnyPermission(['voters.export'])) hidden style="display:none;" @endif>Export List</button>
-        </div>
       </div>
 
       <div class="voter-security-note">
         <strong>Age eligibility guide:</strong> Edad 15–17 ay SK voter lamang; edad 18–30 ay maaaring bumoto sa SK at regular elections; edad 31 pataas ay regular voter lamang. Idagdag lamang ang resident na may kumpirmadong voter information. Ang pagdagdag dito ay pagtatala sa barangay listahan; hindi ito pagpaparehistro sa COMELEC.
       </div>
 
-      <div class="stats-grid stats-grid-4 voter-stats">
-        <div class="stat-card blue"><div class="stat-label">Lahat ng Botante</div><div class="stat-value" id="voter-stat-total">0</div><div class="stat-sub">Aktibong rehistrado</div><div class="stat-icon"><x-staff-icon name="people" /></div></div>
-        <div class="stat-card amber"><div class="stat-label">SK Lamang</div><div class="stat-value" id="voter-stat-sk-only">0</div><div class="stat-sub">Edad 15–17</div><div class="stat-icon"><x-staff-icon name="people" /></div></div>
-        <div class="stat-card green"><div class="stat-label">SK at Regular</div><div class="stat-value" id="voter-stat-sk-regular">0</div><div class="stat-sub">Edad 18–30</div><div class="stat-icon"><x-staff-icon name="people" /></div></div>
-        <div class="stat-card blue"><div class="stat-label">Regular Lamang</div><div class="stat-value" id="voter-stat-regular-only">0</div><div class="stat-sub">Edad 31 pataas</div><div class="stat-icon"><x-staff-icon name="people" /></div></div>
+      <div class="stats-grid stats-grid-4 voter-stats" id="voter-stats-grid">
+        <div class="stat-card demo-kpi demo-kpi-blue"><div class="stat-label">Lahat ng Botante</div><div class="stat-value" id="voter-stat-total">0</div><div class="stat-sub">Aktibong rehistrado</div><div class="stat-icon"><x-staff-icon name="people" /></div></div>
+        <div class="stat-card demo-kpi demo-kpi-yellow"><div class="stat-label">SK Lamang</div><div class="stat-value" id="voter-stat-sk-only">0</div><div class="stat-sub">Edad 15–17</div><div class="stat-icon"><x-staff-icon name="people" /></div></div>
+        <div class="stat-card demo-kpi demo-kpi-purple"><div class="stat-label">SK at Regular</div><div class="stat-value" id="voter-stat-sk-regular">0</div><div class="stat-sub">Edad 18–30</div><div class="stat-icon"><x-staff-icon name="people" /></div></div>
+        <div class="stat-card demo-kpi demo-kpi-green"><div class="stat-label">Regular Lamang</div><div class="stat-value" id="voter-stat-regular-only">0</div><div class="stat-sub">Edad 31 pataas</div><div class="stat-icon"><x-staff-icon name="people" /></div></div>
       </div>
 
       <div class="search-row voter-search-row">
         <div class="search-wrap"><span class="si"></span><input class="search-input" id="voter-search" placeholder="Maghanap ng pangalan o resident ID..." oninput="filterVoterRegistry()"/></div>
         <select class="form-input voter-purok-filter" id="voter-purok-filter" onchange="filterVoterPurok(this.value)"><option value="">Lahat ng Purok</option></select>
+        <button data-action-permission="voters.create" class="btn btn-green" onclick="openVoterRegistration()" @if(!auth()->user()->hasAnyPermission(['voters.create'])) hidden style="display:none;" @endif>Add Voter</button>
+        <button data-action-permission="voters.import" class="btn btn-primary" onclick="openVotersImport()" @if(!auth()->user()->hasAnyPermission(['voters.import'])) hidden style="display:none;" @endif>Import CSV</button>
+        <button data-action-permission="voters.export" class="btn btn-primary" onclick="exportVoterRegistry()" @if(!auth()->user()->hasAnyPermission(['voters.export'])) hidden style="display:none;" @endif>Export List</button>
       </div>
       <div class="status-pills voter-filter-pills">
         <div class="status-pill active" onclick="filterVoterEligibility('',this)">Lahat ng Edad</div>
@@ -327,28 +335,28 @@
         <div class="page-header"><h1>Certificates &amp; <span>Clearances</span></h1><p>Issue and track official barangay documents</p></div>
         <div style="display:flex;gap:8px;">
           <button class="btn btn-primary btn-sm" onclick="showPublicPortal()"> Public Portal</button>
-          <button data-action-permission="documents.issue" class="btn btn-green btn-sm" @cannot('documents.issue') hidden style="display:none;" @endcannot onclick="openModal('modal-cert-issue')"> Issue Certificate</button>
+          <button class="btn btn-sm" type="button" onclick="openCertificateFees()">Certificates &amp; Fees</button>
         </div>
       </div>
 
       <!-- Process Flow -->
-      <div class="card" style="padding:14px 18px;margin-bottom:16px;">
-        <div class="card-header" style="margin-bottom:10px;"><div class="card-title">Certificate Process Flow</div></div>
-        <div class="process-steps">
-          <div class="process-step"><div class="ps-num active">1</div><div class="ps-label">Request<br>Received</div></div>
-          <div class="process-step"><div class="ps-num active">2</div><div class="ps-label">Eligibility<br>Check</div></div>
-          <div class="process-step"><div class="ps-num active">3</div><div class="ps-label">Staff<br>Processing</div></div>
-          <div class="process-step"><div class="ps-num active">4</div><div class="ps-label">Print + QR<br>Embed</div></div>
-          <div class="process-step"><div class="ps-num active">5</div><div class="ps-label">Release &amp;<br>Signature</div></div>
-        </div>
-      </div>
+      <section class="card cert-flow-card" aria-labelledby="cert-flow-title">
+        <div class="card-header"><div><div class="card-title" id="cert-flow-title">Certificate Process Flow</div><div class="card-sub">How every document request moves from request to release</div></div></div>
+        <ol class="cert-flow">
+          <li class="cert-flow-step"><span class="cert-flow-icon"><x-staff-icon name="clipboard" /></span><div><span class="cert-flow-number">Step 1</span><strong>Request received</strong><p>Online or walk-in request is logged with a reference code.</p></div></li>
+          <li class="cert-flow-step"><span class="cert-flow-icon"><x-staff-icon name="shield" /></span><div><span class="cert-flow-number">Step 2</span><strong>Eligibility check</strong><p>Resident status, standing and restrictions are verified.</p></div></li>
+          <li class="cert-flow-step"><span class="cert-flow-icon"><x-staff-icon name="clock" /></span><div><span class="cert-flow-number">Step 3</span><strong>Staff processing</strong><p>Details are reviewed and the document is prepared.</p></div></li>
+          <li class="cert-flow-step"><span class="cert-flow-icon"><x-staff-icon name="certificate" /></span><div><span class="cert-flow-number">Step 4</span><strong>Print with QR</strong><p>The certificate is printed with its verification QR code.</p></div></li>
+          <li class="cert-flow-step"><span class="cert-flow-icon"><x-staff-icon name="check" /></span><div><span class="cert-flow-number">Step 5</span><strong>Release &amp; signature</strong><p>The resident signs and receives the document.</p></div></li>
+        </ol>
+      </section>
 
       <!-- Summary Stats -->
-      <div class="stats-grid stats-grid-4" style="margin-bottom:16px;" role="region" aria-label="Document request summary" tabindex="0">
-        <div class="stat-card green"><div class="stat-label">Released Requests</div><div class="stat-value" id="cert-today">0</div><div class="stat-sub">Released / Completed</div><div class="stat-icon"><x-staff-icon name="check" /></div></div>
-        <div class="stat-card amber"><div class="stat-label">Pending / Processing</div><div class="stat-value" id="cert-pending">0</div><div class="stat-sub">In progress</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div></div>
-        <div class="stat-card blue"><div class="stat-label">Ready to Print</div><div class="stat-value" id="cert-ready">0</div><div class="stat-sub">Awaiting release</div><div class="stat-icon"><x-staff-icon name="document" /></div></div>
-        <div class="stat-card green"><div class="stat-label">Online Requests</div><div class="stat-value" id="cert-online">0</div><div class="stat-sub">Via public portal</div><div class="stat-icon"><x-staff-icon name="globe" /></div></div>
+      <div class="stats-grid stats-grid-4" id="cert-stats-grid" style="margin-bottom:16px;" role="region" aria-label="Document request summary" tabindex="0">
+        <div class="stat-card demo-kpi demo-kpi-green"><div class="stat-label">Released Requests</div><div class="stat-value" id="cert-today">0</div><div class="stat-sub">Released / Completed</div><div class="stat-icon"><x-staff-icon name="check" /></div></div>
+        <div class="stat-card demo-kpi demo-kpi-yellow"><div class="stat-label">Pending / Processing</div><div class="stat-value" id="cert-pending">0</div><div class="stat-sub">In progress</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div></div>
+        <div class="stat-card demo-kpi demo-kpi-blue"><div class="stat-label">Ready to Print</div><div class="stat-value" id="cert-ready">0</div><div class="stat-sub">Awaiting release</div><div class="stat-icon"><x-staff-icon name="document" /></div></div>
+        <div class="stat-card demo-kpi demo-kpi-purple"><div class="stat-label">Online Requests</div><div class="stat-value" id="cert-online">0</div><div class="stat-sub">Via public portal</div><div class="stat-icon"><x-staff-icon name="globe" /></div></div>
       </div>
 
       <!-- Kanban Board -->
@@ -363,12 +371,24 @@
       </div>
 
       <!-- Issued Certificate History -->
-      <div class="card" style="margin-bottom:16px;">
+      <div class="card issued-history-card">
         <div class="card-header">
-          <div><div class="card-title">Issued Certificate History</div><div class="card-sub">Latest 100 issued documents — available for reprint and verification</div></div>
+          <div><div class="card-title">Issued Certificate History</div><div class="card-sub">Issued documents — available for reprint and verification</div></div>
           <button class="btn btn-sm" type="button" onclick="refreshIssuedCertificates()">⟳ Refresh</button>
         </div>
-        <div style="overflow-x:auto;">
+        <form class="issued-history-filters" role="search" aria-label="Filter issued certificates" onsubmit="event.preventDefault(); refreshIssuedCertificates(1);">
+          <div class="search-wrap"><span class="si"></span><input class="search-input" id="issued-search" type="search" maxlength="100" placeholder="Search certificate no. or resident..." aria-label="Search certificate number or resident" oninput="filterIssuedCertificates()"/></div>
+          <select class="form-input" id="issued-type-filter" aria-label="Document type" onchange="refreshIssuedCertificates(1)">
+            <option value="">All documents</option>
+            @foreach(App\CertificateType::cases() as $certificateType)
+            <option value="{{ $certificateType->value }}">{{ $certificateType->value }}</option>
+            @endforeach
+          </select>
+          <select class="form-input" id="issued-source-filter" aria-label="Request source" onchange="refreshIssuedCertificates(1)"><option value="">All sources</option><option value="online">Online</option><option value="onsite">Walk-in / onsite</option></select>
+          <input class="form-input" type="date" id="issued-date-from" aria-label="Issued from" onchange="refreshIssuedCertificates(1)"/>
+          <input class="form-input" type="date" id="issued-date-to" aria-label="Issued to" onchange="refreshIssuedCertificates(1)"/>
+        </form>
+        <div class="table-scroll">
           <table class="tbl">
             <thead><tr><th>Certificate No.</th><th>Resident</th><th>Document</th><th>Source</th><th>Fee</th><th>Date Issued</th><th>Issued By</th><th>Actions</th></tr></thead>
             <tbody id="issued-certificates-tbody">
@@ -376,12 +396,7 @@
             </tbody>
           </table>
         </div>
-      </div>
-
-      <!-- Certificate Types Reference -->
-      <div class="card">
-        <div class="card-header"><div class="card-title">Available Certificates &amp; Fees</div></div>
-        <div id="cert-types-list" style="display:flex;flex-direction:column;gap:7px;"></div>
+        <div class="resident-pagination" id="issued-certificates-pagination"></div>
       </div>
     </div>
 
@@ -396,13 +411,10 @@
         <div class="stat-card green"><div class="stat-label">Resolved This Month</div><div class="stat-value" id="inc-stat-resolved">0</div><div class="stat-icon"><x-staff-icon name="check" /></div></div>
         <div class="stat-card amber"><div class="stat-label">High Severity</div><div class="stat-value" id="inc-stat-high">0</div><div class="stat-icon"><x-staff-icon name="alert" /></div></div>
       </div>
-      <div class="search-row voter-search-row">
-        <div class="search-wrap"><span class="si"></span><input class="search-input" id="incident-search" placeholder="Search ID, uri, lokasyon, o pangalan..." oninput="filterIncidents()"/></div>
-        <select class="form-input voter-purok-filter" id="incident-status-filter" onchange="filterIncidents()"><option value="">Lahat ng Status</option><option value="open">Open</option><option value="under_review">Under Review</option><option value="referred">Referred</option><option value="resolved">Resolved</option><option value="closed">Closed</option><option value="pending">Pending (legacy)</option><option value="under_investigation">Under Investigation (legacy)</option><option value="dismissed">Dismissed (legacy)</option></select>
-        <select class="form-input voter-purok-filter" id="incident-severity-filter" onchange="filterIncidents()"><option value="">Lahat ng Severity</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select>
-      </div>
-      <div class="search-row voter-search-row">
-        <input class="form-input" id="incident-category-filter" aria-label="Incident category" placeholder="Exact incident category" onchange="filterIncidents()"/>
+      <div class="incident-filter-bar" role="search" aria-label="Filter incident reports">
+        <div class="search-wrap"><span class="si"></span><input class="search-input" id="incident-search" placeholder="Search ID, type, location, or name..." oninput="filterIncidents()"/></div>
+        <select class="form-input" id="incident-status-filter" aria-label="Incident status" onchange="filterIncidents()"><option value="">Lahat ng Status</option><option value="open">Open</option><option value="under_review">Under Review</option><option value="referred">Referred</option><option value="resolved">Resolved</option><option value="closed">Closed</option><option value="pending">Pending (legacy)</option><option value="under_investigation">Under Investigation (legacy)</option><option value="dismissed">Dismissed (legacy)</option></select>
+        <select class="form-input" id="incident-severity-filter" aria-label="Incident severity" onchange="filterIncidents()"><option value="">Lahat ng Severity</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select>
         <input class="form-input" type="date" id="incident-date-from" aria-label="Incident date from" onchange="filterIncidents()"/>
         <input class="form-input" type="date" id="incident-date-to" aria-label="Incident date to" onchange="filterIncidents()"/>
         <select class="form-input" id="incident-assignee-filter" aria-label="Assigned staff" onchange="filterIncidents()"><option value="">All assigned staff</option></select>
@@ -426,31 +438,12 @@
         </div>
       </div>
 
-      <div class="card" style="margin-bottom:16px;">
-        <div class="card-header"><div><div class="card-title">Reviewed document restrictions</div><div class="card-sub">An incident or BPO alone does not block requests. A restriction requires an explicit reviewed decision.</div></div>
-          @can('create', App\Models\ResidentRequestRestriction::class)<button class="btn btn-primary btn-sm" onclick="openRestrictionForm()">Add restriction</button>@endcan
-        </div>
-        <div class="search-row"><input class="search-input" id="restriction-search" aria-label="Search restrictions by resident" placeholder="Search resident name or resident number"/><button class="btn btn-sm" onclick="loadRestrictions(1)">Search</button></div>
-        <div class="table-scroll"><table class="tbl"><thead><tr><th>Resident</th><th>Document scope</th><th>Status</th><th>Dates / decision</th><th>Actions</th></tr></thead><tbody id="restrictions-tbody"></tbody></table></div>
-        <div class="resident-pagination" id="restrictions-pagination"></div>
-      </div>
       <!-- Stats -->
       <div class="stats-grid stats-grid-4" style="margin-bottom:16px;">
         <div class="stat-card green"><div class="stat-label">Total Requests</div><div class="stat-value" id="rr-total">0</div><div class="stat-icon"><x-staff-icon name="document" /></div></div>
         <div class="stat-card blue"><div class="stat-label">Completed</div><div class="stat-value" id="rr-completed">0</div><div class="stat-icon"><x-staff-icon name="check" /></div></div>
         <div class="stat-card amber"><div class="stat-label">Ineligible / Blocked</div><div class="stat-value" id="rr-blocked">0</div><div class="stat-icon"><x-staff-icon name="shield" /></div></div>
         <div class="stat-card red"><div class="stat-label">Needs Standing Review</div><div class="stat-value" id="rr-review">0</div><div class="stat-icon"><x-staff-icon name="alert" /></div></div>
-      </div>
-
-      <!-- Eligibility Rules Reference -->
-      <div class="card" style="margin-bottom:14px;">
-        <div class="card-header" onclick="toggleEligRules()" style="cursor:pointer;">
-          <div><div class="card-title">Eligibility Rules Reference</div><div class="card-sub">Click to expand — rules applied per document type</div></div>
-          <span style="color:var(--text-muted);font-size:12px;" id="elig-rules-chevron">▼ Show</span>
-        </div>
-        <div id="elig-rules-panel" style="display:none;">
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:4px;" id="elig-rules-grid"></div>
-        </div>
       </div>
 
       <!-- Search & Filter -->
@@ -464,6 +457,26 @@
       </div>
       <div id="rr-resident-list" style="display:flex;flex-direction:column;gap:10px;margin-top:4px;"></div>
       <div class="resident-pagination" id="rr-pagination"></div>
+
+      <!-- Eligibility Rules Reference -->
+      <div class="card" style="margin-bottom:14px;">
+        <div class="card-header" onclick="toggleEligRules()" style="cursor:pointer;">
+          <div><div class="card-title">Eligibility Rules Reference</div><div class="card-sub">Click to expand — rules applied per document type</div></div>
+          <span style="color:var(--text-muted);font-size:12px;" id="elig-rules-chevron">▼ Show</span>
+        </div>
+        <div id="elig-rules-panel" style="display:none;">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:4px;" id="elig-rules-grid"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-header"><div><div class="card-title">Reviewed document restrictions</div><div class="card-sub">An incident or BPO alone does not block requests. A restriction requires an explicit reviewed decision.</div></div>
+          @can('create', App\Models\ResidentRequestRestriction::class)<button class="btn btn-primary btn-sm" onclick="openRestrictionForm()">Add restriction</button>@endcan
+        </div>
+        <div class="search-row"><input class="search-input" id="restriction-search" aria-label="Search restrictions by resident" placeholder="Search resident name or resident number"/><button class="btn btn-sm" onclick="loadRestrictions(1)">Search</button></div>
+        <div class="table-scroll"><table class="tbl"><thead><tr><th>Resident</th><th>Document scope</th><th>Status</th><th>Dates / decision</th><th>Actions</th></tr></thead><tbody id="restrictions-tbody"></tbody></table></div>
+        <div class="resident-pagination" id="restrictions-pagination"></div>
+      </div>
     </div>
 
     @if(auth()->user()->isSuperAdmin())
@@ -487,7 +500,7 @@
       <div class="card">
         <div class="card-header">
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <input class="form-input" type="date" id="audit-date-filter" aria-label="Filter audit events by date" onchange="renderAuditLog()" style="width:165px;">
+            <input class="form-input" type="date" id="audit-date-filter" aria-label="Filter audit events by date" onchange="filterAuditDate()" style="width:165px;">
             <div class="search-wrap" style="width:220px;"><span class="si"></span><input class="search-input" id="audit-search" placeholder="Search logs..." oninput="filterAuditLog()"/></div>
             <div class="audit-filter-bar" style="margin-bottom:0;">
               <button class="audit-type-btn active" onclick="filterAuditType('all',this)">All</button>
@@ -502,14 +515,22 @@
         <!-- Log Table Header -->
         <div class="audit-log-table-scroll">
         <div class="audit-table-head" style="gap:12px;padding:7px 14px;border-bottom:1px solid var(--border);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);background:var(--table-header);border-radius:var(--radius-sm);">
-          <span>Type</span><span>Timestamp</span><span>Action & Detail</span><span>User / Source</span><span>Category</span>
+          <span>Category</span><span>Timestamp</span><span>Action & Detail</span><span>User / Source</span>
         </div>
         <div id="audit-log-list"></div>
         </div>
+        <div id="audit-pagination" class="audit-pagination" aria-label="Audit log pagination"></div>
         <div style="padding:10px 14px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted);display:flex;justify-content:space-between;">
           <span id="audit-showing-count">Showing all events</span>
           <span> Auto-refreshes every 15 seconds</span>
         </div>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-audit-detail" onclick="if(event.target===this)closeModal('modal-audit-detail')">
+      <div class="modal modal-lg audit-detail-modal" role="dialog" aria-modal="true" aria-labelledby="audit-detail-title">
+        <div class="modal-header"><div><div class="modal-title" id="audit-detail-title">Audit event details</div><div class="modal-sub" id="audit-detail-subtitle"></div></div><button type="button" class="modal-close" onclick="closeModal('modal-audit-detail')" aria-label="Close">&times;</button></div>
+        <dl class="audit-detail-grid" id="audit-detail-fields"></dl>
       </div>
     </div>
 
@@ -523,20 +544,17 @@
         </div>
       </div>
 
-      <div class="card"><div class="card-title">Authorized personnel only</div><p class="card-sub">Administrators manage accounts. Staff can manage records and services. View-only accounts have no access to administrative records. Suspend an account to revoke access while preserving its history.</p></div>
-      <div class="stats-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));">
-        <div class="stat-card green"><div class="stat-label">Active users</div><div class="stat-value" id="usr-active">0</div><div class="stat-icon"><x-staff-icon name="people" /></div></div>
-        <div class="stat-card amber"><div class="stat-label">Suspended users</div><div class="stat-value" id="usr-suspended">0</div><div class="stat-icon"><x-staff-icon name="shield" /></div></div>
+      <div class="card"><div class="card-title">Authorized personnel only</div><p class="card-sub">Administrators manage accounts. Staff can manage records and services. View-only accounts have no access to administrative records. Suspend an account to revoke access while preserving its history. Select a user card to view account details.</p></div>
+      <div class="stats-grid user-management-kpis">
+        <div class="stat-card blue user-kpi user-kpi-total"><div class="stat-label">Total accounts</div><div class="stat-value" id="usr-total">0</div><div class="stat-icon"><x-staff-icon name="people" /></div></div>
+        <div class="stat-card green user-kpi user-kpi-active"><div class="stat-label">Active users</div><div class="stat-value" id="usr-active">0</div><div class="stat-icon"><x-staff-icon name="check" /></div></div>
+        <div class="stat-card red user-kpi user-kpi-suspended"><div class="stat-label">Suspended users</div><div class="stat-value" id="usr-suspended">0</div><div class="stat-icon"><x-staff-icon name="shield" /></div></div>
       </div>
       <!-- Search & Filter -->
-      <div class="search-row" style="margin-bottom:12px;">
-        <div class="search-wrap"><span class="si"></span><input class="search-input" id="user-search" placeholder="Search users by name or role..." oninput="filterUsers()"/></div>
-        <div style="display:flex;gap:6px;">
-          <button class="btn btn-sm user-role-filter active" onclick="filterUserRole('all',this)">All</button>
-          <button class="btn btn-sm user-role-filter" onclick="filterUserRole('admin',this)">Admins</button>
-          <button class="btn btn-sm user-role-filter" onclick="filterUserRole('active',this)">Active</button>
-          <button class="btn btn-sm user-role-filter" onclick="filterUserRole('suspended',this)">Suspended</button>
-        </div>
+      <div class="user-filter-row">
+        <div class="search-wrap"><span class="si"></span><input class="search-input" id="user-search" placeholder="Search users by name, email, or role..." oninput="filterUsers()"/></div>
+        <label class="user-filter-control"><span>Role</span><select class="form-input" id="user-role-filter" onchange="filterUsers()"><option value="all">All roles</option><option value="admin">Admins</option><option value="staff">Staff</option><option value="viewer">View only</option></select></label>
+        <label class="user-filter-control"><span>Status</span><select class="form-input" id="user-status-filter" onchange="filterUsers()"><option value="all">All statuses</option><option value="active">Active</option><option value="suspended">Suspended</option></select></label>
       </div>
 
       <!-- Users List -->
@@ -549,14 +567,13 @@
       <div class="page-header"><h1>Account &amp; <span>Settings</span></h1><p>Manage your account, security, and display preferences.</p></div>
       <div class="two-col">
         <div class="card"><div class="card-header"><div class="card-title">Account and security</div></div>
-          <div class="setting-row"><div><div class="setting-label">Profile information</div><div class="setting-sub">Update your name and email address.</div></div><a class="btn btn-primary" href="{{ route('profile.edit') }}">Edit profile</a></div>
+          <div class="setting-row"><div><div class="setting-label">Profile information</div><div class="setting-sub">Update your name and email address.</div></div><button class="btn btn-primary" type="button" onclick="openModal('modal-edit-profile')">Edit profile</button></div>
           <div class="setting-row"><div><div class="setting-label">Password and two-factor authentication</div><div class="setting-sub">Manage your password, authenticator, and recovery codes.</div></div><a class="btn" href="{{ route('security.edit') }}">Security</a></div>
           <div class="setting-row"><div><div class="setting-label">Display theme</div><div class="setting-sub">Saved on this browser.</div></div><button class="btn" onclick="toggleTheme()">Change theme</button></div>
         </div>
         <div class="card"><div class="card-header"><div class="card-title">Barangay services</div></div>
           <div class="setting-row"><div><div class="setting-label">Barangay Anabu I-G</div><div class="setting-sub">City of Imus, Cavite</div></div></div>
-          <div class="setting-row"><div><div class="setting-label">Online document requests</div><div class="setting-sub">Submit requests and track their progress.</div></div><a class="btn" href="{{ route('home') }}">Open portal</a></div>
-          <div class="setting-row"><div><div class="setting-label">Hardware integrations</div><div class="setting-sub">Review verified RFID activity and cabinet reports.</div></div><a class="btn" href="{{ route('admin.smart-cabinet.index') }}">View status</a></div>
+          <div class="setting-row"><div><div class="setting-label">Hardware integrations</div><div class="setting-sub">Review verified RFID activity and cabinet reports.</div></div><button class="btn" type="button" onclick="openModal('modal-hardware-status')">View status</button></div>
         </div>
       </div>
     </div>
@@ -572,9 +589,6 @@
       </div>
     </div>
     <div id="notif-list"></div>
-    <div style="padding:10px 16px;text-align:center;border-top:1px solid var(--border);">
-      @if(auth()->user()->isSuperAdmin())<button class="btn btn-xs" onclick="toggleNotifPanel();showScreen('audit',findNavItem('audit'))">View all in Audit Log</button>@endif
-    </div>
   </div>
   </div><!-- end app-body -->
 </div><!-- end app -->
@@ -582,15 +596,48 @@
 <!-- MODALS -->
 @include('partials.personnel-logout-confirmation')
 
+@if($activeScreen === 'settings')
+<div class="modal-overlay" id="modal-edit-profile" onclick="if(event.target===this)closeModal('modal-edit-profile')">
+  <div class="modal settings-profile-modal" role="dialog" aria-modal="true" aria-labelledby="settings-profile-title">
+    <div class="modal-header"><div class="modal-title" id="settings-profile-title">Edit profile</div><button type="button" class="modal-close" onclick="closeModal('modal-edit-profile')" aria-label="Close">&times;</button></div>
+    <livewire:settings.profile :embedded="true" />
+  </div>
+</div>
+@endif
+
+@if(auth()->user()->isSuperAdmin())
+<div class="modal-overlay" id="modal-hardware-status" onclick="if(event.target===this)closeModal('modal-hardware-status')">
+  <div class="modal settings-status-modal" role="dialog" aria-modal="true" aria-labelledby="hardware-status-title">
+    <div class="modal-header"><div class="modal-title" id="hardware-status-title">Hardware integration status</div><button type="button" class="modal-close" onclick="closeModal('modal-hardware-status')" aria-label="Close">&times;</button></div>
+    <div class="settings-status-callout"><strong>Read-only status</strong><p>A cabinet is shown as online only after a recent verified report from the Raspberry Pi. Open Smart Cabinet to review last contact and component health.</p></div>
+    <div class="modal-footer"><button type="button" class="btn" onclick="closeModal('modal-hardware-status')">Close</button><a class="btn btn-primary" href="{{ route('admin.smart-cabinet.index') }}">Open Smart Cabinet</a></div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-user-details" onclick="if(event.target===this)closeModal('modal-user-details')">
+  <div class="modal user-details-modal" role="dialog" aria-modal="true" aria-labelledby="user-details-title">
+    <div class="modal-header"><div><div class="modal-title" id="user-details-title">User details</div><div class="modal-sub" id="user-details-subtitle"></div></div><button type="button" class="modal-close" onclick="closeModal('modal-user-details')" aria-label="Close">&times;</button></div>
+    <dl class="user-details-grid" id="user-details-fields"></dl>
+    <div class="modal-footer"><button type="button" class="btn" onclick="closeModal('modal-user-details')">Close</button></div>
+  </div>
+</div>
+@endif
+
+<div class="modal-overlay" id="modal-dashboard-action">
+  <div class="modal dashboard-action-modal" role="document">
+    <div class="modal-header"><div class="modal-title" id="dashboard-action-title">Continue to feature</div><button type="button" class="modal-close" onclick="closeModal('modal-dashboard-action')" aria-label="Close">&times;</button></div>
+    <p class="card-sub" id="dashboard-action-message"></p>
+    <div class="modal-footer"><button type="button" class="btn" onclick="closeModal('modal-dashboard-action')">Stay on dashboard</button><button type="button" class="btn btn-primary" id="dashboard-action-confirm" onclick="confirmDashboardFeature()">Continue</button></div>
+  </div>
+</div>
+
 <!-- Add/Edit Purok -->
 <div class="modal-overlay" id="modal-purok">
   <div class="modal">
-    <div class="modal-header"><div class="modal-title"> Add Purok</div><div class="modal-close" onclick="closeModal('modal-purok')">x</div></div>
+    <div class="modal-header"><div class="modal-title"> Add Purok</div><button type="button" class="modal-close" onclick="closeModal('modal-purok')" aria-label="Close">&times;</button></div>
     <div class="form-group"><div class="form-label">Purok ID / Key *</div><input class="form-input" id="purok-name" placeholder="Example: purok1"/><div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Unique ID — hindi na mababago pagkatapos ma-save.</div></div>
-    <div class="form-group"><div class="form-label">Display Name *</div><input class="form-input" id="purok-label" placeholder="Example: Purok 1 - Sampaguita"/></div>
+    <div class="form-group"><div class="form-label">Display Name *</div><input class="form-input" id="purok-label" name="name" placeholder="Example: Purok 1 - Sampaguita"/></div>
     <div class="form-group"><div class="form-label">Display Color</div><input class="form-input" type="color" id="purok-color" value="#22C55E"/></div>
     <div class="modal-footer">
-      <button class="btn" onclick="closeModal('modal-purok')">Cancel</button>
       <button class="btn btn-green" onclick="savePurok()"> Save Purok</button>
     </div>
   </div>
@@ -606,7 +653,7 @@
         <div class="modal-sub">Review certificate details before issuance.</div>
       </div>
 
-      <button class="modal-close" onclick="closeModal('modal-print-release')">×</button>
+      <button type="button" class="modal-close" onclick="closeModal('modal-print-release')" aria-label="Close">&times;</button>
     </div>
 
     <input type="hidden" id="print-document-request-id">
@@ -659,13 +706,6 @@
     </div>
 
     <div class="modal-footer">
-      <button
-        type="button"
-        class="btn"
-        onclick="closeModal('modal-print-release')"
-      >
-        Cancel
-      </button>
 
       <button
         type="button"
@@ -682,7 +722,7 @@
 <!-- Add/Edit Resident -->
 <div class="modal-overlay" id="modal-resident">
   <div class="modal">
-    <div class="modal-header"><div class="modal-title" id="modal-resident-title"> <span>I-register ang Bagong Resident</span></div><div class="modal-close" onclick="closeModal('modal-resident')">×</div></div>
+    <div class="modal-header"><div class="modal-title" id="modal-resident-title"> <span>I-register ang Bagong Resident</span></div><button type="button" class="modal-close" onclick="closeModal('modal-resident')" aria-label="Close">&times;</button></div>
     <div class="form-row">
       <div class="form-group"><div class="form-label">Last Name *</div><input class="form-input" id="res-lastname" placeholder="Santos"/></div>
       <div class="form-group"><div class="form-label">First Name *</div><input class="form-input" id="res-name" placeholder="Maria"/></div>
@@ -717,7 +757,7 @@
       </div>
     </div>
     <div class="form-row">
-      <div class="form-group"><div class="form-label">Contact Number</div><input class="form-input" id="res-contact" placeholder="09XXXXXXXXX"/></div>
+      <div class="form-group"><label class="form-label" for="res-contact">Contact Number</label><input class="form-input" id="res-contact" type="tel" inputmode="tel" autocomplete="tel" maxlength="13" placeholder="09XXXXXXXXX or +639XXXXXXXXX" oninput="formatResidentContact(this)"/><div class="form-hint">11 digits starting with 09, or +639 followed by 9 digits.</div></div>
       <div class="form-group"><div class="form-label">Type of Residency</div><select class="form-input" id="res-type"><option>Homeowner</option><option>Renter</option><option>Boarder</option></select></div>
     </div>
     <div class="form-row resident-admin-fields">
@@ -732,7 +772,7 @@
     <div class="form-group">
       <label class="form-label" for="res-household-id">Household Number (optional)</label>
       <select class="form-input" id="res-household-id"><option value="">No household assigned</option></select>
-      <div id="res-household-pagination" class="resident-pagination"></div>
+      <div id="res-household-hint" class="form-hint" hidden></div>
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label" for="res-household-relationship">Relationship to Household Head</label><input class="form-input" id="res-household-relationship" maxlength="100" placeholder="Spouse, child, relative..."/></div>
@@ -745,19 +785,26 @@
       <div class="form-group"><label class="form-label" for="res-household-purok">Household Purok (optional)</label><select class="form-input" id="res-household-purok"><option value="">None</option></select></div>
     </details>
     <div class="modal-footer">
-      <button class="btn" onclick="closeModal('modal-resident')">Cancel</button>
       <button class="btn btn-green" onclick="saveResident()"> Save Record</button>
     </div>
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-confirm-action">
+  <div class="modal confirm-action-modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-action-title" aria-describedby="confirm-action-message">
+    <div class="modal-header"><div class="modal-title" id="confirm-action-title">Please confirm</div><button type="button" class="modal-close" onclick="closeModal('modal-confirm-action')" aria-label="Close">&times;</button></div>
+    <p class="confirm-action-message" id="confirm-action-message"></p>
+    <div class="modal-footer"><button type="button" class="btn btn-primary" id="confirm-action-button">Confirm</button></div>
+  </div>
+</div>
+
 <!-- View Resident -->
 <div class="modal-overlay" id="modal-household-readonly">
-  <div class="modal"><div class="modal-header"><div class="modal-title">Household Members</div><button class="modal-close" onclick="closeModal('modal-household-readonly')" aria-label="Close">&times;</button></div><div id="household-readonly-content"></div><div class="modal-footer"><button class="btn" onclick="closeModal('modal-household-readonly');openModal('modal-purok-households')">Back to Households</button><button class="btn" onclick="closeModal('modal-household-readonly')">Close</button></div></div>
+  <div class="modal"><div class="modal-header"><div class="modal-title">Household Members</div><button type="button" class="modal-close" onclick="closeModal('modal-household-readonly')" aria-label="Close">&times;</button></div><div id="household-readonly-content"></div><div class="modal-footer"><button class="btn" onclick="closeModal('modal-household-readonly');openModal('modal-purok-households')">Back to Households</button></div></div>
 </div>
 <div class="modal-overlay" id="modal-purok-households">
   <div class="modal purok-households-modal" role="dialog" aria-modal="true" aria-labelledby="purok-households-title">
-    <div class="modal-header"><div><p class="purok-households-eyebrow">Population &amp; Demographics</p><div class="modal-title" id="purok-households-title">Registered Households</div><p class="purok-households-description">Find a family and select its household to view the members.</p></div><button class="modal-close" onclick="closeModal('modal-purok-households')" aria-label="Close">&times;</button></div>
+    <div class="modal-header"><div><p class="purok-households-eyebrow">Population &amp; Demographics</p><div class="modal-title" id="purok-households-title">Registered Households</div><p class="purok-households-description">Find a family and select its household to view the members.</p></div><button type="button" class="modal-close" onclick="closeModal('modal-purok-households')" aria-label="Close">&times;</button></div>
     <form class="purok-households-search" onsubmit="searchPurokHouseholds();return false;" role="search">
       <div class="purok-households-search-field"><label class="form-label" for="purok-households-search">Search family name</label><input class="form-input" id="purok-households-search" type="search" maxlength="100" placeholder="Family name, household number, or head name"/></div>
       <button class="btn btn-primary" type="submit">Search</button><button class="btn" type="button" onclick="clearPurokHouseholdSearch()">Clear</button>
@@ -765,12 +812,11 @@
     <p class="purok-households-results" id="purok-households-results" role="status" aria-live="polite"></p>
     <div class="table-scroll"><table class="tbl"><thead><tr><th>Household</th><th>Head</th><th>Address</th><th>Members</th></tr></thead><tbody id="purok-households-tbody"></tbody></table></div>
     <div class="resident-pagination" id="purok-households-pagination"></div>
-    <div class="modal-footer"><button class="btn" onclick="closeModal('modal-purok-households')">Close</button></div>
   </div>
 </div>
 <div class="modal-overlay" id="modal-household-import">
   <div class="modal">
-    <div class="modal-header"><div class="modal-title">Import Residents / Household Profiling</div><button class="modal-close" onclick="closeModal('modal-household-import')" aria-label="Close">&times;</button></div>
+    <div class="modal-header"><div class="modal-title">Import Residents / Household Profiling</div><button type="button" class="modal-close" onclick="closeModal('modal-household-import')" aria-label="Close">&times;</button></div>
     <p class="card-sub">Upload a CSV or the first worksheet of an Excel .xlsx file (up to 500 residents, 5 MB). Use a header row, values rather than formulas, and explicit household markers. You can map columns and review groups below.</p>
     <div class="form-group"><label class="form-label" for="profiling-file">Profiling file</label><input class="form-input" type="file" id="profiling-file" accept=".csv,.xlsx" onchange="selectHouseholdProfilingFile()"/></div>
     <div class="form-group"><label class="form-label" for="profiling-purok">Default target purok for blank cells</label><select class="form-input" id="profiling-purok"><option value="">Select a purok</option></select></div>
@@ -783,12 +829,12 @@
       <div id="profiling-households"></div>
     </section>
     <div id="profiling-errors" class="resident-table-error" role="alert"></div>
-    <div class="modal-footer"><button class="btn" onclick="closeModal('modal-household-import')">Cancel</button><button class="btn" id="profiling-review" onclick="reviewHouseholdProfiling()" disabled>Validate preview</button><button class="btn btn-green" id="profiling-save" onclick="saveHouseholdProfiling()" disabled>Save reviewed import</button></div>
+    <div class="modal-footer"><button class="btn" id="profiling-review" onclick="reviewHouseholdProfiling()" disabled>Validate preview</button><button class="btn btn-green" id="profiling-save" onclick="saveHouseholdProfiling()" disabled>Save reviewed import</button></div>
   </div>
 </div>
 <div class="modal-overlay" id="modal-households">
   <div class="modal">
-    <div class="modal-header"><div class="modal-title">Households</div><button class="modal-close" onclick="closeModal('modal-households')" aria-label="Close">&times;</button></div>
+    <div class="modal-header"><div class="modal-title">Households</div><button type="button" class="modal-close" onclick="closeModal('modal-households')" aria-label="Close">&times;</button></div>
     <div class="form-group"><label class="form-label" for="household-search">Search by household name, number, head or address</label><input class="form-input" id="household-search" maxlength="100" oninput="searchHouseholdManagement()"/></div>
     <div id="household-list" aria-live="polite"></div>
     <div class="resident-pagination" id="household-pagination"></div>
@@ -815,16 +861,14 @@
       </div>
       <div class="household-save-actions"><button data-action-permission="households.create|households.update" class="btn btn-green btn-sm" id="household-save" onclick="saveManagedHousehold()">Save household</button></div>
     </section>
-    <div class="modal-footer"><button class="btn" onclick="closeModal('modal-households')">Close</button></div>
   </div>
 </div>
 
 <div class="modal-overlay" id="modal-view-resident">
   <div class="modal">
-    <div class="modal-header"><div class="modal-title"> <span>Resident Details</span></div><div class="modal-close" onclick="closeModal('modal-view-resident')">×</div></div>
+    <div class="modal-header"><div class="modal-title"> <span>Resident Details</span></div><button type="button" class="modal-close" onclick="closeModal('modal-view-resident')" aria-label="Close">&times;</button></div>
     <div id="view-resident-content"></div>
     <div class="modal-footer">
-      <button class="btn" onclick="closeModal('modal-view-resident')">Close</button>
       <button data-action-permission="documents.view" class="btn btn-primary" onclick="openViewResidentRequests(currentViewResidentId)" @if(!auth()->user()->hasAnyPermission(['documents.view'])) hidden style="display:none;" @endif> View Requests</button>
       <button class="btn btn-green" onclick="openEligibilityForResident(currentViewResidentId)"> Check Eligibility</button>
     </div>
@@ -836,15 +880,14 @@
   <div class="modal voter-modal">
     <div class="modal-header">
       <div><div class="modal-title">Import Voters CSV</div><div class="modal-sub">I-link ang existing residents gamit ang kanilang eksaktong Resident Number.</div></div>
-      <button type="button" class="modal-close" onclick="closeModal('modal-voters-import')">?</button>
+      <button type="button" class="modal-close" onclick="closeModal('modal-voters-import')" aria-label="Close">&times;</button>
     </div>
-    <div class="voter-privacy-panel">Maximum 500 rows at 5 MB. UTF-8 CSV lamang. Dates: YYYY-MM-DD. Kapag may invalid o duplicate row, walang mase-save sa buong file. Hindi maa-update ang existing voter records.</div>
+    <div class="voter-privacy-panel">Maximum 500 rows at 5 MB. UTF-8 CSV lamang. Dates: YYYY-MM-DD. Lalaktawan ang mga voter na naka-record na; ise-save ang mga bago. Kapag may invalid row, walang mase-save sa buong file.</div>
     <div class="form-group"><a class="btn btn-primary" href="{{ route('staff.voter-registrations.template') }}">Download CSV Template</a></div>
     <div class="form-group"><label class="form-label" for="voters-import-file">CSV File *</label><input class="form-input" type="file" id="voters-import-file" accept=".csv,text/csv"/></div>
     <div class="card-sub">Columns: resident_number, comelec_voter_number, precinct_number, cluster_number, registration_date. Kunin ang Resident Number sa Resident Records; ilagay ang existing voter information.</div>
     <div class="voter-privacy-panel" id="voters-import-result" role="status" aria-live="polite" hidden></div>
     <div class="modal-footer">
-      <button type="button" class="btn" onclick="closeModal('modal-voters-import')">Close</button>
       <button type="button" class="btn btn-green" id="voters-import-button" onclick="importVotersCsv()">Import Voters</button>
     </div>
   </div>
@@ -855,7 +898,7 @@
   <div class="modal voter-modal">
     <div class="modal-header">
       <div><div class="modal-title">Add Voter</div><div class="modal-sub">Para sa barangay personnel: pumili ng existing resident na botante at ilagay ang kanilang voter information.</div></div>
-      <button type="button" class="modal-close" onclick="closeModal('modal-voter-registration')">×</button>
+      <button type="button" class="modal-close" onclick="closeModal('modal-voter-registration')" aria-label="Close">&times;</button>
     </div>
     <div class="voter-privacy-panel"><strong>Eligibility:</strong> Edad 15–17 ay SK lamang, 18–30 ay SK at regular, at 31 pataas ay regular voter.</div>
     <div class="form-group"><div class="form-label">Resident *</div><select class="form-input" id="voter-resident-id"><option value="">Pumili ng resident edad 15 pataas...</option></select></div>
@@ -866,7 +909,6 @@
     </div>
     <div class="form-group"><div class="form-label">Existing Voter Registration Date *</div><input class="form-input" type="date" id="voter-registration-date"/><div class="card-sub">Ilagay ang petsa mula sa existing voter record ng resident.</div></div>
     <div class="modal-footer">
-      <button type="button" class="btn" onclick="closeModal('modal-voter-registration')">Cancel</button>
       <button type="button" class="btn btn-green" id="voter-save-button" onclick="saveVoterRegistration()">Save Voter</button>
     </div>
   </div>
@@ -877,12 +919,11 @@
   <div class="modal" style="max-width:500px;">
     <div class="modal-header">
       <div><div class="modal-title">Reject Online Request</div><div class="modal-sub" id="reject-request-code">The reason will be saved in the request audit record.</div></div>
-      <button type="button" class="modal-close" onclick="closeModal('modal-reject-request')">×</button>
+      <button type="button" class="modal-close" onclick="closeModal('modal-reject-request')" aria-label="Close">&times;</button>
     </div>
     <div class="form-group"><div class="form-label">Reason for rejection *</div><textarea class="form-input" id="reject-request-reason" rows="5" minlength="10" maxlength="1000" placeholder="Explain clearly why this request cannot be processed..."></textarea><div class="field-help">Minimum 10 characters. The resident can use this reason to correct their application.</div></div>
     <input type="hidden" id="reject-request-id"/>
     <div class="modal-footer">
-      <button type="button" class="btn" onclick="closeModal('modal-reject-request')">Cancel</button>
       <button type="button" class="btn btn-danger" id="reject-request-submit" onclick="confirmRejectRequest()">Reject Request</button>
     </div>
   </div>
@@ -894,7 +935,7 @@
   <div class="modal" style="max-width:480px;">
     <div class="modal-header">
       <div class="modal-title"> Detalye ng Request</div>
-      <div class="modal-close" onclick="closeModal('modal-view-certreq')">×</div>
+      <button type="button" class="modal-close" onclick="closeModal('modal-view-certreq')" aria-label="Close">&times;</button>
     </div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border);">
       <span style="font-size:13px;font-family:var(--font-mono);color:var(--blue-400);font-weight:700;" id="vreq-code">—</span>
@@ -931,15 +972,18 @@
       <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Attachment / Valid ID</div>
       <div id="vreq-attachment"></div>
     </div>
-    <div class="modal-footer">
-      <button class="btn" onclick="closeModal('modal-view-certreq')">Isara</button>
-    </div>
   </div>
 </div>
 
 <div class="modal-overlay" id="modal-cert-issue">
-  <div class="modal">
-    <div class="modal-header"><div class="modal-title"> <span>Issue Certificate</span></div><div class="modal-close" onclick="closeModal('modal-cert-issue')">×</div></div>
+  <div class="modal cert-issue-modal" role="dialog" aria-modal="true" aria-labelledby="cert-issue-title">
+    <div class="modal-header"><div class="modal-title" id="cert-issue-title">Certificates &amp; Fees</div><button type="button" class="modal-close" onclick="closeModal('modal-cert-issue')" aria-label="Close">&times;</button></div>
+    <p class="cert-fees-note">Fees are paid at the Barangay Hall upon release. Review the available documents and fees, then complete the form to issue a certificate.</p>
+    <details class="cert-fees-details" open>
+      <summary>Available certificates and fees</summary>
+      <div id="cert-types-list" class="cert-fees-list"></div>
+    </details>
+    @can('documents.issue')
     <form id="manual-certificate-form" onsubmit="issueManualCertificate(event)">
       <div class="form-group"><div class="form-label">Certificate Type</div>
         <select class="form-input" id="manual-certificate-type" required onchange="updateManualCertificateFee()">
@@ -961,17 +1005,17 @@
       <div class="form-group"><div class="form-label">Payment</div><input class="form-input" id="manual-certificate-fee" value="{{ \App\CertificateType::BarangayClearance->feeLabel() }}" readonly/></div>
       <div style="background:var(--green-dim);border:1px solid var(--border-green);border-radius:var(--radius-sm);padding:10px;font-size:11.5px;color:var(--text-secondary);margin-bottom:14px;">{{ __('The official fee is set by the server. Certificates and QR verification are valid for three months from issue. Barangay IDs and their QR verification are valid for one year.') }}</div>
       <div class="modal-footer">
-        <button type="button" class="btn" onclick="closeModal('modal-cert-issue')">Cancel</button>
         <button type="submit" class="btn btn-green" data-action-permission="documents.issue" id="manual-certificate-submit"> Issue & Print</button>
       </div>
     </form>
+    @endcan
   </div>
 </div>
 
 <!-- Incident Report -->
 <div class="modal-overlay" id="modal-incident">
   <div class="modal">
-    <div class="modal-header"><div class="modal-title" id="inc-modal-title"> File Incident Report</div><div class="modal-close" onclick="closeModal('modal-incident')">×</div></div>
+    <div class="modal-header"><div class="modal-title" id="inc-modal-title"> File Incident Report</div><button type="button" class="modal-close" onclick="closeModal('modal-incident')" aria-label="Close">&times;</button></div>
     <div class="form-group"><div class="form-label">Incident Type *</div>
       @if(auth()->user()->hasAnyPermission(['vawc.submit', 'vawc.update']))<label><input type="checkbox" id="inc-sensitive"> Restricted VAWC / BPO case</label>@endif
       <select class="form-input" id="inc-type"><option value="">Select type...</option><option>Noise Complaint</option><option>Property Dispute</option><option>Domestic Dispute</option><option>Vandalism</option><option>Theft</option><option>Physical Assault</option><option>Iba pa</option></select>
@@ -1000,7 +1044,6 @@
     </div>
     <input type="hidden" id="inc-edit-id" value=""/>
     <div class="modal-footer">
-      <button class="btn" onclick="closeModal('modal-incident')">Cancel</button>
       <button class="btn btn-danger" onclick="saveIncident()"> File Report</button>
     </div>
   </div>
@@ -1011,7 +1054,7 @@
   <div class="modal">
     <div class="modal-header">
       <div class="modal-title"> Detalye ng Incident Report</div>
-      <div class="modal-close" onclick="closeModal('modal-view-incident')">×</div>
+      <button type="button" class="modal-close" onclick="closeModal('modal-view-incident')" aria-label="Close">&times;</button>
     </div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border);">
       <span style="font-family:var(--font-mono);font-size:13px;color:var(--blue-400);font-weight:700;" id="view-inc-id">—</span>
@@ -1050,7 +1093,6 @@
     <div class="resident-account-panel"><h3>Restricted BPO records</h3><button data-action-permission="vawc.submit" class="btn btn-sm" onclick="openProtectionOrderForm()" @if(!auth()->user()->hasAnyPermission(['vawc.submit'])) hidden style="display:none;" @endif>Add BPO record</button><div id="protection-orders-list"></div></div>
     @endcan
     <div class="modal-footer">
-      <button class="btn" onclick="closeModal('modal-view-incident')">Isara</button>
       <button class="btn btn-primary" id="view-inc-edit-btn"> I-edit ang Report</button>
     </div>
   </div>
@@ -1062,7 +1104,7 @@
   <form class="modal user-account-modal" onsubmit="event.preventDefault();saveNewUser()">
     <div class="modal-header">
       <div><p class="user-account-eyebrow">User Management</p><div class="modal-title" id="adduser-modal-title">New user</div></div>
-      <button type="button" class="modal-close" onclick="closeModal('modal-adduser')" aria-label="Close user form">&times;</button>
+      <button type="button" class="modal-close" onclick="closeModal('modal-adduser')" aria-label="Close">&times;</button>
     </div>
 
     <div class="user-account-body">
@@ -1107,7 +1149,7 @@
 
     <section id="staff-assignment-fields" class="user-account-section" aria-labelledby="staff-assignments-title">
       <h3 id="staff-assignments-title">Staff access assignments</h3>
-      <p class="card-sub">Only Super Admin can change these assignments. No selections means no operational access. Physical cabinet access is separate.</p>
+      <p class="card-sub">Only Super Admin can change these assignments. Super Admin accounts retain full access regardless of selections; for staff accounts, no selections means no operational access. Physical cabinet access is separate.</p>
       <div class="staff-preset-toolbar"><div>
       <label class="form-label" for="staff-access-preset">Start from a preset</label>
       <select id="staff-access-preset" class="form-input" onchange="applyStaffPreset(this.value)">
@@ -1179,7 +1221,6 @@
     </div>
 
     <div class="modal-footer">
-      <button class="btn" type="button" onclick="closeModal('modal-adduser')">Cancel</button>
       <button class="btn btn-green" id="adduser-save-btn" type="submit">Save account</button>
     </div>
   </form>
@@ -1189,20 +1230,19 @@
 <!-- Eligibility Checker Modal -->
 <div class="modal-overlay" id="modal-eligibility-check">
   <div class="modal" style="max-width:540px;">
-    <div class="modal-header"><div class="modal-title"> <span>Eligibility Checker</span></div><div class="modal-close" onclick="closeModal('modal-eligibility-check')">×</div></div>
-    <div class="form-group"><div class="form-label">Full Name ng Residente *</div><select class="form-input" id="elig-resident-select" onchange="elig_onResidentChange()"><option value="">— Select Resident —</option></select></div>
-    <div class="form-group"><div class="form-label">Document Type *</div>
-      <select class="form-input" id="elig-doc-select">
+    <div class="modal-header"><div class="modal-title"> <span>Eligibility Checker</span></div><button type="button" class="modal-close" onclick="closeModal('modal-eligibility-check')" aria-label="Close">&times;</button></div>
+    <div class="form-group"><label class="form-label" for="elig-resident-select">Full Name ng Residente *</label><select class="form-input" id="elig-resident-select" required onchange="elig_onResidentChange()"><option value="">— Select Resident —</option></select></div>
+    <div class="form-group"><label class="form-label" for="elig-doc-select">Document Type *</label>
+      <select class="form-input" id="elig-doc-select" required onchange="elig_onResidentChange()">
         <option value="">— Select Document —</option>
-        <option value="BC"> Barangay Clearance</option><option value="CR"> Certificate of Residency</option>
+        <option value="RVC">Registered Voter Certification</option><option value="BC"> Barangay Clearance</option><option value="CR"> Certificate of Residency</option>
         <option value="CI"> Certificate of Indigency</option><option value="BID"> Barangay ID</option>
         <option value="CTFJ"> First Time Jobseeker Certificate</option><option value="BBC"> Business Clearance</option>
       </select>
     </div>
     <button class="btn btn-green btn-full" style="margin-bottom:14px;" onclick="runEligibilityCheck()"> Check Eligibility</button>
-    <div id="elig-result" style="display:none;"></div>
+    <div id="elig-result" style="display:none;" role="status" aria-live="polite"></div>
     <div class="modal-footer">
-      <button class="btn" onclick="closeModal('modal-eligibility-check')">Close</button>
       <button data-action-permission="documents.issue" class="btn btn-green" id="elig-proceed-btn" style="display:none;" onclick="elig_proceedRequest()"> Issue Document</button>
     </div>
   </div>
@@ -1211,10 +1251,9 @@
 <!-- Request Record Detail Modal -->
 <div class="modal-overlay" id="modal-rr-detail">
   <div class="modal" style="max-width:620px;">
-    <div class="modal-header"><div class="modal-title"> <span id="rr-detail-title">Request History</span></div><div class="modal-close" onclick="closeModal('modal-rr-detail')">×</div></div>
+    <div class="modal-header"><div class="modal-title"> <span id="rr-detail-title">Request History</span></div><button type="button" class="modal-close" onclick="closeModal('modal-rr-detail')" aria-label="Close">&times;</button></div>
     <div id="rr-detail-content"></div>
     <div class="modal-footer">
-      <button class="btn" onclick="closeModal('modal-rr-detail')">Close</button>
       <button class="btn btn-green" onclick="closeModal('modal-rr-detail');openModal('modal-eligibility-check')"> Check Eligibility</button>
     </div>
   </div>
@@ -1224,6 +1263,7 @@
 
 <script>
     window.LARAVEL_DOCUMENT_REQUESTS = @json($requests);
+        window.ADMIN_RESIDENT_APPLICATIONS_URL = @json(route('staff.resident-applications.index'));
     window.PERSONNEL_LOGIN_GREETING = {{ Illuminate\Support\Js::from(session()->pull('personnel_login_greeting', false)) }};
     window.ADMIN_ACTIVE_SCREEN = {{ Illuminate\Support\Js::from($activeScreen) }};
     window.ADMIN_SCREEN_ROUTES = {{ Illuminate\Support\Js::from($screenRoutes) }};

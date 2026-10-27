@@ -14,7 +14,7 @@ function caseClient(api) {
   const context = vm.createContext({
     document: { getElementById: id => id === 'inc-assigned-to' ? null : field(id) },
     window: { AUTHENTICATED_USER: { role: 'admin' } },
-    URLSearchParams, setTimeout, clearTimeout, householdApi: api, confirm: () => true,
+    URLSearchParams, setTimeout, clearTimeout, householdApi: api, confirmAction: async () => true,
     showToast() {}, closeModal() {}, openModal() {},
     escapeText: value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character])),
   });
@@ -118,7 +118,7 @@ test('incident filters send server-side category date and assignment criteria', 
 test('ordinary staff creation omits restricted flags while authorized restricted creation and editing retain them', async () => {
   for (const [id, allowed, checkbox, expected] of [['', false, null, null], ['', false, { checked: false }, null], ['', true, { checked: true }, '1'], ['1', false, { checked: false }, '0']]) {
     let payload;
-    const context = vm.createContext({ FormData, incidentCurrentPage: 1,
+    const context = vm.createContext({ FormData, incidentCurrentPage: 1, dashboardActionOrigin: false,
       document: { getElementById: name => name === 'inc-edit-id' ? { value: id } : name === 'inc-sensitive' ? checkbox : null, querySelector: () => null },
       hasStaffPermission: () => allowed, csrfRequestHeaders: () => ({}), closeModal() {}, showToast() {}, loadIncidents() {}, refreshDashboardStats() {},
       fetch: async (url, options) => { payload = options.body; return { ok: true, json: async () => ({ message: 'Submitted' }) }; },
@@ -129,7 +129,7 @@ test('ordinary staff creation omits restricted flags while authorized restricted
   }
 });
 
-test('authorized editing retains a custom submitted category which is absent from the preset list', () => {
+test('authorized editing retains a custom submitted category which is absent from the preset list', async () => {
   const category = 'Traffic obstruction <reported>';
   const fields = new Map();
   const select = { options: [{ value: 'Noise Complaint' }], value: '', add(option) { this.options.push(option); } };
@@ -142,10 +142,10 @@ test('authorized editing retains a custom submitted category which is absent fro
     document: { getElementById: field, querySelector: () => ({ textContent: '' }) },
     Option: class { constructor(text, value) { this.text = text; this.value = value; } }, toggleIncidentResolution() {}, openModal() {},
   });
-  vm.runInContext(adminSource.slice(adminSource.indexOf('function openEditIncident('), adminSource.indexOf('function openAddIncident(')), context);
-  context.openEditIncident(1);
+  vm.runInContext(adminSource.slice(adminSource.indexOf('async function openEditIncident('), adminSource.indexOf('async function openAddIncident(')), context);
+  await context.openEditIncident(1);
   assert.equal(select.value, category);
   assert.equal(select.options[1].text, category);
-  context.openEditIncident(1);
+  await context.openEditIncident(1);
   assert.equal(select.options.length, 2);
 });

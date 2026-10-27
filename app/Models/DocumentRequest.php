@@ -60,7 +60,7 @@ class DocumentRequest extends Model
     /** @return BelongsTo<User, $this> */
     public function rejectedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'rejected_by');
+        return $this->belongsTo(User::class, 'rejected_by')->withTrashed();
     }
 
     /** @return array<string, string> */

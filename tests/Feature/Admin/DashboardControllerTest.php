@@ -61,7 +61,8 @@ it('returns database-backed dashboard totals and recent activity', function () {
         ->assertJsonPath('summary.open_incidents', 1)
         ->assertJsonPath('certificate_requests.Barangay Clearance', 1)
         ->assertJsonPath('certificate_requests.Certificate of Residency', 1)
-        ->assertJsonCount(4, 'recent_activity');
+        ->assertJsonCount(4, 'recent_activity')
+        ->assertJsonFragment(['reference' => 'REQ-DASH-001', 'record_id' => $documentRequest->id]);
 });
 
 it('shows document releases by other staff in the dashboard activity feed', function () {
@@ -104,4 +105,13 @@ it('renders the staff language toggle as inline links with an icon theme control
         ->assertSee('>Filipino</button>', false)
         ->assertSee('class="dark-mode-toggle staff-theme-icon"', false)
         ->assertSee('staff-theme-moon', false);
+});
+
+it('keeps certificate requests and recent activity in the original two-column dashboard layout', function () {
+    $this->actingAs(User::factory()->assignedOperations()->create(['role' => 'staff']))
+        ->get(route('staff.dashboard'))
+        ->assertOk()
+        ->assertSee('class="two-col dashboard-overview-grid"', false)
+        ->assertSee('id="dash-chart"', false)
+        ->assertSee('id="dash-recent-activity"', false);
 });

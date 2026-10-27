@@ -9,26 +9,45 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreIssuedCertificateRequest;
 use App\Models\DocumentRequest;
 use App\Models\IssuedCertificate;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class IssuedCertificateController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         Gate::authorize('viewAny', DocumentRequest::class);
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'certificate_type' => ['nullable', Rule::enum(CertificateType::class)],
+            'source' => ['nullable', Rule::in(['online', 'onsite'])],
+            'date_from' => ['nullable', 'date_format:Y-m-d'],
+            'date_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date_from'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
+        ]);
         $certificates = IssuedCertificate::query()
             ->with('documentRequest')
+            ->when($filters['search'] ?? null, function (Builder $query, string $search): void {
+                $query->where(fn (Builder $query) => $query
+                    ->where('certificate_number', 'like', "%{$search}%")
+                    ->orWhere('resident_name', 'like', "%{$search}%"));
+            })
+            ->when($filters['certificate_type'] ?? null, fn (Builder $query, string $type) => $query->where('certificate_type', $type))
+            ->when(($filters['source'] ?? null) === 'online', fn (Builder $query) => $query->whereRelation('documentRequest', 'source', 'online'))
+            ->when(($filters['source'] ?? null) === 'onsite', fn (Builder $query) => $query->whereDoesntHave('documentRequest', fn (Builder $query) => $query->where('source', 'online')))
+            ->when($filters['date_from'] ?? null, fn (Builder $query, string $date) => $query->whereDate('issued_at', '>=', $date))
+            ->when($filters['date_to'] ?? null, fn (Builder $query, string $date) => $query->whereDate('issued_at', '<=', $date))
             ->latest('issued_at')
             ->latest('id')
-            ->limit(100)
-            ->get()
-            ->map(fn (IssuedCertificate $certificate): array => [
+            ->paginate((int) ($filters['per_page'] ?? 10))
+            ->through(fn (IssuedCertificate $certificate): array => [
                 'id' => $certificate->id,
                 'certificate_number' => $certificate->certificate_number,
                 'verification_code' => $certificate->verification_code,

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\DeleteStaffUser;
+use App\Actions\WriteRecordsSpreadsheet;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SaveUserRequest;
 use App\Models\EmployeeCabinetAccess;
@@ -10,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class UserController extends Controller
 {
@@ -35,6 +38,20 @@ class UserController extends Controller
             ]);
 
         return response()->json(['users' => $users]);
+    }
+
+    public function export(Request $request, WriteRecordsSpreadsheet $spreadsheet): BinaryFileResponse
+    {
+        abort_unless($request->user()->isSuperAdmin(), 403);
+
+        $users = User::query()
+            ->whereNull('resident_id')
+            ->whereIn('role', ['admin', 'staff', 'viewer'])
+            ->orderBy('name')
+            ->lazy(500)
+            ->map(fn (User $user): array => [$user->name, $user->email, ucfirst($user->role), $user->is_active ? 'Active' : 'Suspended']);
+
+        return $spreadsheet->download('Barangay Users', 'barangay-users-'.today()->toDateString().'.xlsx', ['Name', 'Email', 'Role', 'Status'], $users, $request->user()->name);
     }
 
     public function store(SaveUserRequest $request): JsonResponse
@@ -143,13 +160,37 @@ class UserController extends Controller
         ]);
     }
 
+    public function destroy(Request $request, User $user, DeleteStaffUser $deleteStaffUser): JsonResponse
+    {
+        abort_unless($request->user()->isSuperAdmin(), 403);
+
+        $result = $deleteStaffUser->handle($request->user(), $user);
+        $pendingRevocations = $result['pending_rpi_revocations'];
+
+        $message = match (true) {
+            $pendingRevocations > 0 => 'Account removed. Website and cabinet access are revoked; face and RFID removal is queued for Raspberry Pi confirmation.',
+            $result['rpi_mapping_missing'] => 'Account removed and website access revoked, but enrolled credentials have no RPi employee mapping to revoke.',
+            $result['rpi_delivery_unavailable'] => 'Account removed and website access revoked, but no authenticated cabinet device is configured to receive the face and RFID removal command.',
+            default => 'Account removed and website and cabinet access revoked.',
+        };
+
+        return response()->json([
+            'message' => $message,
+            'pending_rpi_revocations' => $pendingRevocations,
+            'rpi_mapping_missing' => $result['rpi_mapping_missing'],
+            'rpi_delivery_unavailable' => $result['rpi_delivery_unavailable'],
+        ]);
+    }
+
     private function saveAssignments(SaveUserRequest $request, User $user): void
     {
-        if (! $request->has('staff_permissions') && $user->role === 'staff') {
+        if (! $request->has('staff_permissions') && ($user->role === 'staff' || $user->is_super_admin)) {
             return;
         }
         $before = $user->staff_permissions ?? [];
-        $after = $user->role === 'staff' ? $request->validated('staff_permissions', []) : [];
+        $after = $user->role === 'staff' || $user->is_super_admin
+            ? $request->validated('staff_permissions', [])
+            : [];
         sort($before);
         sort($after);
         if ($before === $after) {

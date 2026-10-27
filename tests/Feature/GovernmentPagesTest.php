@@ -256,8 +256,20 @@ it('uses one client navigation flow across personnel layouts without changing de
     $links = $xpath->query('//nav[@aria-label="Staff navigation"]//a[contains(@class, "nav-item")]');
     expect($links->length)->toBeGreaterThan(0);
     foreach ($links as $link) {
+        if ($link->getAttribute('href') === route('security.edit')) {
+            expect($link->hasAttribute('wire:navigate'))->toBeFalse();
+
+            continue;
+        }
         if ($link->getAttribute('target') === '_blank') {
             expect($link->hasAttribute('wire:navigate'))->toBeFalse();
+
+            continue;
+        }
+        if ($link->hasAttribute('data-screen')) {
+            expect($link->hasAttribute('wire:navigate'))->toBeFalse();
+            expect($link->getAttribute('onclick'))->toStartWith("showScreen('".$link->getAttribute('data-screen')."',this)");
+            expect($link->getAttribute('href'))->not->toBe('');
 
             continue;
         }

@@ -2,237 +2,86 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barangay ID</title>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Barangay Resident ID</title>
     <style>
+        @page { size: 85.6mm 54mm; margin: 0; }
         * { box-sizing: border-box; }
-
-        body {
-            margin: 0;
-            background: #e5e7eb;
-            font-family: 'Times New Roman', serif;
-            color: #111;
+        body { margin: 0; background: #e5e7eb; color: #111; font-family: 'Times New Roman', serif; }
+        .id-card { position: relative; width: 85.6mm; height: 54mm; margin: 24px auto; padding: 2mm; overflow: hidden; background: #fff; border: .45mm solid #163650; border-radius: 1.5mm; }
+        .id-card::before { position: absolute; top: 0; left: 0; width: 100%; height: 1.2mm; background: #163650; content: ''; }
+        .id-header { display: flex; height: 11.3mm; align-items: center; justify-content: center; gap: 1.2mm; padding: 1mm 1mm .8mm; border-bottom: .25mm solid #b48a35; text-align: center; }
+        .seal { flex: 0 0 auto; width: 8mm; height: 8mm; object-fit: contain; }
+        .header-text { flex: 1; min-width: 0; font-size: 4.4pt; line-height: 1.1; }
+        .header-text .office { display: block; margin-top: .5mm; font-size: 4pt; font-weight: bold; }
+        .barangay-name { display: block; font-size: 5pt; font-weight: bold; }
+        .id-title { display: block; margin-top: .45mm; color: #163650; font-size: 5.2pt; font-weight: bold; letter-spacing: .1pt; }
+        .id-body { display: flex; gap: 2mm; padding: 1.6mm .7mm 0; }
+        .photo { flex: 0 0 auto; width: 18mm; height: 21mm; border: .25mm solid #163650; object-fit: cover; }
+        .details { min-width: 0; flex: 1; padding-top: .2mm; font-size: 5.5pt; line-height: 1.18; }
+        .name { display: block; max-height: 7mm; margin-bottom: 1mm; overflow: hidden; color: #163650; font-size: 8pt; font-weight: bold; line-height: 1.05; text-transform: uppercase; overflow-wrap: anywhere; }
+        .field { display: flex; gap: 1mm; margin-top: .65mm; }
+        .field strong { flex: 0 0 auto; font-weight: bold; }
+        .field span { min-width: 0; overflow-wrap: anywhere; }
+        .id-footer { position: absolute; right: 2mm; bottom: 1.6mm; left: 2.7mm; display: flex; height: 12mm; align-items: flex-end; justify-content: space-between; }
+        .verification { align-self: flex-end; max-width: 43mm; padding-bottom: 1mm; font: 4.5pt/1.2 Arial, sans-serif; }
+        .qr { display: block; width: 12mm; height: 12mm; margin-bottom: .5mm; }
+        .imus-footer { width: 8.5mm; height: 10.5mm; object-fit: contain; }
+        .certificate-navigation { margin-bottom: 16px; }
+        .print-button { display: block; margin: 0 auto 18px; padding: 9px 18px; border: 0; color: white; cursor: pointer; }
+        @media screen and (max-width: 430px) {
+            .certificate-navigation { align-items: flex-start; }
+            .id-card { margin-top: 16px; margin-bottom: 16px; }
         }
-
-        .print-btn {
-            display: block;
-            margin: 20px auto;
-            padding: 10px 24px;
-            border: 0;
-            border-radius: 6px;
-            background: #166534;
-            color: white;
-            cursor: pointer;
-        }
-
-        .id-card {
-            width: 85.6mm;
-            height: 54mm;
-            margin: 30px auto;
-            background: white;
-            border: 1px solid #111;
-            border-radius: 0;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .id-header {
-            background: white;
-            color: #111;
-            border-bottom: 1px solid #111;
-            padding: 2px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .logo {
-            width: 28px;
-            height: 28px;
-            object-fit: contain;
-            background: white;
-            border-radius: 50%;
-        }
-
-        .header-text {
-            flex: 1;
-            text-align: center;
-            font-size: 6pt;
-            line-height: 6pt;
-        }
-
-        .barangay-name {
-            font-size: 6pt;
-            font-weight: bold;
-        }
-
-        .location {
-            font-size: 6pt;
-        }
-
-        .id-title {
-            font-size: 6pt;
-            font-weight: bold;
-            margin-top: 2px;
-        }
-
-        .id-body {
-            display: flex;
-            padding: 4px;
-            gap: 10px;
-        }
-
-        .photo-placeholder {
-            width: 18mm;
-            height: 20mm;
-            object-fit: contain;
-            border: 1px solid #aaa;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 9px;
-            color: #666;
-        }
-
-        .details {
-            flex: 1;
-            font-size: 9px;
-        }
-
-        .name {
-            font-size: 13px;
-            font-weight: bold;
-            text-transform: uppercase;
-            margin-bottom: 6px;
-        }
-
-        .field {
-            margin-bottom: 4px;
-        }
-
-        .qr {
-            position: absolute;
-            left: 6px;
-            bottom: 5px;
-            text-align: center;
-            font-size: 6px;
-        }
-
-        .qr img {
-            width: 43px;
-            height: 43px;
-        }
-
-        .imus-footer {
-            position: absolute;
-            right: 6px;
-            bottom: 5px;
-            width: 12mm;
-            height: 15mm;
-            object-fit: contain;
-        }
-
         @media print {
-            body {
-                background: white;
-            }
-
-            .print-btn {
-                display: none;
-            }
-
-            .id-card {
-                margin: 0;
-            }
+            body { background: #fff; }
+            .certificate-navigation, .print-button { display: none; }
+            .id-card { margin: 0; border-radius: 0; box-shadow: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
     </style>
-<link rel="stylesheet" href="{{ asset('css/certificates.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/certificates.css') }}">
 </head>
-
 <body>
-<nav class="certificate-navigation" aria-label="Certificate navigation"><a href="{{ route('staff.document-requests.index') }}">Back to certificates</a><span>Barangay Anabu I-G / Print preview</span></nav>
+<nav class="certificate-navigation" aria-label="Certificate navigation">
+    <a href="{{ route('staff.document-requests.index') }}">Back to certificates</a>
+    <span>Barangay Anabu I-G / Print preview</span>
+</nav>
 
-<button class="print-btn" onclick="window.print()">
-     Print Barangay ID
-</button>
+<button class="print-button" type="button" onclick="window.print()">Print Barangay ID</button>
 
-<div class="id-card">
-
-    <div class="id-header">
-
-        <img
-            src="{{ asset('images/certificates/imus-seal.png') }}"
-            class="logo"
-            alt="City of Imus seal"
-        >
-        <img src="{{ asset('images/certificates/anabu-source-seal.png') }}" class="logo" alt="Barangay Anabu I-G seal">
-
+<main class="id-card" aria-label="Barangay resident identification card">
+    <header class="id-header">
+        <img src="{{ asset('images/certificates/imus-seal.png') }}" class="seal" alt="City of Imus seal">
         <div class="header-text">
             <div>Republic of the Philippines<br>Province of Cavite<br>City of Imus</div>
-            <div>OFFICE OF THE SANGGUNIANG BARANGAY</div>
-            <div class="barangay-name">
-                BARANGAY ANABU I-G
-            </div>
-
-            <div class="id-title">
-                BARANGAY RESIDENT IDENTIFICATION CARD
-            </div>
+            <strong class="office">OFFICE OF THE SANGGUNIANG BARANGAY</strong>
+            <strong class="barangay-name">BARANGAY ANABU I-G</strong>
+            <strong class="id-title">BARANGAY RESIDENT IDENTIFICATION CARD</strong>
         </div>
-        <img src="{{ asset('images/certificates/bagong-pilipinas.png') }}" class="logo" alt="Bagong Pilipinas">
+        <img src="{{ asset('images/certificates/anabu-source-seal.png') }}" class="seal" alt="Barangay Anabu I-G seal">
+        <img src="{{ asset('images/certificates/bagong-pilipinas.png') }}" class="seal" alt="Bagong Pilipinas">
+    </header>
 
-    </div>
-
-    <div class="id-body">
-
-        <img class="photo-placeholder" src="{{ $certificate->photo_path ? route('staff.issued-certificates.photo', $certificate) : asset('images/official-placeholder.svg') }}" alt="{{ $certificate->photo_path ? 'Resident photo at issuance' : 'Resident photo not provided' }}">
-
+    <section class="id-body" aria-label="Resident identity details">
+        <img class="photo" src="{{ $certificate->photo_path ? route('staff.issued-certificates.photo', $certificate) : asset('images/official-placeholder.svg') }}" alt="{{ $certificate->photo_path ? 'Resident photo at issuance' : 'Resident photo not provided' }}">
         <div class="details">
-
-            <div class="name">
-                {{ $certificate->resident_name }}
-            </div>
-
-            <div class="field">
-                <strong>ID No.:</strong>
-                {{ $certificate->certificate_number }}
-            </div>
-
-            <div class="field">
-                <strong>Barangay:</strong>
-                Anabu I-G
-            </div>
-
-            <div class="field">
-                <strong>City:</strong>
-                Imus, Cavite
-            </div>
-
-            <div class="field">
-                <strong>Date Issued:</strong>
-                {{ \Carbon\Carbon::parse($certificate->issued_at)->format('M d, Y') }}
-            </div>
-
-            <div class="field">
-                <strong>Valid Until:</strong>
-                {{ $certificate->validUntil()?->format('M d, Y') }}
-            </div>
-
+            <strong class="name">{{ $certificate->resident_name }}</strong>
+            <div class="field"><strong>ID No.:</strong><span>{{ $certificate->certificate_number }}</span></div>
+            <div class="field"><strong>Barangay:</strong><span>Anabu I-G, Imus, Cavite</span></div>
+            <div class="field"><strong>Date Issued:</strong><span>{{ $certificate->issued_at?->format('M d, Y') ?? '' }}</span></div>
+            <div class="field"><strong>Valid Until:</strong><span>{{ $certificate->validUntil()?->format('M d, Y') ?? '' }}</span></div>
         </div>
+    </section>
 
-    </div>
-
-    <img class="imus-footer" src="{{ asset('images/certificates/imus-footer.png') }}" alt="City of Imus footer logo">
-
-    <div class="qr">
-        @if($certificate->qr_code_path)
-            <img src="{{ asset($certificate->qr_code_path) }}" alt="Certificate authenticity QR code">
-        @endif
-
-        <div>VERIFY</div>
-    </div>
-
-</div>
-
+    <footer class="id-footer">
+        <div class="verification">
+            @if ($certificate->qr_code_path)
+                <img class="qr" src="{{ asset($certificate->qr_code_path) }}" alt="Certificate authenticity QR code">
+            @endif
+            <div>Scan QR code to verify</div>
+        </div>
+        <img class="imus-footer" src="{{ asset('images/certificates/imus-footer.png') }}" alt="City of Imus footer logo">
+    </footer>
+</main>
 </body>
 </html>

@@ -221,8 +221,10 @@ Route::middleware(['auth:web', 'can:access-personnel', RecordAdministrativeActio
         Route::post('/employee-cabinet-access/{user}/enrollment/{method}', [EmployeeCabinetAccessController::class, 'enroll'])->name('cabinet-access.enroll');
         Route::get('/audit-log', AuditLogController::class)->name('audit.index');
         Route::get('/users', WorkspaceController::class)->defaults('screen', 'users')->name('users.index');
+        Route::get('/users-export', [UserController::class, 'export'])->name('users.export');
         Route::post('/users', [UserController::class, 'store'])->name('users.store');
         Route::patch('/users/{user}', [UserController::class, 'update'])->name('users.update');
+        Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
         Route::patch('/residents/{resident}/portal-account', [ResidentPortalAccountController::class, 'update'])->name('residents.portal-account');
     });
 

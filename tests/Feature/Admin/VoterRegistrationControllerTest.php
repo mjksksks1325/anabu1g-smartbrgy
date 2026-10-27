@@ -197,11 +197,12 @@ test('registry export omits the private comelec number', function () {
         'comelec_voter_number_hash' => VoterRegistration::identifierHash('5555-4444-3333'),
     ]);
 
-    $this->actingAs($user)
+    $response = $this->actingAs($user)
         ->get(route('staff.voter-registrations.export'))
         ->assertOk()
-        ->assertDownload()
-        ->assertDontSee('5555-4444-3333');
+        ->assertDownload('voters-'.today()->toDateString().'.xlsx');
+
+    expect(spreadsheetSheetXml($response))->toContain('Voters List')->toContain('Precinct No.')->not->toContain('5555-4444-3333');
 });
 
 test('residents cannot add themselves to the personnel-managed voters list', function () {

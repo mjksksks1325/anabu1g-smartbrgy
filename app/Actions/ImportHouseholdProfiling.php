@@ -88,7 +88,12 @@ class ImportHouseholdProfiling
                     'exact' => $this->normalized($resident->middle_name) === $this->normalized($fields['middle_name']) && $this->normalized($resident->suffix) === $this->normalized($fields['suffix']),
                 ]);
             }
-            $action = $edit['action'] ?? ($matches->isEmpty() ? 'create' : 'resolve');
+            $alreadyExists = $matches->contains('exact', true);
+            $action = $edit['action'] ?? match (true) {
+                $matches->isEmpty() => 'create',
+                $alreadyExists => 'skip',
+                default => 'resolve',
+            };
             $errors = $action === 'create' ? $validator->errors()->all() : Validator::make($fields, Arr::only($rules, ['household_group', 'household_number', 'household_name', 'relationship_to_household_head', 'purok', 'address']))->errors()->all();
             $existingId = $edit['resident_id'] ?? null;
             if ($action === 'resolve') {
@@ -112,7 +117,7 @@ class ImportHouseholdProfiling
             if ($action !== 'skip' && $fields['household_group'] === '') {
                 $errors[] = 'Enter an explicit reviewed household group. Surname and address are never used for grouping.';
             }
-            $rows[] = ['id' => $index, 'source_row' => $index + 2, 'fields' => $fields, 'is_head' => (bool) $head, 'action' => $action, 'resident_id' => $existingId, 'confirm_duplicate' => (bool) ($edit['confirm_duplicate'] ?? false), 'matches' => $matches->values()->all(), 'errors' => $errors];
+            $rows[] = ['id' => $index, 'source_row' => $index + 2, 'fields' => $fields, 'is_head' => (bool) $head, 'action' => $action, 'resident_id' => $existingId, 'confirm_duplicate' => (bool) ($edit['confirm_duplicate'] ?? false), 'already_exists' => $alreadyExists, 'matches' => $matches->values()->all(), 'errors' => $errors];
         }
         $groups = [];
         foreach ($rows as $row) {
@@ -181,7 +186,7 @@ class ImportHouseholdProfiling
             $households[] = ['group' => (string) $group, 'household_id' => $existing?->id, 'household_number' => $numbers[0] ?? null, 'household_name' => $names[0] ?? null, 'address' => $head['fields']['address'], 'purok' => $head['fields']['purok'], 'head' => trim($head['fields']['first_name'].' '.$head['fields']['last_name']), 'row_ids' => $ids];
         }
 
-        return ['rows' => $rows, 'households' => $households, 'summary' => ['households' => count($households), 'residents' => count($rows), 'heads' => count(array_filter($rows, fn (array $row): bool => $row['is_head'] && $row['action'] !== 'skip')), 'duplicates' => count(array_filter($rows, fn (array $row): bool => $row['matches'] !== [] || ($row['file_duplicate'] ?? false))), 'invalid' => count(array_filter($rows, fn (array $row): bool => $row['errors'] !== [])), 'ready' => count(array_filter($rows, fn (array $row): bool => $row['errors'] === [] && $row['action'] !== 'skip'))]];
+        return ['rows' => $rows, 'households' => $households, 'summary' => ['households' => count($households), 'residents' => count($rows), 'heads' => count(array_filter($rows, fn (array $row): bool => $row['is_head'] && $row['action'] !== 'skip')), 'duplicates' => count(array_filter($rows, fn (array $row): bool => $row['matches'] !== [] || ($row['file_duplicate'] ?? false))), 'invalid' => count(array_filter($rows, fn (array $row): bool => $row['errors'] !== [])), 'existing' => count(array_filter($rows, fn (array $row): bool => $row['already_exists'] && $row['action'] === 'skip')), 'ready' => count(array_filter($rows, fn (array $row): bool => $row['errors'] === [] && $row['action'] !== 'skip'))]];
     }
 
     /** @param array<string, mixed> $preview

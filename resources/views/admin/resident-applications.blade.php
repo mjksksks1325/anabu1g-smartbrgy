@@ -8,7 +8,7 @@
     </div>
     <div class="registration-review-count"><strong>{{ $applications->total() }}</strong> applications <span>Portal account registration follows barangay approval.</span></div>
     @forelse($applications as $application)
-        <details class="employee-card registration-review-card" @if($loop->first && $application->status === 'pending') open @endif>
+        <details id="resident-application-{{ $application->id }}" class="employee-card registration-review-card" @if(($loop->first && $application->status === 'pending') || request()->integer('application') === $application->id) open @endif>
             <summary class="employee-intro">
                 <div><h3>{{ App\Models\ResidentRegistrationApplication::fullName($application->details) }}</h3><p>{{ $application->reference }} &middot; {{ $application->created_at->format('M d, Y h:i A') }}</p></div>
                 <span class="registration-review-status" data-application-state="{{ $application->status }}">{{ ucfirst(str_replace('_', ' ', $application->status)) }}</span>

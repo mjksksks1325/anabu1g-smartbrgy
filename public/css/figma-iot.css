@@ -40,7 +40,7 @@ body { height: 100dvh; overflow: hidden; font-family: var(--civic-font-body); }
 .side-nav a { display: flex; align-items: center; gap: 13px; font-weight: 600; }
 .side-nav a > svg.nav-icon { display: block; visibility: visible; flex: 0 0 18px; width: 18px; height: 18px; min-width: 18px; color: inherit; stroke: currentColor; opacity: 1; }
 .side-nav a:hover { background: var(--staff-hover-bg); color: var(--staff-ink); }
-.side-nav a.current { background: var(--staff-active-bg); color: var(--staff-active-ink); font-weight: 700; }
+.side-nav a.current { background: var(--staff-nav-active-bg); color: var(--staff-nav-active-ink); font-weight: 700; }
 .side-nav-scroll.staff-settings-navigation { padding: 0 0 14px; }
 .side-nav .sidebar-sec > a.portal-link { margin-top: 8px; padding-top: 16px; }
 .side-nav-user { position: static; display: flex; align-items: center; gap: 10px; flex: 0 0 auto; min-height: 65px; padding: 10px 16px; border-top: 1px solid #d7e1e9; }
@@ -79,30 +79,55 @@ th { background: var(--staff-table-head); color: var(--staff-muted); }
 .iot-trust-panel p { max-width: 66ch; color: #bdcee0; font-size: 13px; line-height: 1.6; }
 .iot-trust-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 25px; }
 .iot-trust-tags span { padding: 7px 11px; border-radius: 20px; background: #193456; color: #fff; font-size: 11px; font-weight: 700; }
-.iot-event-count { display: flex; flex-direction: column; justify-content: center; padding: 25px; border: 1px solid #d3dfe8; border-radius: 7px; background: #fff; box-shadow: var(--civic-shadow); }
-.iot-event-count strong { font: 800 32px var(--civic-font-display); }
-.iot-event-count span { color: var(--civic-muted); font-size: 13px; }
-.iot-rfid-content { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, .9fr); gap: 20px; align-items: start; margin-top: 22px; }
-.iot-rfid-content > .panel { order: 0; }
-.iot-rfid-content > .filter-panel { order: 1; display: flex; flex-direction: column; gap: 14px; margin: 0; }
-.iot-rfid-content .filter-panel label { display: block; width: 100%; }
-.iot-rfid-content .filter-panel button { width: 100%; }
+.iot-rfid-trust-panel { margin-bottom: 18px; }
+.iot-rfid-content { margin-top: 22px; }
+.iot-rfid-content > .panel { overflow: hidden; }
+.iot-rfid-filters { display: grid; grid-template-columns: minmax(260px, 2.2fr) repeat(4, minmax(130px, 1fr)); gap: 12px; align-items: end; margin: 0; padding: 16px 22px 20px; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.iot-rfid-filters label { display: block; min-width: 0; color: var(--staff-muted); font-size: 12px; font-weight: 700; }
+.iot-rfid-filters :is(input, select) { display: block; width: 100%; min-height: 42px; margin-top: 6px; padding: 9px 11px; border: 1px solid var(--staff-quiet-border); border-radius: 6px; background: var(--staff-input); color: var(--staff-ink); font: 13px var(--civic-font-body); }
+.iot-rfid-filters :is(input, select):focus-visible { outline: 3px solid color-mix(in srgb, var(--civic-primary) 30%, transparent); outline-offset: 1px; }
+.iot-rfid-pagination { display: flex; justify-content: flex-end; padding: 15px 22px; border-top: 1px solid var(--staff-border); }
+.iot-rfid-pagination nav { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 14px; }
+.iot-rfid-pagination .hidden.sm\:flex > div:first-child p { margin: 0; color: var(--staff-muted); font-size: 12px; }
+.iot-rfid-pagination nav > div:nth-child(2) > span { display: inline-flex; overflow: hidden; border: 1px solid var(--staff-border); border-radius: 6px; }
+.iot-rfid-pagination nav a, .iot-rfid-pagination nav [aria-current="page"] > span, .iot-rfid-pagination nav [aria-disabled="true"] > span { display: inline-flex; min-width: 38px; min-height: 38px; align-items: center; justify-content: center; padding: 7px 11px; border: 0; border-right: 1px solid var(--staff-border); background: var(--staff-input); color: var(--staff-ink); font-size: 12px; text-decoration: none; }
+.iot-rfid-pagination nav > div:nth-child(2) > span > :last-child { border-right: 0; }
+.iot-rfid-pagination nav a:hover { background: var(--staff-hover-bg); }
+.iot-rfid-pagination nav [aria-current="page"] > span { background: var(--civic-primary); color: #fff; font-weight: 800; }
+.iot-rfid-pagination nav [aria-disabled="true"] > span { color: var(--staff-muted); opacity: .55; }
+.iot-rfid-pagination nav svg { width: 17px; height: 17px; }
+.iot-rfid-pagination .sm\:hidden { display: none; }
+.iot-rfid-pagination .hidden.sm\:flex { display: flex; flex: 1; align-items: center; justify-content: space-between; gap: 14px; }
+.iot-rfid-pagination .hidden.sm\:flex > div:nth-child(2) { overflow-x: auto; }
+.iot-rfid-pagination .hidden.sm\:flex > div:nth-child(2) > span { white-space: nowrap; }
 .iot-rfid-content .table-scroll { overflow-x: auto; }
 .iot-rfid-content .empty-state { min-height: 280px; }
 .employee-access-panel { display: block; }
 .employee-access-panel > .employee-card { padding: 0; border-bottom: 1px solid #d3dfe8; }
 .employee-access-panel > .employee-card:last-of-type { border-bottom: 0; }
-.employee-card > summary.employee-intro { display: flex; align-items: center; gap: 14px; min-height: 78px; padding: 14px 22px; cursor: pointer; list-style: none; }
-.employee-card > summary.employee-intro::-webkit-details-marker { display: none; }
-.employee-card > summary.employee-intro > div { flex: 1; min-width: 0; }
-.employee-card > summary.employee-intro h3 { margin-bottom: 3px; }
-.employee-card > summary.employee-intro p { overflow-wrap: anywhere; }
-.employee-card > summary.employee-intro:focus-visible { outline: 3px solid #a9d3ff; outline-offset: -3px; }
-.employee-card[open] > summary.employee-intro { border-bottom: 1px solid #d3dfe8; }
-.employee-expand-hint { color: var(--civic-primary); font-size: 12px; font-weight: 700; white-space: nowrap; }
-.employee-expand-hint::after { content: '+'; margin-left: 8px; font-size: 17px; }
-.employee-card[open] .employee-expand-hint::after { content: '−'; }
+.employee-card > .employee-intro { display: flex; align-items: center; gap: 14px; min-height: 78px; padding: 14px 22px; }
+.employee-card > .employee-intro > div { flex: 1; min-width: 0; }
+.employee-card > .employee-intro h3 { margin-bottom: 3px; }
+.employee-card > .employee-intro p { overflow-wrap: anywhere; }
+.employee-details-trigger { flex: 0 0 auto; min-width: 92px; }
+.employee-details-dialog { width: min(940px, calc(100vw - 32px)); max-width: 940px; max-height: min(90dvh, 900px); padding: 0; overflow-y: auto; border: 1px solid var(--staff-border); border-radius: 9px; background: var(--staff-card); color: var(--staff-ink); box-shadow: 0 24px 70px rgba(0, 0, 0, .32); }
+.employee-details-dialog::backdrop { background: rgba(3, 17, 28, .62); backdrop-filter: blur(3px); }
+.employee-details-heading { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 22px; border-bottom: 1px solid var(--staff-border); background: var(--staff-card); }
+.employee-details-heading h2 { margin: 0 0 4px; color: var(--staff-ink); font: 800 19px/1.3 var(--civic-font-display); }
+.employee-details-heading p { margin: 0; color: var(--staff-muted); font-size: 12px; overflow-wrap: anywhere; }
 .employee-card-body { padding: 4px 22px 22px; }
+.employee-access-panel > .pagination { padding: 18px 22px; border-top: 1px solid var(--staff-border); }
+.employee-access-panel > .pagination nav { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.employee-access-panel > .pagination .sm\:hidden { display: none; }
+.employee-access-panel > .pagination .hidden.sm\:flex { display: flex; flex: 1; align-items: center; justify-content: space-between; gap: 14px; }
+.employee-access-panel > .pagination .hidden.sm\:flex > div:nth-child(2) > span { display: inline-flex; overflow: hidden; border: 1px solid var(--staff-border); border-radius: 6px; }
+.employee-access-panel > .pagination nav a, .employee-access-panel > .pagination nav [aria-current="page"] > span, .employee-access-panel > .pagination nav [aria-disabled="true"] > span { display: inline-flex; min-width: 38px; min-height: 38px; align-items: center; justify-content: center; padding: 7px 11px; border: 1px solid var(--staff-border); border-radius: 6px; background: var(--staff-input); color: var(--staff-ink); font-size: 12px; text-decoration: none; }
+.employee-access-panel > .pagination .hidden.sm\:flex nav a, .employee-access-panel > .pagination .hidden.sm\:flex nav [aria-current="page"] > span, .employee-access-panel > .pagination .hidden.sm\:flex nav [aria-disabled="true"] > span { border: 0; border-right: 1px solid var(--staff-border); border-radius: 0; }
+.employee-access-panel > .pagination .hidden.sm\:flex > div:nth-child(2) > span > :last-child { border-right: 0; }
+.employee-access-panel > .pagination nav a:hover { background: var(--staff-hover-bg); }
+.employee-access-panel > .pagination nav [aria-current="page"] > span { background: var(--civic-primary); color: #fff; font-weight: 800; }
+.employee-access-panel > .pagination nav [aria-disabled="true"] > span { color: var(--staff-muted); opacity: .55; }
+.employee-access-panel > .pagination nav svg { width: 17px; height: 17px; }
 .employee-card .detail-grid { gap: 8px; }
 .employee-card .detail-grid > div { padding: 12px; border-radius: 6px; background: #e7f1f9; }
 .employee-card .employee-actions .button.quiet { color: var(--civic-primary); border-color: #cad9e5; }
@@ -159,8 +184,10 @@ html:not([data-theme=dark]) .main-content { background: #d9e6ef; }
 html:not([data-theme=dark]) .panel, html:not([data-theme=dark]) .filter-panel { background: #f4f8fb; border-color: #9eb5c6; box-shadow: 0 8px 22px rgba(13, 45, 77, .11); }
 html:not([data-theme=dark]) .panel-heading { background: #e8f0f6; border-bottom-color: #adc2d1; }
 html:not([data-theme=dark]) .employee-access-panel > .employee-card { border-color: #adc2d1; }
-html:not([data-theme=dark]) .employee-card > summary.employee-intro:hover { background: #e7f0f7; }
-html:not([data-theme=dark]) .employee-card[open] > summary.employee-intro { background: #e4eef6; border-bottom-color: #adc2d1; }
+html:not([data-theme=dark]) .employee-details-dialog { border-color: #9eb5c6; }
+html:not([data-theme=dark]) .employee-details-heading { border-color: #adc2d1; background: #f4f8fb; }
+html:not([data-theme=dark]) .employee-details-heading h2 { color: #132238; }
+html:not([data-theme=dark]) .employee-details-heading p { color: #526273; }
 html:not([data-theme=dark]) .employee-card .detail-grid > div { background: #dceaf4; border: 1px solid #b7cbda; }
 html:not([data-theme=dark]) .button.quiet, html:not([data-theme=dark]) .employee-card .employee-actions .button.quiet { background: #e1edf6; border-color: #8faec4; color: #074783; }
 html:not([data-theme=dark]) .button.quiet:hover, html:not([data-theme=dark]) .employee-card .employee-actions .button.quiet:hover { background: #cfdfed; border-color: #638bad; }
@@ -173,12 +200,11 @@ html[data-theme=dark] .side-nav a.portal-link { border-color: var(--staff-border
 html[data-theme=dark] .side-nav-scroll::-webkit-scrollbar-thumb { border-color: var(--staff-sidebar); }
 html[data-theme=dark] .brand strong, html[data-theme=dark] .side-nav a, html[data-theme=dark] .page-heading h1 { color: var(--staff-ink); }
 html[data-theme=dark] .panel, html[data-theme=dark] .filter-panel { box-shadow: none; }
-html[data-theme=dark] .iot-event-count { background: var(--staff-card); color: var(--staff-ink); border-color: var(--staff-border); }
-html[data-theme=dark] .employee-access-panel > .employee-card, html[data-theme=dark] .employee-card[open] > summary.employee-intro { border-color: var(--staff-border); }
-html[data-theme=dark] .employee-expand-hint { color: var(--staff-active-ink); }
+html[data-theme=dark] .employee-access-panel > .employee-card, html[data-theme=dark] .employee-details-dialog, html[data-theme=dark] .employee-details-heading { border-color: var(--staff-border); }
+html[data-theme=dark] .employee-details-heading { background: var(--staff-card); }
 html[data-theme=dark] .employee-card .detail-grid > div { background: var(--staff-input); }
 html[data-theme=dark] .employee-access-panel > .panel-heading { background: var(--staff-soft); }
-html[data-theme=dark] .employee-card > summary.employee-intro:hover, html[data-theme=dark] .employee-card[open] > summary.employee-intro { background: var(--staff-soft); }
+html[data-theme=dark] .employee-details-dialog { background: var(--staff-card); color: var(--staff-ink); }
 html[data-theme=dark] .button.quiet, html[data-theme=dark] .employee-card .employee-actions .button.quiet { background: var(--staff-quiet-bg); border-color: var(--staff-quiet-border); color: var(--staff-quiet-ink); }
 html[data-theme=dark] .button.quiet:hover, html[data-theme=dark] .employee-card .employee-actions .button.quiet:hover { background: var(--staff-quiet-hover); }
 html[data-theme=dark] .document-requests-index .civic-table-wrap, html[data-theme=dark] .document-request-detail .card { border-color: var(--staff-border); background: var(--staff-card); box-shadow: none; }
@@ -193,23 +219,22 @@ html[data-theme=dark] .document-request-detail .btn:not(.btn-green) { border-col
 
 html[data-theme=dark] .site-header { background: var(--staff-topbar); }
 html[data-theme=dark] .main-content { background: var(--staff-bg); }
-html[data-theme=dark] .nav-heading, html[data-theme=dark] .filter-panel label, html[data-theme=dark] .employee-mapping-status strong, html[data-theme=dark] .employee-mapping-form label, html[data-theme=dark] .page-heading p, html[data-theme=dark] .panel-heading span, html[data-theme=dark] .employee-card p, html[data-theme=dark] .device-card p, html[data-theme=dark] td small, html[data-theme=dark] .detail-grid dt, html[data-theme=dark] .employee-mapping-form small, html[data-theme=dark] .confirm-dialog p, html[data-theme=dark] .iot-event-count span { color: var(--staff-muted); }
+html[data-theme=dark] .nav-heading, html[data-theme=dark] .filter-panel label, html[data-theme=dark] .employee-mapping-status strong, html[data-theme=dark] .employee-mapping-form label, html[data-theme=dark] .page-heading p, html[data-theme=dark] .panel-heading span, html[data-theme=dark] .employee-card p, html[data-theme=dark] .device-card p, html[data-theme=dark] td small, html[data-theme=dark] .detail-grid dt, html[data-theme=dark] .employee-mapping-form small, html[data-theme=dark] .confirm-dialog p { color: var(--staff-muted); }
 html[data-theme=dark] .eyebrow, html[data-theme=dark] .workspace-title span, html[data-theme=dark] .brand small, html[data-theme=dark] .document-requests-index .civic-link { color: var(--staff-accent); }
 html[data-theme=dark] .side-nav a { color: var(--staff-muted); }
 html[data-theme=dark] .side-nav a:hover { background: var(--staff-hover-bg); color: var(--staff-ink); }
-html[data-theme=dark] .side-nav a.current { background: var(--staff-active-bg); color: var(--staff-active-ink); }
+html[data-theme=dark] .side-nav a.current { background: var(--staff-nav-active-bg); color: var(--staff-nav-active-ink); }
 html[data-theme=dark] .panel, html[data-theme=dark] .filter-panel, html[data-theme=dark] .confirm-dialog { background: var(--staff-card); border-color: var(--staff-border); color: var(--staff-ink); }
 html[data-theme=dark] .panel-heading { background: var(--staff-soft); border-color: var(--staff-border); }
 html[data-theme=dark] th, html[data-theme=dark] .document-requests-index .civic-table th { background: var(--staff-table-head); color: var(--staff-muted); }
 html[data-theme=dark] td, html[data-theme=dark] .device-card, html[data-theme=dark] .employee-card { border-color: var(--staff-row); }
 html[data-theme=dark] .filter-panel input, html[data-theme=dark] .filter-panel select, html[data-theme=dark] .employee-mapping-form input { background: var(--staff-input); border-color: var(--staff-quiet-border); color: var(--staff-ink); }
-html[data-theme=dark] .notice { background: var(--staff-active-bg); border-color: var(--staff-border); color: var(--staff-active-ink); }
-html[data-theme=dark] .pill.neutral, html[data-theme=dark] .document-requests-index .civic-status, html[data-theme=dark] .document-request-detail .badge-blue { background: var(--staff-active-bg); border-color: transparent; color: var(--staff-active-ink); }
-html[data-theme=dark] .iot-event-count { background: var(--staff-card); }
-@media(max-width: 1100px) { .iot-feature-grid, .iot-rfid-content { grid-template-columns: 1fr; } .iot-rfid-content > .filter-panel { order: 0; } .iot-rfid-content > .panel { order: 1; } }
-@media(max-width: 650px) { .document-request-detail .request-detail-grid { grid-template-columns: 1fr; } .document-request-detail .page-header-row { flex-wrap: wrap; } }
+html[data-theme=dark] .notice:not(.success):not(.error) { background: var(--staff-soft); border-color: var(--staff-border); color: var(--staff-nav-active-ink); }
+html[data-theme=dark] .pill.neutral, html[data-theme=dark] .document-requests-index .civic-status, html[data-theme=dark] .document-request-detail .badge-blue { background: var(--staff-soft); border-color: var(--staff-border); color: var(--staff-nav-active-ink); }
+@media(max-width: 1100px) { .iot-feature-grid { grid-template-columns: 1fr; } .iot-rfid-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); } .iot-rfid-filters label:first-child { grid-column: 1 / -1; } }
+@media(max-width: 650px) { .document-request-detail .request-detail-grid { grid-template-columns: 1fr; } .document-request-detail .page-header-row { flex-wrap: wrap; } .iot-rfid-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 14px; } .iot-rfid-filters label:first-child { grid-column: 1 / -1; } .iot-rfid-pagination { padding: 12px 14px; } .iot-rfid-pagination nav, .iot-rfid-pagination .hidden.sm\:flex { flex-direction: column; align-items: stretch; } .iot-rfid-pagination .hidden.sm\:flex > div:nth-child(2) { max-width: 100%; } }
 @media(max-width: 950px) { .brand { flex-basis: 218px; width: 218px; } .workspace { grid-template-columns: 218px minmax(0,1fr); } .workspace-title { padding: 0 18px; } .main-content { padding: 26px 20px; } }
-@media(max-width: 650px) { body { height: auto; overflow: visible; } .site-header { min-height: 68px; padding: 8px 14px; gap: 9px; flex-wrap: wrap; } .brand { flex: 1 1 180px; width: auto; padding: 0; border: 0; } .brand img { width: 39px; height: 39px; } .brand strong { font-size: 13px; } .workspace-title { order: 3; flex: 1 0 100%; padding: 0 0 3px; } .workspace-title span { display: none; } .workspace-title strong { font-size: 15px; } .header-actions { gap: 5px; } .header-actions .button.quiet { padding: 6px 8px; font-size: 11px; } .header-actions > a, .header-actions .staff-initials { display: none; } .workspace { display: block; height: auto; } .side-nav { display: block; } .side-nav-scroll { display: flex; gap: 4px; padding: 8px 10px; overflow-x: auto; overflow-y: hidden; white-space: nowrap; } .side-nav a { flex: 0 0 auto; } .side-nav-user { display: none; } .main-content { padding: 24px 16px 54px; overflow: visible; } .page-heading h1 { font-size: 25px; } .iot-trust-panel { min-height: 0; } .employee-card > summary.employee-intro { flex-wrap: wrap; padding: 12px 16px; } .employee-card-body { padding: 4px 16px 16px; } }
+@media(max-width: 650px) { body { height: auto; overflow: visible; } .site-header { min-height: 68px; padding: 8px 14px; gap: 9px; flex-wrap: wrap; } .brand { flex: 1 1 180px; width: auto; padding: 0; border: 0; } .brand img { width: 39px; height: 39px; } .brand strong { font-size: 13px; } .workspace-title { order: 3; flex: 1 0 100%; padding: 0 0 3px; } .workspace-title span { display: none; } .workspace-title strong { font-size: 15px; } .header-actions { gap: 5px; } .header-actions .button.quiet { padding: 6px 8px; font-size: 11px; } .header-actions > a, .header-actions .staff-initials { display: none; } .workspace { display: block; height: auto; } .side-nav { display: block; } .side-nav-scroll { display: flex; gap: 4px; padding: 8px 10px; overflow-x: auto; overflow-y: hidden; white-space: nowrap; } .side-nav a { flex: 0 0 auto; } .side-nav-user { display: none; } .main-content { padding: 24px 16px 54px; overflow: visible; } .page-heading h1 { font-size: 25px; } .iot-trust-panel { min-height: 0; } .employee-card > .employee-intro { flex-wrap: wrap; padding: 12px 16px; } .employee-details-trigger { margin-left: auto; } .employee-details-heading { align-items: flex-start; padding: 15px 16px; } .employee-details-heading h2 { font-size: 17px; } .employee-card-body { padding: 4px 16px 16px; } .employee-access-panel > .pagination { padding: 14px; overflow-x: auto; } .employee-access-panel > .pagination nav { min-width: 540px; } }
 .device-card .detail-grid { gap: 10px; }
 .device-card .detail-grid > div { padding: 13px 14px; border: 1px solid #b7cbda; border-radius: 7px; background: #dceaf4; }
 .device-card .detail-grid dd { color: var(--civic-ink); font-weight: 600; }
@@ -239,7 +264,7 @@ html[data-theme=dark] .component-health-item strong, html[data-theme=dark] .devi
 .side-nav .sidebar-sec { padding: 19px 11px 0; }
 .side-nav .sidebar-label { padding: 0 13px; margin-bottom: 8px; color: var(--staff-muted); font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
 .side-nav a { color: var(--staff-muted); font-family: var(--civic-font-body); }
-.side-nav a.current { background: var(--staff-active-bg); color: var(--staff-active-ink); font-weight: 700; }
+.side-nav a.current { background: var(--staff-nav-active-bg); color: var(--staff-nav-active-ink); font-weight: 700; }
 .side-nav a.portal-link { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--staff-border); border-radius: 0; }
 .side-nav-user { min-height: 0; padding: 13px 16px; border-top: 1px solid var(--staff-border); background: var(--staff-sidebar); }
 .side-nav-user { gap: 9px; }
@@ -362,3 +387,8 @@ html[data-theme=dark] .admin-language-inline button[aria-pressed="true"] { backg
 .staff-theme-icon-button .staff-theme-sun { display: none; }
 html[data-theme=dark] .staff-theme-icon-button .staff-theme-moon { display: none; }
 html[data-theme=dark] .staff-theme-icon-button .staff-theme-sun { display: block; }
+
+/* Keep navigation spacing consistent for every staff role. */
+.side-nav .sidebar-sec { padding: 23px 11px 8px; }
+.side-nav .sidebar-label { margin-bottom: 10px; }
+.side-nav .sidebar-sec > .nav-item + .nav-item { margin-top: 4px; }
