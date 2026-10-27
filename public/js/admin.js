@@ -1426,8 +1426,18 @@ document.addEventListener('click', function(e) { if (e.target.classList.contains
 function showToast(msg, type) {
   const wrap = document.getElementById('toast-wrap');
   if (!wrap) return;
+  const toastKey = `${type || ''}:${msg}`;
+  const duplicate = [...wrap.querySelectorAll('.toast')].find(toast => toast.dataset.toastKey === toastKey);
+  if (duplicate) return;
+
+  const visibleToasts = wrap.querySelectorAll('.toast');
+  if (visibleToasts.length >= 2) {
+    visibleToasts[0].remove();
+  }
+
   const toast = document.createElement('div');
   toast.className = 'toast' + (type ? ' ' + type : '');
+  toast.dataset.toastKey = toastKey;
   const icons = { green: '', red: '', '': 'ℹ' };
   toast.innerHTML = `<span style="font-size:15px;">${icons[type] || 'ℹ'}</span><span>${escapeText(msg)}</span>`;
   wrap.appendChild(toast);
