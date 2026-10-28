@@ -9,11 +9,11 @@
     <section class="panel">
         <div class="panel-heading"><h2>Movement history</h2><span>{{ $movements->total() }} recorded {{ \Illuminate\Support\Str::plural('event', $movements->total()) }}</span></div>
         <form class="filter-panel iot-rfid-filters" method="GET" action="{{ route('staff.rfid-files.index') }}" data-rfid-auto-filter>
-            <label>Search file, RFID tag, or employee<input type="search" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="File reference, RFID tag, or employee"></label>
+            <label>Search file, RFID tag, or employee<input type="search" name="search" autocomplete="off" value="{{ $filters['search'] ?? '' }}" placeholder="File reference, RFID tag, or employee"></label>
             <label>Action<select name="action"><option value="">All actions</option><option value="removed" @selected(($filters['action'] ?? '') === 'removed')>Removed</option><option value="returned" @selected(($filters['action'] ?? '') === 'returned')>Returned</option></select></label>
             <label>Date<input type="date" name="date" value="{{ $filters['date'] ?? '' }}"></label>
             <label>Cabinet<select name="cabinet"><option value="">All cabinets</option>@foreach($cabinets as $cabinet)<option value="{{ $cabinet->id }}" @selected(($filters['cabinet'] ?? null) == $cabinet->id)>{{ $cabinet->name }}</option>@endforeach</select></label>
-            <label>Drawer<input type="search" name="drawer" value="{{ $filters['drawer'] ?? '' }}" placeholder="Drawer ID"></label>
+            <label>Drawer<input type="search" name="drawer" autocomplete="off" value="{{ $filters['drawer'] ?? '' }}" placeholder="Drawer ID"></label>
         </form>
         @if($movements->isEmpty())
             <div class="empty-state"><strong>No file movements recorded</strong><p>Events will show here when a connected device reports a verified removal or return.</p></div>

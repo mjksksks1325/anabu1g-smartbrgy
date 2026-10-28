@@ -36,6 +36,7 @@ use App\Http\Middleware\EnsureGuestResidentPortal;
 use App\Http\Middleware\EnsureResidentAccount;
 use App\Http\Middleware\EnsureStaffAccess;
 use App\Http\Middleware\RecordAdministrativeAction;
+use App\Http\Middleware\RequireSupervisorPassword;
 use App\StaffPermissions;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Route;
@@ -134,7 +135,7 @@ Route::middleware(['auth:web', 'can:operate-personnel', EnsureStaffAccess::class
     Route::post('/request-restrictions/{restriction}/lift', [ResidentRequestRestrictionController::class, 'lift'])->name('request-restrictions.lift');
     Route::get('/incidents/{incident}', [IncidentController::class, 'show'])->name('incidents.show');
     Route::patch('/incidents/{incident}', [IncidentController::class, 'update'])->name('incidents.update');
-    Route::delete('/incidents/{incident}', [IncidentController::class, 'destroy'])->name('incidents.destroy');
+    Route::delete('/incidents/{incident}', [IncidentController::class, 'destroy'])->middleware(RequireSupervisorPassword::class)->name('incidents.destroy');
     Route::get('/incidents/{incident}/attachments/{attachment}', [IncidentController::class, 'attachment'])
         ->whereNumber('attachment')
         ->name('incidents.attachments.show');
@@ -153,7 +154,7 @@ Route::middleware(['auth:web', 'can:operate-personnel', EnsureStaffAccess::class
     Route::get('/households/{household}', [HouseholdController::class, 'show'])->name('households.show');
     Route::patch('/households/{household}', [HouseholdController::class, 'update'])->name('households.update');
     Route::patch('/households/{household}/members/{resident}', [HouseholdController::class, 'member'])->name('households.members.update');
-    Route::delete('/households/{household}/members/{resident}', [HouseholdController::class, 'removeMember'])->name('households.members.destroy');
+    Route::delete('/households/{household}/members/{resident}', [HouseholdController::class, 'removeMember'])->middleware(RequireSupervisorPassword::class)->name('households.members.destroy');
     Route::get('/residents-export', [ResidentController::class, 'export'])->name('residents.export');
     Route::post('/residents', [ResidentController::class, 'store'])->name('residents.store');
     Route::get('/request-records', [ResidentController::class, 'requestRecords'])->name('request-records.index');
@@ -163,7 +164,7 @@ Route::middleware(['auth:web', 'can:operate-personnel', EnsureStaffAccess::class
     Route::get('/residents/{resident}', [ResidentController::class, 'show'])->name('residents.show');
     Route::get('/residents/{resident}/eligibility', [ResidentController::class, 'eligibility'])->name('residents.eligibility');
     Route::patch('/residents/{resident}', [ResidentController::class, 'update'])->name('residents.update');
-    Route::delete('/residents/{resident}', [ResidentController::class, 'destroy'])->name('residents.destroy');
+    Route::delete('/residents/{resident}', [ResidentController::class, 'destroy'])->middleware(RequireSupervisorPassword::class)->name('residents.destroy');
     Route::patch('/residents/{resident}/restore', [ResidentController::class, 'restore'])->name('residents.restore');
 
     Route::get('/puroks', [PurokController::class, 'index'])->name('puroks.index');
@@ -224,7 +225,7 @@ Route::middleware(['auth:web', 'can:access-personnel', RecordAdministrativeActio
         Route::get('/users-export', [UserController::class, 'export'])->name('users.export');
         Route::post('/users', [UserController::class, 'store'])->name('users.store');
         Route::patch('/users/{user}', [UserController::class, 'update'])->name('users.update');
-        Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+        Route::delete('/users/{user}', [UserController::class, 'destroy'])->middleware(RequireSupervisorPassword::class)->name('users.destroy');
         Route::patch('/residents/{resident}/portal-account', [ResidentPortalAccountController::class, 'update'])->name('residents.portal-account');
     });
 

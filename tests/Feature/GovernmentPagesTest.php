@@ -246,7 +246,7 @@ it('keeps the audit header and rows inside one scroll container in data order', 
     expect($xpath->query('//div[@class="audit-log-table-scroll"]/div[@id="audit-log-list"]')->length)->toBe(1);
 });
 
-it('uses one client navigation flow across personnel layouts without changing destination URLs', function (string $route) {
+it('uses Livewire navigation for staff page links to avoid full document reloads', function (string $route) {
     $response = $this->actingAs(User::factory()->superAdmin()->create())
         ->withSession(['auth.password_confirmed_at' => time()])
         ->get(route($route))->assertOk();
@@ -256,7 +256,7 @@ it('uses one client navigation flow across personnel layouts without changing de
     $links = $xpath->query('//nav[@aria-label="Staff navigation"]//a[contains(@class, "nav-item")]');
     expect($links->length)->toBeGreaterThan(0);
     foreach ($links as $link) {
-        if ($link->getAttribute('href') === route('security.edit')) {
+        if (in_array($link->getAttribute('href'), [route('profile.edit'), route('security.edit'), route('appearance.edit')], true)) {
             expect($link->hasAttribute('wire:navigate'))->toBeFalse();
 
             continue;
@@ -267,20 +267,37 @@ it('uses one client navigation flow across personnel layouts without changing de
             continue;
         }
         if ($link->hasAttribute('data-screen')) {
-            expect($link->hasAttribute('wire:navigate'))->toBeFalse();
-            expect($link->getAttribute('onclick'))->toStartWith("showScreen('".$link->getAttribute('data-screen')."',this)");
             expect($link->getAttribute('href'))->not->toBe('');
+
+            if ($link->hasAttribute('onclick')) {
+                expect($link->hasAttribute('wire:navigate'))->toBeFalse();
+                expect($link->getAttribute('onclick'))->toStartWith("showScreen('".$link->getAttribute('data-screen')."',this)");
+            } else {
+                expect($link->hasAttribute('wire:navigate') || $link->hasAttribute('wire:navigate.hover'))->toBeTrue();
+            }
 
             continue;
         }
-        expect($link->hasAttribute('wire:navigate'))->toBeTrue();
+        expect($link->hasAttribute('wire:navigate') || $link->hasAttribute('wire:navigate.hover'))
+            ->toBeTrue();
         expect($link->getAttribute('onclick'))->toBe('');
     }
     expect($xpath->query('//script[contains(@src, "/js/personnel-navigation.js") and @data-navigate-once]')->length)->toBe(1);
+    if (in_array($route, ['admin.dashboard', 'staff.residents.index', 'admin.audit', 'admin.users.index', 'admin.settings',
+        'staff.rfid-files.index', 'staff.resident-applications.index', 'admin.smart-cabinet.index', 'admin.cabinet-access.index'], true)) {
+        $iotLayoutRoutes = ['staff.rfid-files.index', 'staff.resident-applications.index', 'admin.smart-cabinet.index', 'admin.cabinet-access.index'];
+        $preloadedStyles = in_array($route, $iotLayoutRoutes, true)
+            ? ['admin.css', 'figma-admin.css']
+            : ['admin-iot.css', 'figma-iot.css'];
+
+        foreach ($preloadedStyles as $stylesheet) {
+            expect($xpath->query('//link[@rel="preload" and @as="style" and contains(@href, "/css/'.$stylesheet.'?")]')->length)->toBe(1);
+        }
+    }
     foreach ($xpath->query('//script[contains(@src, "/js/admin.js") or contains(@src, "/js/household-profiling.js") or contains(@src, "/js/case-management.js")]') as $script) {
         expect($script->hasAttribute('data-navigate-once'))->toBeTrue();
     }
     $response->assertSee('/livewire-', false);
 })->with(['admin.dashboard', 'staff.residents.index', 'admin.audit', 'admin.users.index', 'admin.settings',
-    'staff.rfid-files.index', 'admin.smart-cabinet.index', 'admin.cabinet-access.index',
+    'staff.rfid-files.index', 'staff.resident-applications.index', 'admin.smart-cabinet.index', 'admin.cabinet-access.index',
     'profile.edit', 'security.edit', 'appearance.edit']);

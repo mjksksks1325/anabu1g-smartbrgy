@@ -238,7 +238,7 @@ function renderDashboardCertificateChart(counts) {
   const container = document.getElementById('dash-chart');
   if (!container) return;
   const dataSignature = JSON.stringify(entries);
-  if (dataSignature === dashboardPieDataSignature) return;
+  if (dataSignature === dashboardPieDataSignature && container.querySelector('#dash-certificate-pie')) return;
   dashboardPieDataSignature = dataSignature;
 
   container.innerHTML = total
@@ -259,6 +259,7 @@ function renderDashboardCertificateChart(counts) {
 function mountDashboardPie(canvas, entries, total, palette, chartLabel, totalLabel) {
   if (!canvas || total <= 0) return;
   const state = { canvas, entries, total, palette, chartLabel, totalLabel, selectedIndex: null, hoveredIndex: null };
+  canvas._dashboardPieState = state;
   canvas.onpointermove = event => {
     const index = dashboardPieIndexAtPointer(event, state);
     if (index !== null) {
@@ -281,6 +282,12 @@ function mountDashboardPie(canvas, entries, total, palette, chartLabel, totalLab
   };
   canvas.setAttribute('aria-label', `${chartLabel} pie chart. Hover or select a slice to view its count.`);
   drawDashboardPie(state);
+}
+
+function refreshDashboardPieTheme() {
+  document.querySelectorAll('canvas.dashboard-pie').forEach(canvas => {
+    if (canvas._dashboardPieState) drawDashboardPie(canvas._dashboardPieState);
+  });
 }
 
 let dashboardPieDataSignature = null;
@@ -634,17 +641,22 @@ const ELIGIBILITY_RULES = {
 let isLightMode = document.body?.classList?.contains('light-mode') ?? true;
 
 function toggleTheme() {
-  isLightMode = !isLightMode;
-  document.body.classList.toggle('light-mode', isLightMode);
+  if (window.PersonnelNavigation?.toggleTheme) {
+    window.PersonnelNavigation.toggleTheme();
+  } else {
+    isLightMode = !isLightMode;
+    document.documentElement.dataset.theme = isLightMode ? 'light' : 'dark';
+    document.documentElement.classList.toggle('dark', !isLightMode);
+    document.body.classList.toggle('light-mode', isLightMode);
+    try { localStorage.setItem('smartbrgy_theme', isLightMode ? 'light' : 'dark'); } catch (_) {}
+  }
+  isLightMode = document.documentElement.dataset.theme !== 'dark';
   const label = document.getElementById('theme-label');
   const actionLabel = isLightMode ? 'Dark Mode' : 'Light Mode';
   const themeButton = document.getElementById('theme-toggle');
   if (label) label.textContent = actionLabel;
-  if (themeButton) {
-    themeButton.setAttribute('aria-label', actionLabel);
-    themeButton.title = actionLabel;
-  }
-  try { localStorage.setItem('smartbrgy_theme', isLightMode ? 'light' : 'dark'); } catch (_) {}
+  if (themeButton) { themeButton.setAttribute('aria-label', actionLabel); themeButton.title = actionLabel; }
+  refreshDashboardPieTheme();
   showToast(isLightMode ? 'Light mode na!' : 'Dark mode na!', 'green');
 }
 
@@ -1025,7 +1037,11 @@ function renderDashPurokBreakdown() {
   const palette = ['#22c55e', '#3b82f6', '#f59e0b', '#a78bfa', '#fb923c', '#ef4444', '#60a5fa', '#34d399'];
   const dataSignature = JSON.stringify(entries);
 
-  if (dataSignature !== dashboardPurokDataSignature) {
+  const hasRenderedPurokContent = chartTotal
+    ? Boolean(container.querySelector('#dash-purok-pie'))
+    : Boolean(container.querySelector('.dashboard-empty'));
+
+  if (dataSignature !== dashboardPurokDataSignature || !hasRenderedPurokContent) {
     dashboardPurokDataSignature = dataSignature;
     container.innerHTML = chartTotal
       ? `<div class="dashboard-purok-chart-wrap">
@@ -1680,13 +1696,22 @@ let confirmActionResolver = null;
 
 /**
  * Ask for confirmation in the workspace modal instead of the browser dialog.
- * Resolves true only when the confirm button is pressed; closing the modal resolves false.
+ * Resolves true for ordinary confirmations, or the entered supervisor password when requested.
+ * Closing the modal resolves false.
  */
-function confirmAction(message, { title = 'Please confirm', confirmLabel = 'Confirm', danger = false } = {}) {
+function confirmAction(message, { title = 'Please confirm', confirmLabel = 'Confirm', danger = false, requireSupervisorPassword = false } = {}) {
   const modal = document.getElementById('modal-confirm-action');
   const button = document.getElementById('confirm-action-button');
   if (!modal || !button) return Promise.resolve(false);
+  const passwordGroup = document.getElementById('confirm-action-password-group');
+  const passwordInput = document.getElementById('confirm-action-super-admin-password');
+  const usernameInput = document.getElementById('confirm-action-username');
+  const passwordError = document.getElementById('confirm-action-password-error');
   settleConfirmAction(false);
+  if (passwordGroup) passwordGroup.hidden = !requireSupervisorPassword;
+  if (passwordInput) passwordInput.value = '';
+  if (usernameInput) usernameInput.value = '';
+  if (passwordError) { passwordError.hidden = true; passwordError.textContent = ''; }
   document.getElementById('confirm-action-title').textContent = adminText(title);
   document.getElementById('confirm-action-message').textContent = adminText(message);
   button.textContent = adminText(confirmLabel);
@@ -1694,12 +1719,25 @@ function confirmAction(message, { title = 'Please confirm', confirmLabel = 'Conf
   return new Promise(resolve => {
     confirmActionResolver = resolve;
     button.onclick = () => {
-      settleConfirmAction(true);
+      if (requireSupervisorPassword && !passwordInput?.value) {
+        if (passwordError) {
+          passwordError.textContent = 'Ilagay ang password ng active Super Admin para magpatuloy.';
+          passwordError.hidden = false;
+        }
+        passwordInput?.focus();
+        return;
+      }
+      settleConfirmAction(requireSupervisorPassword ? passwordInput.value : true);
       closeModal('modal-confirm-action');
     };
     openModal('modal-confirm-action');
-    button.focus?.();
+    if (requireSupervisorPassword) passwordInput?.focus();
+    else button.focus?.();
   });
+}
+
+function confirmDestructiveAction(message, options = {}) {
+  return confirmAction(message, { ...options, requireSupervisorPassword: true });
 }
 
 function settleConfirmAction(confirmed) {
@@ -1708,7 +1746,7 @@ function settleConfirmAction(confirmed) {
   resolve?.(confirmed);
 }
 
-function closeModal(id) { if (id === 'modal-confirm-action') settleConfirmAction(false); if (id === 'modal-view-resident') document.getElementById('resident-activation-result')?.replaceChildren(); if (id === 'modal-resident' || id === 'modal-incident') dashboardActionOrigin = false; const el = document.getElementById(id); if (el) { window.PasswordVisibility?.hide(el); el.classList.remove('show'); } modalTrigger?.focus(); }
+function closeModal(id) { if (id === 'modal-confirm-action') { settleConfirmAction(false); const passwordInput = document.getElementById('confirm-action-super-admin-password'); if (passwordInput) passwordInput.value = ''; const usernameInput = document.getElementById('confirm-action-username'); if (usernameInput) usernameInput.value = ''; const passwordError = document.getElementById('confirm-action-password-error'); if (passwordError) { passwordError.hidden = true; passwordError.textContent = ''; } } if (id === 'modal-view-resident') document.getElementById('resident-activation-result')?.replaceChildren(); if (id === 'modal-resident' || id === 'modal-incident') dashboardActionOrigin = false; const el = document.getElementById(id); if (el) { window.PasswordVisibility?.hide(el); el.classList.remove('show'); } modalTrigger?.focus(); }
 document.addEventListener('click', function(e) { if (e.target.classList.contains('modal-overlay')) closeModal(e.target.id); });
 
 // ═══════════════════════════════════════
@@ -2794,7 +2832,7 @@ function renderAuditLog() {
     row.setAttribute('aria-label', `View ${auditCategoryLabel(log.type)} audit event: ${log.action}`);
     row.style.background = sev;
     row.innerHTML = `
-      <div><span class="badge audit-category-badge" style="background:${typeBg};color:${typeColor};border-color:${typeColor}30;">${escapeText(auditCategoryLabel(log.type))}</span></div>
+      <div><span class="badge audit-category-badge" style="background:${typeBg};color:${typeColor};border-color:${typeColor}30;">${auditTypeSymbol(log.type)}${escapeText(auditCategoryLabel(log.type))}</span></div>
       <div class="audit-time">${escapeText(log.time)}</div>
       <div>
         <div class="audit-action">${escapeText(log.action)}</div>
@@ -2810,6 +2848,20 @@ function renderAuditLog() {
     });
     container.appendChild(row);
   });
+}
+
+function auditTypeSymbol(type) {
+  const symbols = {
+    auth: '<circle cx="12" cy="8" r="4"/><path d="M5 21a7 7 0 0 1 14 0"/>',
+    cert: '<path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM14 3v5h5M9 13h6M9 17h6"/>',
+    record: '<path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM14 3v5h5"/>',
+    incident: '<path d="m12 3 10 18H2L12 3Zm0 6v5m0 3h.01"/>',
+    rfid: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9h10M7 13h6"/>',
+    cabinet: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M5 12h14m-5-5h.01m0 10h.01"/>',
+    security: '<circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/>',
+  };
+  const shape = Object.prototype.hasOwnProperty.call(symbols, type) ? symbols[type] : '<path d="M12 3v11m0 4h.01M5 21h14a2 2 0 0 0 1.7-3.1L13.7 4.6a2 2 0 0 0-3.4 0L3.3 17.9A2 2 0 0 0 5 21Z"/>';
+  return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${shape}</svg>`;
 }
 
 function auditCategoryLabel(type) {
@@ -2967,7 +3019,8 @@ function renderUsers() {
     (userStatusFilter === 'all' || (userStatusFilter === 'active' ? user.is_active : !user.is_active)) &&
     (!userSearch || `${user.name} ${user.email} ${user.role}`.toLowerCase().includes(userSearch))
   );
-  document.getElementById('usr-total').textContent = USERS.length;
+  const totalElement = document.getElementById('usr-total');
+  if (totalElement) totalElement.textContent = USERS.length;
   document.getElementById('usr-active').textContent = USERS.filter(user => user.is_active).length;
   document.getElementById('usr-suspended').textContent = USERS.filter(user => !user.is_active).length;
   container.innerHTML = users.length ? users.map(user => `
@@ -3207,12 +3260,13 @@ async function deleteUser(id) {
     ? 'The account will be removed now. Face and RFID credentials will be removed from the cabinet after the Raspberry Pi processes and confirms the revocation.'
     : 'The account and website access will be removed now. No linked RPi employee ID is available for a face and RFID removal command.';
 
-  if (!(await confirmAction(`Delete ${user.name} (${user.email})? ${warning} Existing incident, file movement, and audit history will be retained.`, { title: 'Delete user account', confirmLabel: 'Delete', danger: true }))) {
+  const supervisorPassword = await confirmDestructiveAction(`Delete ${user.name} (${user.email})? ${warning} Existing incident, file movement, and audit history will be retained.`, { title: 'Delete user account', confirmLabel: 'Confirm delete', danger: true });
+  if (!supervisorPassword) {
     return;
   }
 
   try {
-    const result = await adminRequest(`/admin/users/${user.id}`, { method: 'DELETE' });
+    const result = await adminRequest(`/admin/users/${user.id}`, { method: 'DELETE', body: JSON.stringify({ super_admin_password: supervisorPassword }) });
     showToast(result.message, 'green');
     await reloadUsers();
   } catch (error) {
@@ -3761,11 +3815,12 @@ async function saveIncident() {
 }
 
 async function archiveIncident(id) {
-  if (!(await confirmAction('I-archive ang incident report na ito?', { title: 'Archive incident report', confirmLabel: 'Archive', danger: true }))) return;
+  const supervisorPassword = await confirmDestructiveAction('I-archive ang incident report na ito?', { title: 'Archive incident report', confirmLabel: 'Confirm archive', danger: true });
+  if (!supervisorPassword) return;
   try {
-    const response = await fetch(`/staff/incidents/${id}`, { method: 'DELETE', credentials: 'same-origin', headers: { 'Accept': 'application/json', ...csrfRequestHeaders() } });
+    const response = await fetch(`/staff/incidents/${id}`, { method: 'DELETE', credentials: 'same-origin', headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', ...csrfRequestHeaders() }, body: JSON.stringify({ super_admin_password: supervisorPassword }) });
     const result = await response.json();
-    if (!response.ok) throw new Error(result?.message || 'Hindi ma-archive ang incident report.');
+    if (!response.ok) throw new Error(Object.values(result?.errors || {}).flat()[0] || result?.message || 'Hindi ma-archive ang incident report.');
     showToast(result.message, 'green');
     await loadIncidents(incidentCurrentPage);
     await refreshDashboardStats();
@@ -4378,8 +4433,10 @@ async function saveResident(confirmDuplicate = false) {
 
 async function deleteResident(residentNumber) {
   const resident = RESIDENTS.find(item => item.id === residentNumber);
-  if (!resident || !(await confirmAction(`Archive ${resident.name}? The record can be restored later.`, { title: 'Archive resident', confirmLabel: 'Archive', danger: true }))) return;
-  await changeResidentArchiveState(`/staff/residents/${resident.databaseId}`, 'DELETE');
+  if (!resident) return;
+  const supervisorPassword = await confirmDestructiveAction(`Archive ${resident.name}? The record can be restored later.`, { title: 'Archive resident', confirmLabel: 'Confirm archive', danger: true });
+  if (!supervisorPassword) return;
+  await changeResidentArchiveState(`/staff/residents/${resident.databaseId}`, 'DELETE', supervisorPassword);
 }
 
 async function restoreResident(databaseId) {
@@ -4388,9 +4445,14 @@ async function restoreResident(databaseId) {
   await changeResidentArchiveState(`/staff/residents/${databaseId}/restore`, 'PATCH');
 }
 
-async function changeResidentArchiveState(url, method) {
+async function changeResidentArchiveState(url, method, supervisorPassword = null) {
   try {
-    const response = await fetch(url, { method, credentials: 'same-origin', headers: { 'Accept': 'application/json', ...csrfRequestHeaders() } });
+    const requestOptions = { method, credentials: 'same-origin', headers: { 'Accept': 'application/json', ...csrfRequestHeaders() } };
+    if (method === 'DELETE') {
+      requestOptions.headers['Content-Type'] = 'application/json';
+      requestOptions.body = JSON.stringify({ super_admin_password: supervisorPassword });
+    }
+    const response = await fetch(url, requestOptions);
     const payload = await response.json();
     if (!response.ok) throw new Error(payload?.message || 'Unable to update the resident record.');
     showToast(payload.message, 'green');
@@ -4796,9 +4858,10 @@ async function addManagedHouseholdMember() {
 }
 
 async function removeManagedHouseholdMember(id, residentId) {
-  if (!(await confirmAction('Remove this household membership? The resident record will be kept.', { title: 'Remove household member', confirmLabel: 'Remove', danger: true }))) return;
+  const supervisorPassword = await confirmDestructiveAction('Remove this household membership? The resident record will be kept.', { title: 'Remove household member', confirmLabel: 'Confirm remove', danger: true });
+  if (!supervisorPassword) return;
   try {
-    const payload = await householdApi(`/staff/households/${id}/members/${residentId}`, 'DELETE');
+    const payload = await householdApi(`/staff/households/${id}/members/${residentId}`, 'DELETE', { super_admin_password: supervisorPassword });
     showToast(payload.message, 'green');
     await editManagedHousehold(id);
     await loadManagedHouseholds();
@@ -5156,10 +5219,14 @@ async function initializePersonnelWorkspace() {
   isLightMode = document.body.classList.contains('light-mode');
   const authenticatedUser = window.AUTHENTICATED_USER;
   if (authenticatedUser) {
+    const screen = window.ADMIN_ACTIVE_SCREEN || 'dashboard';
+    launchApp(authenticatedUser.name, authenticatedUser.role);
+    const navigation = findNavItem(screen);
+    if (navigation && navigation.style.display !== 'none') showScreen(screen, navigation, false);
+
     restoreAdminFiltersFromUrl();
     if (['demographics.view', 'records.view', 'households.view', 'voters.view', 'documents.view'].some(hasStaffPermission)) await loadPuroks();
     if (initializationVersion !== workspaceInitializationVersion || document.getElementById('app') !== workspace) return;
-    launchApp(authenticatedUser.name, authenticatedUser.role);
     if (hasStaffPermission('dashboard.view')) startDashboardLiveRefresh();
     if (hasStaffPermission('documents.view')) { startDocumentRequestLiveRefresh(); void refreshIssuedCertificates(); }
     if (hasStaffPermission('records.view')) await loadResidents(residentCurrentPage);
@@ -5170,11 +5237,6 @@ async function initializePersonnelWorkspace() {
     if (initializationVersion !== workspaceInitializationVersion || document.getElementById('app') !== workspace) return;
     populateManualResidentDropdown();
     if (hasStaffPermission('voters.view')) loadVoterRegistry();
-    try {
-      const screen = window.ADMIN_ACTIVE_SCREEN || 'dashboard';
-      const navigation = screen ? findNavItem(screen) : null;
-      if (navigation && navigation.style.display !== 'none') showScreen(screen, navigation, false);
-    } catch (_) {}
   }
 }
 

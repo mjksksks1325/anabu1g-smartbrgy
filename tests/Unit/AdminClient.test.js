@@ -478,9 +478,12 @@ test('workspace shortcuts switch screens without Livewire navigation and check p
 test('dashboard pie chart is interactive and lists request counts beneath it', async () => {
   const { context, fields } = await client();
   const drawnText = [];
+  const drawnStyles = [];
+  let primaryColor = '#132238';
+  let secondaryColor = '#526273';
   const drawingContext = {
-    clearRect() {}, beginPath() {}, arc() {}, closePath() {}, fill() {},
-    fillText(text) { drawnText.push(String(text)); },
+    clearRect() {}, beginPath() {}, arc() {}, closePath() {}, fill() {}, stroke() {},
+    fillText(text) { drawnText.push(String(text)); drawnStyles.push(this.fillStyle); },
   };
   const canvas = {
     width: 240, height: 240, title: '',
@@ -488,21 +491,67 @@ test('dashboard pie chart is interactive and lists request counts beneath it', a
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 240, height: 240 }),
     setAttribute() {},
   };
-  const chart = { innerHTML: '', querySelector: () => canvas };
+  const chart = {
+    innerHTML: '',
+    querySelector: selector => selector === '#dash-certificate-pie' && chart.innerHTML.includes('id="dash-certificate-pie"') ? canvas : null,
+  };
   fields.set('dash-chart', chart);
-  context.getComputedStyle = () => ({ getPropertyValue: () => '#132238' });
+  context.document.querySelectorAll = selector => selector === 'canvas.dashboard-pie' ? [canvas] : [];
+  context.getComputedStyle = (_, property) => ({ getPropertyValue: name => name === '--text-primary' ? primaryColor : name === '--text-secondary' ? secondaryColor : '#fff' });
 
   context.renderDashboardCertificateChart({ 'Barangay Clearance': 4, 'Certificate of Residency': 2 });
 
   assert.ok(chart.innerHTML.indexOf('dash-certificate-pie') < chart.innerHTML.indexOf('dashboard-pie-breakdown'));
   assert.match(chart.innerHTML, /<span class="dashboard-pie-label">Barangay Clearance<\/span><strong>4 \(67%\)<\/strong>/);
   assert.match(chart.innerHTML, /<span class="dashboard-pie-label">Certificate of Residency<\/span><strong>2 \(33%\)<\/strong>/);
-  assert.match(canvas.title, /6 total certificate requests/);
+  assert.match(canvas.title, /6 total requests/);
 
   canvas.onclick({ clientX: 120, clientY: 30 });
 
   assert.match(canvas.title, /Barangay Clearance: 4 \(67%\)/);
   assert.ok(drawnText.includes('4'));
+
+  primaryColor = '#E8F4FF';
+  secondaryColor = '#bac8d6';
+  context.refreshDashboardPieTheme();
+  assert.ok(drawnStyles.includes('#E8F4FF'));
+  assert.ok(drawnStyles.includes('#bac8d6'));
+
+  chart.innerHTML = '';
+  context.renderDashboardCertificateChart({ 'Barangay Clearance': 4, 'Certificate of Residency': 2 });
+
+  assert.match(chart.innerHTML, /id="dash-certificate-pie"/);
+});
+
+test('dashboard rebuilds the Purok chart after navigation replaces its container', async () => {
+  const { context, fields } = await client();
+  const createCanvas = () => ({
+    width: 240,
+    height: 240,
+    getContext: () => ({ clearRect() {}, beginPath() {}, arc() {}, closePath() {}, fill() {}, stroke() {}, fillText() {} }),
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 240, height: 240 }),
+    setAttribute() {},
+  });
+  const createContainer = () => {
+    const container = { innerHTML: '' };
+    container.querySelector = selector => selector === '#dash-purok-pie' && container.innerHTML.includes('id="dash-purok-pie"') ? createCanvas() : null;
+    return container;
+  };
+  fields.set('dash-purok-breakdown', createContainer());
+  fields.set('dash-purok-interpretation', { textContent: '' });
+  context.getComputedStyle = () => ({ getPropertyValue: () => '#132238' });
+  vm.runInContext(`syncPurokSelects = () => {};
+    PUROK_DATA.push({ key: 'purok-1', label: 'Purok 1', residentsCount: 4 });
+    DEMOGRAPHIC_SUMMARY = { total: 4 };`, context);
+
+  context.renderDashPurokBreakdown();
+  assert.match(fields.get('dash-purok-breakdown').innerHTML, /id="dash-purok-pie"/);
+
+  fields.set('dash-purok-breakdown', createContainer());
+  context.renderDashPurokBreakdown();
+
+  assert.match(fields.get('dash-purok-breakdown').innerHTML, /id="dash-purok-pie"/);
+  assert.match(fields.get('dash-purok-breakdown').innerHTML, /Purok 1/);
 });
 
 test('dashboard recent activity paginates records and exposes the record reference on hover', async () => {
@@ -647,7 +696,7 @@ test('opening and closing user management remasks passwords through the shared v
 
 test('user management offers delete only for other non-super-admin accounts', async () => {
   const { context, fields } = await client();
-  fields.set('users-list-container', { innerHTML: '' });
+  fields.set('users-list-container', { innerHTML: '', querySelectorAll: () => [] });
   fields.set('usr-active', { textContent: '' });
   fields.set('usr-suspended', { textContent: '' });
   vm.runInContext(`USERS.splice(0, USERS.length,
@@ -659,13 +708,13 @@ test('user management offers delete only for other non-super-admin accounts', as
   context.renderUsers();
 
   const html = fields.get('users-list-container').innerHTML;
-  assert.match(html, /onclick="deleteUser\(2\)"/);
+  assert.match(html, /onclick="event\.stopPropagation\(\);deleteUser\(2\)"/);
   assert.doesNotMatch(html, /deleteUser\(1\)|deleteUser\(3\)/);
 });
 
 test('deleting a user requires confirmation and sends the delete request', async () => {
   const { context, fields } = await client();
-  fields.set('users-list-container', { innerHTML: '' });
+  fields.set('users-list-container', { innerHTML: '', querySelectorAll: () => [] });
   fields.set('usr-active', { textContent: '' });
   fields.set('usr-suspended', { textContent: '' });
   vm.runInContext(`USERS.splice(0, USERS.length, {

@@ -5,7 +5,7 @@
 <div class="page-heading"><div><h1>Employee Cabinet Access</h1><p>Manage cabinet permission separately from website roles. The main door is automatic after activation and enrollment; assign which drawers each employee may open.</p></div></div>
 <div class="notice">Enrollment requests are recorded as pending until Raspberry Pi integration is available. They do not enroll a credential or open a cabinet.</div>
 @unless($hasCompletedEnrollment)<div class="notice">No employees have completed cabinet enrollment yet.</div>@endunless
-<form class="filter-panel compact" method="GET" action="{{ route('admin.cabinet-access.index') }}"><label>Find employee<input type="search" name="search" value="{{ $search }}" placeholder="Name or email"></label><button class="button" type="submit">Search</button></form>
+<form class="filter-panel compact" method="GET" action="{{ route('admin.cabinet-access.index') }}" autocomplete="off"><label>Find employee<input type="search" name="search" autocomplete="off" value="{{ $search }}" placeholder="Name or email"></label><button class="button" type="submit">Search</button></form>
 <section class="panel employee-access-panel"><div class="panel-heading"><h2>Employee permissions</h2><span>{{ $employees->total() }} employees</span></div>
 @forelse($employees as $employee)
     @php($access = $employee->cabinetAccess)

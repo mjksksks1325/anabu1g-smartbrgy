@@ -4,7 +4,7 @@
 <section class="panel employee-access-panel registration-review">
     <div class="panel-heading registration-review-heading">
         <div><h1>New resident applications</h1><p>Review the submitted details before approving resident registration.</p></div>
-        <a wire:navigate class="button quiet" href="{{ route('staff.residents.index') }}">Back to Resident Records</a>
+        <a wire:navigate.hover class="button quiet" href="{{ route('staff.residents.index') }}">Back to Resident Records</a>
     </div>
     <div class="registration-review-count"><strong>{{ $applications->total() }}</strong> applications <span>Portal account registration follows barangay approval.</span></div>
     @forelse($applications as $application)
