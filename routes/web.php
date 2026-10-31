@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminLocaleController;
+use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BarangayProtectionOrderController;
 use App\Http\Controllers\Admin\CabinetFileController;
@@ -69,6 +70,7 @@ Route::get('/portal/request/{referenceCode}', [DocumentRequestController::class,
     ->name('portal.request.status');
 
 Route::get('/portal/information', [ResidentPortalController::class, 'information'])->name('portal.information');
+Route::get('/portal/announcements', [ResidentPortalController::class, 'announcements'])->name('portal.announcements.index');
 Route::get('/portal/officials', [ResidentPortalController::class, 'officials'])->name('portal.officials');
 Route::middleware(EnsureGuestResidentPortal::class)->group(function () {
     Route::get('/portal/login', [ResidentPortalController::class, 'login'])->name('portal.login');
@@ -180,6 +182,14 @@ Route::middleware(['auth:web', 'can:operate-personnel', EnsureStaffAccess::class
 
     Route::get('/document-requests', WorkspaceController::class)->defaults('screen', 'certificates')
         ->name('document-requests.index');
+    Route::get('/announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
+    Route::post('/announcements', [AnnouncementController::class, 'store'])->name('announcements.store');
+    Route::patch('/announcements/{announcement}', [AnnouncementController::class, 'update'])->name('announcements.update');
+    Route::post('/announcements/{announcement}/publish', [AnnouncementController::class, 'publish'])->name('announcements.publish');
+    Route::post('/announcements/{announcement}/archive', [AnnouncementController::class, 'archive'])
+        ->middleware(RequireSupervisorPassword::class)
+        ->name('announcements.archive');
+    Route::post('/announcements/{announcement}/restore', [AnnouncementController::class, 'restore'])->name('announcements.restore');
     Route::get('/document-requests/list', [AdminDocumentRequestController::class, 'index'])->name('document-requests.list');
 
     Route::get('/document-requests/{documentRequest}', [AdminDocumentRequestController::class, 'show'])

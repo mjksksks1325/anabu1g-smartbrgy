@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\CertificateType;
+use App\Models\Announcement;
 use App\Models\Incident;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -17,7 +18,20 @@ class ResidentPortalController extends Controller
             return redirect()->route('portal.request.create', ['service' => $request->string('service')->toString()]);
         }
 
-        return view('portal.index', ['services' => CertificateType::cases()]);
+        return view('portal.index', [
+            'services' => CertificateType::cases(),
+            'announcements' => Announcement::published()->orderByDesc('published_at')->orderByDesc('id')->limit(3)->get(),
+        ]);
+    }
+
+    public function announcements(): View
+    {
+        return view('portal.announcements', [
+            'announcements' => Announcement::published()
+                ->orderByDesc('published_at')
+                ->orderByDesc('id')
+                ->paginate(12),
+        ]);
     }
 
     public function createRequest(Request $request): View

@@ -16,6 +16,7 @@ class StaffPermissions
             'records' => ['label' => 'Resident Records', 'actions' => ['view' => 'View records', 'create' => 'Register', 'update' => 'Edit / upload photo', 'archive' => 'Archive / restore', 'import' => 'Import profiling', 'export' => 'Export', 'activate' => 'Issue portal activation', 'review' => 'Review / approve new resident applications']],
             'households' => ['label' => 'Households', 'actions' => ['view' => 'View households', 'create' => 'Create', 'update' => 'Edit / assign members', 'remove' => 'Remove members']],
             'documents' => ['label' => 'Document Requests & Certificates', 'actions' => ['view' => 'View requests and certificate history', 'process' => 'Process / reject requests', 'issue' => 'Issue certificates', 'print' => 'Print / reprint']],
+            'announcements' => ['label' => 'Barangay Announcements', 'actions' => ['view' => 'View announcements', 'create' => 'Create drafts', 'update' => 'Edit announcements', 'publish' => 'Publish / unpublish', 'archive' => 'Archive / restore']],
             'eligibility' => ['label' => 'Request Eligibility', 'actions' => ['view' => 'View eligibility', 'export' => 'Export request records']],
             'voters' => ['label' => 'Voter Records', 'actions' => ['view' => 'View voters', 'create' => 'Register', 'update' => 'Edit', 'import' => 'Import CSV', 'export' => 'Export']],
             'incidents' => ['label' => 'Ordinary Incidents', 'actions' => ['view' => 'Review / case history', 'submit' => 'Submit incident', 'update' => 'Edit / manage cases', 'archive' => 'Archive']],
@@ -40,7 +41,7 @@ class StaffPermissions
     public static function presets(): array
     {
         $secretary = ['dashboard.view', 'demographics.view', 'rfid.view'];
-        foreach (['records', 'households', 'documents', 'voters', 'eligibility'] as $module) {
+        foreach (['records', 'households', 'documents', 'announcements', 'voters', 'eligibility'] as $module) {
             foreach (self::modules()[$module]['actions'] as $action => $label) {
                 $secretary[] = $module.'.'.$action;
             }
@@ -63,6 +64,11 @@ class StaffPermissions
             'staff.dashboard', 'staff.dashboard.summary' => ['dashboard.view'],
             'staff.demographics' => ['demographics.view'],
             'staff.rfid-files.index' => ['rfid.view'],
+            'staff.announcements.index' => ['announcements.view'],
+            'staff.announcements.store' => ['announcements.create'],
+            'staff.announcements.update' => ['announcements.update'],
+            'staff.announcements.publish' => ['announcements.publish'],
+            'staff.announcements.archive', 'staff.announcements.restore' => ['announcements.archive'],
             'staff.households.page' => ['households.view'],
             'staff.resident-applications.index', 'staff.resident-applications.update', 'staff.resident-applications.photo' => ['records.review'],
             'staff.residents.index' => ['records.view'],
@@ -109,7 +115,7 @@ class StaffPermissions
         if ($user->hasAdministrativeAccess()) {
             return 'admin.dashboard';
         }
-        foreach (['dashboard.view' => 'staff.dashboard', 'demographics.view' => 'staff.demographics', 'records.view' => 'staff.residents.index', 'documents.view' => 'staff.document-requests.index', 'voters.view' => 'staff.voters', 'incidents.view' => 'staff.incidents.index', 'vawc.view' => 'staff.incidents.index', 'rfid.view' => 'staff.rfid-files.index', 'households.view' => 'staff.households.page', 'eligibility.view' => 'staff.request-eligibility', 'incidents.submit' => 'staff.incidents.index', 'vawc.submit' => 'staff.incidents.index'] as $permission => $route) {
+        foreach (['dashboard.view' => 'staff.dashboard', 'demographics.view' => 'staff.demographics', 'records.view' => 'staff.residents.index', 'documents.view' => 'staff.document-requests.index', 'announcements.view' => 'staff.announcements.index', 'voters.view' => 'staff.voters', 'incidents.view' => 'staff.incidents.index', 'vawc.view' => 'staff.incidents.index', 'rfid.view' => 'staff.rfid-files.index', 'households.view' => 'staff.households.page', 'eligibility.view' => 'staff.request-eligibility', 'incidents.submit' => 'staff.incidents.index', 'vawc.submit' => 'staff.incidents.index'] as $permission => $route) {
             if ($user->hasPermission($permission)) {
                 return $route;
             }

@@ -135,6 +135,20 @@ h1, h2, h3, h4 { font-family: var(--civic-font-display); font-weight: 800; lette
 .notice-callout { padding: 21px; border-radius: 0; border-top: 3px solid var(--civic-blue); }
 .notice-callout:last-child { border-top-color: var(--civic-green); }
 .notice-callout h3 { font-size: 16px; }
+.portal-announcement-item { padding: 12px 0; border-top: 1px solid var(--line); }
+.portal-announcement-item h4 { margin: 2px 0 6px; color: var(--civic-ink); font-size: 15px; }
+.portal-announcement-date { margin: 0; color: var(--muted); font-size: 12px !important; }
+.portal-announcement-image { display: block; width: auto; max-width: 100%; max-height: 420px; margin: 10px 0 12px; border: 1px solid var(--line); border-radius: 6px; object-fit: contain; object-position: left center; }
+.portal-announcement-body { color: var(--ink-soft); font-size: 14px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.portal-announcement-all { display: inline-block; margin-top: 12px; font-weight: 700; }
+.portal-announcement-archive { display: grid; gap: 16px; max-width: 920px; margin-inline: auto; }
+.portal-announcement-back { justify-self: start; margin-bottom: 5px; }
+.portal-announcement-card, .portal-announcement-empty { padding: 22px 24px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); box-shadow: var(--civic-shadow); }
+.portal-announcement-card h2 { margin: 4px 0 10px; font-size: 21px; }
+.portal-announcement-card .portal-announcement-body { font-size: 15px; }
+.portal-announcement-empty h2, .portal-announcement-empty p { margin: 0; }
+.portal-announcement-empty p { margin-top: 8px; color: var(--muted); }
+.portal-announcement-pagination { overflow-x: auto; }
 .office-section { margin-top: 65px; padding-top: 42px; }
 .office-details, .office-map { min-height: 400px; padding: 24px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); box-shadow: var(--civic-shadow); }
 .office-map { padding: 0; overflow: hidden; }

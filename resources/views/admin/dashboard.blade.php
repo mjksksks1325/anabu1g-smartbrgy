@@ -101,6 +101,12 @@
 
       </div>
       @endif
+      @if(auth()->user()->hasPermission('announcements.view'))
+      <div class="sidebar-sec">
+        <div class="sidebar-label">Public Information</div>
+        <a wire:navigate.hover class="nav-item" href="{{ route('staff.announcements.index') }}"><x-staff-icon name="announcement" />Announcements</a>
+      </div>
+      @endif
       @if(auth()->user()->hasPermission('rfid.view'))
       <div class="sidebar-sec">
         <div class="sidebar-label">IoT Security</div>
@@ -1175,7 +1181,7 @@
       <p class="card-sub staff-preset-help">Adjust any selections before saving.</p>
       @foreach([
         ['title' => 'General pages', 'layout' => 'pages', 'modules' => ['dashboard', 'demographics', 'rfid']],
-        ['title' => 'Records & services', 'layout' => 'services', 'modules' => ['records', 'households', 'documents', 'eligibility', 'voters']],
+        ['title' => 'Records & services', 'layout' => 'services', 'modules' => ['records', 'households', 'documents', 'announcements', 'eligibility', 'voters']],
         ['title' => 'Incidents & restricted cases', 'layout' => 'cases', 'modules' => ['incidents', 'vawc']],
       ] as $group)
         <div class="staff-permission-group">

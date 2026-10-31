@@ -53,6 +53,12 @@
             </div>
             @endif
         @endif
+            @if(auth()->user()->hasPermission('announcements.view'))
+            <div class="sidebar-sec">
+                <div class="sidebar-label">Public Information</div>
+                <a wire:navigate.hover @class(['nav-item', 'current active' => request()->routeIs('staff.announcements.*')]) aria-current="{{ request()->routeIs('staff.announcements.*') ? 'page' : 'false' }}" href="{{ route('staff.announcements.index') }}"><x-staff-icon name="announcement" />Announcements</a>
+            </div>
+            @endif
             @if(auth()->user()->hasPermission('rfid.view'))
             <div class="sidebar-sec">
                 <div class="sidebar-label">IoT Security</div>

@@ -83,7 +83,17 @@
     <div class="notice-row">
         <article class="notice-callout">
             <h3><span data-portal-i18n="Barangay Anabu I-G">{{ __('Barangay Anabu I-G') }}</span></h3>
-            <p><span data-portal-i18n="Follow the Barangay Anabu I-G Facebook account for announcements.">{{ __('Follow the Barangay Anabu I-G Facebook account for announcements.') }}</span> <a href="https://www.facebook.com/barangayanabu.ig" target="_blank" rel="noopener noreferrer"><span data-portal-i18n="Open the Barangay Facebook account">{{ __('Open the Barangay Facebook account') }}</span></a></p>
+            @forelse($announcements as $announcement)
+                <article class="portal-announcement-item">
+                    <p class="portal-announcement-date"><time datetime="{{ $announcement->published_at->toIso8601String() }}">{{ $announcement->published_at->format('F j, Y') }}</time></p>
+                    <h4>{{ $announcement->title }}</h4>
+                    @if($announcement->image_path)<img class="portal-announcement-image" src="{{ $announcement->imageUrl() }}" alt="{{ $announcement->title }}" loading="lazy">@endif
+                    <div class="portal-announcement-body">{{ $announcement->body }}</div>
+                </article>
+            @empty
+                <p><span data-portal-i18n="Wala pang bagong anunsyo mula sa barangay.">{{ __('Wala pang bagong anunsyo mula sa barangay.') }}</span></p>
+            @endforelse
+            <a class="portal-announcement-all" href="{{ route('portal.announcements.index') }}"><span data-portal-i18n="Tingnan ang lahat ng anunsyo">{{ __('Tingnan ang lahat ng anunsyo') }}</span></a>
         </article>
         <article class="notice-callout">
             <h3><span data-portal-i18n="Lungsod ng Imus">{{ __('Lungsod ng Imus') }}</span></h3>
