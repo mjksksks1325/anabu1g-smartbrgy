@@ -22,7 +22,7 @@
 <link rel="stylesheet" href="{{ asset('css/form-feedback.css') }}?v={{ filemtime(public_path('css/form-feedback.css')) }}">
 <script defer data-navigate-once src="{{ asset('js/form-feedback.js') }}?v={{ filemtime(public_path('js/form-feedback.js')) }}"></script>
 </head>
-<body data-personnel-layout="iot" data-admin-localization data-personnel-super-admin="{{ auth()->user()->isSuperAdmin() ? 'true' : 'false' }}">
+<body data-personnel-layout="iot" data-admin-localization data-personnel-super-admin="{{ auth()->user()->hasAdministrativeAccess() ? 'true' : 'false' }}">
 <script>window.PersonnelNavigation.syncStyles();</script>
 <a class="skip-link" href="#main">Skip to main content</a>
 <header class="site-header">
@@ -33,11 +33,11 @@
 <div class="workspace">
     <nav class="side-nav" aria-label="Staff navigation">
         <div class="side-nav-scroll staff-settings-navigation">
-        @if(in_array(auth()->user()->role, ['admin', 'staff'], true))
+        @if(in_array(auth()->user()->role, ['admin', 'captain', 'staff'], true))
             @if(auth()->user()->hasAnyPermission(['dashboard.view', 'demographics.view']))
             <div class="sidebar-sec">
                 <div class="sidebar-label">Overview</div>
-                @if(auth()->user()->hasAnyPermission(['dashboard.view']))<a wire:navigate.hover @class(['nav-item', 'current active' => request()->routeIs('admin.dashboard', 'staff.dashboard')]) aria-current="{{ request()->routeIs('admin.dashboard', 'staff.dashboard') ? 'page' : 'false' }}" href="{{ route(auth()->user()->role === 'admin' ? 'admin.dashboard' : 'staff.dashboard') }}"><x-staff-icon name="dashboard" />Dashboard</a>@endif
+                @if(auth()->user()->hasAnyPermission(['dashboard.view']))<a wire:navigate.hover @class(['nav-item', 'current active' => request()->routeIs('admin.dashboard', 'staff.dashboard')]) aria-current="{{ request()->routeIs('admin.dashboard', 'staff.dashboard') ? 'page' : 'false' }}" href="{{ route(auth()->user()->hasAdministrativeAccess() ? 'admin.dashboard' : 'staff.dashboard') }}"><x-staff-icon name="dashboard" />Dashboard</a>@endif
                 @if(auth()->user()->hasAnyPermission(['demographics.view']))<a wire:navigate.hover @class(['nav-item', 'current active' => request()->routeIs('staff.demographics')]) aria-current="{{ request()->routeIs('staff.demographics') ? 'page' : 'false' }}" href="{{ route('staff.demographics') }}"><x-staff-icon name="people" />Demographics</a>@endif
             </div>
             @endif
@@ -59,7 +59,7 @@
                 @if(auth()->user()->hasAnyPermission(['rfid.view']))<a wire:navigate.hover @class(['nav-item', 'current active' => request()->routeIs('staff.rfid-files.*')]) aria-current="{{ request()->routeIs('staff.rfid-files.*') ? 'page' : 'false' }}" href="{{ route('staff.rfid-files.index') }}"><x-staff-icon name="card" />RFID File Tracking</a>@endif
             </div>
             @endif
-        @if(auth()->user()->isSuperAdmin())
+                @if(auth()->user()->hasAdministrativeAccess())
             <div class="sidebar-sec">
                 <div class="sidebar-label">Administration</div>
                 <a wire:navigate.hover @class(['nav-item', 'current active' => request()->routeIs('admin.smart-cabinet.*')]) aria-current="{{ request()->routeIs('admin.smart-cabinet.*') ? 'page' : 'false' }}" href="{{ route('admin.smart-cabinet.index') }}"><x-staff-icon name="cabinet" />Smart Cabinet</a>

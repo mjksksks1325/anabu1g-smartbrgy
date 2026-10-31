@@ -19,7 +19,7 @@ class SaveUserRequest extends FormRequest
     {
         $target = $this->route('user');
 
-        return ($this->user()?->isSuperAdmin() ?? false)
+        return ($this->user()?->hasAdministrativeAccess() ?? false)
             && (! $target instanceof User || (! $target->isResidentAccount() && $target->resident_id === null));
     }
 
@@ -33,6 +33,14 @@ class SaveUserRequest extends FormRequest
         $target = $this->route('user');
         $cabinetAccess = $target instanceof User ? $target->cabinetAccess : null;
 
+        $allowedRoles = $this->isMethod('POST')
+            ? ['staff']
+            : ($target instanceof User && $target->is_super_admin ? ['admin'] : ['staff', 'captain']);
+
+        if ($target instanceof User && in_array($target->role, ['admin', 'viewer'], true)) {
+            $allowedRoles[] = $target->role;
+        }
+
         return [
             'staff_permissions' => ['sometimes', 'array', 'max:100'],
             'staff_permissions.*' => ['required', 'string', 'distinct', Rule::in(StaffPermissions::keys())],
@@ -43,7 +51,7 @@ class SaveUserRequest extends FormRequest
                 'max:255',
                 Rule::unique('users')->ignore($this->route('user')),
             ],
-            'role' => ['required', Rule::in($target instanceof User && $target->is_super_admin ? ['admin'] : ($target instanceof User && in_array($target->role, ['admin', 'viewer'], true) ? ['staff', $target->role] : ['staff']))],
+            'role' => ['required', Rule::in($allowedRoles)],
             'is_active' => ['required', 'boolean'],
             'password' => [
                 $this->isMethod('POST') ? 'required' : 'nullable',
@@ -71,13 +79,26 @@ class SaveUserRequest extends FormRequest
     {
         return [function (Validator $validator): void {
             $permissions = $this->input('staff_permissions', []);
+            $target = $this->route('user');
+            if ($this->input('role') === 'captain' && $this->boolean('is_active')) {
+                $captainExists = User::query()
+                    ->where('role', 'captain')
+                    ->where('is_active', true)
+                    ->whereNull('resident_id')
+                    ->when($target instanceof User, fn ($query) => $query->where($target->getKeyName(), '<>', $target->getKey()))
+                    ->exists();
+
+                if ($captainExists) {
+                    $validator->errors()->add('role', 'May active na Barangay Captain. Ilipat muna ang designation bago magtalaga ng iba.');
+                }
+            }
+
             if (! is_array($permissions)) {
                 return;
             }
-            $target = $this->route('user');
             $mayAssignSuperAdmin = $target instanceof User && $target->is_super_admin && $this->input('role') === 'admin';
             if ($permissions !== [] && $this->input('role') !== 'staff' && ! $mayAssignSuperAdmin) {
-                $validator->errors()->add('staff_permissions', 'Assignments are only available for Barangay Staff and Super Admin accounts.');
+                $validator->errors()->add('staff_permissions', 'Custom assignments are only available for Barangay Staff accounts.');
             }
             foreach ($permissions as $permission) {
                 if (! is_string($permission) || ! str_contains($permission, '.')) {

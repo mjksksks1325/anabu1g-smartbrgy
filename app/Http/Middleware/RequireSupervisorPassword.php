@@ -22,8 +22,8 @@ class RequireSupervisorPassword
         $password = $request->isJson() ? $request->json('super_admin_password') : null;
         if (! is_string($password) || $password === '' || strlen($password) > 255) {
             return response()->json([
-                'message' => 'Kailangan ang password ng active Super Admin para mag-archive o mag-delete.',
-                'errors' => ['super_admin_password' => ['Ilagay ang password ng active Super Admin.']],
+                'message' => 'Kailangan ang password ng active Barangay Captain o Super Admin para mag-archive o mag-delete.',
+                'errors' => ['super_admin_password' => ['Ilagay ang password ng active Barangay Captain o Super Admin.']],
             ], 422);
         }
 
@@ -38,8 +38,8 @@ class RequireSupervisorPassword
             RateLimiter::hit($rateLimitKey, 60);
 
             return response()->json([
-                'message' => 'Hindi tama ang password ng active Super Admin. Walang binagong record.',
-                'errors' => ['super_admin_password' => ['Hindi tama ang password ng active Super Admin.']],
+                'message' => 'Hindi tama ang password ng active Barangay Captain o Super Admin. Walang binagong record.',
+                'errors' => ['super_admin_password' => ['Hindi tama ang password ng active Barangay Captain o Super Admin.']],
             ], 422);
         }
 

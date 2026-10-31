@@ -23,7 +23,7 @@
 <link rel="stylesheet" href="{{ asset('css/form-feedback.css') }}?v={{ filemtime(public_path('css/form-feedback.css')) }}">
 <script defer data-navigate-once src="{{ asset('js/form-feedback.js') }}?v={{ filemtime(public_path('js/form-feedback.js')) }}"></script>
 </head>
-<body class="light-mode" data-personnel-layout="admin" data-admin-localization data-personnel-super-admin="{{ auth()->user()->isSuperAdmin() ? 'true' : 'false' }}">
+<body class="light-mode" data-personnel-layout="admin" data-admin-localization data-personnel-super-admin="{{ auth()->user()->hasAdministrativeAccess() ? 'true' : 'false' }}">
 <script>window.PersonnelNavigation.syncStyles();</script>
 <script>try { if (localStorage.getItem('smartbrgy_theme') === 'dark') document.body.classList.remove('light-mode'); } catch (_) {}</script>
 <div id="loading-bar"></div>
@@ -63,7 +63,7 @@
       @if(auth()->user()->hasAnyPermission(['dashboard.view', 'demographics.view']))
       <div class="sidebar-sec">
         <div class="sidebar-label">Overview</div>
-        @if(auth()->user()->hasAnyPermission(['dashboard.view']))<a class="nav-item{{ $activeScreen === 'dashboard' ? ' active' : '' }}" onclick="showScreen('dashboard',this);return false" data-perm="Dashboard" data-screen="dashboard" aria-current="{{ $activeScreen === 'dashboard' ? 'page' : 'false' }}" href="{{ route(auth()->user()->role === 'admin' ? 'admin.dashboard' : 'staff.dashboard') }}">
+        @if(auth()->user()->hasAnyPermission(['dashboard.view']))<a class="nav-item{{ $activeScreen === 'dashboard' ? ' active' : '' }}" onclick="showScreen('dashboard',this);return false" data-perm="Dashboard" data-screen="dashboard" aria-current="{{ $activeScreen === 'dashboard' ? 'page' : 'false' }}" href="{{ route(auth()->user()->hasAdministrativeAccess() ? 'admin.dashboard' : 'staff.dashboard') }}">
           <x-staff-icon name="dashboard" />
           Dashboard
         </a>@endif
@@ -110,7 +110,7 @@
         </a>@endif
       </div>
       @endif
-      @if(auth()->user()->isSuperAdmin())
+      @if(auth()->user()->hasAdministrativeAccess())
       <div class="sidebar-sec">
         <div class="sidebar-label">Administration</div>
         <a wire:navigate.hover class="nav-item" href="{{ route('admin.smart-cabinet.index') }}"><x-staff-icon name="cabinet" />Smart Cabinet</a>
@@ -149,21 +149,25 @@
           <button class="btn btn-primary btn-sm" onclick="refreshDashboardStats()">⟳ Refresh</button>
         </div>
       </div>
-      <div class="stats-grid">
+      @php($dashboardStatCount = (int) auth()->user()->hasAnyPermission(['records.view', 'demographics.view']) + (2 * (int) auth()->user()->hasAnyPermission(['documents.view'])) + (int) auth()->user()->hasAnyPermission(['incidents.view', 'vawc.view']))
+      <div class="stats-grid dashboard-stats-grid" data-visible-cards="{{ $dashboardStatCount }}">
         <div data-action-permission="records.view|demographics.view" class="stat-card blue" @if(!auth()->user()->hasAnyPermission(['records.view', 'demographics.view'])) hidden style="display:none;" @endif><div class="stat-label">Active Residents</div><div class="stat-value" id="dash-stat-residents">0</div><div class="stat-sub" id="dash-sub-residents">Database records</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6m2 3a5 5 0 0 1 2 4v2"/></svg></div></div>
         <div data-action-permission="documents.view" class="stat-card green" @if(!auth()->user()->hasAnyPermission(['documents.view'])) hidden style="display:none;" @endif><div class="stat-label">Issued Certificates</div><div class="stat-value" id="dash-stat-issued">0</div><div class="stat-sub">Verified official records</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h9l3 3v15H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM14 3v4h4M8 12h8M8 16h8"/></svg></div></div>
         <div data-action-permission="documents.view" class="stat-card amber" @if(!auth()->user()->hasAnyPermission(['documents.view'])) hidden style="display:none;" @endif><div class="stat-label">Pending Requests</div><div class="stat-value" id="dash-stat-pending">0</div><div class="stat-sub" id="dash-sub-pending">No pending requests</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div></div>
         <div data-action-permission="incidents.view|vawc.view" class="stat-card red" @if(!auth()->user()->hasAnyPermission(['incidents.view', 'vawc.view'])) hidden style="display:none;" @endif><div class="stat-label">Incident Reports</div><div class="stat-value" id="dash-stat-incidents">0</div><div class="stat-sub" id="dash-sub-incidents">No incidents filed</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m12 3 10 18H2L12 3ZM12 9v5m0 3h.01"/></svg></div></div>
       </div>
+      @if(auth()->user()->hasAnyPermission(['records.create', 'documents.view', 'incidents.submit', 'vawc.submit']))
       <section class="card dashboard-quick-actions" aria-labelledby="dashboard-quick-actions-title">
         <div class="card-header"><div><div class="card-title" id="dashboard-quick-actions-title">Quick Actions</div><div class="card-sub">Create a record or jump to a staff feature.</div></div></div>
-        <div class="dashboard-quick-action-list">
+        @php($dashboardActionCount = (int) auth()->user()->hasAnyPermission(['records.create']) + (int) auth()->user()->hasAnyPermission(['documents.view']) + (int) auth()->user()->hasAnyPermission(['incidents.submit', 'vawc.submit']))
+        <div class="dashboard-quick-action-list" data-visible-actions="{{ $dashboardActionCount }}">
           <button data-action-permission="records.create" class="btn btn-green" onclick="openDashboardResidentForm()" @if(!auth()->user()->hasAnyPermission(['records.create'])) hidden style="display:none;" @endif><x-staff-icon name="plus" />Register New Resident</button>
           <button data-action-permission="documents.view" class="btn btn-primary" onclick="openDashboardFeature('certificates')" @if(!auth()->user()->hasAnyPermission(['documents.view'])) hidden style="display:none;" @endif><x-staff-icon name="document" />Issue Certificate</button>
           <button data-action-permission="incidents.submit|vawc.submit" class="btn" onclick="openDashboardIncidentForm()" @if(!auth()->user()->hasAnyPermission(['incidents.submit', 'vawc.submit'])) hidden style="display:none;" @endif><x-staff-icon name="alert" />File Incident Report</button>
         </div>
       </section>
-      <div class="two-col dashboard-overview-grid">
+      @endif
+      <div class="two-col dashboard-overview-grid{{ auth()->user()->hasAnyPermission(['documents.view']) ? '' : ' dashboard-overview-grid--activity-only' }}">
         <div class="card dashboard-chart-card" @cannot('documents.view') hidden style="display:none;" @endcannot>
           <div class="card-header"><div><div class="card-title">Certificate Requests</div><div class="card-sub">{{ __('Real-time na bilang ng bawat uri ng kahilingan') }}</div></div><span class="badge badge-green">Live</span></div>
           <div id="dash-chart" aria-label="Certificate requests by type"></div>
@@ -176,19 +180,23 @@
           <div id="dash-activity-pagination" class="dashboard-pagination" hidden></div>
         </div>
       </div>
-      <div class="dashboard-secondary-grid">
+      @if(auth()->user()->hasAnyPermission(['demographics.view', 'documents.view', 'rfid.view']) || auth()->user()->hasAdministrativeAccess())
+      <div class="dashboard-secondary-grid{{ auth()->user()->hasAnyPermission(['demographics.view']) && (auth()->user()->hasAnyPermission(['documents.view', 'rfid.view']) || auth()->user()->hasAdministrativeAccess()) ? '' : ' dashboard-secondary-grid--single' }}">
         <div class="card" @cannot('demographics.view') hidden style="display:none;" @endcannot>
           <div class="card-header"><div class="card-title">Purok Breakdown</div></div>
           <div class="dashboard-purok-breakdown" id="dash-purok-breakdown"></div>
           <p class="dashboard-interpretation" id="dash-purok-interpretation"></p>
         </div>
+        @if(auth()->user()->hasAnyPermission(['documents.view', 'rfid.view']) || auth()->user()->hasAdministrativeAccess())
         <div class="card">
           <div class="card-header"><div class="card-title">System Status</div></div>
           <div class="sys-row" @cannot('documents.view') hidden style="display:none;" @endcannot><div class="sys-name">Document services</div><a class="btn btn-xs" href="{{ route('staff.document-requests.list') }}">View requests</a></div>
-          @if(auth()->user()->isSuperAdmin())<div class="sys-row"><div class="sys-name">Account and security settings</div><button class="btn btn-xs" type="button" onclick="showScreen('settings',findNavItem('settings'))">Manage</button></div>@endif
-          <div class="sys-row"><div class="sys-name">Hardware integrations</div>@if(auth()->user()->isSuperAdmin())<button class="btn btn-xs" type="button" onclick="openModal('modal-hardware-status')">View status</button>@elseif(auth()->user()->hasPermission('rfid.view'))<a class="btn btn-xs" href="{{ route('staff.rfid-files.index') }}">View status</a>@endif</div>
+          @if(auth()->user()->hasAdministrativeAccess())<div class="sys-row"><div class="sys-name">Account and security settings</div><button class="btn btn-xs" type="button" onclick="showScreen('settings',findNavItem('settings'))">Manage</button></div>@endif
+          <div class="sys-row"><div class="sys-name">Hardware integrations</div>@if(auth()->user()->hasAdministrativeAccess())<button class="btn btn-xs" type="button" onclick="openModal('modal-hardware-status')">View status</button>@elseif(auth()->user()->hasPermission('rfid.view'))<a class="btn btn-xs" href="{{ route('staff.rfid-files.index') }}">View status</a>@endif</div>
         </div>
+        @endif
       </div>
+      @endif
     </div>
 
     <!-- DEMOGRAPHICS -->
@@ -477,7 +485,7 @@
       </div>
     </div>
 
-    @if(auth()->user()->isSuperAdmin())
+    @if(auth()->user()->hasAdministrativeAccess())
     <!-- AUDIT LOG -->
     <div class="content{{ $activeScreen === 'audit' ? ' active' : '' }}" id="screen-audit">
       <div class="page-header-row">
@@ -551,7 +559,7 @@
       <!-- Search & Filter -->
       <div class="user-filter-row">
         <div class="search-wrap"><span class="si"></span><input class="search-input" id="user-search" autocomplete="off" placeholder="Search users by name, email, or role..." oninput="filterUsers()"/></div>
-        <label class="user-filter-control"><span>Role</span><select class="form-input" id="user-role-filter" onchange="filterUsers()"><option value="all">All roles</option><option value="admin">Admins</option><option value="staff">Staff</option><option value="viewer">View only</option></select></label>
+        <label class="user-filter-control"><span>Role</span><select class="form-input" id="user-role-filter" onchange="filterUsers()"><option value="all">All roles</option><option value="admin">Admins</option><option value="captain">Barangay Captain</option><option value="staff">Staff</option><option value="viewer">View only</option></select></label>
         <label class="user-filter-control"><span>Status</span><select class="form-input" id="user-status-filter" onchange="filterUsers()"><option value="all">All statuses</option><option value="active">Active</option><option value="suspended">Suspended</option></select></label>
       </div>
 
@@ -603,7 +611,7 @@
 </div>
 @endif
 
-@if(auth()->user()->isSuperAdmin())
+@if(auth()->user()->hasAdministrativeAccess())
 <div class="modal-overlay" id="modal-hardware-status" onclick="if(event.target===this)closeModal('modal-hardware-status')">
   <div class="modal settings-status-modal" role="dialog" aria-modal="true" aria-labelledby="hardware-status-title">
     <div class="modal-header"><div class="modal-title" id="hardware-status-title">Hardware integration status</div><button type="button" class="modal-close" onclick="closeModal('modal-hardware-status')" aria-label="Close">&times;</button></div>
@@ -795,7 +803,7 @@
     <div id="confirm-action-password-group" hidden>
       <form id="confirm-action-password-form" autocomplete="off" onsubmit="return false">
         <input class="credential-username-sink" id="confirm-action-username" name="username" type="text" autocomplete="username" tabindex="-1" aria-hidden="true" style="position:fixed!important;left:-10000px!important;top:0!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important;clip-path:inset(50%)!important">
-        <label class="form-label" for="confirm-action-super-admin-password">Password ng Super Admin</label>
+        <label class="form-label" for="confirm-action-super-admin-password">Password ng Kapitan o Super Admin</label>
         <input class="form-input" id="confirm-action-super-admin-password" name="password" type="password" autocomplete="current-password" inputmode="text">
       </form>
       <p class="form-error" id="confirm-action-password-error" role="alert" hidden></p>
@@ -1105,7 +1113,7 @@
 </div>
 
 <!-- Add User -->
-@if(auth()->user()->isSuperAdmin())
+@if(auth()->user()->hasAdministrativeAccess())
 <div class="modal-overlay" id="modal-adduser">
   <form class="modal user-account-modal" onsubmit="event.preventDefault();saveNewUser()">
     <div class="modal-header">
@@ -1133,6 +1141,7 @@
       <label for="adduser-role" class="form-label">Access role</label>
       <select class="form-input" id="adduser-role" onchange="toggleStaffAssignmentFields()">
         <option value="staff">Barangay Staff</option>
+        <option value="captain" hidden disabled>Barangay Captain</option>
         <option value="admin" hidden disabled>Super Admin / legacy administrator</option>
         <option value="viewer" hidden disabled>Legacy viewer</option>
       </select>
@@ -1155,7 +1164,7 @@
 
     <section id="staff-assignment-fields" class="user-account-section" aria-labelledby="staff-assignments-title">
       <h3 id="staff-assignments-title">Staff access assignments</h3>
-      <p class="card-sub">Only Super Admin can change these assignments. Super Admin accounts retain full access regardless of selections; for staff accounts, no selections means no operational access. Physical cabinet access is separate.</p>
+      <p class="card-sub">Only the Super Admin and Barangay Captain can change these assignments. Their accounts have full access regardless of selections; staff accounts with no selections have no operational access. Physical cabinet access is separate.</p>
       <div class="staff-preset-toolbar"><div>
       <label class="form-label" for="staff-access-preset">Start from a preset</label>
       <select id="staff-access-preset" class="form-input" onchange="applyStaffPreset(this.value)">
@@ -1271,9 +1280,9 @@
     window.ADMIN_ACTIVE_SCREEN = {{ Illuminate\Support\Js::from($activeScreen) }};
     window.ADMIN_SCREEN_ROUTES = {{ Illuminate\Support\Js::from($screenRoutes) }};
     window.STAFF_PERMISSION_PRESETS = {{ Illuminate\Support\Js::from(App\StaffPermissions::presets()) }};
-    window.PERSONNEL_SCREEN_ACCESS = {{ Illuminate\Support\Js::from(['dashboard' => auth()->user()->hasPermission('dashboard.view'), 'demographics' => auth()->user()->hasPermission('demographics.view'), 'records' => auth()->user()->hasAnyPermission(['records.view', 'households.view']), 'voters' => auth()->user()->hasPermission('voters.view'), 'certificates' => auth()->user()->hasPermission('documents.view'), 'request-records' => auth()->user()->hasAnyPermission(['eligibility.view', 'documents.view']), 'incidents' => auth()->user()->hasAnyPermission(['incidents.view', 'vawc.view']), 'audit' => auth()->user()->isSuperAdmin(), 'users' => auth()->user()->isSuperAdmin(), 'settings' => auth()->user()->isSuperAdmin()]) }};
-    window.PERSONNEL_PERMISSIONS = {{ Illuminate\Support\Js::from(auth()->user()->isSuperAdmin() ? App\StaffPermissions::keys() : (auth()->user()->staff_permissions ?? [])) }};
-    window.AUTHENTICATED_USER = {{ Illuminate\Support\Js::from(['id' => auth()->id(), 'name' => auth()->user()->name, 'role' => auth()->user()->role, 'is_super_admin' => auth()->user()->isSuperAdmin()]) }};
+    window.PERSONNEL_SCREEN_ACCESS = {{ Illuminate\Support\Js::from(['dashboard' => auth()->user()->hasPermission('dashboard.view'), 'demographics' => auth()->user()->hasPermission('demographics.view'), 'records' => auth()->user()->hasAnyPermission(['records.view', 'households.view']), 'voters' => auth()->user()->hasPermission('voters.view'), 'certificates' => auth()->user()->hasPermission('documents.view'), 'request-records' => auth()->user()->hasAnyPermission(['eligibility.view', 'documents.view']), 'incidents' => auth()->user()->hasAnyPermission(['incidents.view', 'vawc.view']), 'audit' => auth()->user()->hasAdministrativeAccess(), 'users' => auth()->user()->hasAdministrativeAccess(), 'settings' => auth()->user()->hasAdministrativeAccess()]) }};
+    window.PERSONNEL_PERMISSIONS = {{ Illuminate\Support\Js::from(auth()->user()->hasAdministrativeAccess() ? App\StaffPermissions::keys() : (auth()->user()->staff_permissions ?? [])) }};
+    window.AUTHENTICATED_USER = {{ Illuminate\Support\Js::from(['id' => auth()->id(), 'name' => auth()->user()->name, 'role' => auth()->user()->role, 'is_super_admin' => auth()->user()->isSuperAdmin(), 'is_administrator' => auth()->user()->hasAdministrativeAccess()]) }};
 </script>
 
 @livewireScripts

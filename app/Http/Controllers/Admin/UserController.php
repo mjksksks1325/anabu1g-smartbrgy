@@ -18,11 +18,11 @@ class UserController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        abort_unless($request->user()->isSuperAdmin(), 403);
+        abort_unless($request->user()->hasAdministrativeAccess(), 403);
 
         $users = User::query()
             ->whereNull('resident_id')
-            ->whereIn('role', ['admin', 'staff', 'viewer'])
+            ->whereIn('role', ['admin', 'captain', 'staff', 'viewer'])
             ->with('cabinetAccess')
             ->orderBy('name')
             ->get([
@@ -42,14 +42,14 @@ class UserController extends Controller
 
     public function export(Request $request, WriteRecordsSpreadsheet $spreadsheet): BinaryFileResponse
     {
-        abort_unless($request->user()->isSuperAdmin(), 403);
+        abort_unless($request->user()->hasAdministrativeAccess(), 403);
 
         $users = User::query()
             ->whereNull('resident_id')
-            ->whereIn('role', ['admin', 'staff', 'viewer'])
+            ->whereIn('role', ['admin', 'captain', 'staff', 'viewer'])
             ->orderBy('name')
             ->lazy(500)
-            ->map(fn (User $user): array => [$user->name, $user->email, ucfirst($user->role), $user->is_active ? 'Active' : 'Suspended']);
+            ->map(fn (User $user): array => [$user->name, $user->email, $user->role === 'captain' ? 'Barangay Captain' : ucfirst($user->role), $user->is_active ? 'Active' : 'Suspended']);
 
         return $spreadsheet->download('Barangay Users', 'barangay-users-'.today()->toDateString().'.xlsx', ['Name', 'Email', 'Role', 'Status'], $users, $request->user()->name);
     }
@@ -103,6 +103,19 @@ class UserController extends Controller
             ) {
                 throw ValidationException::withMessages([
                     'role' => 'Revoke Super Admin access with the local command before changing this account.',
+                ]);
+            }
+
+            if (
+                $locked->isBarangayCaptain()
+                && $request->user()->is($locked)
+                && (
+                    $request->validated('role') !== 'captain'
+                    || ! $request->boolean('is_active')
+                )
+            ) {
+                throw ValidationException::withMessages([
+                    'role' => 'Hindi maaaring alisin o suspindihin ang sariling Captain access. Ipa-update ito sa ibang administrator.',
                 ]);
             }
 
@@ -162,7 +175,7 @@ class UserController extends Controller
 
     public function destroy(Request $request, User $user, DeleteStaffUser $deleteStaffUser): JsonResponse
     {
-        abort_unless($request->user()->isSuperAdmin(), 403);
+        abort_unless($request->user()->hasAdministrativeAccess(), 403);
 
         $result = $deleteStaffUser->handle($request->user(), $user);
         $pendingRevocations = $result['pending_rpi_revocations'];

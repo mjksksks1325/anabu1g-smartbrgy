@@ -33,6 +33,18 @@ class CabinetDevice extends Model
         return $this->hasMany(FileMovementEvent::class);
     }
 
+    /** @return HasMany<CabinetFile, $this> */
+    public function files(): HasMany
+    {
+        return $this->hasMany(CabinetFile::class);
+    }
+
+    /** @return HasMany<CabinetReader, $this> */
+    public function readers(): HasMany
+    {
+        return $this->hasMany(CabinetReader::class);
+    }
+
     public function connectionStatus(): string
     {
         if (! $this->last_seen_at || ! $this->reported_status) {

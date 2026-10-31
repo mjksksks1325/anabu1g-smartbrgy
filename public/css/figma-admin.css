@@ -698,3 +698,25 @@ body:not(.light-mode) #app.admin-interface .cert-card-view { color: #facc15; }
 
 /* Center labels and icon-label groups across staff workspace action buttons. */
 #app.admin-interface .btn { justify-content: center; text-align: center; }
+
+/* Permission-aware dashboards collapse unused columns and hide empty panels. */
+#app.admin-interface .dashboard-stats-grid[data-visible-cards="0"] { display: none; }
+#app.admin-interface .dashboard-stats-grid[data-visible-cards="1"] { grid-template-columns: minmax(0, 560px); }
+#app.admin-interface .dashboard-stats-grid[data-visible-cards="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#app.admin-interface .dashboard-stats-grid[data-visible-cards="3"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#app.admin-interface .dashboard-stats-grid[data-visible-cards="4"] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+#app.admin-interface .dashboard-quick-action-list[data-visible-actions="1"] { grid-template-columns: minmax(0, 230px); }
+#app.admin-interface .dashboard-quick-action-list[data-visible-actions="2"] { grid-template-columns: repeat(2, minmax(0, 230px)); }
+#app.admin-interface .dashboard-quick-action-list[data-visible-actions="3"] { grid-template-columns: repeat(3, minmax(0, 230px)); }
+#app.admin-interface .dashboard-overview-grid--activity-only { grid-template-columns: minmax(0, 1fr); }
+#app.admin-interface .dashboard-secondary-grid--single { grid-template-columns: minmax(0, 1fr); }
+
+@media (min-width: 761px) and (max-width: 1100px) {
+  #app.admin-interface .dashboard-stats-grid[data-visible-cards="3"],
+  #app.admin-interface .dashboard-stats-grid[data-visible-cards="4"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 760px) {
+  #app.admin-interface .dashboard-stats-grid[data-visible-cards] { grid-template-columns: minmax(0, 1fr); }
+  #app.admin-interface .dashboard-quick-action-list[data-visible-actions] { grid-template-columns: minmax(0, 1fr); }
+}

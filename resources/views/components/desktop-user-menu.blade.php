@@ -6,7 +6,7 @@
             <span class="staff-settings-user-avatar" id="sidebar-user-avatar">{{ auth()->user()->initials() }}</span>
             <span class="staff-settings-user-details">
                 <span class="staff-settings-user-name" id="sidebar-user-name">{{ auth()->user()->name }}</span>
-                <span class="staff-settings-user-role" id="sidebar-user-role">{{ auth()->user()->role }}</span>
+                <span class="staff-settings-user-role" id="sidebar-user-role">{{ auth()->user()->isSuperAdmin() ? 'Super Admin' : match (auth()->user()->role) { 'captain' => 'Barangay Captain', 'admin' => 'Barangay Admin', 'staff' => 'Barangay Staff', 'viewer' => 'View only', default => ucfirst(auth()->user()->role) } }}</span>
             </span>
         </summary>
         <div class="personnel-account-options">

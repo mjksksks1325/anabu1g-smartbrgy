@@ -14,11 +14,14 @@ class VerifySupervisorPassword
         }
 
         return User::query()
-            ->where('role', 'admin')
             ->where('is_active', true)
-            ->where('is_super_admin', true)
             ->whereNull('resident_id')
+            ->where(function ($query): void {
+                $query->where(function ($superAdmins): void {
+                    $superAdmins->where('role', 'admin')->where('is_super_admin', true);
+                })->orWhere('role', 'captain');
+            })
             ->get(['password'])
-            ->contains(fn (User $superAdmin): bool => Hash::check($password, $superAdmin->password));
+            ->contains(fn (User $approver): bool => Hash::check($password, $approver->password));
     }
 }

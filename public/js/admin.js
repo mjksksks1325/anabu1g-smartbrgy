@@ -1721,7 +1721,7 @@ function confirmAction(message, { title = 'Please confirm', confirmLabel = 'Conf
     button.onclick = () => {
       if (requireSupervisorPassword && !passwordInput?.value) {
         if (passwordError) {
-          passwordError.textContent = 'Ilagay ang password ng active Super Admin para magpatuloy.';
+          passwordError.textContent = 'Ilagay ang password ng active Barangay Captain o Super Admin para magpatuloy.';
           passwordError.hidden = false;
         }
         passwordInput?.focus();
@@ -3017,7 +3017,7 @@ function renderUsers() {
   const users = USERS.filter(user =>
     (userRoleFilter === 'all' || user.role === userRoleFilter) &&
     (userStatusFilter === 'all' || (userStatusFilter === 'active' ? user.is_active : !user.is_active)) &&
-    (!userSearch || `${user.name} ${user.email} ${user.role}`.toLowerCase().includes(userSearch))
+    (!userSearch || `${user.name} ${user.email} ${user.role} ${user.role === 'captain' ? 'barangay captain' : ''}`.toLowerCase().includes(userSearch))
   );
   const totalElement = document.getElementById('usr-total');
   if (totalElement) totalElement.textContent = USERS.length;
@@ -3029,7 +3029,7 @@ function renderUsers() {
       <div class="user-info">
         <div class="user-name">${escapeText(user.name)}</div>
         <div class="user-role-tag">${escapeText(user.email)}</div>
-        <div class="user-badges"><span class="badge badge-blue">${escapeText(user.role)}</span>
+        <div class="user-badges"><span class="badge badge-blue">${escapeText(user.role === 'captain' ? 'Barangay Captain' : user.role)}</span>
           ${user.is_super_admin ? '<span class="badge badge-green">Super Admin</span>' : ''}
           <span class="badge ${user.is_active ? 'badge-green' : 'badge-red'}">${user.is_active ? 'Active' : 'Suspended'}</span>
           <span class="badge badge-gray">${user.two_factor_confirmed_at ? '2FA enabled' : '2FA not configured'}</span>
@@ -3075,7 +3075,7 @@ function openUserDetails(id) {
   const values = [
     ['Name', user.name],
     ['Email', user.email],
-    ['Role', user.is_super_admin ? 'Super Admin' : user.role],
+    ['Role', user.is_super_admin ? 'Super Admin' : (user.role === 'captain' ? 'Barangay Captain' : user.role)],
     ['Account status', user.is_active ? 'Active' : 'Suspended'],
     ['Two-factor authentication', user.two_factor_confirmed_at ? 'Enabled' : 'Not configured'],
     ['Created', user.created_at ? new Date(user.created_at).toLocaleString() : 'Not available'],
@@ -3134,7 +3134,7 @@ function openEditUser(id) {
   document.getElementById('adduser-role').querySelectorAll('option').forEach(option => {
     option.disabled = user.is_super_admin
       ? option.value !== 'admin'
-      : option.value !== 'staff' && option.value !== user.role;
+      : !['staff', 'captain', user.role].includes(option.value);
     option.hidden = option.disabled;
   });
   document.getElementById('adduser-role').value = user.role;
@@ -3349,7 +3349,8 @@ function launchApp(name = 'Staff', role = 'Staff') {
   currentUserRole = role || 'Staff';
   const dbUser = USERS.find(u => u.name === currentUserName || u.role === currentUserRole);
   const roleAccessMap = {
-    'admin': window.AUTHENTICATED_USER?.is_super_admin ? 'Full Access' : 'Staff Access',
+    'admin': window.AUTHENTICATED_USER?.is_administrator || window.AUTHENTICATED_USER?.is_super_admin ? 'Full Access' : 'Staff Access',
+    'captain': 'Full Access',
     'staff': 'Staff Access',
     'Super Administrator': 'Full',
     'Barangay Captain': 'Full',
@@ -3381,8 +3382,8 @@ function launchApp(name = 'Staff', role = 'Staff') {
   renderResidentsTable();
   renderCertKanban();
   renderCertTypesList();
-  if (window.AUTHENTICATED_USER?.is_super_admin) renderAuditLog();
-  if (window.AUTHENTICATED_USER?.is_super_admin) void reloadUsers();
+  if (window.AUTHENTICATED_USER?.is_administrator || window.AUTHENTICATED_USER?.is_super_admin) renderAuditLog();
+  if (window.AUTHENTICATED_USER?.is_administrator || window.AUTHENTICATED_USER?.is_super_admin) void reloadUsers();
   if (hasStaffPermission('dashboard.view')) void refreshDashboardStats();
   if (hasStaffPermission('incidents.view') || hasStaffPermission('vawc.view')) void loadIncidents();
   renderDemographics();

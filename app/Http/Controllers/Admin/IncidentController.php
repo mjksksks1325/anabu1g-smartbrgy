@@ -29,7 +29,7 @@ class IncidentController extends Controller
     {
         Gate::authorize('viewAny', Incident::class);
 
-        return response()->json(['staff' => User::query()->whereIn('role', ['admin', 'staff'])->where('is_active', true)->whereNull('resident_id')->orderBy('name')->get(['id', 'name'])]);
+        return response()->json(['staff' => User::query()->whereIn('role', ['admin', 'captain', 'staff'])->where('is_active', true)->whereNull('resident_id')->orderBy('name')->get(['id', 'name'])]);
     }
 
     /**

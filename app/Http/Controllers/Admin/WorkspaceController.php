@@ -54,10 +54,10 @@ class WorkspaceController extends Controller
             $query = $request->query();
             unset($query['screen']);
 
-            return redirect()->route($screen === 'dashboard' && $request->user()->role === 'admin' ? 'admin.dashboard' : self::SCREEN_ROUTES[$screen], $query);
+            return redirect()->route($screen === 'dashboard' && $request->user()->hasAdministrativeAccess() ? 'admin.dashboard' : self::SCREEN_ROUTES[$screen], $query);
         }
 
-        if ($request->routeIs('admin.dashboard') && ! $request->user()->isSuperAdmin()) {
+        if ($request->routeIs('admin.dashboard') && ! $request->user()->hasAdministrativeAccess()) {
             abort_if($request->expectsJson(), 403);
 
             return redirect()->route(StaffPermissions::landing($request->user()), $request->query());
@@ -77,7 +77,7 @@ class WorkspaceController extends Controller
         if (! $request->user()->hasPermission('records.view') && $request->user()->hasPermission('households.view')) {
             $screenRoutes['records'] = 'staff.households.page';
         }
-        $screenRoutes['dashboard'] = $request->user()->role === 'admin' ? 'admin.dashboard' : 'staff.dashboard';
+        $screenRoutes['dashboard'] = $request->user()->hasAdministrativeAccess() ? 'admin.dashboard' : 'staff.dashboard';
 
         return view('admin.dashboard', [
             'pendingRegistrationsCount' => $request->user()->hasPermission('records.review') && Schema::hasTable('resident_registration_applications')

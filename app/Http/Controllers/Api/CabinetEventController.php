@@ -84,7 +84,7 @@ class CabinetEventController extends Controller
             ->first();
         $employee = $access?->user;
 
-        if (! $employee || ! in_array($employee->role, ['admin', 'staff'], true)
+        if (! $employee || ! in_array($employee->role, ['admin', 'captain', 'staff'], true)
             || ! $access->isEffective()) {
             throw ValidationException::withMessages(['rpi_employee_id' => 'An eligible cabinet employee is required.']);
         }
@@ -133,7 +133,7 @@ class CabinetEventController extends Controller
             ->whereHas('user', function ($query): void {
                 $query
                     ->where('is_active', true)
-                    ->whereIn('role', ['admin', 'staff']);
+                    ->whereIn('role', ['admin', 'captain', 'staff']);
             })
             ->orderBy('updated_at')
             ->first();
@@ -168,7 +168,7 @@ class CabinetEventController extends Controller
             ->whereHas('user', fn ($query) => $query
                 ->where('is_active', true)
                 ->whereNull('resident_id')
-                ->whereIn('role', ['admin', 'staff']))
+                ->whereIn('role', ['admin', 'captain', 'staff']))
             ->orderBy('rpi_employee_id')
             ->get()
             ->filter(fn (EmployeeCabinetAccess $access): bool => $access->isEffective())

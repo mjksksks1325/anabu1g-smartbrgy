@@ -39,7 +39,7 @@ class UpdateIncidentRequest extends FormRequest
             'details' => ['required', 'string', 'min:10', 'max:5000'],
             'status' => ['required', Rule::in(Incident::STATUSES)],
             'resolution_notes' => ['nullable', 'required_if:status,resolved', 'string', 'min:10', 'max:5000'],
-            'assigned_to' => ['nullable', 'integer', Rule::exists('users', 'id')->whereIn('role', ['admin', 'staff'])->where('is_active', true)->whereNull('resident_id')],
+            'assigned_to' => ['nullable', 'integer', Rule::exists('users', 'id')->whereIn('role', ['admin', 'captain', 'staff'])->where('is_active', true)->whereNull('resident_id')],
             'complainant_resident_id' => ['nullable', 'integer', Rule::exists('residents', 'id')->whereNull('deleted_at')],
             'respondent_resident_id' => ['nullable', 'integer', Rule::exists('residents', 'id')->whereNull('deleted_at')],
             'remarks' => ['nullable', 'string', 'max:5000'],

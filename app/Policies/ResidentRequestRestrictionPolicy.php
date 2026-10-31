@@ -14,7 +14,7 @@ class ResidentRequestRestrictionPolicy
 
     public function create(User $user): bool
     {
-        return $user->isSuperAdmin();
+        return $user->hasAdministrativeAccess();
     }
 
     public function update(User $user, ResidentRequestRestriction $restriction): bool

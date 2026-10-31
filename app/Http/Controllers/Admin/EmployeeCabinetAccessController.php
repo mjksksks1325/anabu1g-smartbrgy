@@ -20,7 +20,7 @@ class EmployeeCabinetAccessController extends Controller
         $search = $request->validate(['search' => ['nullable', 'string', 'max:100']])['search'] ?? null;
         $employees = User::query()
             ->whereNull('resident_id')
-            ->whereIn('role', ['admin', 'staff', 'viewer'])
+            ->whereIn('role', ['admin', 'captain', 'staff', 'viewer'])
             ->with('cabinetAccess')
             ->when($search, fn ($query) => $query->where(fn ($query) => $query
                 ->where('name', 'like', '%'.trim($search).'%')
@@ -141,6 +141,6 @@ class EmployeeCabinetAccessController extends Controller
 
     private function ensureEmployee(User $user): void
     {
-        abort_if($user->isResidentAccount() || $user->resident_id !== null || ! in_array($user->role, ['admin', 'staff', 'viewer'], true), 404);
+        abort_if($user->isResidentAccount() || $user->resident_id !== null || ! in_array($user->role, ['admin', 'captain', 'staff', 'viewer'], true), 404);
     }
 }

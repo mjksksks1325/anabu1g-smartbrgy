@@ -230,6 +230,46 @@ html[data-theme=dark] th, html[data-theme=dark] .document-requests-index .civic-
 html[data-theme=dark] td, html[data-theme=dark] .device-card, html[data-theme=dark] .employee-card { border-color: var(--staff-row); }
 html[data-theme=dark] .filter-panel input, html[data-theme=dark] .filter-panel select, html[data-theme=dark] .employee-mapping-form input { background: var(--staff-input); border-color: var(--staff-quiet-border); color: var(--staff-ink); }
 html[data-theme=dark] .notice:not(.success):not(.error) { background: var(--staff-soft); border-color: var(--staff-border); color: var(--staff-nav-active-ink); }
+
+/* Folder registry and per-drawer YRM100 setup. */
+.cabinet-reader-panel, .cabinet-folder-panel { margin-top: 22px; }
+.cabinet-reader-card { padding: 20px 22px; border-bottom: 1px solid var(--staff-border); }
+.cabinet-reader-card:last-child { border-bottom: 0; }
+.cabinet-reader-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 14px; }
+.cabinet-reader-heading h3 { margin: 0 0 4px; font: 800 16px var(--civic-font-display); }
+.cabinet-reader-heading p, .cabinet-reader-help { margin: 0; color: var(--staff-muted); font-size: 12px; line-height: 1.5; }
+.filter-panel.cabinet-reader-form { grid-template-columns: repeat(2, minmax(0, 1fr)) auto; align-items: end; gap: 12px; margin: 0 0 9px; padding: 14px; }
+.cabinet-reader-form label, .cabinet-folder-create label { color: var(--staff-muted); font-size: 12px; font-weight: 700; }
+.cabinet-reader-form input, .cabinet-folder-create input, .cabinet-folder-create select, .cabinet-folder-edit input, .cabinet-folder-edit select { width: 100%; min-width: 0; min-height: 40px; margin-top: 7px; padding: 9px 10px; border: 1px solid var(--staff-border); border-radius: 6px; background: var(--staff-input); color: var(--staff-ink); font: inherit; font-size: 13px; }
+.cabinet-folder-intro { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 16px 22px 0; }
+.cabinet-folder-intro p { max-width: 850px; margin: 0; color: var(--staff-muted); font-size: 13px; line-height: 1.55; }
+.filter-panel.cabinet-folder-create { grid-template-columns: minmax(150px, 1.1fr) minmax(180px, 1.5fr) minmax(150px, 1fr) minmax(130px, .8fr) auto; align-items: end; gap: 10px; margin: 16px 22px; padding: 14px; }
+.cabinet-folder-table { min-width: 860px; }
+.cabinet-folder-table td { vertical-align: top; }
+.cabinet-folder-table td > strong { display: inline-block; padding-top: 10px; color: var(--staff-ink); }
+.cabinet-folder-table td > .pill { display: inline-block; margin-top: 5px; }
+.cabinet-folder-edit { display: grid; grid-template-columns: minmax(130px, 1.2fr) minmax(130px, 1fr) minmax(100px, .8fr) auto; align-items: center; gap: 6px; }
+.cabinet-folder-edit input, .cabinet-folder-edit select { margin: 0; min-height: 36px; padding: 7px 8px; font-size: 12px; }
+.cabinet-folder-edit .button, .cabinet-folder-table td .button { min-height: 36px; padding: 7px 10px; font-size: 11px; }
+.cabinet-folder-table td form:not(.cabinet-folder-edit) { margin: 0; }
+.cabinet-folder-pagination { padding: 14px 20px; overflow-x: auto; }
+html[data-theme=dark] .cabinet-reader-heading p, html[data-theme=dark] .cabinet-reader-help, html[data-theme=dark] .cabinet-folder-intro p { color: var(--staff-muted); }
+html[data-theme=dark] .cabinet-reader-card { border-color: var(--staff-border); }
+html[data-theme=dark] .cabinet-reader-form input, html[data-theme=dark] .cabinet-folder-create input, html[data-theme=dark] .cabinet-folder-create select, html[data-theme=dark] .cabinet-folder-edit input, html[data-theme=dark] .cabinet-folder-edit select { border-color: var(--staff-quiet-border); background: var(--staff-input); color: var(--staff-ink); }
+@media (max-width: 950px) {
+    .filter-panel.cabinet-reader-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .cabinet-reader-form > button { grid-column: 1 / -1; }
+    .filter-panel.cabinet-folder-create { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .cabinet-folder-create > button { grid-column: 1 / -1; }
+}
+@media (max-width: 650px) {
+    .cabinet-reader-card { padding: 16px; }
+    .cabinet-reader-heading, .cabinet-folder-intro { align-items: flex-start; flex-direction: column; }
+    .filter-panel.cabinet-reader-form, .filter-panel.cabinet-folder-create { grid-template-columns: minmax(0, 1fr); margin-inline: 12px; }
+    .cabinet-reader-form > button, .cabinet-folder-create > button { grid-column: auto; width: 100%; }
+    .cabinet-folder-intro { padding-inline: 16px; }
+    .cabinet-folder-edit { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 html[data-theme=dark] .pill.neutral, html[data-theme=dark] .document-requests-index .civic-status, html[data-theme=dark] .document-request-detail .badge-blue { background: var(--staff-soft); border-color: var(--staff-border); color: var(--staff-nav-active-ink); }
 @media(max-width: 1100px) { .iot-feature-grid { grid-template-columns: 1fr; } .iot-rfid-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); } .iot-rfid-filters label:first-child { grid-column: 1 / -1; } }
 @media(max-width: 650px) { .document-request-detail .request-detail-grid { grid-template-columns: 1fr; } .document-request-detail .page-header-row { flex-wrap: wrap; } .iot-rfid-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 14px; } .iot-rfid-filters label:first-child { grid-column: 1 / -1; } .iot-rfid-pagination { padding: 12px 14px; } .iot-rfid-pagination nav, .iot-rfid-pagination .hidden.sm\:flex { flex-direction: column; align-items: stretch; } .iot-rfid-pagination .hidden.sm\:flex > div:nth-child(2) { max-width: 100%; } }
@@ -392,3 +432,16 @@ html[data-theme=dark] .staff-theme-icon-button .staff-theme-sun { display: block
 .side-nav .sidebar-sec { padding: 23px 11px 8px; }
 .side-nav .sidebar-label { margin-bottom: 10px; }
 .side-nav .sidebar-sec > .nav-item + .nav-item { margin-top: 4px; }
+
+.cabinet-folder-archive-dialog { width: min(480px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); margin: auto; padding: 24px; border: 1px solid var(--staff-border); border-radius: 8px; background: var(--staff-card); color: var(--staff-ink); box-shadow: 0 24px 64px #06152255; }
+.cabinet-folder-archive-dialog::backdrop { background: #071522a8; }
+.cabinet-folder-archive-dialog form { display: grid; gap: 12px; }
+.cabinet-folder-archive-dialog h2, .cabinet-folder-archive-dialog p { margin: 0; }
+.cabinet-folder-archive-dialog p { color: var(--staff-muted); line-height: 1.55; }
+.cabinet-folder-archive-dialog label { font-size: 13px; font-weight: 700; }
+.cabinet-folder-archive-dialog input { min-height: 44px; padding: 10px 12px; border: 1px solid var(--staff-border); border-radius: 6px; background: var(--staff-input); color: var(--staff-ink); font: inherit; }
+.cabinet-folder-archive-dialog .cabinet-folder-archive-reference { padding: 10px 12px; border-radius: 6px; background: var(--staff-input); color: var(--staff-ink); font-weight: 700; overflow-wrap: anywhere; }
+.cabinet-folder-archive-dialog .cabinet-folder-archive-error { color: #b4232b; font-weight: 600; }
+.cabinet-folder-archive-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
+html[data-theme=dark] .cabinet-folder-archive-dialog .cabinet-folder-archive-error { color: #ff8585; }
+@media(max-width: 560px) { .cabinet-folder-archive-dialog { padding: 18px; } .cabinet-folder-archive-actions { flex-direction: column-reverse; } .cabinet-folder-archive-actions .button { width: 100%; } }

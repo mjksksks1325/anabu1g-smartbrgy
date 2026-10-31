@@ -40,7 +40,7 @@ class StoreIncidentRequest extends FormRequest
             'respondent_name' => ['nullable', 'string', 'max:255'],
             'severity' => ['required', Rule::in(['low', 'medium', 'high'])],
             'details' => ['required', 'string', 'min:10', 'max:5000'],
-            'assigned_to' => [$submissionOnly ? 'prohibited' : 'nullable', 'integer', Rule::exists('users', 'id')->whereIn('role', ['admin', 'staff'])->where('is_active', true)->whereNull('resident_id')],
+            'assigned_to' => [$submissionOnly ? 'prohibited' : 'nullable', 'integer', Rule::exists('users', 'id')->whereIn('role', ['admin', 'captain', 'staff'])->where('is_active', true)->whereNull('resident_id')],
             'complainant_resident_id' => [$submissionOnly ? 'prohibited' : 'nullable', 'integer', Rule::exists('residents', 'id')->whereNull('deleted_at')],
             'respondent_resident_id' => [$submissionOnly ? 'prohibited' : 'nullable', 'integer', Rule::exists('residents', 'id')->whereNull('deleted_at')],
             'remarks' => [$submissionOnly ? 'prohibited' : 'nullable', 'string', 'max:5000'],

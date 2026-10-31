@@ -14,7 +14,7 @@ class EnsureStaffAccess
     {
         $user = $request->user();
         abort_unless($user?->canLoginAsPersonnel(), 403);
-        if (! $user->isSuperAdmin()) {
+        if (! $user->hasAdministrativeAccess()) {
             $name = $request->route()->getName();
             if ($name === 'staff.dashboard' && ! $request->expectsJson() && ! $user->hasPermission('dashboard.view')) {
                 return redirect()->route(StaffPermissions::landing($user));

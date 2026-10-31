@@ -36,7 +36,7 @@ class ResidentPortalAccountController extends Controller
 
     public function update(Request $request, Resident $resident): JsonResponse
     {
-        abort_unless($request->user()->isSuperAdmin(), 403);
+        abort_unless($request->user()->hasAdministrativeAccess(), 403);
         $validated = $request->validate(['is_active' => ['required', 'boolean']]);
         $account = $resident->portalAccount()->firstOrFail();
         $account->is_active = $validated['is_active'];

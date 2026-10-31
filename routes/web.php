@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AdminLocaleController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BarangayProtectionOrderController;
+use App\Http\Controllers\Admin\CabinetFileController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DocumentRequestController as AdminDocumentRequestController;
 use App\Http\Controllers\Admin\EmployeeCabinetAccessController;
@@ -215,6 +216,13 @@ Route::middleware(['auth:web', 'can:access-personnel', RecordAdministrativeActio
         Route::get('/audit', WorkspaceController::class)->defaults('screen', 'audit')->name('audit');
         Route::get('/settings', WorkspaceController::class)->defaults('screen', 'settings')->name('settings');
         Route::get('/smart-cabinet', SmartCabinetController::class)->name('smart-cabinet.index');
+        Route::patch('/smart-cabinet/{cabinet}/readers', [CabinetFileController::class, 'updateReaders'])->name('smart-cabinet.readers.update');
+        Route::post('/smart-cabinet/folders', [CabinetFileController::class, 'store'])->name('smart-cabinet.folders.store');
+        Route::patch('/smart-cabinet/folders/{cabinetFile}', [CabinetFileController::class, 'update'])->name('smart-cabinet.folders.update');
+        Route::post('/smart-cabinet/folders/{cabinetFile}/archive', [CabinetFileController::class, 'archive'])
+            ->middleware(RequireSupervisorPassword::class)
+            ->name('smart-cabinet.folders.archive');
+        Route::patch('/smart-cabinet/folders/{cabinetFile}/restore', [CabinetFileController::class, 'restore'])->name('smart-cabinet.folders.restore');
         Route::get('/employee-cabinet-access', [EmployeeCabinetAccessController::class, 'index'])->name('cabinet-access.index');
         Route::patch('/employee-cabinet-access/{user}', [EmployeeCabinetAccessController::class, 'update'])->name('cabinet-access.update');
         Route::patch('/employee-cabinet-access/{user}/drawer-access', [EmployeeCabinetAccessController::class, 'updateDrawerAccess'])->name('cabinet-access.drawer-access.update');

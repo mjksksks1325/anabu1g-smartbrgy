@@ -59,12 +59,22 @@ class User extends Authenticatable
 
     public function canLoginAsPersonnel(): bool
     {
-        return $this->is_active && $this->resident_id === null && in_array($this->role, ['admin', 'staff'], true);
+        return $this->is_active && $this->resident_id === null && in_array($this->role, ['admin', 'captain', 'staff'], true);
     }
 
     public function isSuperAdmin(): bool
     {
         return $this->role === 'admin' && $this->is_active && $this->is_super_admin && $this->resident_id === null;
+    }
+
+    public function isBarangayCaptain(): bool
+    {
+        return $this->role === 'captain' && $this->is_active && $this->resident_id === null;
+    }
+
+    public function hasAdministrativeAccess(): bool
+    {
+        return $this->isSuperAdmin() || $this->isBarangayCaptain();
     }
 
     /** @param list<string> $permissions */
@@ -81,7 +91,7 @@ class User extends Authenticatable
 
     public function hasPermission(string $permission): bool
     {
-        return $this->isSuperAdmin() || ($this->canLoginAsPersonnel()
+        return $this->hasAdministrativeAccess() || ($this->canLoginAsPersonnel()
             && $this->role === 'staff' && in_array($permission, $this->staff_permissions ?? [], true));
     }
 

@@ -106,7 +106,7 @@ class StaffPermissions
 
     public static function landing(User $user): string
     {
-        if ($user->isSuperAdmin()) {
+        if ($user->hasAdministrativeAccess()) {
             return 'admin.dashboard';
         }
         foreach (['dashboard.view' => 'staff.dashboard', 'demographics.view' => 'staff.demographics', 'records.view' => 'staff.residents.index', 'documents.view' => 'staff.document-requests.index', 'voters.view' => 'staff.voters', 'incidents.view' => 'staff.incidents.index', 'vawc.view' => 'staff.incidents.index', 'rfid.view' => 'staff.rfid-files.index', 'households.view' => 'staff.households.page', 'eligibility.view' => 'staff.request-eligibility', 'incidents.submit' => 'staff.incidents.index', 'vawc.submit' => 'staff.incidents.index'] as $permission => $route) {

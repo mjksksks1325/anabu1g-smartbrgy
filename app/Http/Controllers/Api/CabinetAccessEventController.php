@@ -71,7 +71,7 @@ class CabinetAccessEventController extends Controller
             $employee = $access === null ? null : $access->user;
 
             if ($data['result'] === 'granted' && (! $employee
-                || ! in_array($employee->role, ['admin', 'staff'], true) || ! $access->isEffective())) {
+                || ! in_array($employee->role, ['admin', 'captain', 'staff'], true) || ! $access->isEffective())) {
                 throw ValidationException::withMessages(['rpi_employee_id' => 'Granted access requires an eligible mapped employee.']);
             }
 

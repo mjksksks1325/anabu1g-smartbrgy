@@ -36,7 +36,7 @@ class PurokPolicy
      */
     public function update(User $user, Purok $purok): bool
     {
-        return $user->isSuperAdmin();
+        return $user->hasAdministrativeAccess();
     }
 
     /**
@@ -44,7 +44,7 @@ class PurokPolicy
      */
     public function delete(User $user, Purok $purok): bool
     {
-        return $user->isSuperAdmin();
+        return $user->hasAdministrativeAccess();
     }
 
     /**
@@ -52,7 +52,7 @@ class PurokPolicy
      */
     public function restore(User $user, Purok $purok): bool
     {
-        return $user->isSuperAdmin();
+        return $user->hasAdministrativeAccess();
     }
 
     /**

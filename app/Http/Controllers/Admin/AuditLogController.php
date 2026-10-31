@@ -15,7 +15,7 @@ class AuditLogController extends Controller
      */
     public function __invoke(Request $request): JsonResponse
     {
-        abort_unless($request->user()->isSuperAdmin(), 403);
+        abort_unless($request->user()->hasAdministrativeAccess(), 403);
 
         $events = DB::table('administrative_audits')
             ->where(fn ($query) => $query->where('action', '!=', 'auth.login')->orWhere('record', '!=', 'resident_portal')->orWhereNull('record'))
