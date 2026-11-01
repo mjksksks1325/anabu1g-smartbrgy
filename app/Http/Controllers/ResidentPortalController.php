@@ -18,8 +18,11 @@ class ResidentPortalController extends Controller
             return redirect()->route('portal.request.create', ['service' => $request->string('service')->toString()]);
         }
 
+        $resident = $request->user('resident')?->resident;
+
         return view('portal.index', [
-            'services' => CertificateType::cases(),
+            'resident' => $resident,
+            'latestRequest' => $resident?->documentRequests()->latest()->latest('id')->first(),
             'announcements' => Announcement::published()->orderByDesc('published_at')->orderByDesc('id')->limit(3)->get(),
         ]);
     }
@@ -81,6 +84,18 @@ class ResidentPortalController extends Controller
         $resident = $request->user()->resident;
 
         return view('portal.account', ['resident' => $resident, 'requests' => $resident->documentRequests()->latest()->paginate(15)]);
+    }
+
+    public function showRequest(Request $request, string $referenceCode): View
+    {
+        $documentRequest = $request->user()->resident->documentRequests()
+            ->where('reference_code', $referenceCode)
+            ->firstOrFail();
+
+        return view('portal.request-status', [
+            'item' => $documentRequest,
+            'certificateType' => CertificateType::tryFromLabel($documentRequest->document_type),
+        ]);
     }
 
     public function requestStatuses(Request $request): JsonResponse

@@ -1,5 +1,6 @@
 <?php
 
+use App\CertificateType;
 use App\Models\User;
 
 test('resident portal footer links to the Provincial Government of Cavite', function () {
@@ -100,8 +101,31 @@ test('confirmed fees are shown on information and authenticated request pages', 
         ->assertDontSee('PHP 50.00');
 });
 
-test('home displays an unconfirmed land area without changing the map', function () {
-    $this->get(route('home'))
+test('each requestable document shows its system fee and certificate validity', function () {
+    $response = $this->actingAs(User::factory()->resident()->create(), 'resident')
+        ->get(route('portal.request.create'))->assertOk();
+    $document = new DOMDocument;
+    @$document->loadHTML($response->getContent());
+    $xpath = new DOMXPath($document);
+    $options = $xpath->query('//div[@id="cert-type-grid"]/button[contains(@class, "cert-btn")]');
+
+    expect($options)->toHaveCount(count(CertificateType::cases()));
+    foreach (CertificateType::cases() as $index => $type) {
+        $text = preg_replace('/\s+/', ' ', $options->item($index)->textContent);
+        expect($text)->toContain($type->value, $type->feeLabel() === 'Walang bayad' ? 'Free' : $type->feeLabel())
+            ->toContain($type === CertificateType::BarangayId ? 'Valid for 1 year from issue' : 'Valid for 3 months from issue');
+        expect(str_contains($text, 'To be confirmed'))->toBe($type === CertificateType::BusinessClearance);
+    }
+});
+
+test('request terms keep the full legal text after a plain summary', function () {
+    $this->actingAs(User::factory()->resident()->create(), 'resident')
+        ->get(route('portal.request.create'))->assertOk()
+        ->assertSeeInOrder(['What you are agreeing to, in short', 'id="tnc-scroll"', 'Online requests remain valid for 30 days from submission.', 'Monday to Friday, 8:00 AM to 5:00 PM.']);
+});
+
+test('help page displays an unconfirmed land area without changing the map', function () {
+    $this->get(route('portal.information'))
         ->assertSeeInOrder(['Land Area', 'To be confirmed'])
         ->assertSee('src="https://maps.google.com/maps?q=Barangay%20Anabu%20I-G%2C%20Imus%2C%20Cavite&amp;output=embed"', false);
 });

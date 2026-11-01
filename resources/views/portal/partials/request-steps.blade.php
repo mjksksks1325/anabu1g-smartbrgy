@@ -6,4 +6,5 @@
         @endforeach
     </ol>
     <p class="steps-summary"><span data-portal-i18n="Step :current of :total" data-portal-params="{{ json_encode(['current' => $current, 'total' => count($requestSteps)]) }}">{{ __('Step :current of :total', ['current' => $current, 'total' => count($requestSteps)]) }}</span>: <span data-portal-i18n="{{ $title }}">{{ __($title) }}</span></p>
+    <div class="v2-progress" aria-hidden="true"><span style="width: {{ $current / count($requestSteps) * 100 }}%"></span></div>
 </div>

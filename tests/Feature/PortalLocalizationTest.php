@@ -102,22 +102,25 @@ test('validation and account errors use the resident language', function (string
     'Filipino' => ['fil', 'Kailangan ang email.', 'Hindi tama ang inilagay na detalye ng resident account o hindi magamit ng account ang online services sa ngayon.'],
 ]);
 
-test('resident header uses concise localized menu labels while keeping descriptive accessible links', function (string $locale, string $request, string $requirements, string $help, string $description) {
+test('resident header uses concise localized menu labels while keeping descriptive accessible links', function (string $locale, string $request, string $help, string $description, string $helpDescription) {
     $this->withCookie(PortalLocalization::COOKIE, $locale);
     foreach (['home', 'portal.login', 'portal.register', 'portal.information'] as $route) {
         $html = new DOMDocument;
         @$html->loadHTML('<?xml encoding="utf-8" ?>'.$this->get(route($route))->assertOk()->getContent());
         $xpath = new DOMXPath($html);
-        foreach (['request' => $request, 'requirements' => $requirements, 'help' => $help] as $key => $label) {
+        foreach (['request' => $request, 'help' => $help] as $key => $label) {
             expect($xpath->evaluate('string(//nav[@id="site-nav"]//span[@data-portal-i18n="portal.navigation.'.$key.'"])'))->toBe($label);
             expect(PortalLocalization::catalogs()[$locale]['portal.navigation.'.$key])->toBe($label);
         }
         expect($xpath->evaluate('string(//nav[@id="site-nav"]//a[@data-portal-i18n-aria-label="Request a document"]/@aria-label)'))->toBe($description);
         expect($xpath->evaluate('string(//nav[@id="site-nav"]//a[@data-portal-i18n-aria-label="Request a document"]/@href)'))->toBe(route('portal.request.create'));
+        expect($xpath->evaluate('string(//nav[@id="site-nav"]//a[@data-portal-i18n-aria-label="Help, requirements and fees"]/@aria-label)'))->toBe($helpDescription);
+        expect($xpath->evaluate('string(//nav[@id="site-nav"]//a[@data-portal-i18n-aria-label="Help, requirements and fees"]/@href)'))->toBe(route('portal.information'));
+        expect($xpath->query('//nav[@id="site-nav"]//span[@data-portal-i18n="portal.navigation.requirements"]'))->toHaveCount(0);
     }
 })->with([
-    'English' => ['en', 'Request a document', 'Requirements and fees', 'Get help', 'Request a document'],
-    'Filipino' => ['fil', 'Mag-request', 'Kailangan at bayarin', 'Tulong', 'Mag-request ng dokumento'],
+    'English' => ['en', 'Request a document', 'Get help', 'Request a document', 'Help, requirements and fees'],
+    'Filipino' => ['fil', 'Mag-request', 'Tulong', 'Mag-request ng dokumento', 'Tulong, mga kailangan at bayarin'],
 ]);
 
 test('activation account setup login requests profile and logout retain language and stored identifiers', function (string $locale) {

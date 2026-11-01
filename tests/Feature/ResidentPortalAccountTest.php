@@ -333,6 +333,72 @@ test('request history marks requests that need resident attention', function () 
         ->assertSeeInOrder(['REQ-RELEASED', 'status status-done'], false);
 });
 
+test('request history links each request to its status page', function () {
+    $user = User::factory()->resident()->create();
+    portalRequestFor($user->resident, 'REQ-2026-LINKED');
+
+    $this->actingAs($user, 'resident')->get(route('portal.account'))
+        ->assertOk()
+        ->assertSee('href="'.route('portal.account.requests.show', 'REQ-2026-LINKED').'"', false);
+});
+
+test('request status page shows the current stage, collection steps and staff remarks without stage dates', function () {
+    $user = User::factory()->resident()->create();
+    portalRequestFor($user->resident, 'REQ-2026-TRACK1')->update([
+        'status' => 'ready_for_release', 'purpose' => 'Employment', 'remarks' => 'Bring the <b>original</b> receipt.',
+    ]);
+
+    $response = $this->actingAs($user, 'resident')->get(route('portal.account.requests.show', 'REQ-2026-TRACK1'))
+        ->assertOk()
+        ->assertViewIs('portal.request-status')
+        ->assertSee('REQ-2026-TRACK1')
+        ->assertSee('Employment')
+        ->assertSee('PHP 25.00')
+        ->assertSeeInOrder(['>How to collect</span>', 'REQ-2026-TRACK1', '>Barangay reminders</span>', 'Bring the &lt;b&gt;original&lt;/b&gt; receipt.'], false)
+        ->assertDontSee('<b>original</b>', false)
+        ->assertSee('The system records only the date you submitted, so the stages have no dates.');
+
+    $document = new DOMDocument;
+    @$document->loadHTML($response->getContent());
+    $xpath = new DOMXPath($document);
+    $stages = $xpath->query('//ol[@class="v2-stages"]/li');
+    expect(collect($stages)->map(fn (DOMElement $stage): string => $stage->getAttribute('data-stage'))->all())
+        ->toBe(['pending', 'processing', 'approved', 'ready_for_release', 'released']);
+    expect($xpath->query('//ol[@class="v2-stages"]/li[contains(@class, "is-done")]'))->toHaveCount(3);
+    expect($xpath->query('//ol[@class="v2-stages"]/li[@aria-current="step"]')->item(0)->getAttribute('data-stage'))->toBe('ready_for_release');
+    expect($xpath->query('//ol[@class="v2-stages"]//time'))->toHaveCount(0);
+});
+
+test('request status page shows a rejection reason and stops the stages at not approved', function () {
+    $user = User::factory()->resident()->create();
+    portalRequestFor($user->resident, 'REQ-2026-REJECT')->update(['status' => 'rejected', 'rejection_reason' => 'Kulang ang <i>detalye</i>.']);
+
+    $response = $this->actingAs($user, 'resident')->get(route('portal.account.requests.show', 'REQ-2026-REJECT'))
+        ->assertOk()
+        ->assertSeeInOrder(['>Reason</span>', 'Kulang ang &lt;i&gt;detalye&lt;/i&gt;.'], false)
+        ->assertDontSee('<i>detalye</i>', false);
+
+    $document = new DOMDocument;
+    @$document->loadHTML($response->getContent());
+    $stages = (new DOMXPath($document))->query('//ol[@class="v2-stages"]/li');
+    expect(collect($stages)->map(fn (DOMElement $stage): string => $stage->getAttribute('data-stage'))->all())->toBe(['pending', 'rejected']);
+});
+
+test('request status page is limited to the signed in resident and its own requests', function () {
+    $user = User::factory()->resident()->create();
+    $other = User::factory()->resident()->create();
+    portalRequestFor($other->resident, 'REQ-2026-OTHER1');
+    $url = route('portal.account.requests.show', 'REQ-2026-OTHER1');
+
+    $this->get($url)->assertRedirect(route('portal.login'));
+    $this->actingAs(User::factory()->superAdmin()->create())->get($url)->assertRedirect(route('portal.login'));
+    $this->actingAs($user, 'resident')->get($url)->assertNotFound()->assertDontSee('REQ-2026-OTHER1');
+    $this->actingAs($user, 'resident')->get(route('portal.account.requests.show', 'REQ-2026-MISSING'))->assertNotFound();
+    $user->resident->update(['status' => 'inactive']);
+    portalRequestFor($user->resident, 'REQ-2026-HELD01');
+    $this->actingAs($user->fresh(), 'resident')->get(route('portal.account.requests.show', 'REQ-2026-HELD01'))->assertForbidden();
+});
+
 test('request history offers a first request when the resident has none', function () {
     $this->actingAs(User::factory()->resident()->create(), 'resident')->get(route('portal.account'))
         ->assertOk()->assertSee('Wala pang request')->assertDontSee('class="request-list"', false);

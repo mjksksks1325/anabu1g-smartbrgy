@@ -1,6 +1,19 @@
 <?php
 
 return [
+    /*
+     * Resident-facing wording for each document request status, in the order a request moves
+     * through them. "rejected" is a stopping state and is shown apart from the stages.
+     */
+    'request_statuses' => [
+        'pending' => ['label' => 'Received', 'note' => 'Natanggap na. Hinihintay pa ang review ng barangay staff.'],
+        'processing' => ['label' => 'Processing', 'note' => 'Pinoproseso na ng barangay staff.'],
+        'approved' => ['label' => 'Approved', 'note' => 'Aprubado na. Hintaying maging Ready for release bago pumunta sa Barangay Hall.'],
+        'ready_for_release' => ['label' => 'Ready for release', 'note' => 'Puwede nang kunin sa Barangay Hall.'],
+        'released' => ['label' => 'Released', 'note' => 'Nakuha na ang dokumento.'],
+        'rejected' => ['label' => 'Not approved', 'note' => 'Hindi naaprubahan ang request.'],
+    ],
+
     'officials' => array_fill(0, 4, [
         'photo_path' => null,
         'full_name' => 'Barangay Official',

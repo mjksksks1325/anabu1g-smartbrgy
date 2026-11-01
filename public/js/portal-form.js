@@ -106,9 +106,10 @@ function newRequest(recordHistory = true) {
     portalConfirmation = null;
     document.getElementById('portal-form-error').hidden = true;
 
-    document.querySelectorAll('.cert-btn').forEach(b =>
-        b.classList.remove('selected')
-    );
+    document.querySelectorAll('.cert-btn').forEach(b => {
+        b.classList.remove('selected');
+        b.setAttribute('aria-pressed', 'false');
+    });
 
     document.getElementById('btn-proceed-doc').disabled = true;
     document.getElementById('doc-selected-info').style.display = 'none';

@@ -11,12 +11,12 @@ test('portal home shows community content without the document request form', fu
         ->assertOk()
         ->assertViewIs('portal.index')
         ->assertSee('images/barangay-hall-anabu-1g.jpg')
-        ->assertSee('Mabilis. Malinaw. Maaasahang serbisyo.')
+        ->assertSee('What do you need today?')
         ->assertSee('Check status')
-        ->assertSee('Secure resident portal')
         ->assertSee('GOVPH')
         ->assertSee('css/figma-portal.css')
-        ->assertSee('<body class="has-hero-header">', false)
+        ->assertSee('css/portal-v2.css')
+        ->assertSee('<body>', false)
         ->assertSee('data-resident-theme aria-pressed="false" aria-label="Dark mode"', false)
         ->assertSee('theme-icon-moon', false)
         ->assertSee('theme-icon-sun', false)
@@ -44,39 +44,72 @@ test('officials navigation is available to guests and residents and marks its cu
         ->assertSee($officialsLink, false);
 });
 
-test('guest hero status opens resident sign in and signed in status opens request history', function () {
-    $this->get(route('home'))
-        ->assertSee('href="'.route('portal.login').'"><span data-portal-i18n="Check status">Check status', false);
+test('home status task opens resident sign in for guests and the latest request for residents', function () {
+    $statusTask = function () {
+        $document = new DOMDocument;
+        @$document->loadHTML($this->get(route('home'))->assertOk()->getContent());
 
-    $this->actingAs(User::factory()->resident()->create(), 'resident')
-        ->get(route('home'))
-        ->assertSee('href="'.route('portal.account').'"><span data-portal-i18n="Check status">Check status', false);
+        return (new DOMXPath($document))->query('//a[@data-home-status-task]')->item(0);
+    };
+
+    expect($statusTask()->getAttribute('href'))->toBe(route('portal.login'));
+    expect($statusTask()->textContent)->toContain('Check status', 'Log in to see the status of your requests.');
+
+    $resident = User::factory()->resident()->create();
+    $this->actingAs($resident, 'resident');
+    expect($statusTask()->getAttribute('href'))->toBe(route('portal.account'));
+    expect($statusTask()->textContent)->toContain('No requests yet');
+
+    $resident->resident->documentRequests()->create([
+        'reference_code' => 'REQ-2026-OLDER1', 'source' => 'online', 'document_type' => 'Barangay Clearance',
+        'full_name' => $resident->resident->full_name, 'address' => $resident->resident->address, 'status' => 'released',
+    ])->forceFill(['created_at' => now()->subDay()])->save();
+    $resident->resident->documentRequests()->create([
+        'reference_code' => 'REQ-2026-LATEST', 'source' => 'online', 'document_type' => 'Certificate of Residency',
+        'full_name' => $resident->resident->full_name, 'address' => $resident->resident->address, 'status' => 'ready_for_release',
+    ]);
+    $task = $statusTask();
+    expect($task->textContent)->toContain('Latest request:', 'Certificate of Residency', 'Ready for release')->not->toContain('Barangay Clearance');
+    expect((new DOMXPath($task->ownerDocument))->query('.//*[@data-status="ready_for_release"]', $task))->toHaveCount(1);
 });
 
-test('public portal shows community information and usable service links', function () {
+test('home greets a signed in resident by first name without showing other private details', function () {
+    $resident = User::factory()->resident()->create();
+
+    $this->actingAs($resident, 'resident')->get(route('home'))
+        ->assertOk()
+        ->assertSee('Good day, '.$resident->resident->first_name.'.')
+        ->assertDontSee($resident->resident->resident_number);
+});
+
+test('public portal keeps community information one tap from home and usable service links', function () {
     $this->get(route('home'))
+        ->assertOk()
+        ->assertSee('id="announcements"', false)
+        ->assertSee('id="quick-links"', false)
+        ->assertSee(route('portal.request.create'), false)
+        ->assertSee(route('portal.information').'#requirements', false)
+        ->assertSee(route('portal.information').'#contacts', false)
+        ->assertSee(route('portal.information').'#office', false)
+        ->assertDontSee('id="population"', false);
+
+    $this->get(route('portal.information'))
         ->assertOk()
         ->assertSee('id="population"', false)
         ->assertSee('2,345')
         ->assertSee('2024 Census of Population')
-        ->assertSee('id="announcements"', false)
-        ->assertSee('Follow the Barangay Anabu I-G Facebook account for announcements.')
-        ->assertSee('href="https://www.facebook.com/barangayanabu.ig"', false)
-        ->assertSee('Open the Barangay Facebook account')
         ->assertSee('id="contacts"', false)
+        ->assertSee('tel:911', false)
         ->assertSee('tel:+63468889911', false)
         ->assertSee('tel:+639985985601', false)
         ->assertSee('tel:+639155283256', false)
-        ->assertSee('id="location"', false)
-        ->assertSee('id="quick-links"', false)
-        ->assertSee(route('portal.request.create'), false)
-        ->assertSee(route('portal.information').'#requirements', false);
+        ->assertSee('id="location"', false);
 });
 
-test('portal home lists confirmed document fees and flags the business clearance fee for confirmation', function () {
-    $this->get(route('home'))
+test('requirements page lists confirmed document fees and flags the business clearance fee for confirmation', function () {
+    $this->get(route('portal.information'))
         ->assertOk()
-        ->assertSeeInOrder(['>Documents and fees</span>', '>Business Clearance fee: To be confirmed</span>', '>Barangay Clearance</span>', '>PHP 25.00</span>', '>Certificate of Residency</span>', '>PHP 25.00</span>', '>Certificate of Indigency</span>', '>Free</span>', '>Business Clearance</span>', '>PHP 200.00</span>'], false);
+        ->assertSeeInOrder(['>Barangay Clearance</span>', '>PHP 25.00</span>', '>Certificate of Residency</span>', '>PHP 25.00</span>', '>Certificate of Indigency</span>', '>Free</span>', '>Business Clearance</span>', '>PHP 200.00</span>', '>To be confirmed</span>'], false);
 });
 
 test('document request page renders the terms when a resident is signed in', function () {
@@ -270,11 +303,9 @@ test('simultaneous employee access does not widen resident request status access
         ->assertOk()->assertSee('REQ-OTHER-RESIDENT');
 });
 
-it('overlays the header on the home hero photo and restores it after scrolling', function () {
+it('keeps the home header solid and shows the barangay hall photo beside the tasks', function () {
     $this->get(route('home'))->assertOk()
-        ->assertSee('has-hero-header', false)
-        ->assertSee("classList.toggle('hero-header-scrolled'", false);
-
-    $this->get(route('portal.information'))->assertOk()
-        ->assertDontSee('has-hero-header', false);
+        ->assertDontSee('has-hero-header', false)
+        ->assertDontSee("classList.toggle('hero-header-scrolled'", false)
+        ->assertSeeInOrder(['class="v2-tasks"', 'class="v2-hall-photo"'], false);
 });

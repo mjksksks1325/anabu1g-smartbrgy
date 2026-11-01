@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="{{ asset('css/portal.css') }}?v={{ filemtime(public_path('css/portal.css')) }}">
 <link rel="stylesheet" href="{{ asset('css/figma-portal.css') }}?v={{ filemtime(public_path('css/figma-portal.css')) }}">
 <link rel="stylesheet" href="{{ asset('css/portal-localization.css') }}?v={{ filemtime(public_path('css/portal-localization.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/portal-v2.css') }}?v={{ filemtime(public_path('css/portal-v2.css')) }}">
 <script>window.PORTAL_I18N = {{ Illuminate\Support\Js::from(['locale' => app()->getLocale(), 'url' => route('portal.locale'), 'csrfUrl' => route('portal.csrf-token')]) }};</script>
 <script src="{{ route('portal.translations') }}"></script>
 <script src="{{ asset('js/portal-localization.js') }}?v={{ filemtime(public_path('js/portal-localization.js')) }}"></script>
@@ -73,7 +74,8 @@
         <section class="site-footer-col" aria-labelledby="footer-help-title">
             <h2 id="footer-help-title"><span data-portal-i18n="Tulong">{{ __('Tulong') }}</span></h2>
             <p><span data-portal-i18n="Para sa problema sa account o record, pumunta sa Barangay Hall at dalhin ang valid ID.">{{ __('Para sa problema sa account o record, pumunta sa Barangay Hall at dalhin ang valid ID.') }}</span></p>
-            <p><a href="{{ route('home') }}#office"><span data-portal-i18n="Address at detalye ng Barangay Hall">{{ __('Address at detalye ng Barangay Hall') }}</span></a></p>
+            <p><a href="{{ route('portal.information') }}#office"><span data-portal-i18n="Address at detalye ng Barangay Hall">{{ __('Address at detalye ng Barangay Hall') }}</span></a></p>
+            <p><a href="{{ route('portal.information') }}#contacts"><span data-portal-i18n="Emergency hotlines">{{ __('Emergency hotlines') }}</span></a></p>
             <p><span data-portal-i18n="Emergency:">{{ __('Emergency:') }}</span> <a href="tel:911">911</a></p>
         </section>
         <nav class="site-footer-col" id="quick-links" aria-labelledby="quick-links-title">

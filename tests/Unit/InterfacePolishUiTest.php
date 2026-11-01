@@ -3,26 +3,26 @@
 test('resident portal presents its current services design', function () {
     $portal = file_get_contents(dirname(__DIR__, 2).'/resources/views/portal/index.blade.php');
     $layout = file_get_contents(dirname(__DIR__, 2).'/resources/views/layouts/portal.blade.php');
-    $styles = file_get_contents(dirname(__DIR__, 2).'/public/css/figma-portal.css');
+    $styles = file_get_contents(dirname(__DIR__, 2).'/public/css/portal-v2.css');
 
     expect($layout)->toContain("asset('css/figma-portal.css')");
+    expect(strpos($layout, "asset('css/portal-v2.css')"))->toBeGreaterThan(strpos($layout, "asset('css/figma-portal.css')"));
     expect($portal)
         ->toContain("@extends('layouts.portal')")
-        ->toContain('class="portal-hero"')
-        ->toContain('class="portal-service-grid"')
-        ->toContain("class=\"btn btn-green\" href=\"{{ route('portal.request.create') }}\"")
+        ->toContain('class="v2-tasks"')
+        ->toContain("class=\"v2-task v2-task-primary\" href=\"{{ route('portal.request.create') }}\"")
         ->toContain("asset('images/barangay-hall-anabu-1g.jpg')")
         ->toContain('Request a document')
-        ->toContain('My requests')
-        ->toContain('Requirements &amp; fees')
-        ->toContain('Get help')
+        ->toContain('Check status')
+        ->toContain('Requirements and fees')
+        ->toContain('Emergency hotlines')
         ->not->toContain('Report an incident')
         ->not->toContain('<h2>ðŸ“‹ Mga Tuntunin at Kundisyon</h2>');
     expect($styles)
-        ->toContain('.portal-hero {')
-        ->toContain('.portal-service-card {')
-        ->toContain('.portal-service-grid { grid-template-columns: 1fr; }')
-        ->toContain('var(--civic-blue)');
+        ->toContain('--v2-blue-600: #0754ae;')
+        ->toContain('.v2-task {')
+        ->toContain('.v2-tasks { grid-template-columns: minmax(0, 1fr); }')
+        ->toContain('.v2-hall-photo { display: none; }');
 });
 
 test('admin interface is light first with consistent professional surfaces', function () {

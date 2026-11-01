@@ -1,15 +1,5 @@
-@php
-    $statusDetails = [
-        'pending' => ['Received', 'Natanggap na. Hinihintay pa ang review ng barangay staff.', ''],
-        'processing' => ['Processing', 'Pinoproseso na ng barangay staff.', 'status-progress'],
-        'approved' => ['Approved', 'Aprubado na. Hintaying maging Ready for release bago pumunta sa Barangay Hall.', 'status-progress'],
-        'ready_for_release' => ['Ready for release', 'Puwede nang kunin sa Barangay Hall.', 'status-ready'],
-        'released' => ['Released', 'Nakuha na ang dokumento.', 'status-done'],
-        'rejected' => ['Not approved', 'Hindi naaprubahan ang request.', 'status-rejected'],
-    ];
-    [$statusLabel, $statusNote, $statusClass] = $statusDetails[$item->status] ?? [ucfirst(str_replace('_', ' ', $item->status)), '', ''];
-@endphp
-<li @class(['request-item', 'is-ready' => $item->status === 'ready_for_release', 'is-rejected' => $item->status === 'rejected']) data-request-id="{{ $item->id }}" data-request-version="{{ $item->historyVersion() }}">
+@php($statusNote = config('portal.request_statuses.'.$item->status.'.note'))
+<li @class(['request-item', 'is-ready' => $item->status === 'ready_for_release', 'is-rejected' => $item->status === 'rejected']) data-status="{{ $item->status }}" data-request-id="{{ $item->id }}" data-request-version="{{ $item->historyVersion() }}">
     <div class="request-item-head">
         <div>
             <h2><span data-portal-i18n="{{ $item->document_type }}">{{ __($item->document_type) }}</span></h2>
@@ -18,7 +8,7 @@
                 <div><dt><span data-portal-i18n="Na-submit">{{ __('Na-submit') }}</span></dt><dd><time datetime="{{ $item->created_at->toDateString() }}">{{ $item->created_at->format('M j, Y') }}</time></dd></div>
             </dl>
         </div>
-        <p class="status {{ $statusClass }}"><span class="sr-only"><span data-portal-i18n="Status:">{{ __('Status:') }}</span> </span><span data-portal-i18n="{{ $statusLabel }}">{{ __($statusLabel) }}</span></p>
+        @include('portal.partials.request-status-pill', ['status' => $item->status])
     </div>
     @if($statusNote)<p class="request-status-note"><span data-portal-i18n="{{ $statusNote }}">{{ __($statusNote) }}</span></p>@endif
 
@@ -42,4 +32,5 @@
     @if($item->remarks)
         <div class="request-callout request-callout-remarks"><strong><span data-portal-i18n="Paalala mula sa barangay">{{ __('Paalala mula sa barangay') }}</span></strong>{{ $item->remarks }}</div>
     @endif
+    <p class="request-item-actions"><a class="btn btn-outline btn-small" href="{{ route('portal.account.requests.show', $item->reference_code) }}"><span data-portal-i18n="Tingnan ang detalye">{{ __('Tingnan ang detalye') }}</span><span class="sr-only"> {{ $item->reference_code }}</span></a></p>
 </li>

@@ -4,9 +4,8 @@
         <ul class="site-nav-list">
             <li><a href="{{ route('home') }}" @if(request()->routeIs('home')) aria-current="page" @endif><span data-portal-i18n="Home">{{ __('Home') }}</span></a></li>
             <li><a href="{{ route('portal.request.create') }}" data-portal-i18n-aria-label="Request a document" aria-label="{{ __('Request a document') }}" @if(request()->routeIs('portal.request.create')) aria-current="page" @endif><span data-portal-i18n="portal.navigation.request">{{ __('portal.navigation.request') }}</span></a></li>
-            <li><a href="{{ $residentSignedIn ? route('portal.account') : route('portal.login') }}" @if(request()->routeIs('portal.account')) aria-current="page" @endif><span data-portal-i18n="My requests">{{ __('My requests') }}</span></a></li>
-            <li><a href="{{ route('portal.information') }}#requirements" data-portal-i18n-aria-label="Requirements and fees" aria-label="{{ __('Requirements and fees') }}" @if(request()->routeIs('portal.information')) aria-current="page" @endif><span data-portal-i18n="portal.navigation.requirements">{{ __('portal.navigation.requirements') }}</span></a></li>
-            <li><a href="{{ route('portal.information') }}#help"><span data-portal-i18n="portal.navigation.help">{{ __('portal.navigation.help') }}</span></a></li>
+            <li><a href="{{ $residentSignedIn ? route('portal.account') : route('portal.login') }}" @if(request()->routeIs('portal.account', 'portal.account.requests.show')) aria-current="page" @endif><span data-portal-i18n="My requests">{{ __('My requests') }}</span></a></li>
+            <li><a href="{{ route('portal.information') }}" data-portal-i18n-aria-label="Help, requirements and fees" aria-label="{{ __('Help, requirements and fees') }}" @if(request()->routeIs('portal.information')) aria-current="page" @endif><span data-portal-i18n="portal.navigation.help">{{ __('portal.navigation.help') }}</span></a></li>
             <li><a href="{{ route('portal.officials') }}" @if(request()->routeIs('portal.officials')) aria-current="page" @endif><span data-portal-i18n="Officials">{{ __('Officials') }}</span></a></li>
         </ul>
         <ul class="site-nav-account">
