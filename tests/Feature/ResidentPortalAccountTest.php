@@ -279,7 +279,7 @@ test('request history polling reflects administrative status changes and escapes
 
     $response->assertOk()->assertJsonPath("items.{$documentRequest->id}.version", $documentRequest->fresh()->historyVersion());
     expect($response->json("items.{$documentRequest->id}.html"))
-        ->toContain('Approved', '&lt;script&gt;unsafe()&lt;/script&gt;')
+        ->toContain('Approved', 'There is a note from the barangay.')
         ->not->toContain('<script>unsafe()</script>');
 });
 
@@ -296,7 +296,7 @@ test('request history polling requires an eligible resident account and a bounde
     $this->getJson($url)->assertForbidden();
 });
 
-test('request history explains each status, rejection reason, and collection steps', function () {
+test('request history summarises each status and the status page explains rejection reasons and collection steps', function () {
     $user = User::factory()->resident()->create();
     portalRequestFor($user->resident, 'REQ-READY')->update(['status' => 'ready_for_release']);
     portalRequestFor($user->resident, 'REQ-REJECTED')->update(['status' => 'rejected', 'rejection_reason' => 'Kulang ang <b>detalye</b> ng request.']);
@@ -304,10 +304,18 @@ test('request history explains each status, rejection reason, and collection ste
 
     $this->actingAs($user, 'resident')->get(route('portal.account'))
         ->assertOk()
-        ->assertSeeInOrder(['REQ-READY', '>Ready for release</span>', '>How to collect</span>', '>Bring a valid ID and reference number</span> REQ-READY'], false)
-        ->assertSeeInOrder(['REQ-REJECTED', '>Not approved</span>', '>Reason</span>', 'Kulang ang &lt;b&gt;detalye&lt;/b&gt; ng request.'], false)
-        ->assertSeeInOrder(['REQ-PENDING', 'Received', 'Received. Waiting for barangay staff to review your request.'])
+        ->assertSeeInOrder(['REQ-READY', 'Ready to collect at the Barangay Hall.', '>Ready for release</span>'], false)
+        ->assertSeeInOrder(['REQ-REJECTED', 'See the reason in the request details.', '>Not approved</span>'], false)
+        ->assertSeeInOrder(['REQ-PENDING', '>Received</span>'], false)
+        ->assertDontSee('Kulang ang', false);
+
+    $this->get(route('portal.account.requests.show', 'REQ-READY'))
+        ->assertSeeInOrder(['>How to collect</span>', '>Bring a valid ID and reference number</span>', 'REQ-READY'], false);
+    $this->get(route('portal.account.requests.show', 'REQ-REJECTED'))
+        ->assertSeeInOrder(['>Reason</span>', 'Kulang ang &lt;b&gt;detalye&lt;/b&gt; ng request.'], false)
         ->assertDontSee('<b>detalye</b>', false);
+    $this->get(route('portal.account.requests.show', 'REQ-PENDING'))
+        ->assertSee('Received. Waiting for barangay staff to review your request.');
 });
 
 test('a rejected login shows its message beside the email field', function () {

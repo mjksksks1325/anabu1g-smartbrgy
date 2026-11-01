@@ -283,3 +283,23 @@ test('the ID card reuses its private photo while keeping its identification fiel
         ->assertSee(route('staff.issued-certificates.photo', $certificate))->assertSee('Resident photo at issuance')
         ->assertSee('City of Imus footer logo')->assertSee('Certificate authenticity QR code')->assertDontSeeText('IDPRINTVERIFY');
 });
+
+test('certificate QR verification shows an authentic result with its details in the resident portal layout', function () {
+    $this->travelTo('2026-10-03 09:00:00');
+    $certificate = IssuedCertificate::query()->create([
+        'certificate_number' => 'CERT-AUTHENTIC-TEST',
+        'verification_code' => 'AUTHENTICTESTCODE',
+        'certificate_type' => CertificateType::CertificateOfResidency->value,
+        'resident_name' => 'Verified Resident Name',
+        'issued_at' => now(),
+        'expires_on' => '2030-01-01',
+    ]);
+
+    $this->get(route('certificate.verify', $certificate->verification_code))
+        ->assertOk()
+        ->assertSee('css/portal-v2.css')
+        ->assertSee('data-result="authentic"', false)
+        ->assertSee('Authentic Barangay Document')
+        ->assertSee('data-portal-language-form', false)
+        ->assertSeeInOrder(['Verified Resident Name', 'CERT-AUTHENTIC-TEST', 'AUTHENTICTESTCODE']);
+});

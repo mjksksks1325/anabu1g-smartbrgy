@@ -1,8 +1,7 @@
 @extends('layouts.portal')
 @section('title', __('Request a document'))
 @section('band')
-<x-portal.page-band title="Request a document">
-    <p><span data-portal-i18n="Limang hakbang: basahin ang terms, piliin ang dokumento, i-check ang details, mag-upload ng valid ID kung gusto, at i-review bago i-submit.">{{ __('Limang hakbang: basahin ang terms, piliin ang dokumento, i-check ang details, mag-upload ng valid ID kung gusto, at i-review bago i-submit.') }}</span></p>
+<x-portal.page-band title="Request a document" class="page-band-compact">
     <p class="page-band-meta"><span data-portal-i18n="May reference number na?">{{ __('May reference number na?') }}</span> <button type="button" class="btn-link" onclick="showScreen('screen-status')"><span data-portal-i18n="I-check ang status">{{ __('I-check ang status') }}</span></button></p>
 </x-portal.page-band>
 @endsection
@@ -75,11 +74,14 @@
         <p><span data-portal-i18n="Isang dokumento bawat request.">{{ __('Isang dokumento bawat request.') }}</span></p>
       </div>
       <div class="card-body">
-        <p class="unconfirmed small" style="margin-bottom:16px;"><strong><span data-portal-i18n="Hindi pa kumpirmado:">{{ __('Hindi pa kumpirmado:') }}</span></strong> <span data-portal-i18n="Business Clearance fee at processing time. Regular Barangay ID ang fee na nakalista. Sa Barangay Hall babayaran ang fee.">{{ __('Business Clearance fee at processing time. Regular Barangay ID ang fee na nakalista. Sa Barangay Hall babayaran ang fee.') }}</span></p>
-        <div class="cert-grid" id="cert-type-grid">
+                <div class="cert-grid" id="cert-type-grid">
           @foreach($services as $service)
-          <button type="button" class="cert-btn" aria-pressed="false" onclick="selectDoc('{{ $service->portalCode() }}',this)"><span class="label"><span data-portal-i18n="{{ $service->value }}">{{ __($service->value) }}</span></span><span class="fee"><span data-portal-i18n="Fee:">{{ __('Fee:') }}</span> <span data-portal-i18n="{{ $service->feeLabel() }}">{{ __($service->feeLabel()) }}</span>@if($service === App\CertificateType::BusinessClearance) <span class="tag-unconfirmed"><span data-portal-i18n="To be confirmed">{{ __('To be confirmed') }}</span></span>@endif</span><span class="cert-validity">@if($service->validityPeriodInMonths() === 12)<span data-portal-i18n="Valid nang 1 taon mula pagka-issue">{{ __('Valid nang 1 taon mula pagka-issue') }}</span>@else<span data-portal-i18n="Valid nang :months buwan mula pagka-issue" data-portal-params="{{ json_encode(['months' => $service->validityPeriodInMonths()]) }}">{{ __('Valid nang :months buwan mula pagka-issue', ['months' => $service->validityPeriodInMonths()]) }}</span>@endif</span><span class="cert-selected"><span data-portal-i18n="Napili">{{ __('Napili') }}</span></span><span class="cert-check" aria-hidden="true"></span></button>
+          <button type="button" class="cert-btn" aria-pressed="false" onclick="selectDoc('{{ $service->portalCode() }}',this)"><span class="label"><span data-portal-i18n="{{ $service->value }}">{{ __($service->value) }}</span></span><span class="fee"><span class="sr-only"><span data-portal-i18n="Fee:">{{ __('Fee:') }}</span> </span><span data-portal-i18n="{{ $service->feeLabel() }}">{{ __($service->feeLabel()) }}</span>@if($service === App\CertificateType::BusinessClearance) <span class="tag-unconfirmed"><span data-portal-i18n="To be confirmed">{{ __('To be confirmed') }}</span></span>@endif</span><span class="cert-validity">@if($service->validityPeriodInMonths() === 12)<span data-portal-i18n="Valid nang 1 taon mula pagka-issue">{{ __('Valid nang 1 taon mula pagka-issue') }}</span>@else<span data-portal-i18n="Valid nang :months buwan mula pagka-issue" data-portal-params="{{ json_encode(['months' => $service->validityPeriodInMonths()]) }}">{{ __('Valid nang :months buwan mula pagka-issue', ['months' => $service->validityPeriodInMonths()]) }}</span>@endif</span><span class="cert-selected"><span aria-hidden="true">&#10003;</span> <span data-portal-i18n="Napili">{{ __('Napili') }}</span></span><span class="cert-check" aria-hidden="true"></span></button>
           @endforeach
+        </div>
+        <div class="v2-callout v2-callout-warning">
+          <svg class="v2-callout-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17h.01"/></svg>
+          <p><strong><span data-portal-i18n="Hindi pa kumpirmado:">{{ __('Hindi pa kumpirmado:') }}</span></strong> <span data-portal-i18n="Business Clearance fee at processing time. Regular Barangay ID ang fee na nakalista. Sa Barangay Hall babayaran ang fee.">{{ __('Business Clearance fee at processing time. Regular Barangay ID ang fee na nakalista. Sa Barangay Hall babayaran ang fee.') }}</span></p>
         </div>
         <p id="doc-selected-info" class="selected-document" style="display:none;" aria-live="polite"><span data-portal-i18n="Napili:">{{ __('Napili:') }}</span> <strong id="doc-sel-label"></strong> &middot; <span id="doc-sel-fee"></span></p>
         <div class="btn-row btn-row-split">
@@ -264,7 +266,7 @@
     <section class="v2-card" aria-labelledby="request-progress-title">
       <h2 id="request-progress-title"><span data-portal-i18n="Mga hakbang">{{ __('Mga hakbang') }}</span></h2>
       <ol class="v2-steps">
-        @foreach(['Terms', 'Dokumento', 'Details', 'Valid ID', 'Review'] as $index => $label)
+        @foreach(['Terms', 'Dokumento', 'Layunin', 'Litrato ng ID', 'I-review'] as $index => $label)
           <li data-step="{{ $index + 1 }}" @class(['is-current' => $index === 0]) @if($index === 0) aria-current="step" @endif><span><span data-portal-i18n="{{ $label }}">{{ __($label) }}</span><span class="v2-step-now" @if($index !== 0) hidden @endif><span data-portal-i18n="Nandito ka">{{ __('Nandito ka') }}</span></span></span></li>
         @endforeach
       </ol>

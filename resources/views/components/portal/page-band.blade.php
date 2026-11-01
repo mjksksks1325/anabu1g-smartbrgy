@@ -3,20 +3,18 @@
     'titleId' => 'page-title',
     'parent' => null,
     'parentUrl' => null,
+    'eyebrow' => null,
 ])
 
 <div {{ $attributes->class(['page-band']) }}>
     <div class="page-band-inner">
         <div class="page-band-text">
-            <nav class="breadcrumb" data-portal-i18n-aria-label="Breadcrumb" aria-label="{{ __('Breadcrumb') }}">
-                <ol>
-                    <li><a href="{{ route('home') }}"><span data-portal-i18n="Home">{{ __('Home') }}</span></a></li>
-                    @if($parent)
-                        <li><a href="{{ $parentUrl }}"><span data-portal-i18n="{{ $parent }}">{{ __($parent) }}</span></a></li>
-                    @endif
-                    <li aria-current="page"><span data-portal-i18n="{{ $title }}">{{ __($title) }}</span></li>
-                </ol>
-            </nav>
+            @if($parent)
+                <a class="v2-back" href="{{ $parentUrl }}"><span aria-hidden="true">&#8249;</span> <span data-portal-i18n="{{ $parent }}">{{ __($parent) }}</span></a>
+            @endif
+            @if($eyebrow)
+                <p class="v2-page-eyebrow"><span data-portal-i18n="{{ $eyebrow }}">{{ __($eyebrow) }}</span></p>
+            @endif
             <h1 id="{{ $titleId }}"><span data-portal-i18n="{{ $title }}">{{ __($title) }}</span></h1>
             @if($slot->isNotEmpty())
                 <div class="page-band-lead">{{ $slot }}</div>

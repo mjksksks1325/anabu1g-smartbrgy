@@ -1,36 +1,18 @@
-@php($statusNote = config('portal.request_statuses.'.$item->status.'.note'))
+@php
+    $rowHint = match (true) {
+        $item->status === 'ready_for_release' => 'Puwede nang kunin sa Barangay Hall.',
+        $item->status === 'rejected' => 'Tingnan ang dahilan sa detalye ng request.',
+        filled($item->remarks) => 'May paalala mula sa barangay.',
+        default => null,
+    };
+@endphp
 <li @class(['request-item', 'is-ready' => $item->status === 'ready_for_release', 'is-rejected' => $item->status === 'rejected']) data-status="{{ $item->status }}" data-request-id="{{ $item->id }}" data-request-version="{{ $item->historyVersion() }}">
-    <div class="request-item-head">
-        <div>
-            <h2><span data-portal-i18n="{{ $item->document_type }}">{{ __($item->document_type) }}</span></h2>
-            <dl class="request-meta">
-                <div><dt><span data-portal-i18n="Reference no.">{{ __('Reference no.') }}</span></dt><dd class="reference">{{ $item->reference_code }}</dd></div>
-                <div><dt><span data-portal-i18n="Na-submit">{{ __('Na-submit') }}</span></dt><dd><time datetime="{{ $item->created_at->toDateString() }}">{{ $item->created_at->format('M j, Y') }}</time></dd></div>
-            </dl>
-        </div>
-        @include('portal.partials.request-status-pill', ['status' => $item->status])
+    <div class="request-row-document">
+        <h2><a href="{{ route('portal.account.requests.show', $item->reference_code) }}"><span data-portal-i18n="{{ $item->document_type }}">{{ __($item->document_type) }}</span></a></h2>
+        <p class="request-row-reference"><span class="sr-only"><span data-portal-i18n="Reference no.">{{ __('Reference no.') }}</span> </span><span class="reference">{{ $item->reference_code }}</span></p>
+        @if($rowHint)<p class="request-row-hint"><span data-portal-i18n="{{ $rowHint }}">{{ __($rowHint) }}</span></p>@endif
     </div>
-    @if($statusNote)<p class="request-status-note"><span data-portal-i18n="{{ $statusNote }}">{{ __($statusNote) }}</span></p>@endif
-
-    @if($item->status === 'ready_for_release')
-        <div class="request-callout request-callout-ready">
-            <strong><span data-portal-i18n="Paano kunin">{{ __('Paano kunin') }}</span></strong>
-            <ul>
-                <li><span data-portal-i18n="Pumunta sa Barangay Hall ng Anabu I-G.">{{ __('Pumunta sa Barangay Hall ng Anabu I-G.') }}</span> <span class="tag-unconfirmed"><span data-portal-i18n="Hindi pa kumpirmado">{{ __('Hindi pa kumpirmado') }}</span></span> <span data-portal-i18n="ang office hours.">{{ __('ang office hours.') }}</span></li>
-                <li><span data-portal-i18n="Dalhin ang valid ID at ang reference number na">{{ __('Dalhin ang valid ID at ang reference number na') }}</span> {{ $item->reference_code }}.</li>
-                <li><span data-portal-i18n="Bayaran ang fee sa Barangay Hall, kung mayroon.">{{ __('Bayaran ang fee sa Barangay Hall, kung mayroon.') }}</span></li>
-            </ul>
-        </div>
-    @endif
-    @if($item->status === 'rejected')
-        <div class="request-callout request-callout-rejected">
-            <strong><span data-portal-i18n="Dahilan">{{ __('Dahilan') }}</span></strong>
-            @if($item->rejection_reason){{ $item->rejection_reason }}@else<span data-portal-i18n="Walang nakasulat na dahilan. Magtanong sa Barangay Hall.">{{ __('Walang nakasulat na dahilan. Magtanong sa Barangay Hall.') }}</span>@endif
-            <p class="request-callout-next"><span data-portal-i18n="Puwedeng mag-submit ng bagong request kapag naayos na ang problema.">{{ __('Puwedeng mag-submit ng bagong request kapag naayos na ang problema.') }}</span></p>
-        </div>
-    @endif
-    @if($item->remarks)
-        <div class="request-callout request-callout-remarks"><strong><span data-portal-i18n="Paalala mula sa barangay">{{ __('Paalala mula sa barangay') }}</span></strong>{{ $item->remarks }}</div>
-    @endif
-    <p class="request-item-actions"><a class="btn btn-outline btn-small" href="{{ route('portal.account.requests.show', $item->reference_code) }}"><span data-portal-i18n="Tingnan ang detalye">{{ __('Tingnan ang detalye') }}</span><span class="sr-only"> {{ $item->reference_code }}</span></a></p>
+    <p class="request-row-date"><span class="request-row-label"><span data-portal-i18n="Na-submit">{{ __('Na-submit') }}</span> </span><time datetime="{{ $item->created_at->toDateString() }}">{{ $item->created_at->format('M j, Y') }}</time></p>
+    <div class="request-row-status">@include('portal.partials.request-status-pill', ['status' => $item->status])</div>
+    <a class="request-row-link" href="{{ route('portal.account.requests.show', $item->reference_code) }}" aria-hidden="true" tabindex="-1"><span data-portal-i18n="Tingnan">{{ __('Tingnan') }}</span> <span aria-hidden="true">&#8250;</span></a>
 </li>

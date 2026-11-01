@@ -11,8 +11,8 @@
     $stepLabels = ['Find resident record', 'Verify identity', 'Email verification', 'Create account'];
     $stepTitles = ['Hanapin ang record', 'Kumpirmahin ang details', 'Activation code', 'Gumawa ng password'];
 @endphp
-<div class="auth-layout">
-    <section class="card card-accent" aria-labelledby="register-title">
+<div class="auth-layout v2-form-page">
+    <section class="card v2-form-card" aria-labelledby="register-title">
         <div class="card-body">
             @if($stage === 'name')
                 <div class="registration-path-option">
@@ -29,6 +29,20 @@
             <h2 class="registration-step-title"><span data-portal-i18n="{{ $stepTitles[$stepNumber - 1] }}">{{ __($stepTitles[$stepNumber - 1]) }}</span></h2>
             @php($guidance = [1 => 'Ilagay ang pangalang nasa opisyal na resident record.', 2 => 'Kumpirmahin ang pribadong detalye ng record ninyo.', 3 => $emailDeliveryAvailable ? 'Gamitin ang email na mabubuksan ninyo para sa activation code.' : 'Humingi ng activation code sa barangay staff matapos ma-verify ang identity ninyo.', 4 => 'Gumawa ng ligtas na password para sa account.'][$stepNumber])
             <p class="step-guidance" data-portal-i18n="{{ $guidance }}">{{ __($guidance) }}</p>
+            @if($stage === 'name')
+                <div class="v2-callout v2-checklist">
+                    <svg class="v2-callout-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3h6v1M9 11l2 2 4-4M9 17h6"/></svg>
+                    <div>
+                        <h3><span data-portal-i18n="Ihanda ang mga ito">{{ __('Ihanda ang mga ito') }}</span></h3>
+                        <ul class="v2-list">
+                <li><span data-portal-i18n="Buong pangalan tulad ng nasa barangay record">{{ __('Buong pangalan tulad ng nasa barangay record') }}</span></li>
+                <li><span data-portal-i18n="Petsa ng kapanganakan">{{ __('Petsa ng kapanganakan') }}</span></li>
+                <li><span data-portal-i18n="Email address na nabubuksan ninyo">{{ __('Email address na nabubuksan ninyo') }}</span></li>
+                <li><span data-portal-i18n="Clear resident photo (supported image files; up to 5 MB)">{{ __('Clear resident photo (supported image files; up to 5 MB)') }}</span></li>
+            </ul>
+                    </div>
+                </div>
+            @endif
 
             @if($stage === 'account')
                 <p class="alert alert-green" role="status"><span data-portal-i18n="Na-verify na ang resident record. Tapusin ang pag-create ng account sa loob ng 10 minuto.">{{ __('Na-verify na ang resident record. Tapusin ang pag-create ng account sa loob ng 10 minuto.') }}</span></p>
@@ -122,19 +136,10 @@
                     @include('portal.partials.activation-form')
                 </details>
             @endif
-            <p class="auth-links"><span data-portal-i18n="May account na?">{{ __('May account na?') }}</span> <a href="{{ route('portal.login') }}"><span data-portal-i18n="Log in">{{ __('Log in') }}</span></a> &middot; <a href="{{ route('password.request') }}"><span data-portal-i18n="Nakalimutan ang password?">{{ __('Nakalimutan ang password?') }}</span></a></p>
+            <p class="auth-links"><span data-portal-i18n="May account na?">{{ __('May account na?') }}</span> <a href="{{ route('portal.login') }}"><span data-portal-i18n="Log in">{{ __('Log in') }}</span></a> &middot; <a href="{{ route('password.request', ['from' => 'portal']) }}"><span data-portal-i18n="Nakalimutan ang password?">{{ __('Nakalimutan ang password?') }}</span></a></p>
         </div>
     </section>
-    <aside class="auth-aside" data-portal-i18n-aria-label="Paalala sa pag-create ng account" aria-label="{{ __('Paalala sa pag-create ng account') }}">
-        <section>
-            <h2><span data-portal-i18n="Ihanda ang mga ito">{{ __('Ihanda ang mga ito') }}</span></h2>
-            <ul class="plain-list">
-                <li><span data-portal-i18n="Buong pangalan tulad ng nasa barangay record">{{ __('Buong pangalan tulad ng nasa barangay record') }}</span></li>
-                <li><span data-portal-i18n="Petsa ng kapanganakan">{{ __('Petsa ng kapanganakan') }}</span></li>
-                <li><span data-portal-i18n="Email address na nabubuksan ninyo">{{ __('Email address na nabubuksan ninyo') }}</span></li>
-                <li><span data-portal-i18n="Clear resident photo (supported image files; up to 5 MB)">{{ __('Clear resident photo (supported image files; up to 5 MB)') }}</span></li>
-            </ul>
-        </section>
+    <aside class="v2-card v2-side-panel" data-portal-i18n-aria-label="Paalala sa pag-create ng account" aria-label="{{ __('Paalala sa pag-create ng account') }}">
         <section>
             <h2><span data-portal-i18n="Hindi mahanap ang record?">{{ __('Hindi mahanap ang record?') }}</span></h2>
             <p><span data-portal-i18n="Kung bagong lipat kayo o iba ang details sa record, pumunta sa Barangay Hall para magpa-register o magpa-update. Dalhin ang valid ID.">{{ __('Kung bagong lipat kayo o iba ang details sa record, pumunta sa Barangay Hall para magpa-register o magpa-update. Dalhin ang valid ID.') }}</span></p>

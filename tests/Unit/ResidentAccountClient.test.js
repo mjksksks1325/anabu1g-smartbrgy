@@ -50,7 +50,7 @@ function residentClient() {
       getElementById: id => fields.get(id),
       addEventListener: (name, handler) => { documentListeners[name] = handler; },
       querySelector: selector => ({ '[data-resident-logout]': logout, '[data-resident-cancel]': cancel, '[data-menu-toggle]': menuButton, '[data-resident-theme]': theme })[selector] ?? null,
-      querySelectorAll: selector => selector === '[data-password-toggle]' ? [passwordToggle] : selector === '[data-resident-form]' ? [form] : selector === '[data-resident-private]' ? [privateContent] : [...fields.values()],
+      querySelectorAll: selector => selector === '[data-resident-logout]' ? [logout] : selector === '[data-password-toggle]' ? [passwordToggle] : selector === '[data-resident-form]' ? [form] : selector === '[data-resident-private]' ? [privateContent] : [...fields.values()],
     },
     window: {
       RESIDENT_PORTAL: { authenticated: true, loginUrl: '/portal/login', identityUrl: '/portal/identity' },

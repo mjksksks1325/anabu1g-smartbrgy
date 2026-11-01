@@ -82,7 +82,7 @@ if (residentMenuButton && residentNavigation) {
     });
 }
 const residentLogoutDialog = document.getElementById('resident-logout-dialog');
-document.querySelector('[data-resident-logout]')?.addEventListener('click', () => residentLogoutDialog.showModal());
+document.querySelectorAll('[data-resident-logout]').forEach(button => button.addEventListener('click', () => residentLogoutDialog.showModal()));
 document.querySelector('[data-resident-cancel]')?.addEventListener('click', () => residentLogoutDialog.close());
 residentLogoutDialog?.addEventListener('cancel', event => {
     if (residentLogoutDialog.querySelector('[data-submitting]')) event.preventDefault();

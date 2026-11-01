@@ -86,6 +86,11 @@ class ResidentPortalController extends Controller
         return view('portal.account', ['resident' => $resident, 'requests' => $resident->documentRequests()->latest()->paginate(15)]);
     }
 
+    public function accountHome(Request $request): View
+    {
+        return view('portal.account-home', ['resident' => $request->user()->resident]);
+    }
+
     public function showRequest(Request $request, string $referenceCode): View
     {
         $documentRequest = $request->user()->resident->documentRequests()

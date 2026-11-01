@@ -10,9 +10,9 @@ test('portal home shows community content without the document request form', fu
     $this->get(route('home'))
         ->assertOk()
         ->assertViewIs('portal.index')
-        ->assertSee('images/barangay-hall-anabu-1g.jpg')
         ->assertSee('What do you need today?')
-        ->assertSee('Check status')
+        ->assertSee('Welcome!')
+        ->assertSee('Log in first')
         ->assertSee('GOVPH')
         ->assertSee('css/figma-portal.css')
         ->assertSee('css/portal-v2.css')
@@ -29,7 +29,7 @@ test('portal home shows community content without the document request form', fu
         ->assertDontSee('id="resident-details-form"', false);
 });
 
-test('officials navigation is available to guests and residents and marks its current page', function () {
+test('officials page is linked from home and the footer for guests and residents and marks its current page', function () {
     $officialsLink = 'href="'.route('portal.officials').'"';
 
     $this->get(route('home'))->assertSee($officialsLink, false);
@@ -37,7 +37,8 @@ test('officials navigation is available to guests and residents and marks its cu
     $document = new DOMDocument;
     @$document->loadHTML($response->getContent());
     $xpath = new DOMXPath($document);
-    expect($xpath->query('//nav[@id="site-nav"]//a[@href="'.route('portal.officials').'"][@aria-current="page"]'))->toHaveCount(1);
+    expect($xpath->query('//footer//a[@href="'.route('portal.officials').'"][@aria-current="page"]'))->toHaveCount(1);
+    expect($xpath->query('//nav[@id="site-nav"]//a[@href="'.route('portal.officials').'"]'))->toHaveCount(0);
 
     $this->actingAs(User::factory()->resident()->create(), 'resident')
         ->get(route('portal.account'))
@@ -53,7 +54,7 @@ test('home status task opens resident sign in for guests and the latest request 
     };
 
     expect($statusTask()->getAttribute('href'))->toBe(route('portal.login'));
-    expect($statusTask()->textContent)->toContain('Check status', 'Log in to see the status of your requests.');
+    expect($statusTask()->textContent)->toContain('My requests', 'See the status of what you submitted.');
 
     $resident = User::factory()->resident()->create();
     $this->actingAs($resident, 'resident');
@@ -303,9 +304,60 @@ test('simultaneous employee access does not widen resident request status access
         ->assertOk()->assertSee('REQ-OTHER-RESIDENT');
 });
 
-it('keeps the home header solid and shows the barangay hall photo beside the tasks', function () {
+it('keeps the home header solid and follows the approved task, guidance and more-links order', function () {
     $this->get(route('home'))->assertOk()
         ->assertDontSee('has-hero-header', false)
         ->assertDontSee("classList.toggle('hero-header-scrolled'", false)
-        ->assertSeeInOrder(['class="v2-tasks"', 'class="v2-hall-photo"'], false);
+        ->assertSeeInOrder(['class="v2-hero"', 'class="v2-tasks"', 'class="v2-card v2-login-card"', 'class="v2-callout v2-home-callout"', 'class="v2-more"', 'id="announcements"'], false);
+
+    $this->actingAs(User::factory()->resident()->create(), 'resident')->get(route('home'))->assertOk()
+        ->assertDontSee('v2-login-card', false)
+        ->assertSeeInOrder(['class="v2-more"', 'href="'.route('portal.account.home').'"'], false);
+});
+
+test('guests see requirements in the header menu and residents see request and my requests', function () {
+    $menu = function () {
+        $document = new DOMDocument;
+        @$document->loadHTML($this->get(route('portal.information'))->assertOk()->getContent());
+
+        return collect((new DOMXPath($document))->query('//nav[@id="site-nav"]//ul[@class="site-nav-list"]//a'))
+            ->map(fn (DOMElement $link): string => trim($link->textContent))->all();
+    };
+
+    expect($menu())->toBe(['Home', 'Requirements and fees', 'Get help']);
+    $this->actingAs(User::factory()->resident()->create(), 'resident');
+    expect($menu())->toBe(['Home', 'Request a document', 'My requests', 'Get help']);
+});
+
+test('the account pill names the signed in resident and opens the account page', function () {
+    $user = User::factory()->resident()->create();
+    $user->resident->update(['first_name' => 'Rosa', 'last_name' => 'Dela Cruz']);
+
+    $document = new DOMDocument;
+    @$document->loadHTML($this->actingAs($user, 'resident')->get(route('home'))->assertOk()->getContent());
+    $pill = (new DOMXPath($document))->query('//a[@class="v2-account-pill"]')->item(0);
+
+    expect($pill->getAttribute('href'))->toBe(route('portal.account.home'));
+    expect(preg_replace('/\s+/', ' ', trim($pill->textContent)))->toBe('Rosa D. · My account');
+});
+
+test('the account page shows the resident and links to requests, profile, password and help', function () {
+    $user = User::factory()->resident()->create();
+
+    $this->get(route('portal.account.home'))->assertRedirect(route('portal.login'));
+    $this->actingAs($user, 'resident')->get(route('portal.account.home'))
+        ->assertOk()
+        ->assertViewIs('portal.account-home')
+        ->assertSee($user->resident->full_name)
+        ->assertSee($user->resident->resident_number)
+        ->assertSee('data-resident-logout', false)
+        ->assertSeeInOrder([route('portal.account'), route('portal.profile'), route('password.request', ['from' => 'portal']), route('portal.information').'#help'], false);
+});
+
+test('resident log in keeps one help panel with both account paths and a portal password reset link', function () {
+    $this->get(route('portal.login'))
+        ->assertOk()
+        ->assertSee('href="'.route('password.request', ['from' => 'portal']).'"', false)
+        ->assertSeeInOrder(['Don&#039;t have an account?', route('portal.register'), route('portal.new-resident.create'), route('portal.information').'#help'], false)
+        ->assertDontSee('After logging in');
 });

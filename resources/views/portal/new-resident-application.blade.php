@@ -4,8 +4,8 @@
 <x-portal.page-band title="New resident registration" title-id="new-resident-title" parent="Create account" :parent-url="route('portal.register')" />
 @endsection
 @section('content')
-<div class="auth-layout new-resident-layout">
-    <section class="card card-accent new-resident-card" aria-labelledby="new-resident-title">
+<div class="auth-layout v2-form-page new-resident-layout">
+    <section class="card v2-form-card new-resident-card" aria-labelledby="new-resident-title">
         <div class="card-body">
             @if($application)
                 @php($statusLabel = ['pending' => 'Pending review', 'approved' => 'Approved', 'needs_correction' => 'Needs correction', 'declined' => 'Declined'][$application->status])
@@ -63,7 +63,7 @@
             </div>
         </div>
     </section>
-    <aside class="auth-aside new-resident-aside" aria-labelledby="new-resident-help-title">
+    <aside class="v2-card v2-side-panel new-resident-aside" aria-labelledby="new-resident-help-title">
         <section>
             <h2 id="new-resident-help-title"><span data-portal-i18n="What happens next">{{ __('What happens next') }}</span></h2>
             <ol class="new-resident-next-steps">

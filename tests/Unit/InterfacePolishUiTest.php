@@ -9,11 +9,12 @@ test('resident portal presents its current services design', function () {
     expect(strpos($layout, "asset('css/portal-v2.css')"))->toBeGreaterThan(strpos($layout, "asset('css/figma-portal.css')"));
     expect($portal)
         ->toContain("@extends('layouts.portal')")
+        ->toContain('class="v2-hero"')
         ->toContain('class="v2-tasks"')
+        ->toContain('class="v2-link-grid"')
         ->toContain("class=\"v2-task v2-task-primary\" href=\"{{ route('portal.request.create') }}\"")
-        ->toContain("asset('images/barangay-hall-anabu-1g.jpg')")
         ->toContain('Request a document')
-        ->toContain('Check status')
+        ->toContain('My requests')
         ->toContain('Requirements and fees')
         ->toContain('Emergency hotlines')
         ->not->toContain('Report an incident')
@@ -21,8 +22,8 @@ test('resident portal presents its current services design', function () {
     expect($styles)
         ->toContain('--v2-blue-600: #0754ae;')
         ->toContain('.v2-task {')
-        ->toContain('.v2-tasks { grid-template-columns: minmax(0, 1fr); }')
-        ->toContain('.v2-hall-photo { display: none; }');
+        ->toContain('.v2-tasks { grid-template-columns: minmax(0, 1fr); gap: 14px; }')
+        ->toContain('border-bottom: 3px solid var(--v2-identity-green); background: var(--v2-navy-950);');
 });
 
 test('admin interface is light first with consistent professional surfaces', function () {
