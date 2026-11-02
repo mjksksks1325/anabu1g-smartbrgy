@@ -1,4 +1,7 @@
 {
+    "Don't ask for a code on this device for 30 days": "Don't ask for a code on this device for 30 days",
+    "Keep me signed in": "Keep me signed in",
+    "Only select this on a private device you control.": "Only select this on a private device you control.",
     "portal.navigation.request": "Request a document",
     "portal.navigation.requirements": "Requirements and fees",
     "portal.navigation.help": "Get help",

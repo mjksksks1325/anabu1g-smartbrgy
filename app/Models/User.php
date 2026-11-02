@@ -129,6 +129,7 @@ class User extends Authenticatable
             'is_super_admin' => 'boolean',
             'staff_permissions' => 'array',
             'email_verified_at' => 'datetime',
+            'two_factor_confirmed_at' => 'datetime',
             'password' => 'hashed',
         ];
     }

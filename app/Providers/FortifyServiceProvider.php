@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Actions\Auth\RedirectIfTrustedDeviceTwoFactor;
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Http\Responses\AccountLoginResponse;
@@ -15,6 +16,7 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Contracts\LoginResponse;
 use Laravel\Fortify\Contracts\LogoutResponse;
+use Laravel\Fortify\Contracts\RedirectsIfTwoFactorAuthenticatable;
 use Laravel\Fortify\Contracts\TwoFactorLoginResponse;
 use Laravel\Fortify\Fortify;
 
@@ -28,6 +30,7 @@ class FortifyServiceProvider extends ServiceProvider
         $this->app->singleton(LogoutResponse::class, PortalLogoutResponse::class);
         $this->app->singleton(LoginResponse::class, AccountLoginResponse::class);
         $this->app->singleton(TwoFactorLoginResponse::class, AccountLoginResponse::class);
+        $this->app->scoped(RedirectsIfTwoFactorAuthenticatable::class, RedirectIfTrustedDeviceTwoFactor::class);
     }
 
     /**

@@ -1,4 +1,7 @@
 {
+    "Don't ask for a code on this device for 30 days": "Huwag nang humingi ng code sa device na ito sa loob ng 30 araw",
+    "Keep me signed in": "Panatilihin akong naka-sign in",
+    "Only select this on a private device you control.": "Piliin lang ito sa pribadong device na ikaw ang gumagamit.",
     "portal.navigation.request": "Mag-request",
     "portal.navigation.requirements": "Kailangan at bayarin",
     "portal.navigation.help": "Tulong",
@@ -1030,7 +1033,6 @@
     "Restricted VAWC / BPO": "Mga restricted na kaso ng VAWC / BPO",
     "Employee Access": "Access ng empleyado",
     "Account": "Account",
-    "Role": "Role",
     "Date": "Petsa",
     "Time": "Oras",
     "Description": "Paglalarawan",
@@ -1122,7 +1124,6 @@
     "Certificate Process Flow": "Daloy ng pagproseso ng sertipiko",
     "Eligibility": "Pagiging kwalipikado",
     "Check": "Suriin",
-    "Staff": "Kawani",
     "Print + QR": "I-print + QR",
     "Embed": "I-embed",
     "Release &": "Pagbibigay at",
