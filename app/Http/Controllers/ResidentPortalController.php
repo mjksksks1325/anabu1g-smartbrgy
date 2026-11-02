@@ -83,15 +83,26 @@ class ResidentPortalController extends Controller
         return view('portal.account', ['resident' => $resident, 'requests' => $resident->documentRequests()->latest()->paginate(15)]);
     }
 
-    public function accountHome(Request $request): View
+    public function dashboard(Request $request): View
     {
         $resident = $request->user()->resident;
 
-        return view('portal.account-home', [
+        return view('portal.dashboard', [
             'resident' => $resident,
             'statusCounts' => $resident->documentRequests()->toBase()->selectRaw('status, count(*) as aggregate')->groupBy('status')->pluck('aggregate', 'status'),
-            'latestRequests' => $resident->documentRequests()->latest()->latest('id')->limit(3)->get(),
+            'attentionRequests' => $resident->documentRequests()
+                ->where(fn ($query) => $query
+                    ->where('status', 'ready_for_release')
+                    ->orWhere(fn ($query) => $query->where('status', 'rejected')->where('updated_at', '>=', now()->subDays(30)))
+                    ->orWhere(fn ($query) => $query->whereIn('status', ['pending', 'processing', 'approved'])->whereNotNull('remarks')->where('remarks', '!=', '')))
+                ->latest()->latest('id')->limit(5)->get(),
+            'recentRequests' => $resident->documentRequests()->latest()->latest('id')->limit(5)->get(),
         ]);
+    }
+
+    public function accountHome(Request $request): View
+    {
+        return view('portal.account-home', ['resident' => $request->user()->resident]);
     }
 
     public function showRequest(Request $request, string $referenceCode): View

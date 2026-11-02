@@ -142,7 +142,7 @@ test('activation account setup login requests profile and logout retain language
     $this->get(route('portal.register'))->assertOk()->assertSee($locale === 'fil' ? 'Hakbang 4 sa 4' : 'Step 4 of 4')->assertSee('name="photo"', false);
     $input = ['email' => 'language@example.test', 'password' => 'ResidentPassword123!', 'password_confirmation' => 'ResidentPassword123!', 'photo' => UploadedFile::fake()->image('resident.jpg')];
     $this->post(route('portal.register.store'), $input)->assertRedirect(route('portal.login'));
-    $this->post(route('portal.login.store'), ['email' => $input['email'], 'password' => $input['password']])->assertRedirect(route('portal.account'));
+    $this->post(route('portal.login.store'), ['email' => $input['email'], 'password' => $input['password']])->assertRedirect(route('portal.dashboard'));
     $this->get(route('portal.request.create'))->assertOk()->assertSee($locale === 'fil' ? 'Katibayan ng Paninirahan' : 'Certificate of Residency');
     $this->postJson(route('portal.request.store'), ['document_type' => CertificateType::CertificateOfResidency->value, 'purpose' => 'Employment'])
         ->assertOk()->assertJsonPath('message', $locale === 'fil' ? 'Matagumpay na na-submit ang request ng dokumento.' : 'Document request submitted successfully.');

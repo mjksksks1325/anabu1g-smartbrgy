@@ -5,7 +5,11 @@
 <nav class="site-nav" id="site-nav" data-portal-i18n-aria-label="Main menu" aria-label="{{ __('Main menu') }}">
     <div class="site-nav-inner">
         <ul class="site-nav-list">
-            <li><a href="{{ route('home') }}" @if(request()->routeIs('home')) aria-current="page" @endif><span data-portal-i18n="Home">{{ __('Home') }}</span></a></li>
+            @if($residentSignedIn)
+                <li><a href="{{ route('portal.dashboard') }}" @if(request()->routeIs('portal.dashboard')) aria-current="page" @endif><span data-portal-i18n="Dashboard">{{ __('Dashboard') }}</span></a></li>
+            @else
+                <li><a href="{{ route('home') }}" @if(request()->routeIs('home')) aria-current="page" @endif><span data-portal-i18n="Home">{{ __('Home') }}</span></a></li>
+            @endif
             <li><a href="{{ route('portal.request.create') }}" data-portal-i18n-aria-label="Request a document" aria-label="{{ __('Request a document') }}" @if(request()->routeIs('portal.request.create')) aria-current="page" @endif><span data-portal-i18n="portal.navigation.request">{{ __('portal.navigation.request') }}</span></a></li>
             <li><a href="{{ $residentSignedIn ? route('portal.account') : route('portal.login') }}" @if(request()->routeIs('portal.account', 'portal.account.requests.show')) aria-current="page" @endif><span data-portal-i18n="My requests">{{ __('My requests') }}</span></a></li>
             <li><a href="{{ route('portal.information') }}" data-portal-i18n-aria-label="Help, requirements and fees" aria-label="{{ __('Help, requirements and fees') }}" @if(request()->routeIs('portal.information')) aria-current="page" @endif><span data-portal-i18n="portal.navigation.help">{{ __('portal.navigation.help') }}</span></a></li>

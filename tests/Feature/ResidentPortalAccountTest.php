@@ -217,7 +217,7 @@ test('guest and employee accounts cannot submit resident portal requests', funct
 test('a resident login uses the portal and preserves login auditing', function () {
     $account = User::factory()->resident()->create();
     $this->post(route('portal.login.store'), ['email' => $account->email, 'password' => 'password'])
-        ->assertRedirect(route('portal.account'));
+        ->assertRedirect(route('portal.dashboard'));
     $this->assertAuthenticatedAs($account, 'resident');
     $this->get(route('portal.account'))->assertOk()->assertSee('My requests');
     $this->assertDatabaseHas('administrative_audits', ['user_id' => $account->id, 'action' => 'auth.login', 'record' => 'resident_portal']);

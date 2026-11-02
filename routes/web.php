@@ -98,6 +98,7 @@ Route::middleware(EnsureResidentAccount::class)->group(function () {
         ->middleware('throttle:30,1')
         ->name('portal.account.statuses');
     Route::get('/portal/account/requests/{referenceCode}', [ResidentPortalController::class, 'showRequest'])->name('portal.account.requests.show');
+    Route::get('/portal/dashboard', [ResidentPortalController::class, 'dashboard'])->name('portal.dashboard');
     Route::get('/portal/my-account', [ResidentPortalController::class, 'accountHome'])->name('portal.account.home');
     Route::get('/portal/profile', [ResidentPortalController::class, 'profile'])->name('portal.profile');
     Route::get('/portal/profile/photo', [ResidentProfilePhotoController::class, 'show'])->name('portal.profile.photo');

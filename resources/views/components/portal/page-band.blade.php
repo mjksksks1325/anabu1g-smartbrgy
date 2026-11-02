@@ -4,6 +4,7 @@
     'parent' => null,
     'parentUrl' => null,
     'eyebrow' => null,
+    'titleParams' => [],
 ])
 
 <div {{ $attributes->class(['page-band']) }}>
@@ -15,7 +16,7 @@
             @if($eyebrow)
                 <p class="v2-page-eyebrow"><span data-portal-i18n="{{ $eyebrow }}">{{ __($eyebrow) }}</span></p>
             @endif
-            <h1 id="{{ $titleId }}"><span data-portal-i18n="{{ $title }}">{{ __($title) }}</span></h1>
+            <h1 id="{{ $titleId }}"><span data-portal-i18n="{{ $title }}" @if($titleParams) data-portal-params="{{ json_encode($titleParams) }}" @endif>{{ __($title, $titleParams) }}</span></h1>
             @if($slot->isNotEmpty())
                 <div class="page-band-lead">{{ $slot }}</div>
             @endif
