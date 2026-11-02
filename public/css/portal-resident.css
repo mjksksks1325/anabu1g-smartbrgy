@@ -294,3 +294,13 @@ body.dark-mode #toast-wrap .toast.green, body.dark-mode #toast-wrap .toast.red {
     .cert-grid .cert-btn { height: auto; align-content: start; }
 }
 .container > :is(.rp-error-summary, .rp-flash):first-child { margin-top: 20px; }
+
+/* Public home page: restored to its original design (body.has-hero-header is set only there). These rules undo the resident portal sizes inside its content. */
+body.has-hero-header .site-main { font-family: 'DM Sans', 'Segoe UI', system-ui, sans-serif; font-size: 15px; }
+body.has-hero-header .site-main .btn:not(.btn-link) { min-height: 48px; padding: 11px 17px; border-radius: 6px; font-family: 'DM Sans', 'Segoe UI', system-ui, sans-serif; font-size: 14px; }
+body.has-hero-header .site-main .eyebrow { font-size: 11px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+body.has-hero-header .site-main .portal-hero .eyebrow { margin-bottom: 17px; padding: 9px 13px; }
+body.has-hero-header .site-main .portal-hero-account a { color: #9fd0ff; }
+body.has-hero-header .site-main .hotline-panel a:not(.btn) { color: #fff; }
+body.has-hero-header .site-main .hotline-head a { color: #9fd0ff; }
+body.has-hero-header .site-main .container { padding-bottom: 80px; }

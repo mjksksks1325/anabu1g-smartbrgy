@@ -18,11 +18,8 @@ class ResidentPortalController extends Controller
             return redirect()->route('portal.request.create', ['service' => $request->string('service')->toString()]);
         }
 
-        $resident = $request->user('resident')?->resident;
-
         return view('portal.index', [
-            'resident' => $resident,
-            'latestRequest' => $resident?->documentRequests()->latest()->latest('id')->first(),
+            'services' => CertificateType::cases(),
             'announcements' => Announcement::published()->orderByDesc('published_at')->orderByDesc('id')->limit(3)->get(),
         ]);
     }
