@@ -19,7 +19,9 @@ test('portal home shows community content without the document request form', fu
         ->assertSee('GOVPH')
         ->assertSee('css/figma-portal.css')
         ->assertSee('<body class="has-hero-header">', false)
-        ->assertSee('data-resident-theme aria-pressed="false"', false)
+        ->assertSee('data-resident-theme aria-pressed="false" aria-label="Dark mode"', false)
+        ->assertSee('theme-icon-moon', false)
+        ->assertSee('theme-icon-sun', false)
         ->assertDontSee('class="dark-mode', false)
         ->assertDontSee('Staff portal')
         ->assertSee(route('portal.request.create'), false)
@@ -311,16 +313,15 @@ test('the barangay logo leads guests to the public home and residents to their r
     $this->get(route('portal.dashboard'))->assertOk()->assertSee('<title>Home | Barangay Anabu I-G</title>', false);
 });
 
-test('language and dark mode controls live in the sticky header instead of the scrolling government bar', function () {
+test('english, filipino and the theme toggle stay directly visible in the government bar', function () {
     $document = new DOMDocument;
     @$document->loadHTML($this->get(route('portal.information'))->assertOk()->getContent());
     $xpath = new DOMXPath($document);
-    $settings = '//header[contains(@class, "site-header")]//nav[@id="site-nav"]//div[@data-settings-menu]';
+    $actions = '//div[contains(@class, "gov-bar")]//div[contains(@class, "gov-actions")]';
 
-    expect($xpath->query('//div[contains(@class, "gov-bar")]//button'))->toHaveCount(0);
-    expect($xpath->query($settings.'/button[@aria-controls="settings-menu-panel"][@aria-expanded="false"][@aria-label="Language and display"]'))->toHaveCount(1);
-    expect($xpath->query($settings.'//div[@id="settings-menu-panel"][@hidden]//button[@data-portal-locale]'))->toHaveCount(2);
-    expect($xpath->query($settings.'//div[@id="settings-menu-panel"]//button[@data-resident-theme][@aria-pressed="false"]'))->toHaveCount(1);
+    expect(collect($xpath->query($actions.'//button[@data-portal-locale]'))->map(fn (DOMElement $button): string => trim($button->textContent))->all())->toBe(['English', 'Filipino']);
+    expect($xpath->query($actions.'//button[@data-resident-theme][@aria-label="Dark mode"][@aria-pressed="false"]'))->toHaveCount(1);
+    expect($xpath->query('//*[@data-settings-menu]'))->toHaveCount(0);
 });
 
 test('the resident name button is the single entry to account pages', function () {

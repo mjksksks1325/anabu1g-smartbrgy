@@ -101,10 +101,10 @@ input[type="file"]::file-selector-button { min-height: 40px; margin-right: 14px;
 .rp-form-card .progress-steps li::after { content: ""; position: absolute; top: 19px; left: calc(50% + 24px); right: calc(-50% + 24px); height: 3px; border-radius: 3px; background: var(--v2-line); transform: none; }
 .rp-form-card .progress-steps li:last-child::after { display: none; }
 .rp-form-card .progress-steps li.done { color: var(--v2-ink); }
-.rp-form-card .progress-steps li.done::before { content: "\2713"; border-color: var(--v2-brand); background: var(--v2-brand); color: var(--v2-on-brand); }
-.rp-form-card .progress-steps li.done::after { background: var(--v2-brand); }
+.rp-form-card .progress-steps li.done::before { content: "\2713"; border-color: var(--v2-brand-fill); background: var(--v2-brand-fill); color: var(--v2-on-brand); }
+.rp-form-card .progress-steps li.done::after { background: var(--v2-brand-fill); }
 .rp-form-card .progress-steps li[aria-current="step"] { color: var(--v2-ink); font-weight: 700; }
-.rp-form-card .progress-steps li[aria-current="step"]::before { border-color: var(--v2-brand); background: var(--v2-brand); color: var(--v2-on-brand); box-shadow: 0 0 0 5px var(--v2-brand-subtle); }
+.rp-form-card .progress-steps li[aria-current="step"]::before { border-color: var(--v2-brand-fill); background: var(--v2-brand-fill); color: var(--v2-on-brand); box-shadow: 0 0 0 5px var(--v2-brand-subtle); }
 .rp-form-card .step-count { margin: 0; color: var(--v2-brand-strong); font-weight: 700; }
 .rp-form-card .registration-step-title { margin: 4px 0 6px; font-size: clamp(21px, 2.2vw, 26px); }
 .rp-form-card .step-guidance { margin: 0 0 24px; padding: 0; border: 0; color: var(--v2-muted); font-size: 16px; }
@@ -125,7 +125,7 @@ input[type="file"]::file-selector-button { min-height: 40px; margin-right: 14px;
 /* New resident application */
 .new-resident-card .new-resident-section { margin-top: 28px; }
 .new-resident-card .new-resident-section legend { margin-bottom: 16px; font-size: 19px; }
-.new-resident-card .new-resident-section-number { width: 32px; height: 32px; background: var(--v2-brand); color: var(--v2-on-brand); font-size: 15px; }
+.new-resident-card .new-resident-section-number { width: 32px; height: 32px; background: var(--v2-brand-fill); color: var(--v2-on-brand); font-size: 15px; }
 .new-resident-card .new-resident-fields { gap: 20px 22px; }
 .new-resident-card .new-resident-upload { padding: 20px; border: 2px dashed var(--v2-line-strong); border-radius: var(--rp-radius-sm); background: var(--v2-subtle); }
 .new-resident-card .new-resident-form-actions .btn { min-width: 260px; }
@@ -150,8 +150,8 @@ input[type="file"]::file-selector-button { min-height: 40px; margin-right: 14px;
 .rp-action-title { font: 700 19px/1.3 var(--v2-font-display); }
 .rp-action-text { color: var(--v2-muted); font-size: 15px; }
 .rp-action::after { content: "\203A"; position: absolute; top: 22px; right: 24px; color: var(--v2-brand); font-size: 34px; line-height: 1; }
-.rp-action-primary, .site-main a.rp-action-primary { border-color: var(--v2-brand); background: var(--v2-brand); color: #fff; }
-body.dark-mode .rp-action-primary { background: var(--v2-brand); color: var(--v2-on-brand); }
+.rp-action-primary, .site-main a.rp-action-primary { border-color: var(--v2-brand-fill); background: var(--v2-brand-fill); color: #fff; }
+body.dark-mode .rp-action-primary { background: var(--v2-brand-fill); color: var(--v2-on-brand); }
 .rp-action-primary .rp-action-icon { background: #fff; color: var(--v2-green-700); }
 .rp-action-primary .rp-action-text { color: inherit; opacity: .92; }
 .rp-action-primary::after { color: inherit; }
@@ -373,7 +373,7 @@ body:not(.has-hero-header) .site-main .btn { font-weight: 600; }
 .rp-recent .status { margin: 0; }
 .rp-progress { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; max-width: 320px; }
 .rp-progress span { height: 6px; border-radius: 6px; background: var(--v2-line); }
-.rp-progress span.is-done { background: var(--v2-brand); }
+.rp-progress span.is-done { background: var(--v2-brand-fill); }
 .rp-recent li[data-status="ready_for_release"] .rp-progress span.is-done { background: var(--v2-success); }
 .rp-recent-next { font-size: 15px; }
 .rp-recent-date { color: var(--v2-muted); font-size: 14px; }
@@ -452,26 +452,23 @@ body.has-hero-header:not(.hero-header-scrolled) .site-brand-portal { color: var(
     .portal-hero-photo::after, body.has-hero-header .portal-hero-photo::after { background: linear-gradient(180deg, rgba(19, 40, 28, .45) 0%, rgba(19, 40, 28, .62) 38%, rgba(19, 40, 28, .92) 100%); }
 }
 
-/* Language and display settings in the sticky header: a dropdown on desktop, always open inside the mobile menu. */
-.rp-settings-menu { position: relative; flex: 0 0 auto; }
-.rp-settings-button { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; border: 1px solid var(--v2-line-strong); border-radius: 999px; background: var(--v2-card); color: var(--v2-ink); font: 600 15px/1 var(--v2-font-body); cursor: pointer; }
-.rp-settings-button > svg:first-child { width: 20px; height: 20px; color: var(--v2-brand); }
-.rp-settings-button:hover, .rp-settings-button[aria-expanded="true"] { border-color: var(--v2-brand); background: var(--v2-brand-tint); }
-.rp-settings-button[aria-expanded="true"] .rp-account-chevron { transform: rotate(180deg); }
-.rp-settings-panel { position: absolute; top: calc(100% + 8px); right: 0; z-index: 80; display: grid; gap: 8px; width: 260px; padding: 14px; border: 1px solid var(--v2-line); border-radius: 12px; background: var(--v2-card); box-shadow: var(--rp-shadow); }
-.rp-settings-panel[hidden] { display: none; }
-.rp-settings-heading { margin: 0; color: var(--v2-muted); font-size: 13px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
-.rp-settings-heading:not(:first-child) { margin-top: 6px; }
-.rp-settings-panel .portal-language-toggle { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
-.rp-settings-panel .portal-language-toggle > span { display: none; }
-.rp-settings-panel .portal-language-toggle button, .rp-theme-switch { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 12px; border: 1px solid var(--v2-line-strong); border-radius: 8px; background: var(--v2-card); color: var(--v2-ink); font: 600 15px/1.2 var(--v2-font-body); text-decoration: none; cursor: pointer; }
-.rp-settings-panel .portal-language-toggle button:hover, .rp-theme-switch:hover { border-color: var(--v2-brand); background: var(--v2-brand-tint); color: var(--v2-ink); }
-.rp-settings-panel .portal-language-toggle button[aria-pressed="true"], .rp-theme-switch[aria-pressed="true"] { border-color: var(--v2-brand); background: var(--v2-brand); color: var(--v2-on-brand); text-decoration: none; }
-.rp-theme-switch svg { width: 20px; height: 20px; }
-body.has-hero-header:not(.hero-header-scrolled) .rp-settings-button { border-color: rgba(255, 255, 255, .6); background: rgba(19, 40, 28, .25); color: #fff; }
-body.has-hero-header:not(.hero-header-scrolled) .rp-settings-button > svg { color: #fff; }
-@media (max-width: 1099.98px) {
-    .rp-settings-menu { padding-top: 12px; border-top: 1px solid var(--v2-line); }
-    .rp-settings-button { display: none; }
-    .rp-settings-panel, .rp-settings-panel[hidden] { position: static; display: grid; width: auto; padding: 0; border: 0; box-shadow: none; }
+/* The government bar (language and theme) and the main navigation stay together at the top while scrolling. */
+:root { --rp-gov-bar-height: 43px; }
+.gov-bar, body.dark-mode .gov-bar { position: sticky; top: 0; z-index: 61; }
+.gov-bar-inner { height: 40px; min-height: 0; }
+.site-header, body.dark-mode .site-header { top: var(--rp-gov-bar-height); }
+html { scroll-padding-top: calc(var(--rp-gov-bar-height) + 96px); }
+.gov-actions .theme-toggle:hover { background: rgba(255, 255, 255, .1); }
+@media (max-width: 700px) {
+    :root { --rp-gov-bar-height: 51px; }
+    .gov-bar-inner { height: 48px; }
+}
+
+/* Dark mode: charcoal surfaces with green accents rather than green panels. */
+body.dark-mode .howto, body.dark-mode .hotline-panel { border: 1px solid var(--v2-line); background: var(--v2-card); }
+body.dark-mode .howto-steps li::before { background: var(--v2-brand-subtle); color: var(--v2-brand); }
+body.dark-mode .portal-hero-photo::after { background: linear-gradient(90deg, rgba(15, 20, 18, .94) 0%, rgba(15, 20, 18, .8) 38%, rgba(15, 20, 18, .4) 68%, rgba(15, 20, 18, .12) 100%), linear-gradient(0deg, rgba(15, 20, 18, .5) 0%, transparent 35%); }
+body.dark-mode .portal-hero-photo figcaption { background: rgba(15, 20, 18, .88); }
+@media (max-width: 700px) {
+    body.dark-mode .portal-hero-photo::after, body.dark-mode.has-hero-header .portal-hero-photo::after { background: linear-gradient(180deg, rgba(15, 20, 18, .5) 0%, rgba(15, 20, 18, .66) 38%, rgba(15, 20, 18, .94) 100%); }
 }

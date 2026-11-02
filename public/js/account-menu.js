@@ -1,24 +1,19 @@
-/* Header disclosure menus (the account menu and the language and display settings): work with mouse, touch and keyboard. */
-document.querySelectorAll('[data-account-menu], [data-settings-menu]').forEach(menu => {
-    const button = menu.querySelector('[data-account-menu-button], [data-settings-menu-button]');
+/* Account menu under the resident's name: a disclosure button that works with mouse, touch and keyboard. */
+(() => {
+    const menu = document.querySelector('[data-account-menu]');
+    if (!menu) return;
+
+    const button = menu.querySelector('[data-account-menu-button]');
     const list = document.getElementById(button.getAttribute('aria-controls'));
     const items = () => [...list.querySelectorAll('a, button')];
-    /* Inside the collapsed mobile menu the settings are always shown, so they are never hidden there. */
-    const inlineQuery = menu.hasAttribute('data-settings-menu') && typeof window !== 'undefined' ? window.matchMedia('(max-width: 1099.98px)') : null;
-    const shownInline = () => Boolean(inlineQuery?.matches);
 
     const setOpen = (open, { focusButton = false, focusFirst = false } = {}) => {
         button.setAttribute('aria-expanded', String(open));
-        list.hidden = !open && !shownInline();
+        list.hidden = !open;
         if (open && focusFirst) items()[0]?.focus();
         if (!open && focusButton) button.focus();
     };
 
-    if (inlineQuery) {
-        const syncInline = () => { if (button.getAttribute('aria-expanded') !== 'true') list.hidden = !shownInline(); };
-        syncInline();
-        inlineQuery.addEventListener('change', syncInline);
-    }
     button.addEventListener('click', () => setOpen(button.getAttribute('aria-expanded') !== 'true'));
     button.addEventListener('keydown', event => {
         if (event.key === 'ArrowDown') {
@@ -47,4 +42,4 @@ document.querySelectorAll('[data-account-menu], [data-settings-menu]').forEach(m
     menu.addEventListener('focusout', event => {
         if (event.relatedTarget && !menu.contains(event.relatedTarget)) setOpen(false);
     });
-});
+})();
