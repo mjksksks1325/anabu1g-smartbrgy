@@ -10,7 +10,8 @@ test('login screen can be rendered', function () {
         ->assertSee('Barangay Operations Portal')
         ->assertSee('Staff email address')
         ->assertSee('Sign in to staff portal')
-        ->assertSee('Contact barangay office')
+        ->assertSee('Keep me signed in')
+        ->assertSee('Forgot your password?')
         ->assertSee('css/figma-auth.css');
 });
 
