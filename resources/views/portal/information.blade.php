@@ -4,12 +4,13 @@
 <x-portal.page-band title="Tulong">
     <p><span data-portal-i18n="Mga dokumentong puwedeng i-request online, ang fee na nasa system, at kung saan hihingi ng tulong. Puwede itong basahin kahit walang account.">{{ __('Mga dokumentong puwedeng i-request online, ang fee na nasa system, at kung saan hihingi ng tulong. Puwede itong basahin kahit walang account.') }}</span></p>
     <x-slot:below>
-        <nav class="jump-links" data-portal-i18n-aria-label="Sa page na ito" aria-label="{{ __('Sa page na ito') }}">
-            <a href="#requirements"><span data-portal-i18n="Mga dokumento">{{ __('Mga dokumento') }}</span></a>
-            <a href="#help"><span data-portal-i18n="Get help">{{ __('Get help') }}</span></a>
-            <a href="#office"><span data-portal-i18n="Barangay Hall">{{ __('Barangay Hall') }}</span></a>
-            <a href="#contacts"><span data-portal-i18n="Emergency hotlines">{{ __('Emergency hotlines') }}</span></a>
-            <a href="{{ route('portal.officials') }}"><span data-portal-i18n="Barangay officials">{{ __('Barangay officials') }}</span></a>
+        <nav class="jump-links rp-topics" data-portal-i18n-aria-label="Sa page na ito" aria-label="{{ __('Sa page na ito') }}">
+            <a href="#requirements"><span class="rp-topic-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></span><span data-portal-i18n="Mga dokumento">{{ __('Mga dokumento') }}</span></a>
+            <a href="#faq"><span class="rp-topic-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 2-2.5 2-2.5 4M12 17h.01"/></svg></span><span data-portal-i18n="Mga madalas itanong">{{ __('Mga madalas itanong') }}</span></a>
+            <a href="#help"><span class="rp-topic-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span><span data-portal-i18n="Problema sa account o record">{{ __('Problema sa account o record') }}</span></a>
+            <a href="#contacts"><span class="rp-topic-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg></span><span data-portal-i18n="Emergency hotlines">{{ __('Emergency hotlines') }}</span></a>
+            <a href="#office"><span class="rp-topic-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V10l7-5 7 5v11M9 21v-6h6v6"/></svg></span><span data-portal-i18n="Barangay Hall">{{ __('Barangay Hall') }}</span></a>
+            <a href="{{ route('portal.officials') }}"><span class="rp-topic-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M6 16a3 3 0 0 1 6 0M14 10h4M14 14h4"/></svg></span><span data-portal-i18n="Barangay officials">{{ __('Barangay officials') }}</span></a>
         </nav>
     </x-slot:below>
 </x-portal.page-band>
@@ -44,6 +45,40 @@
             </li>
         @endforeach
     </ul>
+    </div>
+</section>
+
+<section class="section" id="faq" aria-labelledby="faq-title">
+    <div class="section-head"><h2 id="faq-title"><span data-portal-i18n="Mga madalas itanong">{{ __('Mga madalas itanong') }}</span></h2></div>
+    <div class="rp-faq">
+        <details>
+            <summary><span data-portal-i18n="Saan at kailan babayaran ang fee?">{{ __('Saan at kailan babayaran ang fee?') }}</span></summary>
+            <p><span data-portal-i18n="Sa Barangay Hall, kapag kinuha ninyo ang dokumento. Walang online payment.">{{ __('Sa Barangay Hall, kapag kinuha ninyo ang dokumento. Walang online payment.') }}</span></p>
+        </details>
+        <details>
+            <summary><span data-portal-i18n="Ano ang dadalhin pagkuha ng dokumento?">{{ __('Ano ang dadalhin pagkuha ng dokumento?') }}</span></summary>
+            <p><span data-portal-i18n="Ang original na valid ID at ang reference number ng request.">{{ __('Ang original na valid ID at ang reference number ng request.') }}</span></p>
+        </details>
+        <details>
+            <summary><span data-portal-i18n="Paano ko malalaman kung handa na ang dokumento?">{{ __('Paano ko malalaman kung handa na ang dokumento?') }}</span></summary>
+            <p><span data-portal-i18n="Buksan ang My requests. Kapag Ready for release na ang status, puwede na itong kunin sa Barangay Hall.">{{ __('Buksan ang My requests. Kapag Ready for release na ang status, puwede na itong kunin sa Barangay Hall.') }}</span></p>
+        </details>
+        <details>
+            <summary><span data-portal-i18n="Gaano katagal valid ang certificate?">{{ __('Gaano katagal valid ang certificate?') }}</span></summary>
+            <p><span data-portal-i18n="Valid nang 3 buwan mula pagka-issue. Ang Barangay ID ay valid nang 1 taon.">{{ __('Valid nang 3 buwan mula pagka-issue. Ang Barangay ID ay valid nang 1 taon.') }}</span></p>
+        </details>
+        <details>
+            <summary><span data-portal-i18n="Bakit hindi naaprubahan ang request ko?">{{ __('Bakit hindi naaprubahan ang request ko?') }}</span></summary>
+            <p><span data-portal-i18n="Buksan ang request sa My requests para makita ang dahilan. Puwedeng mag-submit ng bagong request kapag naayos na ang problema.">{{ __('Buksan ang request sa My requests para makita ang dahilan. Puwedeng mag-submit ng bagong request kapag naayos na ang problema.') }}</span></p>
+        </details>
+        <details>
+            <summary><span data-portal-i18n="Nakalimutan ko ang password ko.">{{ __('Nakalimutan ko ang password ko.') }}</span></summary>
+            <p><span data-portal-i18n="Pindutin ang &quot;Nakalimutan ang password?&quot; sa Log in page. Padadalhan kayo ng link sa email ng inyong account.">{{ __('Pindutin ang "Nakalimutan ang password?" sa Log in page. Padadalhan kayo ng link sa email ng inyong account.') }}</span></p>
+        </details>
+        <details>
+            <summary><span data-portal-i18n="May mali sa pangalan o address ko. Paano ito aayusin?">{{ __('May mali sa pangalan o address ko. Paano ito aayusin?') }}</span></summary>
+            <p><span data-portal-i18n="Hindi ito mae-edit online. Pumunta sa Barangay Hall at dalhin ang valid ID para magpa-correct.">{{ __('Hindi ito mae-edit online. Pumunta sa Barangay Hall at dalhin ang valid ID para magpa-correct.') }}</span></p>
+        </details>
     </div>
 </section>
 

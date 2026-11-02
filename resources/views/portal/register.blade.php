@@ -1,18 +1,13 @@
 @extends('layouts.portal')
 @section('title', __('Create account'))
-@section('band')
-<x-portal.page-band title="Create your resident account" title-id="register-title">
-    <p><span data-portal-i18n="Ikonekta ang inyong online account sa verified Resident Records ng barangay.">{{ __('Ikonekta ang inyong online account sa verified Resident Records ng barangay.') }}</span></p>
-</x-portal.page-band>
-@endsection
 @section('content')
 @php
     $stepNumber = ['name' => 1, 'details' => 2, 'email' => 3, 'code' => 3, 'account' => 4][$stage] ?? 1;
     $stepLabels = ['Find resident record', 'Verify identity', 'Email verification', 'Create account'];
     $stepTitles = ['Hanapin ang record', 'Kumpirmahin ang details', 'Activation code', 'Gumawa ng password'];
 @endphp
-<div class="auth-layout v2-form-page">
-    <section class="card v2-form-card" aria-labelledby="register-title">
+<x-portal.auth-shell title="Create your resident account" title-id="register-title" lead="Ikonekta ang inyong online account sa verified Resident Records ng barangay.">
+    <section class="card rp-form-card" aria-labelledby="register-title">
         <div class="card-body">
             @if($stage === 'name')
                 <div class="registration-path-option">
@@ -56,9 +51,10 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="registration-photo"><span data-portal-i18n="Resident photo *">{{ __('Resident photo *') }}</span></label>
-                        <input class="form-input" id="registration-photo" name="photo" type="file" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.avif,.heic,.heif,image/jpeg,image/png,image/gif,image/bmp,image/webp,image/avif,image/heic,image/heif" data-resident-image-only data-error-target="registration-photo-client-error" required aria-describedby="registration-photo-help registration-photo-client-error" @error('photo') aria-invalid="true" @enderror>
+                        <input class="form-input" id="registration-photo" data-photo-preview="registration-photo-preview" name="photo" type="file" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.avif,.heic,.heif,image/jpeg,image/png,image/gif,image/bmp,image/webp,image/avif,image/heic,image/heif" data-resident-image-only data-error-target="registration-photo-client-error" required aria-describedby="registration-photo-help registration-photo-client-error" @error('photo') aria-invalid="true" @enderror>
                         <p class="field-error" id="registration-photo-client-error" hidden role="alert" aria-live="polite"><span data-portal-i18n="Choose an image file only (up to 5 MB). Documents are not accepted.">{{ __('Choose an image file only (up to 5 MB). Documents are not accepted.') }}</span></p>
                         @error('photo')<p class="field-error" data-portal-message>{{ $message }}</p>@enderror
+                        <figure class="rp-photo-preview" id="registration-photo-preview" hidden><img alt="" width="120" height="120"><figcaption><span data-portal-i18n="Ito ang napiling larawan.">{{ __('Ito ang napiling larawan.') }}</span></figcaption></figure>
                         <p class="form-note" id="registration-photo-help"><span data-portal-i18n="Upload a clear photo of your face. Supported image files only, up to 5 MB. Select the photo again if you need to correct the form.">{{ __('Upload a clear photo of your face. Supported image files only, up to 5 MB. Select the photo again if you need to correct the form.') }}</span></p>
                     </div>
                     <div class="form-group">
@@ -139,7 +135,8 @@
             <p class="auth-links"><span data-portal-i18n="May account na?">{{ __('May account na?') }}</span> <a href="{{ route('portal.login') }}"><span data-portal-i18n="Log in">{{ __('Log in') }}</span></a> &middot; <a href="{{ route('password.request', ['from' => 'portal']) }}"><span data-portal-i18n="Nakalimutan ang password?">{{ __('Nakalimutan ang password?') }}</span></a></p>
         </div>
     </section>
-    <aside class="v2-card v2-side-panel" data-portal-i18n-aria-label="Paalala sa pag-create ng account" aria-label="{{ __('Paalala sa pag-create ng account') }}">
+    <x-slot:help>
+        <div class="rp-help-sections">
         <section>
             <h2><span data-portal-i18n="Hindi mahanap ang record?">{{ __('Hindi mahanap ang record?') }}</span></h2>
             <p><span data-portal-i18n="Kung bagong lipat kayo o iba ang details sa record, pumunta sa Barangay Hall para magpa-register o magpa-update. Dalhin ang valid ID.">{{ __('Kung bagong lipat kayo o iba ang details sa record, pumunta sa Barangay Hall para magpa-register o magpa-update. Dalhin ang valid ID.') }}</span></p>
@@ -148,6 +145,7 @@
             <h2><span data-portal-i18n="Data Privacy Notice">{{ __('Data Privacy Notice') }}</span></h2>
             <p><span data-portal-i18n="Gagamitin lamang ang inyong impormasyon para i-verify at gawin ang resident portal account.">{{ __('Gagamitin lamang ang inyong impormasyon para i-verify at gawin ang resident portal account.') }}</span></p>
         </section>
-    </aside>
-</div>
+        </div>
+    </x-slot:help>
+</x-portal.auth-shell>
 @endsection

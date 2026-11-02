@@ -88,7 +88,13 @@ class ResidentPortalController extends Controller
 
     public function accountHome(Request $request): View
     {
-        return view('portal.account-home', ['resident' => $request->user()->resident]);
+        $resident = $request->user()->resident;
+
+        return view('portal.account-home', [
+            'resident' => $resident,
+            'statusCounts' => $resident->documentRequests()->toBase()->selectRaw('status, count(*) as aggregate')->groupBy('status')->pluck('aggregate', 'status'),
+            'latestRequests' => $resident->documentRequests()->latest()->latest('id')->limit(3)->get(),
+        ]);
     }
 
     public function showRequest(Request $request, string $referenceCode): View

@@ -326,7 +326,7 @@ test('guests see requirements in the header menu and residents see request and m
 
     expect($menu())->toBe(['Home', 'Requirements and fees', 'Get help']);
     $this->actingAs(User::factory()->resident()->create(), 'resident');
-    expect($menu())->toBe(['Home', 'Request a document', 'My requests', 'Get help']);
+    expect($menu())->toBe(['My account', 'Request a document', 'My requests', 'Get help']);
 });
 
 test('the account pill names the signed in resident and opens the account page', function () {
@@ -360,4 +360,55 @@ test('resident log in keeps one help panel with both account paths and a portal 
         ->assertSee('href="'.route('password.request', ['from' => 'portal']).'"', false)
         ->assertSeeInOrder(['Don&#039;t have an account?', route('portal.register'), route('portal.new-resident.create'), route('portal.information').'#help'], false)
         ->assertDontSee('After logging in');
+});
+
+test('the account overview counts requests by stage and points out documents ready to collect', function () {
+    $user = User::factory()->resident()->create();
+    foreach (['pending', 'processing', 'approved', 'ready_for_release', 'released', 'rejected', 'pending'] as $index => $status) {
+        $user->resident->documentRequests()->create([
+            'reference_code' => 'REQ-2026-STAT0'.$index, 'source' => 'online', 'document_type' => 'Barangay Clearance',
+            'full_name' => $user->resident->full_name, 'address' => $user->resident->address, 'status' => $status,
+        ]);
+    }
+
+    $response = $this->actingAs($user, 'resident')->get(route('portal.account.home'))->assertOk()
+        ->assertSee('A document is ready to collect.');
+    $document = new DOMDocument;
+    @$document->loadHTML($response->getContent());
+    $xpath = new DOMXPath($document);
+    $counts = collect($xpath->query('//ul[@class="rp-stats"]/li'))
+        ->mapWithKeys(fn (DOMElement $item): array => [$item->getAttribute('data-status') => trim($xpath->evaluate('string(.//span[@class="rp-stat-number"])', $item))])
+        ->all();
+
+    expect($counts)->toBe(['processing' => '4', 'ready_for_release' => '1', 'released' => '1', 'rejected' => '1']);
+    expect($xpath->query('//ul[@class="rp-mini-list"]/li'))->toHaveCount(3);
+});
+
+test('the account overview shows an empty state and no ready banner before any request', function () {
+    $this->actingAs(User::factory()->resident()->create(), 'resident')->get(route('portal.account.home'))
+        ->assertOk()
+        ->assertSee('No requests yet')
+        ->assertDontSee('A document is ready to collect.');
+});
+
+test('form errors are summarised at the top and linked to the field that needs fixing', function () {
+    $this->from(route('portal.login'))
+        ->post(route('portal.login.store'), ['email' => 'nobody@example.test', 'password' => 'wrong-password'])
+        ->assertRedirect(route('portal.login'));
+
+    $this->get(route('portal.login'))
+        ->assertSee('data-error-summary', false)
+        ->assertSee('data-error-field="email"', false)
+        ->assertSee('js/portal-errors.js', false);
+});
+
+test('help answers common resident questions using the portal rules', function () {
+    $this->get(route('portal.information'))
+        ->assertOk()
+        ->assertSee('id="faq"', false)
+        ->assertSeeInOrder([
+            'Where and when do I pay the fee?', 'There is no online payment.',
+            'How long is a certificate valid?', 'A Barangay ID is valid for 1 year.',
+            'I forgot my password.',
+        ]);
 });

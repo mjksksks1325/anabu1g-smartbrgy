@@ -1,13 +1,8 @@
 @extends('layouts.portal')
 @section('title', __('Reset password'))
-@section('band')
-<x-portal.page-band title="Reset password" title-id="forgot-title" parent="Log in" :parent-url="route('portal.login')">
-    <p><span data-portal-i18n="Ilagay ang email ng inyong resident account. Padadalhan namin kayo ng link para gumawa ng bagong password.">{{ __('Ilagay ang email ng inyong resident account. Padadalhan namin kayo ng link para gumawa ng bagong password.') }}</span></p>
-</x-portal.page-band>
-@endsection
 @section('content')
-<div class="auth-layout v2-form-page">
-    <section class="card v2-form-card" aria-labelledby="forgot-title">
+<x-portal.auth-shell title="Reset password" title-id="forgot-title" lead="Ilagay ang email ng inyong resident account. Padadalhan namin kayo ng link para gumawa ng bagong password." back="Log in" :back-url="route('portal.login')">
+    <section class="card rp-form-card" aria-labelledby="forgot-title">
         <form class="card-body" method="POST" action="{{ route('password.email') }}" data-resident-form>
             @csrf
             <div class="form-group">
@@ -18,7 +13,8 @@
             <button class="btn btn-green btn-full" type="submit"><span data-portal-i18n="Ipadala ang reset link">{{ __('Ipadala ang reset link') }}</span></button>
         </form>
     </section>
-    <aside class="v2-card v2-side-panel" aria-labelledby="forgot-next-title">
+    <x-slot:help>
+    <section class="rp-help-sections" aria-labelledby="forgot-next-title">
         <h2 id="forgot-next-title"><span data-portal-i18n="Ano ang susunod?">{{ __('Ano ang susunod?') }}</span></h2>
         <ol class="v2-list">
             <li><span data-portal-i18n="Buksan ang email at pindutin ang reset link.">{{ __('Buksan ang email at pindutin ang reset link.') }}</span></li>
@@ -27,6 +23,7 @@
         </ol>
         <p class="v2-summary-note"><span data-portal-i18n="Walang dumating? Tingnan ang Spam folder. Kung hindi na mabuksan ang email, magpatulong sa Barangay Hall.">{{ __('Walang dumating? Tingnan ang Spam folder. Kung hindi na mabuksan ang email, magpatulong sa Barangay Hall.') }}</span></p>
         <a href="{{ route('portal.login') }}"><span data-portal-i18n="Bumalik sa Log in">{{ __('Bumalik sa Log in') }}</span></a>
-    </aside>
-</div>
+    </section>
+    </x-slot:help>
+</x-portal.auth-shell>
 @endsection

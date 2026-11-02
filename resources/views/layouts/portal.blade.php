@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="{{ asset('css/figma-portal.css') }}?v={{ filemtime(public_path('css/figma-portal.css')) }}">
 <link rel="stylesheet" href="{{ asset('css/portal-localization.css') }}?v={{ filemtime(public_path('css/portal-localization.css')) }}">
 <link rel="stylesheet" href="{{ asset('css/portal-v2.css') }}?v={{ filemtime(public_path('css/portal-v2.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/portal-resident.css') }}?v={{ filemtime(public_path('css/portal-resident.css')) }}">
 <script>window.PORTAL_I18N = {{ Illuminate\Support\Js::from(['locale' => app()->getLocale(), 'url' => route('portal.locale'), 'csrfUrl' => route('portal.csrf-token')]) }};</script>
 <script src="{{ route('portal.translations') }}"></script>
 <script src="{{ asset('js/portal-localization.js') }}?v={{ filemtime(public_path('js/portal-localization.js')) }}"></script>
@@ -45,9 +46,12 @@
 <main id="resident-main" class="site-main" tabindex="-1">
 @yield('band')
 <div class="container">
-@if(session('status'))<p class="alert alert-green" role="status"><span data-portal-message>{{ __(session('status')) }}</span></p>@endif
+@if(session('status'))<p class="alert alert-green rp-flash" role="status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.6 2.6L16 9.5"/></svg><span data-portal-message>{{ __(session('status')) }}</span></p>@endif
 @if($errors->any())
-<div class="alert alert-red" role="alert"><strong><span data-portal-i18n="May kailangang ayusin:">{{ __('May kailangang ayusin:') }}</span></strong><ul>@foreach($errors->all() as $error)<li data-portal-message>{{ $error }}</li>@endforeach</ul></div>
+<div class="alert alert-red rp-error-summary" role="alert" tabindex="-1" data-error-summary>
+    <h2><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5h.01"/></svg><span data-portal-i18n="May kailangang ayusin:">{{ __('May kailangang ayusin:') }}</span></h2>
+    <ul>@foreach($errors->getMessages() as $field => $messages)@foreach($messages as $error)<li><a href="#resident-main" data-error-field="{{ $field }}" data-portal-message>{{ $error }}</a></li>@endforeach @endforeach</ul>
+</div>
 @endif
 @yield('content')
 </div>
@@ -94,5 +98,7 @@
 @stack('scripts')
 <script src="{{ asset('js/resident-account.js') }}?v={{ filemtime(public_path('js/resident-account.js')) }}"></script>
 <script src="{{ asset('js/resident-photo-input.js') }}?v={{ filemtime(public_path('js/resident-photo-input.js')) }}"></script>
+<script src="{{ asset('js/portal-errors.js') }}?v={{ filemtime(public_path('js/portal-errors.js')) }}"></script>
+<script src="{{ asset('js/photo-preview.js') }}?v={{ filemtime(public_path('js/photo-preview.js')) }}"></script>
 </body>
 </html>

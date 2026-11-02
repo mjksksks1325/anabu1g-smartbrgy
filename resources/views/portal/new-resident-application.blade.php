@@ -1,11 +1,8 @@
 @extends('layouts.portal')
 @section('title', __('New resident registration'))
-@section('band')
-<x-portal.page-band title="New resident registration" title-id="new-resident-title" parent="Create account" :parent-url="route('portal.register')" />
-@endsection
 @section('content')
-<div class="auth-layout v2-form-page new-resident-layout">
-    <section class="card v2-form-card new-resident-card" aria-labelledby="new-resident-title">
+<x-portal.auth-shell title="New resident registration" title-id="new-resident-title" back="Create account" :back-url="route('portal.register')">
+    <section class="card rp-form-card new-resident-card" aria-labelledby="new-resident-title">
         <div class="card-body">
             @if($application)
                 @php($statusLabel = ['pending' => 'Pending review', 'approved' => 'Approved', 'needs_correction' => 'Needs correction', 'declined' => 'Declined'][$application->status])
@@ -47,8 +44,9 @@
                         <legend><span class="new-resident-section-number" aria-hidden="true">4</span><span data-portal-i18n="Resident photo">{{ __('Resident photo') }}</span></legend>
                         <div class="new-resident-upload">
                             <label class="form-label" for="application-photo"><span data-portal-i18n="Resident photo">{{ __('Resident photo') }}</span> *</label>
-                            <input class="form-input" type="file" id="application-photo" name="photo" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.avif,.heic,.heif,image/jpeg,image/png,image/gif,image/bmp,image/webp,image/avif,image/heic,image/heif" data-resident-image-only data-error-target="application-photo-client-error" required aria-describedby="application-photo-help application-photo-client-error @error('photo') application-photo-error @enderror" @error('photo') aria-invalid="true" @enderror>
-                            <p class="form-note" id="application-photo-help"><span data-portal-i18n="Supported image files only, up to 5 MB. Documents are not accepted. Select the photo again after a validation error or correction.">{{ __('Supported image files only, up to 5 MB. Documents are not accepted. Select the photo again after a validation error or correction.') }}</span></p>
+                            <input class="form-input" type="file" id="application-photo" data-photo-preview="application-photo-preview" name="photo" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.avif,.heic,.heif,image/jpeg,image/png,image/gif,image/bmp,image/webp,image/avif,image/heic,image/heif" data-resident-image-only data-error-target="application-photo-client-error" required aria-describedby="application-photo-help application-photo-client-error @error('photo') application-photo-error @enderror" @error('photo') aria-invalid="true" @enderror>
+                            <figure class="rp-photo-preview" id="application-photo-preview" hidden><img alt="" width="120" height="120"><figcaption><span data-portal-i18n="Ito ang napiling larawan.">{{ __('Ito ang napiling larawan.') }}</span></figcaption></figure>
+                        <p class="form-note" id="application-photo-help"><span data-portal-i18n="Supported image files only, up to 5 MB. Documents are not accepted. Select the photo again after a validation error or correction.">{{ __('Supported image files only, up to 5 MB. Documents are not accepted. Select the photo again after a validation error or correction.') }}</span></p>
                             <p class="field-error" id="application-photo-client-error" hidden role="alert" aria-live="polite"><span data-portal-i18n="Choose an image file only (up to 5 MB). Documents are not accepted.">{{ __('Choose an image file only (up to 5 MB). Documents are not accepted.') }}</span></p>
                             @error('photo')<p class="field-error" id="application-photo-error" data-portal-message>{{ $message }}</p>@enderror
                         </div>
@@ -63,7 +61,8 @@
             </div>
         </div>
     </section>
-    <aside class="v2-card v2-side-panel new-resident-aside" aria-labelledby="new-resident-help-title">
+    <x-slot:help>
+    <div class="rp-help-sections new-resident-aside">
         <section>
             <h2 id="new-resident-help-title"><span data-portal-i18n="What happens next">{{ __('What happens next') }}</span></h2>
             <ol class="new-resident-next-steps">
@@ -71,6 +70,7 @@
             </ol>
         </section>
         <section><h2><span data-portal-i18n="Already have a resident record?">{{ __('Already have a resident record?') }}</span></h2><p><span data-portal-i18n="Continue with an existing resident record">{{ __('Continue with an existing resident record') }}</span></p><a class="btn btn-outline btn-full" href="{{ route('portal.register') }}"><span data-portal-i18n="Create account">{{ __('Create account') }}</span></a></section>
-    </aside>
-</div>
+    </div>
+    </x-slot:help>
+</x-portal.auth-shell>
 @endsection

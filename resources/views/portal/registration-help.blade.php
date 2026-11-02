@@ -1,10 +1,8 @@
 @extends('layouts.portal')
 @section('title', __('Registration help'))
-@section('band')
-<x-portal.page-band title="Hindi natapos ang registration" title-id="registration-help-title" parent="Create account" :parent-url="route('portal.register')" />
-@endsection
 @section('content')
-<section class="card v2-form-card narrow" aria-labelledby="registration-help-title">
+<x-portal.auth-shell title="Hindi natapos ang registration" title-id="registration-help-title" back="Create account" :back-url="route('portal.register')">
+<section class="card rp-form-card" aria-labelledby="registration-help-title">
     <div class="card-body stack">
         @if(session('existing_account'))
             <p class="alert alert-blue"><span data-portal-i18n="May online account na para sa resident record na ito.">{{ __('May online account na para sa resident record na ito.') }}</span></p>
@@ -25,4 +23,5 @@
         @endif
     </div>
 </section>
+</x-portal.auth-shell>
 @endsection
