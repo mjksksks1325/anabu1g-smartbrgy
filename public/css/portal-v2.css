@@ -31,6 +31,10 @@
     --v2-brand-tint: var(--v2-green-50);
     --v2-brand-fill: var(--v2-green-600);
     --v2-brand-fill-strong: var(--v2-green-700);
+    --v2-header: var(--v2-card);
+    --v2-elevated: var(--v2-card);
+    --v2-line-elevated: var(--v2-line);
+    --v2-input: var(--v2-card);
     --v2-info: #1d5c99;
     --v2-info-subtle: #eaf2fb;
     --v2-info-line: #bcd3ec;
@@ -106,21 +110,25 @@ body:not(.dark-mode), body.dark-mode {
 }
 
 body.dark-mode {
-    /* Neutral charcoal surfaces; green is reserved for brand fills, links and accents. */
-    --v2-forest-950: #0f1412;
-    --v2-page: #141a18;
-    --v2-subtle: #1b2220;
-    --v2-card: #222b26;
-    --v2-ink: #e8eee9;
-    --v2-muted: #aeb9b2;
-    --v2-line: #34403a;
-    --v2-line-strong: #76847c;
-    --v2-brand: #93cfa9;
-    --v2-brand-strong: #b9e2c7;
-    --v2-brand-subtle: #2a3a31;
-    --v2-brand-tint: #28322d;
-    --v2-brand-fill: #2f6848;
-    --v2-brand-fill-strong: #3a7a56;
+    /* Neutral surface levels: page < band < header < card < elevated; inputs sit below their card. Green is only for fills, links and accents. */
+    --v2-forest-950: #0b0f0d;
+    --v2-page: #121715;
+    --v2-subtle: #181f1c;
+    --v2-header: #1f2824;
+    --v2-card: #222b28;
+    --v2-elevated: #303b36;
+    --v2-input: #171d1a;
+    --v2-ink: #eaf0ec;
+    --v2-muted: #b3beb8;
+    --v2-line: #3e4b45;
+    --v2-line-elevated: #52605a;
+    --v2-line-strong: #7f8d86;
+    --v2-brand: #9edbb5;
+    --v2-brand-strong: #c4ecd3;
+    --v2-brand-subtle: #1e3a2b;
+    --v2-brand-tint: #2c3832;
+    --v2-brand-fill: #17663a;
+    --v2-brand-fill-strong: #1f7a49;
     --v2-info: #9cc7f5;
     --v2-info-subtle: #132a42;
     --v2-info-line: #2b4a6b;
@@ -131,7 +139,7 @@ body.dark-mode {
     --v2-warning-subtle: #3a2d0c;
     --v2-danger: #f2a49c;
     --v2-danger-subtle: #3d1a17;
-    --v2-shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 6px 18px rgba(0, 0, 0, .25);
+    --v2-shadow: 0 1px 2px rgba(0, 0, 0, .45), 0 8px 24px rgba(0, 0, 0, .35);
 }
 
 /* Typography and base elements */
@@ -153,7 +161,7 @@ h1, h2, h3, h4 { font-family: var(--v2-font-display); color: var(--v2-ink); lett
 .btn:disabled, .btn[disabled] { opacity: 1; background: var(--v2-subtle); border-color: var(--v2-line); color: var(--v2-muted); cursor: not-allowed; }
 .btn-link { min-height: 44px; font-size: inherit; color: var(--v2-brand); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
 .form-label { font-size: var(--v2-text-sm); font-weight: 700; color: var(--v2-ink); }
-.form-input, body.dark-mode .form-input { min-height: var(--v2-control-height); padding: 10px 14px; border: 2px solid var(--v2-line-strong); border-radius: 8px; background: var(--v2-card); color: var(--v2-ink); font: 400 var(--v2-text)/1.4 var(--v2-font-body); }
+.form-input, body.dark-mode .form-input { min-height: var(--v2-control-height); padding: 10px 14px; border: 2px solid var(--v2-line-strong); border-radius: 8px; background: var(--v2-input); color: var(--v2-ink); font: 400 var(--v2-text)/1.4 var(--v2-font-body); }
 .form-input:focus { border-color: var(--v2-brand); outline: 3px solid var(--v2-brand); outline-offset: 1px; }
 .form-input[readonly] { border-style: solid; border-color: var(--v2-line); background: var(--v2-subtle); color: var(--v2-ink); }
 .field-error { color: var(--v2-danger); font-weight: 700; font-size: var(--v2-text-sm); }
