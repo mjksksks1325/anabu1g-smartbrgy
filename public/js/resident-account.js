@@ -50,21 +50,18 @@ window.addEventListener('pageshow', event => {
 try {
     if (sessionStorage.getItem('smartbrgy_portal_theme') === 'dark') document.body.classList.add('dark-mode');
 } catch (_) {}
-const residentThemeButton = document.querySelector('[data-resident-theme]');
-if (residentThemeButton) {
-    const updateResidentThemeButton = () => {
-        const dark = document.body.classList.contains('dark-mode');
-        residentThemeButton.setAttribute('aria-pressed', String(dark));
-        portalSetAttribute(residentThemeButton, 'aria-label', dark ? 'Light mode' : 'Dark mode');
-        portalSetAttribute(residentThemeButton, 'title', dark ? 'Light mode' : 'Dark mode');
-    };
-    updateResidentThemeButton();
-    residentThemeButton.addEventListener('click', () => {
-        const dark = document.body.classList.toggle('dark-mode');
-        updateResidentThemeButton();
-        try { sessionStorage.setItem('smartbrgy_portal_theme', dark ? 'dark' : 'light'); } catch (_) {}
-    });
-}
+/* The dark-mode switch has a visible "Dark mode" label, so only its pressed state changes. */
+const residentThemeButtons = [...document.querySelectorAll('[data-resident-theme]')];
+const updateResidentThemeButtons = () => {
+    const dark = document.body.classList.contains('dark-mode');
+    residentThemeButtons.forEach(button => button.setAttribute('aria-pressed', String(dark)));
+};
+updateResidentThemeButtons();
+residentThemeButtons.forEach(button => button.addEventListener('click', () => {
+    const dark = document.body.classList.toggle('dark-mode');
+    updateResidentThemeButtons();
+    try { sessionStorage.setItem('smartbrgy_portal_theme', dark ? 'dark' : 'light'); } catch (_) {}
+}));
 const residentMenuButton = document.querySelector('[data-menu-toggle]');
 const residentNavigation = document.getElementById('site-nav');
 if (residentMenuButton && residentNavigation) {

@@ -6,7 +6,7 @@
 :root {
     --rp-radius: 16px;
     --rp-radius-sm: 12px;
-    --rp-shadow: 0 1px 2px rgba(11, 26, 43, .05), 0 10px 30px rgba(11, 26, 43, .07);
+    --rp-shadow: 0 1px 2px rgba(16, 32, 24, .05), 0 10px 30px rgba(16, 32, 24, .07);
     --rp-field-height: 48px;
     --rp-gap: 24px;
 }
@@ -431,3 +431,47 @@ body:not(.has-hero-header) .site-main .btn { font-weight: 600; }
 .rp-news p { margin: 0; color: var(--v2-muted); font-size: 15px; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .rp-news a { justify-self: start; font-weight: 600; }
 .rp-account form { margin-top: 14px; }
+
+/* Anabu green theme for the homepage and older shared layers: colour only, layout untouched. */
+.portal-band, body.dark-mode .portal-band { background-color: var(--v2-forest-950); }
+.portal-hero-photo::after { background: linear-gradient(90deg, rgba(19, 40, 28, .92) 0%, rgba(19, 40, 28, .78) 38%, rgba(19, 40, 28, .35) 68%, rgba(19, 40, 28, .1) 100%), linear-gradient(0deg, rgba(19, 40, 28, .45) 0%, transparent 35%); }
+.portal-hero-photo figcaption { background: rgba(19, 40, 28, .86); }
+.portal-hero .eyebrow, body.dark-mode .portal-hero .eyebrow { border-left-color: var(--v2-gold); }
+body.has-hero-header:not(.hero-header-scrolled) .site-brand-portal { color: var(--v2-green-200); }
+.howto, body.dark-mode .howto { border-color: var(--v2-forest-950); background: var(--v2-forest-950); color: var(--v2-on-dark); }
+.howto > p:not(.eyebrow), .howto-note { color: var(--v2-on-dark-muted); }
+.howto .eyebrow { color: var(--v2-green-200); }
+.howto-steps li { border-color: rgba(255, 255, 255, .14); color: var(--v2-on-dark); }
+.howto-steps li::before { background: rgba(255, 255, 255, .1); color: var(--v2-green-200); }
+.howto-note { border-color: rgba(255, 255, 255, .16); background: rgba(255, 255, 255, .06); }
+.doc-rates-table thead, .doc-rates-table thead th { background: var(--v2-subtle); }
+.hotline-panel, body.dark-mode .hotline-panel { background: var(--v2-forest-950); }
+.hotline-head p, .hotline-list span { color: var(--v2-on-dark); }
+.hotline-list li { border-color: rgba(255, 255, 255, .16); border-left-color: var(--v2-gold); }
+@media (max-width: 700px) {
+    .portal-hero-photo::after, body.has-hero-header .portal-hero-photo::after { background: linear-gradient(180deg, rgba(19, 40, 28, .45) 0%, rgba(19, 40, 28, .62) 38%, rgba(19, 40, 28, .92) 100%); }
+}
+
+/* Language and display settings in the sticky header: a dropdown on desktop, always open inside the mobile menu. */
+.rp-settings-menu { position: relative; flex: 0 0 auto; }
+.rp-settings-button { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; border: 1px solid var(--v2-line-strong); border-radius: 999px; background: var(--v2-card); color: var(--v2-ink); font: 600 15px/1 var(--v2-font-body); cursor: pointer; }
+.rp-settings-button > svg:first-child { width: 20px; height: 20px; color: var(--v2-brand); }
+.rp-settings-button:hover, .rp-settings-button[aria-expanded="true"] { border-color: var(--v2-brand); background: var(--v2-brand-tint); }
+.rp-settings-button[aria-expanded="true"] .rp-account-chevron { transform: rotate(180deg); }
+.rp-settings-panel { position: absolute; top: calc(100% + 8px); right: 0; z-index: 80; display: grid; gap: 8px; width: 260px; padding: 14px; border: 1px solid var(--v2-line); border-radius: 12px; background: var(--v2-card); box-shadow: var(--rp-shadow); }
+.rp-settings-panel[hidden] { display: none; }
+.rp-settings-heading { margin: 0; color: var(--v2-muted); font-size: 13px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.rp-settings-heading:not(:first-child) { margin-top: 6px; }
+.rp-settings-panel .portal-language-toggle { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.rp-settings-panel .portal-language-toggle > span { display: none; }
+.rp-settings-panel .portal-language-toggle button, .rp-theme-switch { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 12px; border: 1px solid var(--v2-line-strong); border-radius: 8px; background: var(--v2-card); color: var(--v2-ink); font: 600 15px/1.2 var(--v2-font-body); text-decoration: none; cursor: pointer; }
+.rp-settings-panel .portal-language-toggle button:hover, .rp-theme-switch:hover { border-color: var(--v2-brand); background: var(--v2-brand-tint); color: var(--v2-ink); }
+.rp-settings-panel .portal-language-toggle button[aria-pressed="true"], .rp-theme-switch[aria-pressed="true"] { border-color: var(--v2-brand); background: var(--v2-brand); color: var(--v2-on-brand); text-decoration: none; }
+.rp-theme-switch svg { width: 20px; height: 20px; }
+body.has-hero-header:not(.hero-header-scrolled) .rp-settings-button { border-color: rgba(255, 255, 255, .6); background: rgba(19, 40, 28, .25); color: #fff; }
+body.has-hero-header:not(.hero-header-scrolled) .rp-settings-button > svg { color: #fff; }
+@media (max-width: 1099.98px) {
+    .rp-settings-menu { padding-top: 12px; border-top: 1px solid var(--v2-line); }
+    .rp-settings-button { display: none; }
+    .rp-settings-panel, .rp-settings-panel[hidden] { position: static; display: grid; width: auto; padding: 0; border: 0; box-shadow: none; }
+}

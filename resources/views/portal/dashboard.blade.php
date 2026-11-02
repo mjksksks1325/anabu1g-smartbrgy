@@ -1,5 +1,5 @@
 @extends('layouts.portal')
-@section('title', __('Dashboard'))
+@section('title', __('Home'))
 @php
     $stages = ['pending', 'processing', 'approved', 'ready_for_release', 'released'];
     $totalRequests = $statusCounts->sum();
@@ -7,7 +7,7 @@
     $readyCount = $statusCounts['ready_for_release'] ?? 0;
 @endphp
 @section('band')
-<x-portal.page-band title="Magandang araw, :name." :title-params="['name' => $resident->first_name]" eyebrow="Dashboard" title-id="dashboard-title">
+<x-portal.page-band title="Magandang araw, :name." :title-params="['name' => $resident->first_name]" eyebrow="Home" title-id="dashboard-title">
     <p><span data-portal-i18n="Narito ang mga kailangan ninyong malaman tungkol sa inyong mga request.">{{ __('Narito ang mga kailangan ninyong malaman tungkol sa inyong mga request.') }}</span></p>
 </x-portal.page-band>
 @endsection
@@ -66,6 +66,27 @@
             </a>
         </nav>
 
+        <section class="rp-panel" aria-labelledby="dashboard-announcements-title">
+            <div class="rp-panel-head">
+                <h2 id="dashboard-announcements-title"><span data-portal-i18n="Mga anunsyo ng barangay">{{ __('Mga anunsyo ng barangay') }}</span></h2>
+                @if($announcements->isNotEmpty())<a href="{{ route('portal.announcements.index') }}"><span data-portal-i18n="Tingnan lahat">{{ __('Tingnan lahat') }}</span></a>@endif
+            </div>
+            @if($announcements->isEmpty())
+                <p class="v2-summary-note"><span data-portal-i18n="Wala pang bagong anunsyo mula sa barangay.">{{ __('Wala pang bagong anunsyo mula sa barangay.') }}</span></p>
+            @else
+                <ul class="rp-news">
+                    @foreach($announcements as $announcement)
+                        <li>
+                            <time datetime="{{ $announcement->published_at->toIso8601String() }}">{{ $announcement->published_at->format('M j, Y') }}</time>
+                            <h3>{{ $announcement->title }}</h3>
+                            <p>{{ $announcement->body }}</p>
+                            <a href="{{ route('portal.announcements.index') }}#announcement-{{ $announcement->id }}"><span data-portal-i18n="Basahin">{{ __('Basahin') }}</span><span class="sr-only">: {{ $announcement->title }}</span></a>
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
+        </section>
+
         <section class="rp-panel" aria-labelledby="recent-title">
             <div class="rp-panel-head">
                 <h2 id="recent-title"><span data-portal-i18n="Mga huling request">{{ __('Mga huling request') }}</span></h2>
@@ -109,27 +130,7 @@
         </section>
     </div>
 
-    <aside class="rp-home-side" aria-label="{{ __('Mga anunsyo at tulong') }}" data-portal-i18n-aria-label="Mga anunsyo at tulong">
-        <section class="rp-panel" aria-labelledby="dashboard-announcements-title">
-            <div class="rp-panel-head">
-                <h2 id="dashboard-announcements-title"><span data-portal-i18n="Mga anunsyo ng barangay">{{ __('Mga anunsyo ng barangay') }}</span></h2>
-                @if($announcements->isNotEmpty())<a href="{{ route('portal.announcements.index') }}"><span data-portal-i18n="Tingnan lahat">{{ __('Tingnan lahat') }}</span></a>@endif
-            </div>
-            @if($announcements->isEmpty())
-                <p class="v2-summary-note"><span data-portal-i18n="Wala pang bagong anunsyo mula sa barangay.">{{ __('Wala pang bagong anunsyo mula sa barangay.') }}</span></p>
-            @else
-                <ul class="rp-news">
-                    @foreach($announcements as $announcement)
-                        <li>
-                            <time datetime="{{ $announcement->published_at->toIso8601String() }}">{{ $announcement->published_at->format('M j, Y') }}</time>
-                            <h3>{{ $announcement->title }}</h3>
-                            <p>{{ $announcement->body }}</p>
-                            <a href="{{ route('portal.announcements.index') }}#announcement-{{ $announcement->id }}"><span data-portal-i18n="Basahin">{{ __('Basahin') }}</span><span class="sr-only">: {{ $announcement->title }}</span></a>
-                        </li>
-                    @endforeach
-                </ul>
-            @endif
-        </section>
+    <aside class="rp-home-side" aria-label="{{ __('Tulong') }}" data-portal-i18n-aria-label="Tulong">
         <section class="rp-panel" aria-labelledby="help-title">
             <h2 id="help-title"><span data-portal-i18n="Kailangan ng tulong?">{{ __('Kailangan ng tulong?') }}</span></h2>
             <ul class="v2-links">

@@ -78,6 +78,9 @@ body:not(.dark-mode), body.dark-mode {
     --navy-deep: var(--v2-forest-950);
     --navy-tint: var(--v2-brand-tint);
     --navy-line: var(--v2-brand-subtle);
+    --shadow-sm: var(--v2-shadow);
+    --band: var(--v2-forest-950);
+    --band-line: rgba(255, 255, 255, .16);
     --civic-shadow: var(--v2-shadow);
     --bg: var(--v2-page);
     --surface: var(--v2-card);

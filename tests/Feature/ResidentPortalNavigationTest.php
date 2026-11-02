@@ -19,9 +19,7 @@ test('portal home shows community content without the document request form', fu
         ->assertSee('GOVPH')
         ->assertSee('css/figma-portal.css')
         ->assertSee('<body class="has-hero-header">', false)
-        ->assertSee('data-resident-theme aria-pressed="false" aria-label="Dark mode"', false)
-        ->assertSee('theme-icon-moon', false)
-        ->assertSee('theme-icon-sun', false)
+        ->assertSee('data-resident-theme aria-pressed="false"', false)
         ->assertDontSee('class="dark-mode', false)
         ->assertDontSee('Staff portal')
         ->assertSee(route('portal.request.create'), false)
@@ -296,7 +294,33 @@ test('guests and residents get service menus without account pages in them', fun
 
     expect($menu())->toBe(['Home', 'Request a document', 'My requests', 'Get help']);
     $this->actingAs(User::factory()->resident()->create(), 'resident');
-    expect($menu())->toBe(['Dashboard', 'Request a document', 'My requests', 'Get help']);
+    expect($menu())->toBe(['Home', 'Request a document', 'My requests', 'Get help']);
+});
+
+test('the barangay logo leads guests to the public home and residents to their resident home', function () {
+    $logo = function (): string {
+        $document = new DOMDocument;
+        @$document->loadHTML($this->get(route('portal.information'))->assertOk()->getContent());
+
+        return (new DOMXPath($document))->query('//header//a[contains(@class, "site-brand")]')->item(0)->getAttribute('href');
+    };
+
+    expect($logo())->toBe(route('home'));
+    $this->actingAs(User::factory()->resident()->create(), 'resident');
+    expect($logo())->toBe(route('portal.dashboard'));
+    $this->get(route('portal.dashboard'))->assertOk()->assertSee('<title>Home | Barangay Anabu I-G</title>', false);
+});
+
+test('language and dark mode controls live in the sticky header instead of the scrolling government bar', function () {
+    $document = new DOMDocument;
+    @$document->loadHTML($this->get(route('portal.information'))->assertOk()->getContent());
+    $xpath = new DOMXPath($document);
+    $settings = '//header[contains(@class, "site-header")]//nav[@id="site-nav"]//div[@data-settings-menu]';
+
+    expect($xpath->query('//div[contains(@class, "gov-bar")]//button'))->toHaveCount(0);
+    expect($xpath->query($settings.'/button[@aria-controls="settings-menu-panel"][@aria-expanded="false"][@aria-label="Language and display"]'))->toHaveCount(1);
+    expect($xpath->query($settings.'//div[@id="settings-menu-panel"][@hidden]//button[@data-portal-locale]'))->toHaveCount(2);
+    expect($xpath->query($settings.'//div[@id="settings-menu-panel"]//button[@data-resident-theme][@aria-pressed="false"]'))->toHaveCount(1);
 });
 
 test('the resident name button is the single entry to account pages', function () {

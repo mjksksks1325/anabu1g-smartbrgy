@@ -6,7 +6,7 @@
     <div class="site-nav-inner">
         <ul class="site-nav-list">
             @if($residentSignedIn)
-                <li><a href="{{ route('portal.dashboard') }}" @if(request()->routeIs('portal.dashboard')) aria-current="page" @endif><span data-portal-i18n="Dashboard">{{ __('Dashboard') }}</span></a></li>
+                <li><a href="{{ route('portal.dashboard') }}" @if(request()->routeIs('portal.dashboard')) aria-current="page" @endif><span data-portal-i18n="Home">{{ __('Home') }}</span></a></li>
             @else
                 <li><a href="{{ route('home') }}" @if(request()->routeIs('home')) aria-current="page" @endif><span data-portal-i18n="Home">{{ __('Home') }}</span></a></li>
             @endif
@@ -14,6 +14,19 @@
             <li><a href="{{ $residentSignedIn ? route('portal.account') : route('portal.login') }}" @if(request()->routeIs('portal.account', 'portal.account.requests.show')) aria-current="page" @endif><span data-portal-i18n="My requests">{{ __('My requests') }}</span></a></li>
             <li><a href="{{ route('portal.information') }}" data-portal-i18n-aria-label="Help, requirements and fees" aria-label="{{ __('Help, requirements and fees') }}" @if(request()->routeIs('portal.information')) aria-current="page" @endif><span data-portal-i18n="portal.navigation.help">{{ __('portal.navigation.help') }}</span></a></li>
         </ul>
+        <div class="rp-settings-menu" data-settings-menu>
+            <button type="button" class="rp-settings-button" aria-expanded="false" aria-controls="settings-menu-panel" aria-label="{{ __('Language and display') }}" data-portal-i18n-aria-label="Language and display" data-settings-menu-button>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
+                <span><span data-portal-i18n="Language">{{ __('Language') }}</span></span>
+                <svg class="rp-account-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="rp-settings-panel" id="settings-menu-panel" hidden>
+                <p class="rp-settings-heading"><span data-portal-i18n="Language">{{ __('Language') }}</span></p>
+                @include('partials.portal-language-toggle')
+                <p class="rp-settings-heading"><span data-portal-i18n="Display">{{ __('Display') }}</span></p>
+                <button class="rp-theme-switch" type="button" data-resident-theme aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg><span data-portal-i18n="Dark mode">{{ __('Dark mode') }}</span></button>
+            </div>
+        </div>
         @unless($residentSignedIn)
             <ul class="site-nav-account">
                 <li><a href="{{ route('portal.login') }}" @if(request()->routeIs('portal.login')) aria-current="page" @endif><span data-portal-i18n="Log in">{{ __('Log in') }}</span></a></li>
