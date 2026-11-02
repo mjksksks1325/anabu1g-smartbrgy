@@ -1024,5 +1024,8 @@
     "Back to the resident portal": "Back to the resident portal",
     "Back to home page": "Back to home page",
     "Wala pang bagong anunsyo mula sa barangay.": "No new barangay announcements yet.",
-    "Tingnan ang lahat ng anunsyo": "View all announcements"
+    "Tingnan ang lahat ng anunsyo": "View all announcements",
+    "Don't ask for a code on this device for 30 days": "Don't ask for a code on this device for 30 days",
+    "Only select this on a private device you control.": "Only select this on a private device you control.",
+    "Keep me signed in": "Keep me signed in"
 }

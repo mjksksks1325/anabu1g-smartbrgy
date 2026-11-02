@@ -79,6 +79,15 @@
                         @enderror
                     </div>
 
+                    <div x-show="!showRecoveryInput" class="space-y-2 text-left">
+                        <flux:checkbox name="trust_device" value="1" :label="__('Don\'t ask for a code on this device for 30 days')" />
+                        <flux:text class="pl-6 text-xs">{{ __('Only select this on a private device you control.') }}</flux:text>
+                    </div>
+
+                    @error('code')
+                        <flux:text color="red">{{ $message }}</flux:text>
+                    @enderror
+
                     <flux:button
                         variant="primary"
                         type="submit"

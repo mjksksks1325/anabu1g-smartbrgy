@@ -36,8 +36,7 @@
 
             </div>
 
-            <!-- Remember Me -->
-            <flux:checkbox name="remember" :label="__('Remember this authorized device')" :checked="old('remember')" />
+            <flux:checkbox name="remember" :label="__('Keep me signed in')" :checked="old('remember')" />
 
             <div class="flex items-center justify-end">
                 <flux:button variant="primary" type="submit" class="w-full" data-test="login-button">
@@ -49,7 +48,6 @@
             @if (Route::has('password.request'))
                 <flux:link :href="route('password.request')" wire:navigate>{{ __('Forgot your password?') }}</flux:link>
             @endif
-            <a href="{{ route('home') }}#office">Contact barangay office</a>
         </div>
         <p class="staff-login-security">This system contains protected resident information. Access is logged and monitored.</p>
 
