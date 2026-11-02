@@ -35,9 +35,7 @@
         <svg class="rp-account-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
     </button>
     <ul class="rp-account-list" id="account-menu-list" hidden>
-        <li><a href="{{ route('portal.account.home') }}" @if(request()->routeIs('portal.account.home')) aria-current="page" @endif><span data-portal-i18n="Aking account">{{ __('Aking account') }}</span></a></li>
-        <li><a href="{{ route('portal.profile') }}" @if(request()->routeIs('portal.profile')) aria-current="page" @endif><span data-portal-i18n="Aking profile">{{ __('Aking profile') }}</span></a></li>
-        <li><a href="{{ route('password.request', ['from' => 'portal']) }}"><span data-portal-i18n="Palitan ang password">{{ __('Palitan ang password') }}</span></a></li>
+        <li><a href="{{ route('portal.profile') }}" @if(request()->routeIs('portal.profile')) aria-current="page" @endif><span data-portal-i18n="Aking account">{{ __('Aking account') }}</span></a></li>
         <li class="rp-account-separator"><button type="button" data-resident-logout><span data-portal-i18n="Log out">{{ __('Log out') }}</span></button></li>
     </ul>
 </div>

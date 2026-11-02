@@ -97,12 +97,16 @@ class ResidentPortalController extends Controller
                     ->orWhere(fn ($query) => $query->whereIn('status', ['pending', 'processing', 'approved'])->whereNotNull('remarks')->where('remarks', '!=', '')))
                 ->latest()->latest('id')->limit(5)->get(),
             'recentRequests' => $resident->documentRequests()->latest()->latest('id')->limit(5)->get(),
+            'announcements' => Announcement::published()->orderByDesc('published_at')->orderByDesc('id')->limit(3)->get(),
         ]);
     }
 
-    public function accountHome(Request $request): View
+    /**
+     * "My account" and the profile are one page; this address stays so older links keep working.
+     */
+    public function accountHome(): RedirectResponse
     {
-        return view('portal.account-home', ['resident' => $request->user()->resident]);
+        return redirect()->route('portal.profile');
     }
 
     public function showRequest(Request $request, string $referenceCode): View

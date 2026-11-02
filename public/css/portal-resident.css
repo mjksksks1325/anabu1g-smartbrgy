@@ -399,3 +399,35 @@ body:not(.has-hero-header) .site-main .btn { font-weight: 600; }
     .rp-attention-doc .v2-ref { display: block; margin: 2px 0 0; }
 }
 .rp-recent li[data-status], .rp-attention li[data-status] { background: transparent; color: var(--v2-ink); }
+
+/* One account page: who you are on the left, photo and security on the right */
+.rp-account { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.rp-account-col { display: grid; gap: 24px; align-content: start; min-width: 0; }
+.rp-account .rp-panel > h2 { margin-bottom: 8px; }
+.rp-account-identity { display: flex; align-items: center; gap: 18px; padding-bottom: 16px; }
+.rp-account-identity h2 { margin: 0; font-size: 21px; overflow-wrap: anywhere; }
+.rp-account-avatar { width: 88px; height: 88px; flex: 0 0 auto; }
+.rp-account-avatar svg { width: 40px; height: 40px; }
+.rp-account-number { margin: 4px 0 0; color: var(--v2-muted); font-size: 15px; }
+.rp-account-number .v2-ref { display: block; color: var(--v2-ink); font-size: 16px; }
+.rp-account .rp-info-list { margin: 0; }
+.rp-account .record-lock { margin: 14px 0 0; font-weight: 600; }
+.rp-corrections { margin-top: 16px; border-top: 1px solid var(--v2-line); }
+.rp-corrections summary { display: flex; align-items: center; justify-content: space-between; min-height: 48px; color: var(--v2-brand); font-weight: 600; cursor: pointer; list-style: none; }
+.rp-corrections summary::-webkit-details-marker { display: none; }
+.rp-corrections summary::after { content: "+"; font: 700 22px/1 var(--v2-font-display); }
+.rp-corrections[open] summary::after { content: "\2212"; }
+.rp-corrections .numbered-list { display: grid; gap: 8px; margin: 0 0 12px; padding-left: 22px; }
+.rp-account .rp-note-warning { margin: 4px 0 16px; }
+.rp-account form .form-group { margin-bottom: 18px; }
+@media (max-width: 860px) { .rp-account { grid-template-columns: minmax(0, 1fr); } }
+
+/* Barangay announcements on the dashboard */
+.rp-news { display: grid; margin: 0; padding: 0; list-style: none; }
+.rp-news li { display: grid; gap: 4px; padding: 12px 0; border-top: 1px solid var(--v2-line); }
+.rp-news li:first-child { padding-top: 0; border-top: 0; }
+.rp-news time { color: var(--v2-muted); font-size: 14px; }
+.rp-news h3 { margin: 0; font-size: 16px; }
+.rp-news p { margin: 0; color: var(--v2-muted); font-size: 15px; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.rp-news a { justify-self: start; font-weight: 600; }
+.rp-account form { margin-top: 14px; }

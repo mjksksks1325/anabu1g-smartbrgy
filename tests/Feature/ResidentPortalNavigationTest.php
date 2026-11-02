@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Announcement;
 use App\Models\DocumentRequest;
 use App\Models\Resident;
 use App\Models\User;
@@ -312,9 +313,9 @@ test('the resident name button is the single entry to account pages', function (
     $list = $document->getElementById($button->getAttribute('aria-controls'));
     expect($list->hasAttribute('hidden'))->toBeTrue();
     expect(collect($xpath->query('.//a', $list))->map(fn (DOMElement $link): string => $link->getAttribute('href'))->all())
-        ->toBe([route('portal.account.home'), route('portal.profile'), route('password.request', ['from' => 'portal'])]);
+        ->toBe([route('portal.profile')]);
     expect($xpath->query('.//button[@data-resident-logout]', $list))->toHaveCount(1);
-    expect($xpath->query('//nav[@id="site-nav"]//a[@href="'.route('portal.account.home').'"]'))->toHaveCount(0);
+    expect($xpath->query('//nav[@id="site-nav"]//a[@href="'.route('portal.profile').'"]'))->toHaveCount(0);
     expect($xpath->query('//nav[@id="site-nav"]//ul[@class="site-nav-account"]'))->toHaveCount(0);
 });
 
@@ -325,27 +326,29 @@ test('guests get log in and create account instead of the account menu', functio
         ->assertSeeInOrder(['class="site-nav-account"', route('portal.login'), route('portal.register')], false);
 });
 
-test('the account page shows resident information and account actions without request content', function () {
+test('my account is one page with resident information, photo upload and password help', function () {
     $user = User::factory()->resident()->create();
 
     $this->get(route('portal.account.home'))->assertRedirect(route('portal.login'));
-    $response = $this->actingAs($user, 'resident')->get(route('portal.account.home'))
+    $this->actingAs($user, 'resident')->get(route('portal.account.home'))->assertRedirect(route('portal.profile'));
+    $response = $this->get(route('portal.profile'))
         ->assertOk()
-        ->assertViewIs('portal.account-home')
+        ->assertViewIs('portal.profile')
+        ->assertSee('<h1 id="page-title"><span data-portal-i18n="Aking account"', false)
         ->assertSee($user->resident->full_name)
         ->assertSee($user->resident->resident_number)
         ->assertSee($user->resident->address)
-        ->assertSee($user->email);
+        ->assertSee($user->email)
+        ->assertSee('JPG, PNG, WEBP, HEIC and other image files, up to 5 MB.');
 
     $document = new DOMDocument;
     @$document->loadHTML($response->getContent());
     $xpath = new DOMXPath($document);
     $main = '//main[@id="resident-main"]';
-    expect($xpath->query($main.'//a[@href="'.route('portal.profile').'"]'))->toHaveCount(1);
+    expect($xpath->query($main.'//form[@action="'.route('portal.profile.photo.store').'"]//input[@name="photo"][@data-photo-preview]'))->toHaveCount(1);
     expect($xpath->query($main.'//a[@href="'.route('password.request', ['from' => 'portal']).'"]'))->toHaveCount(1);
-    expect($xpath->query($main.'//button[@data-resident-logout]'))->toHaveCount(1);
-    expect($xpath->query($main.'//a[@href="'.route('portal.request.create').'"]'))->toHaveCount(0);
-    expect($xpath->query($main.'//ul[@class="rp-stats"]'))->toHaveCount(0);
+    expect($xpath->query($main.'//details[@id="corrections"]'))->toHaveCount(1);
+    expect(substr_count($response->getContent(), $user->resident->resident_number))->toBe(1);
 });
 
 function dashboardRequest(User $user, string $code, string $status, array $attributes = []): DocumentRequest
@@ -451,4 +454,23 @@ test('help answers common resident questions using the portal rules', function (
             'How long is a certificate valid?', 'A Barangay ID is valid for 1 year.',
             'I forgot my password.',
         ]);
+});
+
+test('the dashboard shows published barangay announcements only', function () {
+    $author = User::factory()->superAdmin()->create();
+    $announcement = fn (string $title, string $status, $publishedAt) => Announcement::query()->create([
+        'title' => $title, 'body' => $title.' body', 'status' => $status, 'published_at' => $publishedAt, 'created_by' => $author->id,
+    ]);
+    $published = $announcement('Libreng bakuna sa Sabado', Announcement::STATUS_PUBLISHED, now()->subDay());
+    $announcement('Draft na anunsyo', Announcement::STATUS_DRAFT, null);
+    $announcement('Archived na anunsyo', Announcement::STATUS_ARCHIVED, now()->subDays(3));
+    $announcement('Scheduled na anunsyo', Announcement::STATUS_PUBLISHED, now()->addDay());
+
+    $this->actingAs(User::factory()->resident()->create(), 'resident')->get(route('portal.dashboard'))
+        ->assertOk()
+        ->assertSee('Libreng bakuna sa Sabado')
+        ->assertSee(route('portal.announcements.index').'#announcement-'.$published->id, false)
+        ->assertDontSee('Draft na anunsyo')
+        ->assertDontSee('Archived na anunsyo')
+        ->assertDontSee('Scheduled na anunsyo');
 });

@@ -109,7 +109,27 @@
         </section>
     </div>
 
-    <aside class="rp-home-side" aria-label="{{ __('Kailangan ng tulong?') }}" data-portal-i18n-aria-label="Kailangan ng tulong?">
+    <aside class="rp-home-side" aria-label="{{ __('Mga anunsyo at tulong') }}" data-portal-i18n-aria-label="Mga anunsyo at tulong">
+        <section class="rp-panel" aria-labelledby="dashboard-announcements-title">
+            <div class="rp-panel-head">
+                <h2 id="dashboard-announcements-title"><span data-portal-i18n="Mga anunsyo ng barangay">{{ __('Mga anunsyo ng barangay') }}</span></h2>
+                @if($announcements->isNotEmpty())<a href="{{ route('portal.announcements.index') }}"><span data-portal-i18n="Tingnan lahat">{{ __('Tingnan lahat') }}</span></a>@endif
+            </div>
+            @if($announcements->isEmpty())
+                <p class="v2-summary-note"><span data-portal-i18n="Wala pang bagong anunsyo mula sa barangay.">{{ __('Wala pang bagong anunsyo mula sa barangay.') }}</span></p>
+            @else
+                <ul class="rp-news">
+                    @foreach($announcements as $announcement)
+                        <li>
+                            <time datetime="{{ $announcement->published_at->toIso8601String() }}">{{ $announcement->published_at->format('M j, Y') }}</time>
+                            <h3>{{ $announcement->title }}</h3>
+                            <p>{{ $announcement->body }}</p>
+                            <a href="{{ route('portal.announcements.index') }}#announcement-{{ $announcement->id }}"><span data-portal-i18n="Basahin">{{ __('Basahin') }}</span><span class="sr-only">: {{ $announcement->title }}</span></a>
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
+        </section>
         <section class="rp-panel" aria-labelledby="help-title">
             <h2 id="help-title"><span data-portal-i18n="Kailangan ng tulong?">{{ __('Kailangan ng tulong?') }}</span></h2>
             <ul class="v2-links">

@@ -49,7 +49,7 @@ return array_replace_recursive(require __DIR__.'/../en/validation.php', [
     'same' => 'Dapat magkatugma ang :attribute at :other.',
     'string' => 'Dapat teksto ang :attribute.',
     'unique' => 'Ginagamit na ang :attribute na ito.',
-    'uploaded' => 'Hindi na-upload ang :attribute.',
+    'uploaded' => 'Hindi na-upload ang :attribute. Maaaring masyadong malaki ang file. Pumili ng mas maliit na file at subukan ulit.',
     'attributes' => [
         'full_name' => 'buong pangalan', 'date_of_birth' => 'petsa ng kapanganakan',
         'email' => 'email', 'password' => 'password', 'password_confirmation' => 'pagkumpirma ng password',

@@ -8,7 +8,7 @@
 @section('content')
 <section class="portal-announcement-archive" aria-label="{{ __('Barangay announcements') }}">
     @forelse($announcements as $announcement)
-        <article class="portal-announcement-card v2-card">
+        <article class="portal-announcement-card v2-card" id="announcement-{{ $announcement->id }}">
             <p class="portal-announcement-date"><time datetime="{{ $announcement->published_at->toIso8601String() }}">{{ $announcement->published_at->format('F j, Y · g:i A') }}</time></p>
             <h2>{{ $announcement->title }}</h2>
             @if($announcement->image_path)<img class="portal-announcement-image" src="{{ $announcement->imageUrl() }}" alt="{{ $announcement->title }}" loading="lazy">@endif
