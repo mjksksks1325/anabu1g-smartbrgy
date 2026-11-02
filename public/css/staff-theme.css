@@ -1,0 +1,458 @@
+/*
+ * Staff workspace — Anabu green design system.
+ * Loaded last by every staff layout (workspace, IoT/request pages, account settings, staff sign-in).
+ * Surfaces: forest sidebar · white top bar · neutral workspace · white cards. Green marks brand, primary actions and
+ * the current item; information, warning, error and success keep their own colours.
+ */
+
+/* ── Tokens: light ─────────────────────────────────────────────── */
+:root {
+  --civic-primary: #17663a;
+  --civic-primary-hover: #0f5130;
+  --civic-blue: #17663a;
+  --civic-blue-strong: #0f5130;
+  --civic-blue-soft: #e3f0e7;
+  --civic-green-soft: #dff1e6;
+  --civic-ink: #14211a;
+  --civic-muted: #4f5e56;
+  --civic-line: #d5ddd8;
+  --civic-paper: #eef2ef;
+  --civic-surface: #f6f8f7;
+  --civic-gold: #c9a24a;
+
+  --staff-bg: #eef2ef;
+  --staff-topbar: #ffffff;
+  --staff-card: #ffffff;
+  --staff-soft: #f5f8f6;
+  --staff-input: #ffffff;
+  --staff-border: #d5ddd8;
+  --staff-control-border: #7a8981;
+  --staff-row: #e4eae6;
+  --staff-table-head: #f3f6f4;
+  --staff-ink: #14211a;
+  --staff-muted: #4f5e56;
+  --staff-accent: #17663a;
+  --staff-accent-fill: #17663a;
+  --staff-accent-fill-hover: #0f5130;
+  --staff-active-bg: #e3f0e7;
+  --staff-active-ink: #0f5130;
+  --staff-hover-bg: #eef3ef;
+  --staff-quiet-bg: #ffffff;
+  --staff-quiet-border: #7a8981;
+  --staff-quiet-ink: #14211a;
+  --staff-quiet-hover: #eef3ef;
+  --staff-danger: #b42318;
+  --staff-danger-hover: #912018;
+  --staff-focus: #17663a;
+  --staff-shadow: 0 1px 2px rgba(16, 32, 24, .05), 0 4px 14px rgba(16, 32, 24, .06);
+  --staff-shadow-raised: 0 18px 44px rgba(16, 32, 24, .2);
+
+  /* Sidebar: the forest column is the same in both themes, only deeper in dark mode. */
+  --staff-sidebar: #13281c;
+  --staff-side-ink: #e6eee9;
+  --staff-side-muted: #b9cbbf;
+  --staff-side-label: #93ad9c;
+  --staff-side-line: rgba(255, 255, 255, .1);
+  --staff-side-hover: rgba(255, 255, 255, .07);
+  --staff-side-active-bg: #215a39;
+  --staff-side-active-ink: #ffffff;
+  --staff-side-indicator: #9edbb5;
+  --staff-nav-active-bg: var(--staff-side-active-bg);
+  --staff-nav-active-ink: var(--staff-side-active-ink);
+}
+
+/* ── Tokens: dark (workspace, IoT pages, settings) ─────────────── */
+:root:has(body[data-personnel-layout="admin"]:not(.light-mode)),
+html[data-theme=dark], html.dark, body:not(.light-mode) #app.admin-interface.admin-interface {
+  --civic-blue: #9edbb5;
+  --civic-blue-strong: #c4ecd3;
+  --civic-blue-soft: #1e3a2b;
+  --civic-green-soft: #1b3a29;
+  --civic-ink: #eaf0ec;
+  --civic-muted: #b3beb8;
+  --civic-line: #3e4b45;
+
+  --staff-bg: #121715;
+  --staff-topbar: #1b2320;
+  --staff-card: #222b28;
+  --staff-soft: #2a342f;
+  --staff-input: #171d1a;
+  --staff-border: #3e4b45;
+  --staff-control-border: #7f8d86;
+  --staff-row: #333f39;
+  --staff-table-head: #2a342f;
+  --staff-ink: #eaf0ec;
+  --staff-muted: #b3beb8;
+  --staff-accent: #9edbb5;
+  --staff-accent-fill: #17663a;
+  --staff-accent-fill-hover: #1f7a49;
+  --staff-active-bg: #1e3a2b;
+  --staff-active-ink: #9edbb5;
+  --staff-hover-bg: #2c3832;
+  --staff-quiet-bg: #26302b;
+  --staff-quiet-border: #6b7a72;
+  --staff-quiet-ink: #eaf0ec;
+  --staff-quiet-hover: #303b36;
+  --staff-danger: #b42318;
+  --staff-danger-hover: #c8372b;
+  --staff-focus: #9edbb5;
+  --staff-shadow: 0 1px 2px rgba(0, 0, 0, .45), 0 6px 18px rgba(0, 0, 0, .3);
+  --staff-shadow-raised: 0 20px 48px rgba(0, 0, 0, .6);
+  --staff-sidebar: #0d1310;
+  --staff-side-line: rgba(255, 255, 255, .08);
+  --staff-side-active-bg: #1e3a2b;
+  --staff-side-active-ink: #ffffff;
+  --staff-nav-active-bg: #1e3a2b;
+  --staff-nav-active-ink: #ffffff;
+}
+
+/* The workspace layer maps its own variables per theme on #app; point them at the tokens again. */
+body.light-mode #app.admin-interface.admin-interface, body:not(.light-mode) #app.admin-interface.admin-interface {
+  --blue-700: var(--staff-accent-fill);
+  --blue-600: var(--staff-accent-fill);
+  --blue-500: var(--staff-accent);
+  --blue-400: var(--staff-accent);
+  --bg-glass: var(--staff-hover-bg);
+  --border-hover: var(--staff-control-border);
+  --sidebar-bg: var(--staff-sidebar);
+  --topbar-bg: var(--staff-topbar);
+}
+body.light-mode #app.admin-interface.admin-interface { --green-500: #17663a; --green-400: #17663a; --green-dim: #e3f0e7; }
+body:not(.light-mode) #app.admin-interface.admin-interface { --green-500: #9edbb5; --green-400: #9edbb5; --green-dim: #1e3a2b; }
+
+/* ── Workspace surfaces ────────────────────────────────────────── */
+body[data-personnel-layout="admin"], body[data-personnel-layout="iot"], html:has(body[data-personnel-layout="iot"]) { background: var(--staff-bg); }
+body #app.admin-interface.admin-interface .app-body, body #app.admin-interface.admin-interface .content, body[data-personnel-layout="iot"] .main-content,
+body.civic-settings, body.civic-settings .civic-settings-main, .dark body.civic-settings .civic-settings-main { background: var(--staff-bg); }
+
+/* Top bar: a white (charcoal in dark) strip, separated from the workspace by a border and a soft shadow. */
+body #app.admin-interface.admin-interface .topbar, body.light-mode #app.admin-interface.admin-interface .topbar,
+body[data-personnel-layout="iot"] .site-header, html[data-theme=dark] body[data-personnel-layout="iot"] .site-header,
+.staff-settings-topbar, .dark .staff-settings-topbar {
+  border-bottom: 1px solid var(--staff-border); background: var(--staff-topbar); color: var(--staff-ink);
+  box-shadow: 0 1px 3px rgba(16, 32, 24, .06);
+}
+body #app.admin-interface.admin-interface .topbar { position: relative; z-index: 5; }
+body #app.admin-interface.admin-interface .topbar-status span, body[data-personnel-layout="iot"] .workspace-title span, .staff-settings-topbar-title span { display: none; }
+body #app.admin-interface.admin-interface .topbar-status strong, body[data-personnel-layout="iot"] .workspace-title strong, .staff-settings-topbar-title strong { color: var(--staff-ink); font-size: 18px; }
+body #app.admin-interface.admin-interface .topbar-avatar, .staff-settings-topbar-actions > span { background: var(--staff-accent-fill); color: #fff; }
+
+/* Brand block sits on the sidebar column so the forest strip runs the full height. */
+body #app.admin-interface.admin-interface .topbar-logo, body[data-personnel-layout="iot"] .site-header .brand,
+body.civic-settings .civic-settings-sidebar [data-flux-sidebar-header] {
+  border-right: 0; border-bottom: 1px solid var(--staff-side-line); background: var(--staff-sidebar); color: var(--staff-side-ink);
+}
+body #app.admin-interface.admin-interface .topbar-brand, body.light-mode #app.admin-interface.admin-interface .topbar-brand,
+body[data-personnel-layout="iot"] .brand strong, html[data-theme=dark] body[data-personnel-layout="iot"] .brand strong,
+.staff-settings-brand, .dark .staff-settings-brand { color: #fff; }
+body #app.admin-interface.admin-interface .topbar-brand span, body.light-mode #app.admin-interface.admin-interface .topbar-brand span,
+body[data-personnel-layout="iot"] .brand small, html[data-theme=dark] body[data-personnel-layout="iot"] .brand small,
+.staff-settings-brand-text small, .dark .staff-settings-brand-text small { color: var(--civic-gold); }
+body #app.admin-interface.admin-interface .topbar-logo-box, body[data-personnel-layout="iot"] .brand img, .staff-settings-seal { border-color: var(--civic-gold); }
+
+/* ── Sidebar ───────────────────────────────────────────────────── */
+body #app.admin-interface.admin-interface .sidebar, body.light-mode #app.admin-interface.admin-interface .sidebar,
+body[data-personnel-layout="iot"] .side-nav, html[data-theme=dark] body[data-personnel-layout="iot"] .side-nav,
+body.civic-settings .civic-settings-sidebar, .dark body.civic-settings .civic-settings-sidebar {
+  border-right: 0; background: var(--staff-sidebar) !important; color: var(--staff-side-ink);
+}
+:is(body #app.admin-interface.admin-interface .sidebar, body[data-personnel-layout="iot"] .side-nav, body.civic-settings .staff-settings-navigation) .sidebar-label,
+.dark .staff-settings-navigation .sidebar-label,
+body.civic-settings .civic-settings-sidebar [data-flux-sidebar-group] > div:first-child { color: var(--staff-side-label); }
+:is(body #app.admin-interface.admin-interface .sidebar, body[data-personnel-layout="iot"] .side-nav, body.civic-settings .staff-settings-navigation) .nav-item,
+html[data-theme=dark] body[data-personnel-layout="iot"] .side-nav a, .dark .staff-settings-navigation .nav-item,
+body.civic-settings .civic-settings-sidebar [data-flux-sidebar-item], .dark body.civic-settings .civic-settings-sidebar [data-flux-sidebar-item] {
+  position: relative; color: var(--staff-side-muted); background: transparent;
+}
+:is(body #app.admin-interface.admin-interface .sidebar, body[data-personnel-layout="iot"] .side-nav, body.civic-settings .staff-settings-navigation) .nav-item:hover,
+html[data-theme=dark] body[data-personnel-layout="iot"] .side-nav a:hover, .dark .staff-settings-navigation .nav-item:hover,
+body.civic-settings .civic-settings-sidebar [data-flux-sidebar-item]:hover, .dark body.civic-settings .civic-settings-sidebar [data-flux-sidebar-item]:hover {
+  background: var(--staff-side-hover); color: var(--staff-side-ink);
+}
+body #app.admin-interface.admin-interface .sidebar .nav-item.active, body.light-mode #app.admin-interface.admin-interface .sidebar .nav-item.active,
+body[data-personnel-layout="iot"] .side-nav a.current, html[data-theme=dark] body[data-personnel-layout="iot"] .side-nav a.current,
+body.civic-settings .staff-settings-navigation .nav-item.active, .dark .staff-settings-navigation .nav-item.active,
+body.civic-settings .civic-settings-sidebar [data-flux-sidebar-item][data-current], .dark body.civic-settings .civic-settings-sidebar [data-flux-sidebar-item][data-current] {
+  background: var(--staff-side-active-bg); color: var(--staff-side-active-ink); font-weight: 700;
+  box-shadow: inset 3px 0 0 var(--staff-side-indicator);
+}
+:is(body #app.admin-interface.admin-interface .sidebar, body[data-personnel-layout="iot"] .side-nav, body.civic-settings .staff-settings-navigation) .nav-item:focus-visible {
+  outline: 2px solid var(--staff-side-indicator); outline-offset: -2px;
+}
+body #app.admin-interface.admin-interface .nav-badge { background: var(--civic-gold); color: #13281c; }
+body #app.admin-interface.admin-interface .sidebar-scroll .staff-settings-portal, body[data-personnel-layout="iot"] .side-nav a.portal-link,
+body.civic-settings .staff-settings-navigation .staff-settings-portal { border-top-color: var(--staff-side-line); }
+body #app.admin-interface.admin-interface .sidebar-footer, body[data-personnel-layout="iot"] .side-nav-user, body.civic-settings .staff-settings-footer, .dark body.civic-settings .staff-settings-footer {
+  border-top: 1px solid var(--staff-side-line); background: var(--staff-sidebar); color: var(--staff-side-ink);
+}
+:is(body #app.admin-interface.admin-interface .sidebar-footer, body[data-personnel-layout="iot"] .side-nav-user, body.civic-settings .staff-settings-footer) :is(.su-name, strong, .staff-settings-user, .staff-settings-user-name) { color: var(--staff-side-ink); }
+:is(body #app.admin-interface.admin-interface .sidebar-footer, body[data-personnel-layout="iot"] .side-nav-user, body.civic-settings .staff-settings-footer) :is(.su-role, small, .staff-settings-user-role) { color: var(--staff-side-muted); }
+:is(body #app.admin-interface.admin-interface .su-avatar, body[data-personnel-layout="iot"] .side-nav-user .staff-initials, .staff-settings-user-avatar) { border: 2px solid var(--civic-gold); background: var(--staff-side-active-bg); color: #fff; }
+:is(body #app.admin-interface.admin-interface .sidebar-scroll, body[data-personnel-layout="iot"] .side-nav-scroll, body.civic-settings .staff-settings-navigation) { scrollbar-color: rgba(255, 255, 255, .28) transparent; }
+:is(body #app.admin-interface.admin-interface .sidebar-scroll, body[data-personnel-layout="iot"] .side-nav-scroll, .staff-settings-navigation)::-webkit-scrollbar-track { background: transparent; }
+:is(body #app.admin-interface.admin-interface .sidebar-scroll, body[data-personnel-layout="iot"] .side-nav-scroll, .staff-settings-navigation)::-webkit-scrollbar-thumb { border-color: var(--staff-sidebar); background: rgba(255, 255, 255, .28); }
+:is(body #app.admin-interface.admin-interface .sidebar-scroll, body[data-personnel-layout="iot"] .side-nav-scroll, .staff-settings-navigation)::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, .45); }
+
+/* ── Cards, panels, page headings ──────────────────────────────── */
+body #app.admin-interface.admin-interface :is(.card, .stat-card, .stat-card.blue, .stat-card.green, .stat-card.amber, .stat-card.red),
+body[data-personnel-layout="iot"] :is(.panel, .filter-panel, .device-card, .employee-card, .component-health-item),
+html[data-theme=dark] body[data-personnel-layout="iot"] :is(.panel, .filter-panel),
+body.civic-settings .civic-settings-main > section, .dark body.civic-settings .civic-settings-main > section {
+  border: 1px solid var(--staff-border); border-radius: 10px; background: var(--staff-card); box-shadow: var(--staff-shadow);
+}
+body[data-personnel-layout="iot"] .panel-heading, html[data-theme=dark] body[data-personnel-layout="iot"] .panel-heading { border-color: var(--staff-row); background: var(--staff-soft); }
+body #app.admin-interface.admin-interface .card-header { border-color: var(--staff-row); }
+body #app.admin-interface.admin-interface .page-header-row, body[data-personnel-layout="iot"] .page-heading { border-bottom: 0; margin-bottom: 20px; padding-bottom: 0; min-height: 0; }
+body #app.admin-interface.admin-interface .page-header h1, body[data-personnel-layout="iot"] .page-heading h1 { color: var(--staff-ink); font-size: 26px; }
+body[data-personnel-layout="iot"] .eyebrow, html[data-theme=dark] body[data-personnel-layout="iot"] .eyebrow { color: var(--staff-accent); }
+body[data-personnel-layout="iot"] .device-card .detail-grid > div { border-color: var(--staff-border); background: var(--staff-soft); }
+body[data-personnel-layout="iot"] .component-health-item { border-left: 4px solid var(--staff-control-border); }
+body[data-personnel-layout="iot"] .component-health-dot { background: var(--staff-control-border); box-shadow: 0 0 0 3px var(--staff-soft); }
+
+/* Dashboard summary cards: one meaning per colour, value first. */
+body #app.admin-interface.admin-interface .stat-card { min-height: 0; padding: 18px 20px; border-top: 4px solid var(--staff-control-border); }
+body #app.admin-interface.admin-interface .stat-card.blue { border-top-color: #2f6f9f; }
+body #app.admin-interface.admin-interface .stat-card.green { border-top-color: #17663a; }
+body #app.admin-interface.admin-interface .stat-card.amber { border-top-color: #b7791f; }
+body #app.admin-interface.admin-interface .stat-card.red { border-top-color: #b42318; }
+body #app.admin-interface.admin-interface .stat-card.blue .stat-icon { background: #e6eff6; color: #245a82; }
+body #app.admin-interface.admin-interface .stat-card.green .stat-icon { background: #dff1e6; color: #17663a; }
+body #app.admin-interface.admin-interface .stat-card.amber .stat-icon { background: #fbf0dc; color: #8a5a00; }
+body #app.admin-interface.admin-interface .stat-card.red .stat-icon { background: #fbe9e7; color: #b42318; }
+body:not(.light-mode) #app.admin-interface.admin-interface .stat-card.blue .stat-icon { background: #1b2d3c; color: #9cc7f5; }
+body:not(.light-mode) #app.admin-interface.admin-interface .stat-card.green .stat-icon { background: #1e3a2b; color: #9edbb5; }
+body:not(.light-mode) #app.admin-interface.admin-interface .stat-card.amber .stat-icon { background: #3a2d0c; color: #f0c96a; }
+body:not(.light-mode) #app.admin-interface.admin-interface .stat-card.red .stat-icon { background: #3d1a17; color: #f2a49c; }
+body #app.admin-interface.admin-interface .stat-value { margin-top: 14px; font-size: 32px; }
+body #app.admin-interface.admin-interface .stat-sub { color: var(--staff-muted); }
+
+/* Quick actions are equal-weight shortcuts, not competing primary buttons. */
+body #app.admin-interface.admin-interface .dashboard-quick-action-list .btn, body.light-mode #app.admin-interface.admin-interface .dashboard-quick-action-list .btn {
+  justify-content: flex-start; gap: 10px; min-height: 52px; padding: 10px 16px; border: 1px solid var(--staff-border); border-radius: 8px;
+  background: var(--staff-soft); color: var(--staff-ink); font-weight: 700; text-align: left;
+}
+body #app.admin-interface.admin-interface .dashboard-quick-action-list .btn > .nav-icon { width: 20px; height: 20px; padding: 6px; box-sizing: content-box; border-radius: 6px; background: var(--staff-active-bg); color: var(--staff-active-ink); }
+body #app.admin-interface.admin-interface .dashboard-quick-action-list .btn:hover { border-color: var(--staff-accent); background: var(--staff-hover-bg); color: var(--staff-ink); }
+
+/* ── Buttons: green = primary, neutral outline = secondary, red = destructive ── */
+body #app.admin-interface.admin-interface .btn, body.light-mode #app.admin-interface.admin-interface .btn:not(.btn-primary, .btn-green, .btn-danger),
+body[data-personnel-layout="admin"] .modal .btn:not(.btn-primary):not(.btn-green):not(.btn-danger),
+body[data-personnel-layout="iot"] :is(.button.quiet, .site-header .button.quiet), html[data-theme=dark] body[data-personnel-layout="iot"] .button.quiet,
+body[data-personnel-layout="iot"] .document-request-detail .btn:not(.btn-green),
+.staff-settings-topbar-actions :is(button, a), .dark .staff-settings-topbar-actions :is(button, a),
+.personnel-confirm-actions button, .personnel-logout-actions button {
+  border: 1px solid var(--staff-quiet-border); background: var(--staff-quiet-bg); color: var(--staff-quiet-ink);
+}
+body #app.admin-interface.admin-interface .btn:hover, body.light-mode #app.admin-interface.admin-interface .btn:not(.btn-primary, .btn-green, .btn-danger):hover,
+body[data-personnel-layout="iot"] .button.quiet:hover, .staff-settings-topbar-actions :is(button, a):hover,
+.personnel-confirm-actions button:hover, .personnel-logout-actions button:hover {
+  border-color: var(--staff-ink); background: var(--staff-quiet-hover); color: var(--staff-quiet-ink);
+}
+body #app.admin-interface.admin-interface :is(.btn-primary, .btn-green), body.light-mode #app.admin-interface.admin-interface :is(.btn-primary, .btn-green),
+body[data-personnel-layout="admin"] .modal :is(.btn-primary, .btn-green), body #app.admin-interface.admin-interface .modal .btn-green,
+body[data-personnel-layout="iot"] .button:not(.quiet):not(.danger):not(.danger-outline), body[data-personnel-layout="iot"] .btn-green,
+.personnel-confirm-actions button[type=submit] {
+  border-color: var(--staff-accent-fill); background: var(--staff-accent-fill); color: #fff;
+}
+body #app.admin-interface.admin-interface :is(.btn-primary, .btn-green):hover, body[data-personnel-layout="iot"] .button:not(.quiet):not(.danger):not(.danger-outline):hover,
+.personnel-confirm-actions button[type=submit]:hover {
+  border-color: var(--staff-accent-fill-hover); background: var(--staff-accent-fill-hover); color: #fff;
+}
+body #app.admin-interface.admin-interface .btn-danger, body[data-personnel-layout="admin"] .modal .btn-danger, body[data-personnel-layout="iot"] .button.danger,
+.personnel-logout-actions button[type=submit] {
+  border-color: var(--staff-danger); background: var(--staff-danger); color: #fff;
+}
+body #app.admin-interface.admin-interface .btn-danger:hover, body[data-personnel-layout="iot"] .button.danger:hover, .personnel-logout-actions button[type=submit]:hover {
+  border-color: var(--staff-danger-hover); background: var(--staff-danger-hover); color: #fff;
+}
+:is(body #app.admin-interface.admin-interface, body[data-personnel-layout="iot"], body.civic-settings, .personnel-password-dialog, .personnel-logout-dialog) :is(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid var(--staff-focus); outline-offset: 2px;
+}
+:is(body #app.admin-interface.admin-interface .btn, body[data-personnel-layout="iot"] .button):disabled { opacity: .55; cursor: not-allowed; }
+
+/* Language toggle and other selected states use the fill green with white text in both themes. */
+:is(body #app.admin-interface.admin-interface, body[data-personnel-layout="iot"], .staff-settings-topbar-actions) .admin-locale-toggle:not(.admin-language-inline) button[aria-pressed="true"],
+html[data-theme=dark] .admin-locale-toggle:not(.admin-language-inline) button[aria-pressed="true"] { background: var(--staff-accent-fill); color: #fff; }
+:is(body #app.admin-interface.admin-interface, body[data-personnel-layout="iot"], .staff-settings-topbar-actions) .admin-language-inline button[aria-pressed="true"] { color: var(--staff-accent); }
+body #app.admin-interface.admin-interface .rr-filter-btn.active, body #app.admin-interface.admin-interface .tab.active, body #app.admin-interface.admin-interface [role="tab"][aria-selected="true"] {
+  border-color: var(--staff-accent-fill); background: var(--staff-active-bg); color: var(--staff-active-ink);
+}
+
+/* ── Forms ─────────────────────────────────────────────────────── */
+:is(body #app.admin-interface.admin-interface, body[data-personnel-layout="iot"] .main-content, .personnel-password-dialog) :is(.form-input, .search-input, input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=range]):not([type=file]), select, textarea),
+html[data-theme=dark] body[data-personnel-layout="iot"] :is(.filter-panel input, .filter-panel select) {
+  border-color: var(--staff-control-border); background: var(--staff-input); color: var(--staff-ink);
+}
+:is(body #app.admin-interface.admin-interface, body[data-personnel-layout="iot"] .main-content) :is(.form-input, .search-input, input, select, textarea):hover:not(:focus):not(:disabled) { border-color: var(--staff-ink); }
+:is(body #app.admin-interface.admin-interface, body[data-personnel-layout="iot"] .main-content) :is(.form-input, .search-input, input, select, textarea):focus { border-color: var(--staff-accent-fill); }
+:is(body #app.admin-interface.admin-interface, body[data-personnel-layout="iot"] .main-content) :is(.form-input, input, select, textarea):disabled { border-color: var(--staff-border); background: var(--staff-soft); color: var(--staff-muted); }
+:is(body #app.admin-interface.admin-interface, body[data-personnel-layout="iot"] .main-content) :is(input[type=checkbox], input[type=radio]) { accent-color: var(--staff-accent-fill); }
+:is(body #app.admin-interface.admin-interface, body[data-personnel-layout="iot"] .main-content) :is(.form-label, label) { color: var(--staff-ink); }
+
+/* ── Tables ────────────────────────────────────────────────────── */
+body #app.admin-interface.admin-interface .tbl th, body[data-personnel-layout="iot"] :is(th, .civic-table th), html[data-theme=dark] body[data-personnel-layout="iot"] th {
+  border-bottom: 1px solid var(--staff-border); background: var(--staff-table-head); color: var(--staff-muted); font-weight: 700;
+}
+body #app.admin-interface.admin-interface .tbl td, body[data-personnel-layout="iot"] td { border-color: var(--staff-row); }
+body #app.admin-interface.admin-interface .tbl tbody tr:hover td, body[data-personnel-layout="iot"] tbody tr:hover { background: var(--staff-hover-bg); }
+
+/* ── Notices and dialogs ───────────────────────────────────────── */
+body[data-personnel-layout="iot"] .notice:not(.success):not(.error), html[data-theme=dark] body[data-personnel-layout="iot"] .notice:not(.success):not(.error) {
+  border-color: #b9d0e6; background: #eaf2fb; color: #1d4f7a;
+}
+html[data-theme=dark] body[data-personnel-layout="iot"] .notice:not(.success):not(.error) { border-color: #2b4a6b; background: #132a42; color: #cfe2f7; }
+body #app.admin-interface.admin-interface .modal, body[data-personnel-layout="iot"] .confirm-dialog, .personnel-password-dialog, .personnel-logout-dialog {
+  border: 1px solid var(--staff-border); background: var(--staff-card); color: var(--staff-ink); box-shadow: var(--staff-shadow-raised);
+}
+:is(.personnel-password-dialog, .personnel-logout-dialog, body[data-personnel-layout="iot"] .confirm-dialog)::backdrop { background: rgba(10, 18, 14, .62); }
+body #app.admin-interface.admin-interface .modal-overlay { background: rgba(10, 18, 14, .62); }
+body #app.admin-interface.admin-interface .modal-header, body #app.admin-interface.admin-interface .modal-footer { border-color: var(--staff-row); }
+
+/* Logout: the session-ending action is red; Cancel stays neutral. */
+.personnel-logout-dialog .personnel-logout-symbol { background: #fbe9e7; color: var(--staff-danger); }
+:root:has(body[data-personnel-layout="admin"]:not(.light-mode)) .personnel-logout-dialog .personnel-logout-symbol,
+html[data-theme=dark] .personnel-logout-dialog .personnel-logout-symbol, html.dark .personnel-logout-dialog .personnel-logout-symbol { background: #3d1a17; color: #f2a49c; }
+.personnel-logout-dialog .personnel-logout-eyebrow { color: var(--staff-muted); }
+.personnel-logout-dialog .personnel-logout-close { color: var(--staff-muted); }
+
+/* ── Staff sign-in ─────────────────────────────────────────────── */
+.staff-auth-page, .dark .staff-auth-page {
+  --civic-ink: #14211a; --civic-muted: #4f5e56; --civic-line: #d5ddd8; --civic-blue: #17663a; --civic-green: #17663a;
+  color-scheme: light; background: #eef2ef; color: #14211a;
+}
+.staff-auth-gov { border-bottom: 3px solid var(--civic-gold); background: #0d1a12; color: #d3dfd7; }
+.staff-auth-gov span span { color: #6f8a78; }
+.staff-auth-gov .admin-language-inline > span { color: #a9bcaf; }
+.staff-auth-gov .admin-language-inline button { color: #d3dfd7; }
+.staff-auth-gov .admin-language-inline button:focus-visible { outline-color: #9edbb5; }
+.staff-auth-page .civic-auth { align-items: center; gap: 32px; }
+.staff-auth-page .civic-auth-aside {
+  display: flex; flex-direction: column; justify-content: center; padding: 48px; border-radius: 14px;
+  background: #13281c; color: #e6eee9; box-shadow: 0 18px 44px rgba(16, 32, 24, .18);
+}
+.staff-auth-page .civic-auth-aside h1, .staff-auth-brand strong, .staff-auth-features strong { color: #fff; }
+.staff-auth-page .civic-auth-aside > p, .staff-auth-features span { color: #c9d8ce; }
+.staff-auth-brand span { color: var(--civic-gold); }
+.staff-auth-brand img { border-color: var(--civic-gold); }
+.staff-auth-features > div { border-left-color: var(--civic-gold); }
+.staff-auth-features > div + div { border-left-color: #9edbb5; }
+.staff-auth-resident-link, .staff-auth-resident-link:visited { color: #9edbb5; }
+.staff-auth-page .civic-auth-form {
+  align-self: center; border: 1px solid #d5ddd8; border-top: 4px solid #17663a; border-radius: 12px; background: #fff;
+  box-shadow: 0 1px 2px rgba(16, 32, 24, .05), 0 10px 30px rgba(16, 32, 24, .08);
+}
+.staff-auth-page .civic-auth-form::before { display: none; }
+.staff-login-eyebrow { color: #17663a; }
+.staff-auth-page .civic-auth-form [data-flux-control] { border-color: #7a8981; background: #fff; color: #14211a; }
+.staff-auth-page .civic-auth-form [data-flux-control]::placeholder { color: #6b7a72; }
+.staff-auth-page .civic-auth-form [data-flux-control]:focus { border-color: #17663a; outline-color: #17663a; }
+.staff-auth-page .civic-auth-form [data-flux-checkbox] { border-color: #7a8981; }
+.staff-login-form button[type="submit"], .staff-auth-page .civic-auth-form button[type="submit"] { border-color: #17663a; background: #17663a; color: #fff; }
+.staff-login-form button[type="submit"]:hover { border-color: #0f5130; background: #0f5130; }
+.staff-login-links a, .staff-auth-page .civic-auth-form a { color: #17663a; }
+.staff-login-security::before, .staff-login-security::after { border-color: #17663a; }
+@media (max-width: 850px) {
+  .staff-auth-page .civic-auth-aside { padding: 28px 24px; }
+}
+
+/* ── Corrections over older layers ─────────────────────────────── */
+body.light-mode, body[data-personnel-layout="admin"] { color: var(--staff-ink); }
+body #app.admin-interface.admin-interface { color: var(--staff-ink); }
+body #app.admin-interface.admin-interface .stat-icon { display: grid; opacity: 1; filter: none; }
+body #app.admin-interface.admin-interface .stat-card:is(.blue, .green, .amber, .red), body #app.admin-interface.admin-interface .stat-card { border-top-width: 4px; }
+body #app.admin-interface.admin-interface .badge-green { border-color: transparent; background: #dff1e6; color: #0f5130; }
+body #app.admin-interface.admin-interface .badge-blue { border-color: transparent; background: #e6eff6; color: #1d4f7a; }
+body #app.admin-interface.admin-interface .badge-amber { border-color: transparent; background: #fbf0dc; color: #7a4d00; }
+body #app.admin-interface.admin-interface .badge-red { border-color: transparent; background: #fbe9e7; color: #9f1d14; }
+body:not(.light-mode) #app.admin-interface.admin-interface .badge-green { background: #1e3a2b; color: #9edbb5; }
+body:not(.light-mode) #app.admin-interface.admin-interface .badge-blue { background: #1b2d3c; color: #9cc7f5; }
+body:not(.light-mode) #app.admin-interface.admin-interface .badge-amber { background: #3a2d0c; color: #f0c96a; }
+body:not(.light-mode) #app.admin-interface.admin-interface .badge-red { background: #3d1a17; color: #f2a49c; }
+/* Legacy layer forces a 1px border with !important; the summary cards keep a 4px meaning stripe. */
+body #app.admin-interface.admin-interface .stat-card { border-top: 4px solid var(--staff-control-border) !important; }
+body #app.admin-interface.admin-interface .stat-card.blue { border-top-color: #2f6f9f !important; }
+body #app.admin-interface.admin-interface .stat-card.green { border-top-color: #17663a !important; }
+body #app.admin-interface.admin-interface .stat-card.amber { border-top-color: #b7791f !important; }
+body #app.admin-interface.admin-interface .stat-card.red { border-top-color: #b42318 !important; }
+body #app.admin-interface.admin-interface .dashboard-activity-mark { background: var(--staff-active-bg); color: var(--staff-active-ink); }
+body #app.admin-interface.admin-interface .dashboard-activity-mark.incident { background: #fbf0dc; color: #7a4d00; }
+body:not(.light-mode) #app.admin-interface.admin-interface .dashboard-activity-mark.incident { background: #3a2d0c; color: #f0c96a; }
+body #app.admin-interface.admin-interface .dashboard-quick-action-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); justify-content: stretch; gap: 12px; }
+body #app.admin-interface.admin-interface .dashboard-quick-action-list .btn { width: 100%; }
+body #app.admin-interface.admin-interface .dashboard-quick-actions { padding-bottom: 20px; }
+
+/* Each page already has its own heading and the sidebar marks the current item, so the bar does not repeat the title. */
+body #app.admin-interface.admin-interface .topbar-status, body[data-personnel-layout="iot"] .workspace-title, .staff-settings-topbar-title { visibility: hidden; }
+.skip-link { color: var(--staff-ink); border-color: var(--civic-gold); }
+
+/* ── Module fixes (found by a per-page colour and contrast audit) ── */
+body[data-personnel-layout] .staff-initials, body #app.admin-interface.admin-interface .user-avatar-lg { background: var(--staff-accent-fill); color: #fff; }
+body[data-personnel-layout="iot"] .side-nav-user .staff-initials { border: 2px solid var(--civic-gold); background: var(--staff-side-active-bg); }
+body #app.admin-interface.admin-interface .audit-type-btn.active, body:not(.light-mode) #app.admin-interface.admin-interface .audit-type-btn.active {
+  border-color: var(--staff-accent-fill); background: var(--staff-active-bg); color: var(--staff-active-ink);
+}
+body.light-mode #app.admin-interface.admin-interface :is(.audit-time, .audit-detail) { color: var(--staff-muted); }
+body.light-mode #app.admin-interface.admin-interface .audit-action { color: var(--staff-ink); }
+body #app.admin-interface.admin-interface .demo-purok-tag { border-color: var(--staff-border); background: var(--staff-soft); color: var(--staff-muted); font-size: 11px; }
+body #app.admin-interface.admin-interface .demo-purok-pop { color: var(--staff-accent); }
+body.light-mode #app.admin-interface.admin-interface .badge-senior { border-color: #e7c27a; background: #fbf0dc; color: #7a4d00; }
+body:not(.light-mode) #app.admin-interface.admin-interface .badge-senior { border-color: #6b5520; background: #3a2d0c; color: #f0c96a; }
+body #app.admin-interface.admin-interface .special-group-card { border-color: var(--staff-border); }
+body #app.admin-interface.admin-interface .cert-card:not(.cert-card-view) { border-color: var(--staff-border); }
+body #app.admin-interface.admin-interface .cert-card:not(.cert-card-view):hover { border-color: var(--staff-accent); }
+body[data-personnel-layout="iot"] .pill.neutral { border-color: var(--staff-border); background: var(--staff-soft); color: var(--staff-muted); }
+body[data-personnel-layout="iot"] :is(.employee-card, .device-card) { border-color: var(--staff-border); }
+body[data-personnel-layout="iot"] :is(.panel-heading span, .empty-state p, .employee-card p, .device-card p), html[data-theme=dark] body[data-personnel-layout="iot"] :is(.panel-heading span, .empty-state p) { color: var(--staff-muted); }
+
+/* Account settings (Flux components read the accent from these variables). */
+body.civic-settings { --color-accent: #17663a; --color-accent-content: #17663a; --color-accent-foreground: #fff; }
+.dark body.civic-settings { --color-accent: #17663a; --color-accent-content: #9edbb5; --color-accent-foreground: #fff; }
+body.civic-settings .civic-eyebrow, .dark body.civic-settings .civic-eyebrow { color: var(--staff-accent); }
+body.civic-settings .staff-theme-icon-button { color: var(--staff-ink); }
+body.civic-settings :is(.bg-red-500, [data-flux-button][data-variant="danger"]) { background: var(--staff-danger); color: #fff; }
+body.civic-settings :is(.bg-red-500, [data-flux-button][data-variant="danger"]):hover { background: var(--staff-danger-hover); }
+body[data-personnel-layout="iot"] .employee-access-panel > .employee-card, html:not([data-theme="dark"]) body[data-personnel-layout="iot"] .employee-access-panel > .employee-card { border-color: var(--staff-border); }
+/* Purok group tags: category colours at readable strength in each theme. */
+body #app.admin-interface.admin-interface .demo-purok-tag.is-senior { border-color: #e7c27a; color: #7a4d00; }
+body #app.admin-interface.admin-interface .demo-purok-tag.is-pwd { border-color: #c9b8f0; color: #5b3fb0; }
+body #app.admin-interface.admin-interface .demo-purok-tag.is-4ps { border-color: #f0b4ae; color: #9f1d14; }
+body:not(.light-mode) #app.admin-interface.admin-interface .demo-purok-tag.is-senior { border-color: #6b5520; color: #f0c96a; }
+body:not(.light-mode) #app.admin-interface.admin-interface .demo-purok-tag.is-pwd { border-color: #4b3d7a; color: #c9b8f0; }
+body:not(.light-mode) #app.admin-interface.admin-interface .demo-purok-tag.is-4ps { border-color: #6b2a24; color: #f2a49c; }
+/* Same weight as the generic sidebar link rule above, so the current item always wins. */
+:is(body #app.admin-interface.admin-interface .sidebar, body[data-personnel-layout="iot"] .side-nav, body.civic-settings .staff-settings-navigation) :is(.nav-item.active, a.current) {
+  background: var(--staff-side-active-bg); color: var(--staff-side-active-ink); font-weight: 700; box-shadow: inset 3px 0 0 var(--staff-side-indicator);
+}
+.personnel-logout-actions #logout-confirm { border-color: var(--staff-danger); background: var(--staff-danger); color: #fff; }
+.personnel-logout-actions #logout-confirm:hover { border-color: var(--staff-danger-hover); background: var(--staff-danger-hover); }
+/* Reversible negative actions (archive, remove from household): red outline; Delete and Reject stay solid red. */
+body #app.admin-interface.admin-interface .btn-danger-outline, body[data-personnel-layout="iot"] .button.danger-outline {
+  border: 1px solid var(--staff-danger); background: var(--staff-quiet-bg); color: var(--staff-danger);
+}
+body #app.admin-interface.admin-interface .btn-danger-outline:hover, body[data-personnel-layout="iot"] .button.danger-outline:hover { background: #fbe9e7; color: var(--staff-danger-hover); }
+:is(body:not(.light-mode) #app.admin-interface.admin-interface .btn-danger-outline, html[data-theme=dark] body[data-personnel-layout="iot"] .button.danger-outline) { border-color: #e06c61; color: #f2a49c; }
+:is(body:not(.light-mode) #app.admin-interface.admin-interface .btn-danger-outline, html[data-theme=dark] body[data-personnel-layout="iot"] .button.danger-outline):hover { background: #3d1a17; color: #f6c1bb; }
+/* Small screens: the sidebar is an overlay drawer (an older unconditional rule had pinned it into the page flow). */
+@media (max-width: 760px) {
+  body #app.admin-interface.admin-interface .sidebar { position: fixed; top: 68px; bottom: 0; left: 0; z-index: 200; box-shadow: 12px 0 32px rgba(10, 18, 14, .35); }
+  body #app.admin-interface.admin-interface .topbar { padding-right: 12px; }
+  body #app.admin-interface.admin-interface .topbar-status { display: none; }
+  body #app.admin-interface.admin-interface .topbar-right { flex: 1 1 auto; justify-content: flex-end; min-width: 0; gap: 4px; }
+}
+body #app.admin-interface.admin-interface .sidebar .nav-item .nav-icon, body #app.admin-interface.admin-interface .sidebar .nav-item.active .nav-icon,
+body.light-mode #app.admin-interface.admin-interface .sidebar .nav-item.active .nav-icon { color: currentColor; opacity: 1; }
+.staff-auth-page { --color-accent: #17663a; --color-accent-content: #17663a; --color-accent-foreground: #fff; }
+.staff-auth-page .civic-auth-form :is(input, button, a):focus-visible { outline: 3px solid #17663a; outline-offset: 2px; }
+/* On narrow screens the sign-in form comes first; the brand panel follows it. */
+@media (max-width: 850px) {
+  .staff-auth-page .civic-auth-form { order: -1; }
+  .staff-auth-page .civic-auth-aside h1 { font-size: 28px; }
+}
+/* Summary cards open their module; the link stretches over the card so the whole card is a target. */
+body #app.admin-interface.admin-interface .dashboard-stats-grid .stat-card { position: relative; }
+body #app.admin-interface.admin-interface .stat-link { order: 4; margin-top: 10px; color: var(--staff-accent); font-size: 13px; font-weight: 700; text-decoration: none; }
+body #app.admin-interface.admin-interface .stat-link::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+body #app.admin-interface.admin-interface .dashboard-stats-grid .stat-card:has(.stat-link):hover { border-color: var(--staff-accent); box-shadow: 0 2px 4px rgba(16, 32, 24, .08), 0 10px 24px rgba(16, 32, 24, .1); }
+body #app.admin-interface.admin-interface .stat-link:hover { text-decoration: underline; }
+body #app.admin-interface.admin-interface .stat-card:has(.stat-link:focus-visible) { outline: 3px solid var(--staff-focus); outline-offset: 2px; }
+body #app.admin-interface.admin-interface .stat-link:focus-visible { outline: none; }

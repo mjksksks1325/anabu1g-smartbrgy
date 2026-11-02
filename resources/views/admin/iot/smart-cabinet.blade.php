@@ -89,7 +89,7 @@
                         <td><span class="pill {{ $file->is_active ? 'success' : 'neutral' }}">{{ $file->is_active ? 'Active' : 'Archived' }}</span></td>
                         <td>
                             @if ($file->is_active)
-                                <button class="button quiet" type="button" data-folder-archive data-archive-url="{{ route('admin.smart-cabinet.folders.archive', $file) }}" data-file-reference="{{ $file->file_reference }}">Archive</button>
+                                <button class="button danger-outline" type="button" data-folder-archive data-archive-url="{{ route('admin.smart-cabinet.folders.archive', $file) }}" data-file-reference="{{ $file->file_reference }}">Archive</button>
                             @else
                                 <form method="POST" action="{{ route('admin.smart-cabinet.folders.restore', $file) }}">
                                     @csrf
@@ -115,7 +115,7 @@
         <input id="cabinet-folder-archive-password" name="super_admin_password" type="password" autocomplete="current-password" required>
         <p class="cabinet-folder-archive-error" data-folder-archive-error role="alert" hidden></p>
         <div class="cabinet-folder-archive-actions">
-            <button class="button quiet" type="button" data-folder-archive-cancel>Cancel</button>
+            <button class="button danger-outline" type="button" data-folder-archive-cancel>Cancel</button>
             <button class="button danger" type="submit" data-folder-archive-submit>Confirm archive</button>
         </div>
     </form>

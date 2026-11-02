@@ -63,7 +63,7 @@
                     <div class="announcement-record-body">{{ $announcement->body }}</div>
                 @endcan
                 @can('announcements.publish')<form class="announcement-record-publish" method="POST" action="{{ route('staff.announcements.publish', $announcement) }}">@csrf<button class="button quiet" type="submit">{{ $announcement->status === 'published' ? 'Unpublish' : 'Publish' }}</button></form>@endcan
-                @can('announcements.archive')<button class="button danger announcement-record-archive" type="button" data-announcement-archive data-archive-url="{{ route('staff.announcements.archive', $announcement) }}" data-announcement-title="{{ $announcement->title }}">Archive</button>@endcan
+                @can('announcements.archive')<button class="button danger-outline announcement-record-archive" type="button" data-announcement-archive data-archive-url="{{ route('staff.announcements.archive', $announcement) }}" data-announcement-title="{{ $announcement->title }}">Archive</button>@endcan
             @endif
         </article>
     @empty
