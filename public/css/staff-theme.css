@@ -456,3 +456,9 @@ body #app.admin-interface.admin-interface .dashboard-stats-grid .stat-card:has(.
 body #app.admin-interface.admin-interface .stat-link:hover { text-decoration: underline; }
 body #app.admin-interface.admin-interface .stat-card:has(.stat-link:focus-visible) { outline: 3px solid var(--staff-focus); outline-offset: 2px; }
 body #app.admin-interface.admin-interface .stat-link:focus-visible { outline: none; }
+/* The sign-in card is always light; Flux would otherwise switch its text and checkbox to dark variants under a dark system theme. */
+.staff-auth-page .civic-auth-form :is([data-flux-subheading], [data-flux-text][class*="text-zinc"]) { color: #4f5e56; }
+.staff-auth-page .civic-auth-form :is([data-flux-heading], [data-flux-label]) { color: #14211a; }
+.staff-auth-page .civic-auth-form [data-flux-checkbox-indicator] { border: 1px solid #7a8981; background: #fff; }
+.staff-auth-page .civic-auth-form [data-flux-checkbox][data-checked] [data-flux-checkbox-indicator] { border-color: #17663a; background: #17663a; color: #fff; }
+.staff-auth-page .civic-auth-form .opacity-50 { color: #4f5e56; opacity: 1; }
