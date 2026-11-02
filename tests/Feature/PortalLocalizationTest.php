@@ -116,11 +116,11 @@ test('resident header uses concise localized menu labels while keeping descripti
 
     foreach (['home', 'portal.login', 'portal.register', 'portal.information'] as $route) {
         $xpath = $menu($route);
-        expect($xpath->evaluate('string(//nav[@id="site-nav"]//span[@data-portal-i18n="portal.navigation.requirements"])'))->toBe($requirements);
+        expect($xpath->evaluate('string(//nav[@id="site-nav"]//span[@data-portal-i18n="portal.navigation.request"])'))->toBe($request);
         expect($xpath->evaluate('string(//nav[@id="site-nav"]//span[@data-portal-i18n="portal.navigation.help"])'))->toBe($help);
         expect($xpath->evaluate('string(//nav[@id="site-nav"]//a[@data-portal-i18n-aria-label="Help, requirements and fees"]/@aria-label)'))->toBe($helpDescription);
         expect($xpath->evaluate('string(//nav[@id="site-nav"]//a[@data-portal-i18n-aria-label="Help, requirements and fees"]/@href)'))->toBe(route('portal.information'));
-        expect($xpath->query('//nav[@id="site-nav"]//span[@data-portal-i18n="portal.navigation.request"]'))->toHaveCount(0);
+        expect($xpath->query('//nav[@id="site-nav"]//span[@data-portal-i18n="portal.navigation.requirements"]'))->toHaveCount(0);
     }
 
     $this->actingAs(User::factory()->resident()->create(), 'resident');

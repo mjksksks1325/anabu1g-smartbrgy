@@ -283,7 +283,7 @@ it('overlays the header on the home hero photo and restores it after scrolling',
     $this->get(route('portal.information'))->assertOk()
         ->assertDontSee('has-hero-header', false);
 });
-test('guests see requirements in the header menu and residents see request and my requests', function () {
+test('guests and residents share the same service menu without account pages in it', function () {
     $menu = function () {
         $document = new DOMDocument;
         @$document->loadHTML($this->get(route('portal.information'))->assertOk()->getContent());
@@ -292,34 +292,59 @@ test('guests see requirements in the header menu and residents see request and m
             ->map(fn (DOMElement $link): string => trim($link->textContent))->all();
     };
 
-    expect($menu())->toBe(['Home', 'Requirements and fees', 'Get help']);
+    expect($menu())->toBe(['Home', 'Request a document', 'My requests', 'Get help']);
     $this->actingAs(User::factory()->resident()->create(), 'resident');
-    expect($menu())->toBe(['My account', 'Request a document', 'My requests', 'Get help']);
+    expect($menu())->toBe(['Home', 'Request a document', 'My requests', 'Get help']);
 });
 
-test('the account pill names the signed in resident and opens the account page', function () {
+test('the resident name button is the single entry to account pages', function () {
     $user = User::factory()->resident()->create();
     $user->resident->update(['first_name' => 'Rosa', 'last_name' => 'Dela Cruz']);
 
     $document = new DOMDocument;
-    @$document->loadHTML($this->actingAs($user, 'resident')->get(route('home'))->assertOk()->getContent());
-    $pill = (new DOMXPath($document))->query('//a[@class="v2-account-pill"]')->item(0);
+    @$document->loadHTML($this->actingAs($user, 'resident')->get(route('portal.information'))->assertOk()->getContent());
+    $xpath = new DOMXPath($document);
+    $button = $xpath->query('//button[@data-account-menu-button]')->item(0);
 
-    expect($pill->getAttribute('href'))->toBe(route('portal.account.home'));
-    expect(preg_replace('/\s+/', ' ', trim($pill->textContent)))->toBe('Rosa D. · My account');
+    expect(preg_replace('/\s+/', ' ', trim($button->textContent)))->toBe('Rosa D. Account menu');
+    expect($button->getAttribute('aria-expanded'))->toBe('false');
+    $list = $document->getElementById($button->getAttribute('aria-controls'));
+    expect($list->hasAttribute('hidden'))->toBeTrue();
+    expect(collect($xpath->query('.//a', $list))->map(fn (DOMElement $link): string => $link->getAttribute('href'))->all())
+        ->toBe([route('portal.account.home'), route('portal.profile'), route('password.request', ['from' => 'portal'])]);
+    expect($xpath->query('.//button[@data-resident-logout]', $list))->toHaveCount(1);
+    expect($xpath->query('//nav[@id="site-nav"]//a[@href="'.route('portal.account.home').'"]'))->toHaveCount(0);
+    expect($xpath->query('//nav[@id="site-nav"]//ul[@class="site-nav-account"]'))->toHaveCount(0);
 });
 
-test('the account page shows the resident and links to requests, profile, password and help', function () {
+test('guests get log in and create account instead of the account menu', function () {
+    $this->get(route('portal.information'))
+        ->assertOk()
+        ->assertDontSee('data-account-menu', false)
+        ->assertSeeInOrder(['class="site-nav-account"', route('portal.login'), route('portal.register')], false);
+});
+
+test('the account page shows resident information, request progress and account actions once', function () {
     $user = User::factory()->resident()->create();
 
     $this->get(route('portal.account.home'))->assertRedirect(route('portal.login'));
-    $this->actingAs($user, 'resident')->get(route('portal.account.home'))
+    $response = $this->actingAs($user, 'resident')->get(route('portal.account.home'))
         ->assertOk()
         ->assertViewIs('portal.account-home')
         ->assertSee($user->resident->full_name)
         ->assertSee($user->resident->resident_number)
-        ->assertSee('data-resident-logout', false)
-        ->assertSeeInOrder([route('portal.account'), route('portal.profile'), route('password.request', ['from' => 'portal']), route('portal.information').'#help'], false);
+        ->assertSee($user->resident->address)
+        ->assertSee($user->email);
+
+    $document = new DOMDocument;
+    @$document->loadHTML($response->getContent());
+    $xpath = new DOMXPath($document);
+    $main = '//main[@id="resident-main"]';
+    expect($xpath->query($main.'//a[@href="'.route('portal.request.create').'"]'))->toHaveCount(1);
+    expect($xpath->query($main.'//a[@href="'.route('portal.profile').'"]'))->toHaveCount(1);
+    expect($xpath->query($main.'//a[@href="'.route('password.request', ['from' => 'portal']).'"]'))->toHaveCount(1);
+    expect($xpath->query($main.'//button[@data-resident-logout]'))->toHaveCount(1);
+    expect($xpath->query($main.'//a[@href="'.route('portal.information').'#help"]'))->toHaveCount(0);
 });
 
 test('resident log in keeps one help panel with both account paths and a portal password reset link', function () {

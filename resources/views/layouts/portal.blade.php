@@ -27,14 +27,14 @@
 <div class="gov-bar">
     <div class="gov-bar-inner">
         <span class="gov-identity"><strong><span data-portal-i18n="GOVPH">{{ __('GOVPH') }}</span></strong><span aria-hidden="true">|</span> <span data-portal-i18n="Republic of the Philippines">{{ __('Republic of the Philippines') }}</span></span>
-        <div class="gov-actions"><button class="theme-toggle" type="button" data-resident-theme aria-pressed="false" aria-label="{{ __('Dark mode') }}" data-portal-i18n-aria-label="Dark mode" title="{{ __('Dark mode') }}" data-portal-i18n-title="Dark mode"><svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg><svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button></div>
+        <div class="gov-actions">@include('partials.portal-language-toggle')<button class="theme-toggle" type="button" data-resident-theme aria-pressed="false" aria-label="{{ __('Dark mode') }}" data-portal-i18n-aria-label="Dark mode" title="{{ __('Dark mode') }}" data-portal-i18n-title="Dark mode"><svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg><svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button></div>
     </div>
 </div>
 <header class="site-header">
     <div class="site-header-inner">
         <a class="site-brand" href="{{ route('home') }}">
             <img src="{{ asset('images/anabu-logo.jpg') }}" width="537" height="465" alt="{{ __('Opisyal na seal ng Barangay Anabu I-G') }}" data-portal-i18n-alt="Opisyal na seal ng Barangay Anabu I-G">
-            <span class="site-brand-text"><strong><span data-portal-i18n="Barangay Anabu I-G">{{ __('Barangay Anabu I-G') }}</span></strong><span><span data-portal-i18n="Lungsod ng Imus, Cavite">{{ __('Lungsod ng Imus, Cavite') }}</span></span></span>
+            <span class="site-brand-text"><span class="site-brand-portal"><span data-portal-i18n="Official website">{{ __('Official website') }}</span></span><strong><span data-portal-i18n="Barangay Anabu I-G">{{ __('Barangay Anabu I-G') }}</span></strong><span><span data-portal-i18n="City of Imus · Province of Cavite">{{ __('City of Imus · Province of Cavite') }}</span></span></span>
         </a>
         @include('partials.resident-nav')
         <button class="btn btn-outline btn-small menu-toggle" type="button" aria-controls="site-nav" aria-expanded="false" data-menu-toggle>
@@ -58,24 +58,32 @@
 </main>
 <footer class="site-footer">
     <div class="site-footer-inner">
-        <section class="site-footer-col" aria-labelledby="footer-hall-title">
-            <h2 id="footer-hall-title"><span data-portal-i18n="Barangay Anabu I-G Hall">{{ __('Barangay Anabu I-G Hall') }}</span></h2>
-            <p><span data-portal-i18n="Lungsod ng Imus, Cavite">{{ __('Lungsod ng Imus, Cavite') }}</span></p>
-            <p><span data-portal-i18n="Office hours:">{{ __('Office hours:') }}</span> <span class="tag-unconfirmed"><span data-portal-i18n="Hindi pa kumpirmado">{{ __('Hindi pa kumpirmado') }}</span></span></p>
-            <p><span data-portal-i18n="Emergency:">{{ __('Emergency:') }}</span> <a href="tel:911">911</a></p>
-        </section>
-        <nav class="site-footer-col" aria-labelledby="footer-more-title">
-            <h2 id="footer-more-title"><span data-portal-i18n="Iba pa">{{ __('Iba pa') }}</span></h2>
+        <div class="site-footer-brand">
+            <img src="{{ asset('images/anabu-logo.jpg') }}" width="537" height="465" alt="">
+            <div>
+                <strong><span data-portal-i18n="Barangay Anabu I-G">{{ __('Barangay Anabu I-G') }}</span></strong>
+                <p><span data-portal-i18n="Lungsod ng Imus, Cavite">{{ __('Lungsod ng Imus, Cavite') }}</span></p>
+                <p class="site-footer-note"><span data-portal-i18n="Resident Portal para sa document request at status ng request.">{{ __('Resident Portal para sa document request at status ng request.') }}</span></p>
+            </div>
+        </div>
+        <nav class="site-footer-col" aria-labelledby="footer-services-title">
+            <h2 id="footer-services-title"><span data-portal-i18n="Serbisyo">{{ __('Serbisyo') }}</span></h2>
             <ul>
                 <li><a href="{{ route('portal.request.create') }}"><span data-portal-i18n="Request a document">{{ __('Request a document') }}</span></a></li>
+                <li><a href="{{ auth('resident')->check() ? route('portal.account') : route('portal.login') }}"><span data-portal-i18n="My requests">{{ __('My requests') }}</span></a></li>
                 <li><a href="{{ route('portal.information') }}#requirements"><span data-portal-i18n="Requirements and fees">{{ __('Requirements and fees') }}</span></a></li>
+                <li><a href="{{ route('portal.announcements.index') }}" @if(request()->routeIs('portal.announcements.index')) aria-current="page" @endif><span data-portal-i18n="Announcements">{{ __('Announcements') }}</span></a></li>
                 <li><a href="{{ route('portal.officials') }}" @if(request()->routeIs('portal.officials')) aria-current="page" @endif><span data-portal-i18n="Barangay officials">{{ __('Barangay officials') }}</span></a></li>
-                <li><a href="{{ route('portal.announcements.index') }}"><span data-portal-i18n="Announcements">{{ __('Announcements') }}</span></a></li>
                 <li><a href="{{ route('portal.information') }}#help"><span data-portal-i18n="Get help">{{ __('Get help') }}</span></a></li>
-                <li><a href="{{ route('portal.information') }}#contacts"><span data-portal-i18n="Emergency hotlines">{{ __('Emergency hotlines') }}</span></a></li>
-                <li><a href="{{ route('portal.information') }}#office"><span data-portal-i18n="Address at detalye ng Barangay Hall">{{ __('Address at detalye ng Barangay Hall') }}</span></a></li>
             </ul>
         </nav>
+        <section class="site-footer-col" aria-labelledby="footer-help-title">
+            <h2 id="footer-help-title"><span data-portal-i18n="Tulong">{{ __('Tulong') }}</span></h2>
+            <p><span data-portal-i18n="Para sa problema sa account o record, pumunta sa Barangay Hall at dalhin ang valid ID.">{{ __('Para sa problema sa account o record, pumunta sa Barangay Hall at dalhin ang valid ID.') }}</span></p>
+            <p><a href="{{ route('home') }}#office"><span data-portal-i18n="Address at detalye ng Barangay Hall">{{ __('Address at detalye ng Barangay Hall') }}</span></a></p>
+            <p><a href="{{ route('home') }}#contacts"><span data-portal-i18n="Emergency hotlines">{{ __('Emergency hotlines') }}</span></a></p>
+            <p><span data-portal-i18n="Emergency:">{{ __('Emergency:') }}</span> <a href="tel:911">911</a></p>
+        </section>
         <nav class="site-footer-col" id="quick-links" aria-labelledby="quick-links-title">
             <h2 id="quick-links-title"><span data-portal-i18n="Government websites">{{ __('Government websites') }}</span></h2>
             <ul>
@@ -85,11 +93,10 @@
                 <li><a href="https://www.officialgazette.gov.ph/" target="_blank" rel="noopener noreferrer"><span data-portal-i18n="Official Gazette">{{ __('Official Gazette') }}</span></a></li>
             </ul>
         </nav>
-        <section class="site-footer-col" aria-labelledby="footer-portal-title">
-            <h2 id="footer-portal-title"><span data-portal-i18n="SmartBrgy Online Portal">{{ __('SmartBrgy Online Portal') }}</span></h2>
-            <p><span data-portal-i18n="Pinangangalagaan ang personal na impormasyon alinsunod sa Republic Act 10173 (Data Privacy Act of 2012).">{{ __('Pinangangalagaan ang personal na impormasyon alinsunod sa Republic Act 10173 (Data Privacy Act of 2012).') }}</span></p>
-            <p class="site-footer-note"><span data-portal-i18n="Republika ng Pilipinas · Barangay Anabu I-G, Lungsod ng Imus, Cavite">{{ __('Republika ng Pilipinas · Barangay Anabu I-G, Lungsod ng Imus, Cavite') }}</span></p>
-        </section>
+    </div>
+    <div class="site-footer-base">
+        <p><span data-portal-i18n="Pinangangalagaan ang personal na impormasyon alinsunod sa Republic Act 10173 (Data Privacy Act of 2012).">{{ __('Pinangangalagaan ang personal na impormasyon alinsunod sa Republic Act 10173 (Data Privacy Act of 2012).') }}</span></p>
+        <p><span data-portal-i18n="Republika ng Pilipinas · Barangay Anabu I-G, Lungsod ng Imus, Cavite">{{ __('Republika ng Pilipinas · Barangay Anabu I-G, Lungsod ng Imus, Cavite') }}</span></p>
     </div>
 </footer>
 @hasSection('hero-header')
@@ -99,6 +106,7 @@
 <script src="{{ asset('js/resident-account.js') }}?v={{ filemtime(public_path('js/resident-account.js')) }}"></script>
 <script src="{{ asset('js/resident-photo-input.js') }}?v={{ filemtime(public_path('js/resident-photo-input.js')) }}"></script>
 <script src="{{ asset('js/portal-errors.js') }}?v={{ filemtime(public_path('js/portal-errors.js')) }}"></script>
+<script src="{{ asset('js/account-menu.js') }}?v={{ filemtime(public_path('js/account-menu.js')) }}"></script>
 <script src="{{ asset('js/photo-preview.js') }}?v={{ filemtime(public_path('js/photo-preview.js')) }}"></script>
 </body>
 </html>
