@@ -8,12 +8,35 @@ test('resident portal footer links to the Provincial Government of Cavite', func
     $document = new DOMDocument;
     @$document->loadHTML($response->getContent());
     $xpath = new DOMXPath($document);
-    $links = $xpath->query('//footer//nav[@id="quick-links"]//a[@href="https://cavite.gov.ph/"]');
+    $links = $xpath->query('//footer//nav[@id="government-links"]//a[@href="https://cavite.gov.ph/"]');
 
     expect($links)->toHaveCount(1);
     expect(trim($links->item(0)->textContent))->toBe('Provincial Government of Cavite');
     expect($links->item(0)->getAttribute('target'))->toBe('_blank');
     expect($links->item(0)->getAttribute('rel'))->toBe('noopener noreferrer');
+});
+
+test('resident portal footer groups barangay contact, quick links and government links without unconfirmed details', function () {
+    $response = $this->get(route('portal.officials'))->assertOk();
+    $document = new DOMDocument;
+    @$document->loadHTML($response->getContent());
+    $xpath = new DOMXPath($document);
+    $footer = '//footer[contains(@class, "site-footer")]';
+
+    expect($xpath->query($footer.'//section[@id="footer-contact"]//a[starts-with(@href, "https://www.google.com/maps/search/")][@target="_blank"][@rel="noopener noreferrer"]'))->toHaveCount(1);
+    expect($xpath->query($footer.'//section[@id="footer-contact"]//*[contains(@class, "tag-unconfirmed")]'))->toHaveCount(2);
+    expect($xpath->query($footer.'//section[@id="footer-contact"]//a[@href="tel:911"]'))->toHaveCount(1);
+    expect(collect($xpath->query($footer.'//nav[@id="quick-links"]//a'))->map(fn (DOMElement $link): string => $link->getAttribute('href'))->all())
+        ->toBe([
+            route('portal.request.create'),
+            route('portal.information').'#requirements',
+            route('portal.announcements.index'),
+            route('portal.officials'),
+            route('home').'#contacts',
+            route('portal.information').'#help',
+        ]);
+    expect($xpath->query($footer.'//nav[@id="government-links"]//a[@target="_blank"][@rel="noopener noreferrer"]'))->toHaveCount(5);
+    expect($xpath->query($footer.'//a[contains(@href, "facebook.com")]'))->toHaveCount(0);
 });
 
 test('officials placeholders render with local images and native details controls', function () {
