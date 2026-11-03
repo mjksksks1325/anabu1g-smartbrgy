@@ -842,3 +842,5 @@ body #app.admin-interface.admin-interface .dashboard-pie { width: 200px; height:
   body #app.admin-interface.admin-interface .dashboard-pie-wrap .dashboard-pie { justify-self: center; }
   body #app.admin-interface.admin-interface .dashboard-pie-breakdown { grid-template-columns: minmax(0, 1fr); }
 }
+/* Staff settings: account removal is handled by administrators (no self-deletion). */
+body.civic-settings .settings-account-removal-note { margin-top: 32px; padding: 12px 14px; border: 1px solid var(--staff-border); border-radius: 8px; background: var(--staff-soft); color: var(--staff-muted); font-size: 13px; line-height: 1.5; }

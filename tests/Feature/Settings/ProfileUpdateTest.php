@@ -155,48 +155,33 @@ test('email verification status is unchanged when email address is unchanged', f
     expect($user->refresh()->email_verified_at)->not->toBeNull();
 });
 
-test('user can delete their account with the approval of an active captain', function () {
-    $user = User::factory()->assignedOperations()->create(['password' => 'own-password-123']);
+test('staff settings no longer offer account deletion to any personnel role', function (string $role) {
+    $user = match ($role) {
+        'super admin' => User::factory()->superAdmin()->create(),
+        'captain' => User::factory()->create(['role' => 'captain', 'is_active' => true]),
+        default => User::factory()->assignedOperations()->create(['role' => 'staff']),
+    };
+
+    $this->actingAs($user)->get(route('profile.edit'))
+        ->assertOk()
+        ->assertDontSee('Delete account')
+        ->assertDontSee('confirm-user-deletion')
+        ->assertSee('Staff accounts are removed in User Management');
+
+    expect($user->fresh())->not->toBeNull()->and($user->fresh()->trashed())->toBeFalse();
+})->with(['staff', 'captain', 'super admin']);
+
+test('the self-deletion endpoint no longer exists, so a direct Livewire call cannot delete an account', function (string $role) {
+    $user = $role === 'super admin'
+        ? User::factory()->superAdmin()->create(['password' => 'own-password-123'])
+        : User::factory()->create(['role' => $role, 'is_active' => true, 'password' => 'own-password-123']);
     User::factory()->create(['role' => 'captain', 'is_active' => true, 'password' => 'captain-password-123']);
 
     $this->actingAs($user);
 
-    $response = Livewire::test('settings.delete-user-form')
-        ->set('password', 'captain-password-123')
-        ->call('deleteUser');
-
-    $response
-        ->assertHasNoErrors()
-        ->assertRedirect('/');
-
-    expect($user->fresh())->toBeNull();
-    expect(auth()->check())->toBeFalse();
-});
-
-test('the account owner cannot approve deleting their own account with their own password', function () {
-    $user = User::factory()->assignedOperations()->create(['password' => 'own-password-123']);
-    User::factory()->create(['role' => 'captain', 'is_active' => true, 'password' => 'captain-password-123']);
-
-    $this->actingAs($user);
-
-    Livewire::test('settings.delete-user-form')
-        ->set('password', 'own-password-123')
-        ->call('deleteUser')
-        ->assertHasErrors(['password']);
-
-    expect($user->fresh())->not->toBeNull();
-});
-
-test('correct password must be provided to delete account', function () {
-    $user = User::factory()->assignedOperations()->create();
-
-    $this->actingAs($user);
-
-    $response = Livewire::test('settings.delete-user-form')
-        ->set('password', 'wrong-password')
-        ->call('deleteUser');
-
-    $response->assertHasErrors(['password']);
-
-    expect($user->fresh())->not->toBeNull();
-});
+    expect(fn () => Livewire::test('settings.delete-user-form')->set('password', 'captain-password-123')->call('deleteUser'))
+        ->toThrow(\Livewire\Exceptions\ComponentNotFoundException::class);
+    expect(class_exists('App\Livewire\Settings\DeleteUserForm'))->toBeFalse()
+        ->and($user->fresh())->not->toBeNull()
+        ->and(auth()->check())->toBeTrue();
+})->with(['staff', 'captain', 'super admin']);
