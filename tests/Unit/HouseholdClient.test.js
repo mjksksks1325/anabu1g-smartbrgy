@@ -7,6 +7,7 @@ const source = readFileSync(new URL('../../public/js/admin.js', import.meta.url)
 const householdCode = source.slice(source.indexOf('let householdLookupTimer ='), source.indexOf('async function populateManualResidentDropdown()'));
 const payloadCode = source.slice(source.indexOf('function residentFormPayload('), source.indexOf('async function saveResident('));
 const mappingCode = source.slice(source.indexOf('function residentFromApi('), source.indexOf('async function loadResidents('));
+const pagerCode = source.slice(source.indexOf('function renderPager('), source.indexOf('function renderIssuedCertificatesPagination('));
 
 class FakeOption {
   constructor(text, value) { this.textContent = text; this.value = value; }
@@ -34,7 +35,7 @@ function householdClient(fetch) {
     showToast: message => toasts.push(message), hasStaffPermission: () => true,
     escapeText: value => String(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]))
   });
-  vm.runInContext(householdCode + payloadCode + mappingCode, context);
+  vm.runInContext(householdCode + payloadCode + mappingCode + pagerCode, context);
   return { context, fields, getField, toasts };
 }
 

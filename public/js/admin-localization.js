@@ -93,7 +93,7 @@
                     messages.set(name, message);
                 }
 
-                element.setAttribute(name, adminTranslate(message.source));
+                element.setAttribute(name, adminTranslate(message.source, message.replacements));
             }
         }
     }

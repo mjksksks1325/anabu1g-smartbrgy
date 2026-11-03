@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Purok;
 use App\Models\Resident;
 use App\Models\User;
 
@@ -62,4 +63,18 @@ test('purok creation rejects duplicate names and unsafe colors', function () {
         ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['name', 'color']);
+});
+
+test('purok names that differ only in letter case or spacing are duplicates', function () {
+    $user = User::factory()->assignedOperations()->create();
+
+    $this->actingAs($user)
+        ->postJson(route('staff.puroks.store'), [
+            'name' => '  purok 1  -  SAMPAGUITA ',
+            'color' => '#0EA5E9',
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['name' => 'A purok with this name already exists.']);
+
+    expect(Purok::query()->whereRaw('LOWER(name) = ?', ['purok 1 - sampaguita'])->count())->toBe(1);
 });

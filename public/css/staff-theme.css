@@ -296,6 +296,17 @@ body #app.admin-interface.admin-interface .tbl th, body[data-personnel-layout="i
 body #app.admin-interface.admin-interface .tbl td, body[data-personnel-layout="iot"] td { border-color: var(--staff-row); }
 body #app.admin-interface.admin-interface .tbl tbody tr:hover td, body[data-personnel-layout="iot"] tbody tr:hover { background: var(--staff-hover-bg); }
 
+/* Shared list pager (renderPager): range summary on the left, Previous · Page x of y · Next on the right. */
+#app.admin-interface .resident-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 12px 2px 0; color: var(--staff-muted); font-size: 12.5px; }
+#app.admin-interface .resident-pagination:empty { display: none; }
+#app.admin-interface .resident-pagination .list-pager-controls { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }
+#app.admin-interface .resident-pagination .list-pager-status { min-width: 96px; text-align: center; color: var(--staff-ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+#app.admin-interface .resident-pagination .btn:disabled { opacity: .5; cursor: not-allowed; }
+@media (max-width: 760px) {
+  #app.admin-interface .resident-pagination { justify-content: center; text-align: center; }
+  #app.admin-interface .resident-pagination .list-pager-controls { margin-left: 0; }
+}
+
 /* ── Notices and dialogs ───────────────────────────────────────── */
 body[data-personnel-layout="iot"] .notice:not(.success):not(.error), html[data-theme=dark] body[data-personnel-layout="iot"] .notice:not(.success):not(.error) {
   border-color: #b9d0e6; background: #eaf2fb; color: #1d4f7a;
@@ -307,6 +318,9 @@ body #app.admin-interface.admin-interface .modal, body[data-personnel-layout="io
 :is(.personnel-password-dialog, .personnel-logout-dialog, body[data-personnel-layout="iot"] .confirm-dialog)::backdrop { background: rgba(10, 18, 14, .62); }
 body #app.admin-interface.admin-interface .modal-overlay { background: rgba(10, 18, 14, .62); }
 body #app.admin-interface.admin-interface .modal-header, body #app.admin-interface.admin-interface .modal-footer { border-color: var(--staff-row); }
+#app.admin-interface .notif-panel-close { display: inline-grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: var(--staff-muted); font-size: 20px; line-height: 1; cursor: pointer; }
+#app.admin-interface .notif-panel-close:hover { background: var(--staff-hover-bg); color: var(--staff-ink); }
+#app.admin-interface .notif-panel-close:focus-visible { outline: 2px solid var(--civic-primary); outline-offset: 2px; }
 
 /* Logout: the session-ending action is red; Cancel stays neutral. */
 .personnel-logout-dialog .personnel-logout-symbol { background: #fbe9e7; color: var(--staff-danger); }

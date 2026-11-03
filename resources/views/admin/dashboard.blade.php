@@ -598,7 +598,7 @@
       <div class="notif-panel-title"> Notifications</div>
       <div style="display:flex;gap:8px;align-items:center;">
         <button class="btn btn-xs btn-green" onclick="markAllNotifsRead()">Mark all read</button>
-        <span style="font-size:18px;cursor:pointer;color:var(--text-muted);" onclick="toggleNotifPanel()">×</span>
+        <button type="button" class="notif-panel-close" onclick="toggleNotifPanel()" aria-label="Close notifications">&times;</button>
       </div>
     </div>
     <div id="notif-list"></div>
@@ -647,9 +647,8 @@
 <div class="modal-overlay" id="modal-purok">
   <div class="modal">
     <div class="modal-header"><div class="modal-title"> Add Purok</div><button type="button" class="modal-close" onclick="closeModal('modal-purok')" aria-label="Close">&times;</button></div>
-    <div class="form-group"><div class="form-label">Purok ID / Key *</div><input class="form-input" id="purok-name" placeholder="Example: purok1"/><div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Unique ID — hindi na mababago pagkatapos ma-save.</div></div>
-    <div class="form-group"><div class="form-label">Display Name *</div><input class="form-input" id="purok-label" name="name" placeholder="Example: Purok 1 - Sampaguita"/></div>
-    <div class="form-group"><div class="form-label">Display Color</div><input class="form-input" type="color" id="purok-color" value="#22C55E"/></div>
+    <div class="form-group"><label class="form-label" for="purok-label">Purok name *</label><input class="form-input" id="purok-label" name="name" maxlength="100" required autocomplete="off" placeholder="Example: Purok 1 - Sampaguita"/></div>
+    <div class="form-group"><label class="form-label" for="purok-color">Display color</label><input class="form-input" type="color" id="purok-color" name="color" value="#22C55E"/></div>
     <div class="modal-footer">
       <button class="btn btn-green" onclick="savePurok()"> Save Purok</button>
     </div>

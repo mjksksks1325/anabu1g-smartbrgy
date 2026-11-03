@@ -782,9 +782,8 @@ test('special group cards open filtered resident records and the All button clea
   assert.equal(statusPills[2].classes.has('active'), true);
 });
 
-test('add purok shows missing values on their own fields instead of a notification', async () => {
+test('add purok shows a missing name on its own field instead of a notification', async () => {
   const { context, fields } = await client();
-  fields.set('purok-name', { value: '' });
   fields.set('purok-label', { value: ' ' });
   fields.set('purok-color', { value: '#22C55E' });
   const shown = [];
@@ -796,7 +795,73 @@ test('add purok shows missing values on their own fields instead of a notificati
 
   assert.equal(fetched, false);
   assert.equal(context.messages.length, 0);
-  assert.deepEqual(JSON.parse(JSON.stringify(shown)), [{ 'purok-name': ['Enter a purok ID / key.'], 'purok-label': ['Enter a purok display name.'] }]);
+  assert.deepEqual(JSON.parse(JSON.stringify(shown)), [{ 'purok-label': ['Enter a purok display name.'] }]);
+});
+
+test('add purok sends only the name and colour the server stores', async () => {
+  const { context, fields } = await client();
+  fields.set('purok-label', { value: '  Purok 7 - Dahlia ' });
+  fields.set('purok-color', { value: '#3366AA' });
+  let body = null;
+  context.fetch = async (url, options = {}) => {
+    if (options.method === 'POST') body = JSON.parse(options.body);
+    return { ok: true, json: async () => ({ message: 'Purok added successfully.', data: [], demographics: {} }) };
+  };
+  vm.runInContext('loadPuroks = async () => true;', context);
+
+  await context.savePurok();
+
+  assert.deepEqual(body, { name: 'Purok 7 - Dahlia', color: '#3366AA' });
+});
+
+test('the shared pager summarises the range and calls the named loader for the neighbouring pages', async () => {
+  const { context, fields } = await client();
+  const attributes = {};
+  const pager = { innerHTML: 'stale', setAttribute: (name, value) => { attributes[name] = value; } };
+  fields.set('resident-pagination', pager);
+
+  context.renderPager('resident-pagination', { page: 2, lastPage: 3, total: 31, loader: 'loadResidents' });
+  assert.match(pager.innerHTML, /Showing 16–30 of 31 <span>records<\/span>/);
+  assert.match(pager.innerHTML, /onclick="loadResidents\(1\)">Previous/);
+  assert.match(pager.innerHTML, /Page 2 of 3/);
+  assert.match(pager.innerHTML, /onclick="loadResidents\(3\)">Next/);
+  assert.equal(attributes.role, 'navigation');
+
+  context.renderPager('resident-pagination', { page: 1, lastPage: 1, total: 1, noun: ['report', 'reports'], loader: 'loadIncidents' });
+  assert.match(pager.innerHTML, /Showing 1–1 of 1 <span>report<\/span>/);
+  assert.doesNotMatch(pager.innerHTML, /Previous|Next/);
+
+  context.renderPager('resident-pagination', { page: 1, lastPage: 1, total: 0, loader: 'loadResidents' });
+  assert.equal(pager.innerHTML, '');
+});
+
+test('Escape closes the dialog on top and focus returns to the control that opened each dialog', async () => {
+  const { context, fields, documentEvents } = await client();
+  const dialog = id => {
+    const classes = new Set();
+    return { id, classList: { add: name => classes.add(name), remove: name => classes.delete(name), contains: name => classes.has(name) },
+      setAttribute() {}, querySelector: () => null, querySelectorAll: () => [] };
+  };
+  const control = name => ({ name, focus() { context.document.activeElement = this; } });
+  fields.set('modal-resident', dialog('modal-resident'));
+  fields.set('modal-confirm-action', dialog('modal-confirm-action'));
+  const pageButton = control('page button');
+  const saveButton = control('save button');
+
+  context.document.activeElement = pageButton;
+  context.openModal('modal-resident');
+  context.document.activeElement = saveButton;
+  context.openModal('modal-confirm-action');
+  const keydown = documentEvents.get('keydown').at(-1);
+  keydown({ key: 'Escape' });
+
+  assert.equal(fields.get('modal-confirm-action').classList.contains('show'), false);
+  assert.equal(fields.get('modal-resident').classList.contains('show'), true);
+  assert.equal(context.document.activeElement, saveButton);
+
+  keydown({ key: 'Escape' });
+  assert.equal(fields.get('modal-resident').classList.contains('show'), false);
+  assert.equal(context.document.activeElement, pageButton);
 });
 
 test('the special group dropdown combines with the selected status', async () => {
@@ -909,7 +974,7 @@ test('issued certificate history requests the selected page and filters and rend
   assert.equal(params.get('source'), 'online');
   assert.equal(params.get('date_from'), '2026-10-01');
   assert.equal(params.has('date_to'), false);
-  assert.match(pagination.innerHTML, /23 certificates/);
+  assert.match(pagination.innerHTML, /Showing 11–20 of 23 <span>certificates<\/span>/);
   assert.match(pagination.innerHTML, /Page 2 of 3/);
   assert.match(pagination.innerHTML, /onclick="refreshIssuedCertificates\(1\)"/);
   assert.match(tbody.innerHTML, /No issued certificates match these filters/);

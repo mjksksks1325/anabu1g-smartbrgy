@@ -503,10 +503,8 @@ function syncPurokSelects(selectedValue = '') {
 function openAddPurok() {
   const modal = document.getElementById('modal-purok');
   if (modal) delete modal.dataset.editKey;
-  const nameEl = document.getElementById('purok-name');
   const labelEl = document.getElementById('purok-label');
   const colorEl = document.getElementById('purok-color');
-  if (nameEl) { nameEl.value = ''; nameEl.disabled = false; }
   if (labelEl) { labelEl.value = ''; labelEl.disabled = false; }
   if (colorEl) colorEl.value = '#22C55E';
   const title = modal?.querySelector('.modal-title');
@@ -517,15 +515,10 @@ function openAddPurok() {
 }
 
 async function savePurok() {
-  const key = document.getElementById('purok-name')?.value.trim();
   const name = document.getElementById('purok-label')?.value.trim();
   const color = document.getElementById('purok-color')?.value || '#22C55E';
-  const errors = {};
-  if (!key) errors['purok-name'] = [adminText('Enter a purok ID / key.')];
-  if (!name) errors['purok-label'] = [adminText('Enter a purok display name.')];
-
-  if (Object.keys(errors).length) {
-    window.FormFeedback?.showErrors(errors);
+  if (!name) {
+    window.FormFeedback?.showErrors({ 'purok-label': [adminText('Enter a purok display name.')] });
     return;
   }
 
@@ -657,7 +650,7 @@ function toggleTheme() {
   if (label) label.textContent = actionLabel;
   if (themeButton) { themeButton.setAttribute('aria-label', actionLabel); themeButton.title = actionLabel; }
   refreshDashboardPieTheme();
-  showToast(isLightMode ? 'Light mode na!' : 'Dark mode na!', 'green');
+  showToast(isLightMode ? 'Light mode is on.' : 'Dark mode is on.', 'green');
 }
 
 function changeFontSize(dir) {
@@ -1533,17 +1526,39 @@ async function refreshIssuedCertificates(page = issuedCertificatesPage) {
   }
 }
 
-function renderIssuedCertificatesPagination(meta) {
-  const container = document.getElementById('issued-certificates-pagination');
+/**
+ * Render the shared list pager: a "Showing a–b of N items" summary and Previous/Next buttons that call
+ * the named global page loader. Empty lists render nothing; single-page lists keep only the summary.
+ */
+function renderPager(containerId, { page = 1, lastPage = 1, total = 0, perPage = 15, noun = ['record', 'records'], loader }) {
+  const container = document.getElementById(containerId);
   if (!container) return;
-  const total = Number(meta?.total) || 0;
-  const current = Number(meta?.current_page) || 1;
-  const last = Number(meta?.last_page) || 1;
-  container.innerHTML = `
-    <span class="resident-page-summary">${total.toLocaleString()} certificate${total === 1 ? '' : 's'}</span>
-    <button class="btn btn-xs" type="button" ${current <= 1 ? 'disabled' : ''} onclick="refreshIssuedCertificates(${current - 1})">Previous</button>
-    <span>Page ${current} of ${last}</span>
-    <button class="btn btn-xs" type="button" ${current >= last ? 'disabled' : ''} onclick="refreshIssuedCertificates(${current + 1})">Next</button>`;
+  const count = Number(total) || 0;
+  const last = Math.max(1, Number(lastPage) || 1);
+  const current = Math.min(Math.max(1, Number(page) || 1), last);
+  container.setAttribute?.('role', 'navigation');
+  container.setAttribute?.('aria-label', 'Pagination');
+  if (count === 0) {
+    container.innerHTML = '';
+    return;
+  }
+  const from = (current - 1) * perPage + 1;
+  const to = Math.min(current * perPage, count);
+  const summary = `<span class="resident-page-summary">Showing ${from.toLocaleString()}–${to.toLocaleString()} of ${count.toLocaleString()} <span>${count === 1 ? noun[0] : noun[1]}</span></span>`;
+  if (last <= 1) {
+    container.innerHTML = summary;
+    return;
+  }
+  container.innerHTML = `${summary}
+    <span class="list-pager-controls">
+      <button class="btn btn-xs" type="button" ${current <= 1 ? 'disabled' : ''} onclick="${loader}(${current - 1})">Previous</button>
+      <span class="list-pager-status" aria-live="polite">Page ${current} of ${last}</span>
+      <button class="btn btn-xs" type="button" ${current >= last ? 'disabled' : ''} onclick="${loader}(${current + 1})">Next</button>
+    </span>`;
+}
+
+function renderIssuedCertificatesPagination(meta) {
+  renderPager('issued-certificates-pagination', { page: meta?.current_page, lastPage: meta?.last_page, total: meta?.total, perPage: Number(meta?.per_page) || 10, noun: ['certificate', 'certificates'], loader: 'refreshIssuedCertificates' });
 }
 
 function renderIssuedCertificates(certificates, meta = null) {
@@ -1679,11 +1694,25 @@ function submitPortalRequest() {
 // ═══════════════════════════════════════
 // MODALS
 // ═══════════════════════════════════════
-let modalTrigger = null;
+/** Open dialogs in the order they were opened, each with the control that opened it. */
+const modalStack = [];
+
+/** The dialog the user is looking at: the most recently opened one that is still shown. */
+function topOpenModal() {
+  for (let index = modalStack.length - 1; index >= 0; index--) {
+    const element = document.getElementById(modalStack[index].id);
+    if (element?.classList.contains('show')) return element;
+  }
+
+  return [...document.querySelectorAll('.modal-overlay.show')].pop() ?? null;
+}
+
 function openModal(id) {
   const element = document.getElementById(id);
   if (!element) return;
-  modalTrigger = document.activeElement;
+  const existing = modalStack.findIndex(entry => entry.id === id);
+  if (existing >= 0) modalStack.splice(existing, 1);
+  modalStack.push({ id, trigger: document.activeElement });
   window.PasswordVisibility?.hide(element);
   element.classList.add('show');
   element.setAttribute('role', 'dialog');
@@ -1721,7 +1750,7 @@ function confirmAction(message, { title = 'Please confirm', confirmLabel = 'Conf
     button.onclick = () => {
       if (requireSupervisorPassword && !passwordInput?.value) {
         if (passwordError) {
-          passwordError.textContent = 'Ilagay ang password ng active Barangay Captain o Super Admin para magpatuloy.';
+          passwordError.textContent = adminText('Enter the password of the active Barangay Captain or Super Admin to continue.');
           passwordError.hidden = false;
         }
         passwordInput?.focus();
@@ -1746,7 +1775,7 @@ function settleConfirmAction(confirmed) {
   resolve?.(confirmed);
 }
 
-function closeModal(id) { if (id === 'modal-confirm-action') { settleConfirmAction(false); const passwordInput = document.getElementById('confirm-action-super-admin-password'); if (passwordInput) passwordInput.value = ''; const usernameInput = document.getElementById('confirm-action-username'); if (usernameInput) usernameInput.value = ''; const passwordError = document.getElementById('confirm-action-password-error'); if (passwordError) { passwordError.hidden = true; passwordError.textContent = ''; } } if (id === 'modal-view-resident') document.getElementById('resident-activation-result')?.replaceChildren(); if (id === 'modal-resident' || id === 'modal-incident') dashboardActionOrigin = false; const el = document.getElementById(id); if (el) { window.PasswordVisibility?.hide(el); el.classList.remove('show'); } modalTrigger?.focus(); }
+function closeModal(id) { if (id === 'modal-confirm-action') { settleConfirmAction(false); const passwordInput = document.getElementById('confirm-action-super-admin-password'); if (passwordInput) passwordInput.value = ''; const usernameInput = document.getElementById('confirm-action-username'); if (usernameInput) usernameInput.value = ''; const passwordError = document.getElementById('confirm-action-password-error'); if (passwordError) { passwordError.hidden = true; passwordError.textContent = ''; } } if (id === 'modal-view-resident') document.getElementById('resident-activation-result')?.replaceChildren(); if (id === 'modal-resident' || id === 'modal-incident') dashboardActionOrigin = false; const el = document.getElementById(id); if (el) { window.PasswordVisibility?.hide(el); el.classList.remove('show'); } const index = modalStack.findLastIndex(entry => entry.id === id); if (index >= 0) modalStack.splice(index, 1)[0].trigger?.focus?.(); }
 document.addEventListener('click', function(e) { if (e.target.classList.contains('modal-overlay')) closeModal(e.target.id); });
 
 // ═══════════════════════════════════════
@@ -1768,8 +1797,7 @@ function showToast(msg, type) {
   const toast = document.createElement('div');
   toast.className = 'toast' + (type ? ' ' + type : '');
   toast.dataset.toastKey = toastKey;
-  const icons = { green: '', red: '', '': 'ℹ' };
-  toast.innerHTML = `<span style="font-size:15px;">${icons[type] || 'ℹ'}</span><span>${escapeText(msg)}</span>`;
+  toast.innerHTML = `${type === 'green' || type === 'red' ? '' : '<span style="font-size:15px;" aria-hidden="true">ℹ</span>'}<span>${escapeText(msg)}</span>`;
   wrap.appendChild(toast);
   setTimeout(() => {
     toast.style.opacity = '0';
@@ -3650,14 +3678,7 @@ function renderIncidents(total = 0) {
     tbody.appendChild(row);
   });
 
-  const pagination = document.getElementById('incident-pagination');
-  if (pagination) {
-    pagination.innerHTML = `
-      <span class="resident-page-summary">${Number(total).toLocaleString()} report${Number(total) === 1 ? '' : 's'}</span>
-      <button class="btn btn-xs" ${incidentCurrentPage <= 1 ? 'disabled' : ''} onclick="loadIncidents(${incidentCurrentPage - 1})">Previous</button>
-      <span>Page ${incidentCurrentPage} of ${incidentLastPage}</span>
-      <button class="btn btn-xs" ${incidentCurrentPage >= incidentLastPage ? 'disabled' : ''} onclick="loadIncidents(${incidentCurrentPage + 1})">Next</button>`;
-  }
+  renderPager('incident-pagination', { page: incidentCurrentPage, lastPage: incidentLastPage, total, noun: ['report', 'reports'], loader: 'loadIncidents' });
 }
 
 function updateIncidentSummary(summary) {
@@ -3907,14 +3928,7 @@ function renderRequestRecords(total = 0) {
     }).join('');
   }
 
-  const pagination = document.getElementById('rr-pagination');
-  if (pagination) {
-    pagination.innerHTML = `
-      <span class="resident-page-summary">${Number(total).toLocaleString()} resident${Number(total) === 1 ? '' : 's'}</span>
-      <button class="btn btn-xs" ${rrCurrentPage <= 1 ? 'disabled' : ''} onclick="loadRequestRecords(${rrCurrentPage - 1})">Previous</button>
-      <span>Page ${rrCurrentPage} of ${rrLastPage}</span>
-      <button class="btn btn-xs" ${rrCurrentPage >= rrLastPage ? 'disabled' : ''} onclick="loadRequestRecords(${rrCurrentPage + 1})">Next</button>`;
-  }
+  renderPager('rr-pagination', { page: rrCurrentPage, lastPage: rrLastPage, total, noun: ['resident', 'residents'], loader: 'loadRequestRecords' });
 }
 
 function openEligibilityForRequestResident(databaseId) {
@@ -4214,13 +4228,7 @@ function residentContactError(value) {
 }
 
 function renderResidentPagination(total) {
-  const container = document.getElementById('resident-pagination');
-  if (!container) return;
-  container.innerHTML = `
-    <span class="resident-page-summary">${Number(total).toLocaleString()} record${total === 1 ? '' : 's'}</span>
-    <button class="btn btn-xs" ${residentCurrentPage <= 1 ? 'disabled' : ''} onclick="loadResidents(${residentCurrentPage - 1})">Previous</button>
-    <span>Page ${residentCurrentPage} of ${residentLastPage}</span>
-    <button class="btn btn-xs" ${residentCurrentPage >= residentLastPage ? 'disabled' : ''} onclick="loadResidents(${residentCurrentPage + 1})">Next</button>`;
+  renderPager('resident-pagination', { page: residentCurrentPage, lastPage: residentLastPage, total, loader: 'loadResidents' });
 }
 
 function filterResidents() {
@@ -4579,11 +4587,8 @@ function searchResidentHouseholds() {
   householdLookupTimer = setTimeout(() => loadResidentHouseholds(), 250);
 }
 
-function householdPagination(containerId, payload, callback) {
-  document.getElementById(containerId).innerHTML = `
-    <button class="btn btn-xs" ${payload.current_page <= 1 ? 'disabled' : ''} onclick="${callback}(${payload.current_page - 1})">Previous</button>
-    <span>Page ${Number(payload.current_page)} of ${Number(payload.last_page)}</span>
-    <button class="btn btn-xs" ${payload.current_page >= payload.last_page ? 'disabled' : ''} onclick="${callback}(${payload.current_page + 1})">Next</button>`;
+function householdPagination(containerId, payload, callback, noun = ['household', 'households']) {
+  renderPager(containerId, { page: payload.current_page, lastPage: payload.last_page, total: payload.total, perPage: Number(payload.per_page) || 15, noun, loader: callback });
 }
 
 async function loadResidentHouseholds() {
@@ -4822,7 +4827,7 @@ async function loadHouseholdResidents(page = 1) {
       householdResidentOptions.set(resident.id, resident);
       select.add(new Option(`${resident.full_name} — ${resident.resident_number}${resident.household ? ` — currently ${resident.household.household_number}` : ''}`, String(resident.id)));
     });
-    householdPagination('household-resident-pagination', payload, 'loadHouseholdResidents');
+    householdPagination('household-resident-pagination', payload, 'loadHouseholdResidents', ['resident', 'residents']);
     if (!householdId) renderDraftHouseholdMembers();
   } catch (error) { if (version === householdMemberLookupVersion) showToast(error.message, 'red'); }
 }
@@ -5050,14 +5055,7 @@ function renderVoterRegistry(total) {
     }).join('');
   }
 
-  const pagination = document.getElementById('voter-pagination');
-  if (pagination) {
-    pagination.innerHTML = `
-      <span class="resident-page-summary">${Number(total).toLocaleString()} record${Number(total) === 1 ? '' : 's'}</span>
-      <button class="btn btn-xs" ${voterCurrentPage <= 1 ? 'disabled' : ''} onclick="loadVoterRegistry(${voterCurrentPage - 1})">Previous</button>
-      <span>Page ${voterCurrentPage} of ${voterLastPage}</span>
-      <button class="btn btn-xs" ${voterCurrentPage >= voterLastPage ? 'disabled' : ''} onclick="loadVoterRegistry(${voterCurrentPage + 1})">Next</button>`;
-  }
+  renderPager('voter-pagination', { page: voterCurrentPage, lastPage: voterLastPage, total, loader: 'loadVoterRegistry' });
 }
 
 function updateVoterSummary(summary) {
@@ -5285,7 +5283,7 @@ function toggleNavigation(force) {
 }
 
 document.addEventListener('keydown', event => {
-  const modal = document.querySelector('.modal-overlay.show');
+  const modal = topOpenModal();
   if (event.key === 'Escape') {
     if (modal) closeModal(modal.id);
     toggleNavigation(false);

@@ -20,7 +20,7 @@
     }
 
     function openContainer() {
-        const modal = [...document.querySelectorAll('.modal-overlay.show, .modal-overlay.open, dialog[open]')].pop();
+        const modal = window.topOpenModal?.() ?? [...document.querySelectorAll('.modal-overlay.show, .modal-overlay.open, dialog[open]')].pop();
         if (modal) return modal;
         const active = lastInteraction?.isConnected ? lastInteraction : document.activeElement;
 

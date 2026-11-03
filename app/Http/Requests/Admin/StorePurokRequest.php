@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Models\Purok;
+use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -24,7 +25,11 @@ class StorePurokRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:100', 'unique:puroks,name'],
+            'name' => ['required', 'string', 'max:100', function (string $attribute, mixed $value, Closure $fail): void {
+                if (Purok::query()->whereRaw('LOWER(name) = ?', [mb_strtolower((string) $value)])->exists()) {
+                    $fail(__('A purok with this name already exists.'));
+                }
+            }],
             'color' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
         ];
     }
