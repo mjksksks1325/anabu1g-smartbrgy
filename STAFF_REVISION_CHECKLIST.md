@@ -17,10 +17,10 @@ Update it at the end of every session. Statuses come from the source code, not f
 - Tests: Pest and Node (`node --test tests/Unit/*.test.js`). The full Pest suite needs more memory than the default: `php -d memory_limit=1G vendor/pestphp/pest/bin/pest --compact`. Destructive-route tests send `supervisorApproval()` (see `tests/Pest.php`).
 - Browser checks: run the app against a **copy** of `database/database.sqlite` (set `DB_DATABASE` and start `php -S 127.0.0.1:8010 ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php` from `public/`; `artisan serve` drops the override) and sign in with a seeded local staff account. Never seed test data into the real local database.
 
-## Test status (2026-11-03, after `c8034f5`)
+## Test status (2026-11-03, after `e56efce`)
 
-- Node: 177 pass, 0 fail.
-- Pest: 986 pass, 14 fail, 2 skipped. All 14 are in account settings, profile and navigation (Work Group 5). They need a decision on the intended design, not a quick assertion change:
+- Node: 182 pass, 0 fail.
+- Pest: 988 pass, 14 fail, 2 skipped. All 14 are in account settings, profile and navigation (Work Group 5). They need a decision on the intended design, not a quick assertion change:
   - `GovernmentPagesTest`: expects the removed top-bar `IoT status` chip and a `My profile` menu item; sidebar icon count 15 vs 16; account role shown as `Super Admin` where the test expects `admin` (×4 settings/IoT pages); sidebar scroll container.
   - `Settings/ProfileUpdateTest`: settings sidebar icon count 15 vs 16 (×2); `Account security` link order; **account deletion now asks for the active Super Admin password** (`DeleteUserForm`, changed in `e7f1aa7`), and the test still sends the user's own password.
   - `PasswordVisibilityTest` and `PersonnelPasswordConfirmationTest`: expected password toggles and security links not found on the dashboard.
@@ -31,7 +31,8 @@ Update it at the end of every session. Statuses come from the source code, not f
 |---|---|---|
 | English/Filipino consistency | `NEW` / `PARTIAL` | 79 staff JS messages and about 70 Demographics/Resident Records labels catalogued; hard-coded Filipino source text replaced; placeholder fill order fixed (`:to` no longer breaks `:total`, seen as "2tal" in the browser). `TODO`: remaining screens (Certificates, Incidents, IoT, Users, Settings) need the same browser audit. |
 | Printable reports and exports | `PARTIAL` | Resident and voter exports are branded `.xlsx` files (`WriteRecordsSpreadsheet`), verified in the browser. The buttons say "Export Excel" / "Export List". Printable reports not yet reviewed. |
-| Import duplicate detection | `NEW` | See Decisions → Import. |
+| Import duplicate detection | `NEW` | Browser-verified end to end; see Decisions → Import. |
+| Lists ignore stale responses | `NEW` | Resident and voter lists render only the newest request (a slow earlier search used to be able to replace newer results) and keep their rows while refreshing. |
 | Inline form validation | `DONE` / `NEW` | Existing `form-feedback.js`; errors target the top dialog when dialogs are stacked. |
 | Dialogs and confirmations | `DONE` / `NEW` | Dialog stack: Esc closes the top dialog and focus returns to its opener (browser-verified). Hardware-status and user-details dialogs now close only through the X like every other dialog. |
 | Pagination | `NEW` / `PARTIAL` | Shared `renderPager` on residents, voters, incidents, request records, issued certificates, households, household residents and the senior register (browser-verified, both languages). `TODO`: audit and dashboard-activity pagers; IoT Blade pages use Laravel `links()`. |
@@ -62,15 +63,19 @@ Update it at the end of every session. Statuses come from the source code, not f
 | Pagination inside Edit form | `DONE` | None present (verified). |
 | Long-form organisation | `NEW` | Four sections: Personal information, Address and contact, Sectors and record status, Household. |
 
-## 4. Voters
+## 4. Voters — `NEW` (browser-verified desktop, 390 px, English/Filipino)
 
 | Item | Status | Notes |
 |---|---|---|
 | Actions beside search | `DONE` / `NEW` | Add Voter primary; Import CSV and Export List secondary. |
 | KPI colours | `NEW` | Same specificity fix as Demographics. |
-| Filters and pagination | `NEW` | Age buttons with `aria-pressed`; shared pager verified with 18 voters. |
-| Table readability | `PARTIAL` | Not yet reworked. |
-| CSV import / export | `PARTIAL` | Export verified (`.xlsx`); import covered by `VoterImportTest`, not yet tried in the browser. |
+| Filters and pagination | `NEW` | Age buttons with `aria-pressed`; shared pager (18 voters, 2 pages). |
+| Record actions | `NEW` | Edit for staff with `voters.update` (existing PATCH endpoint, version check, audit record). Resident shown read-only; COMELEC number kept unless retyped (masked hint); status explained (non-active statuses leave this active-only list). Rows failing the integrity check show "Locked for review". |
+| Validation | `NEW` | Fields carry request names, so errors appear on the field; precinct, cluster and COMELEC formats say which characters are allowed. |
+| Language | `NEW` | Eligibility badges and placeholders follow the selected language. |
+| Empty / loading / error states | `DONE` / `NEW` | Empty state verified; loading row only on first load. |
+| CSV import / export | `DONE` | Browser-verified: 2 imported + 1 skipped as already registered; a file with an unknown resident number is rejected whole with the row named (existing all-or-nothing rule). Export downloads `.xlsx`. |
+| Phones | `PARTIAL` | No page overflow; the table scrolls inside its card. A card layout for phones could come later. |
 
 ## 5. Certificates and Clearances
 
@@ -80,7 +85,8 @@ Process flow (5 steps), KPI colours, paged/filtered issued history and a single 
 
 | Item | Status | Notes |
 |---|---|---|
-| Checker rejects valid input | `BUG` (unconfirmed) | Client labels match `CertificateType`. Suspects: options keyed by `resident_number` (`findEligibilityResident`), the list limited to the first 100 from `/staff/case-residents`, and only one resident listed after opening from a request record. Reproduce first. |
+| Checker rejects valid input | `NEW` (fixed `e56efce`) | Reproduced in the browser: any resident data reload while the checker is open (workspace start-up, resident saves, imports, Resident Records filters) rebuilt the list and dropped the chosen resident, so Check showed "Select a resident." The list now keeps the current choice. Certificate labels, resident-number keys and the request-record path were tested and were not the cause. |
+| Residents beyond the first 100 | `NEW` (fixed `e56efce`) | Verified with 117 residents: the list comes from a lookup capped at 100 by surname, so later residents could not be chosen at all. A search field queries the same endpoint by name or resident ID. Eligibility rules unchanged. |
 | KPI cards top, filters below | `TODO` | |
 
 ## 7. Incident Reports — `TODO` (one search, filter alignment, record view; keep VAWC permissions). Search already covers incident type; the exact-category filter was removed on purpose (`e7f1aa7`).
@@ -106,7 +112,10 @@ Process flow (5 steps), KPI colours, paged/filtered issued history and a single 
   - number exists and matches the row's first name, last name and birth date → confirmed match: skipped by default, or linked to a household; never created again;
   - number unknown, or belongs to someone else → row invalid with the reason; nothing is guessed.
 - Rows without a number keep the existing rules: same first/last name + birth date is a possible duplicate that staff must resolve (link, create after confirming, or skip); exact matches are skipped; duplicates inside the file are flagged; records are never overwritten.
-- Summary before saving: households, residents, heads, possible/exact duplicates, already in the system (skipped), invalid/unresolved, ready. After saving: created, linked, skipped.
+- Summary before saving: labelled counts (invalid in red, duplicates in amber, ready in green). After saving, the dialog stays open with a lasting result: created, linked, skipped, households saved.
+- Unreadable birth dates stay in the row for correction ("must be a valid date"); contact errors use the resident form's message.
+- **What a resident number is (verified):** not fillable, generated only when a record is created (`ANB-YYYY-` + 10 random characters), never backfilled. Every valid number was issued by this application. An unknown number therefore cannot refer to any record, and the voter import already treats it as an error. In the profiling import such a row is held for review, not rejected: clearing the number in the preview turns it into an ordinary new-resident row (browser-verified). No matching rule was changed.
+- **Browser test** (isolated copy, 7-row file): 2 valid new rows ready; resident-number match skipped automatically; same name + birth date with a different middle name required a decision; duplicate inside the file flagged; invalid row listed with reasons; unknown number flagged; Save blocked until all were resolved. After saving, 4 residents were created, the matched resident was linked as household head with address and contact unchanged, the possible-duplicate's existing record was untouched, and contact numbers were stored as `09…`.
 - No decision remains open for import matching.
 
 ### Purok name uniqueness at the database level — `APPROVAL`
@@ -135,3 +144,4 @@ Process flow (5 steps), KPI colours, paged/filtered issued history and a single 
 
 - **Session 1 (2026-11-03)** — Work group 1: dialog stack, shared pager, catalogue coverage and guard test, Add Purok fixes, toast and notification-close fixes (`fd10c70`).
 - **Session 2 (2026-11-03)** — Browser verification of work group 1 against a scratch database copy (found and fixed the "2tal" translation bug, `2c6655d`). Repaired outdated tests and a real navigation stylesheet regression; destructive-route tests now send a valid supervisor password (`0d611b4`). Resident-number import matching (`f10b9be`). Work group 2: Demographics, Resident Records and Voters layouts, contact-number storage, Filipino coverage (`c8034f5`). Next: remaining work group 2 items (Voters table, import/export in the browser), then work group 3 (Eligibility bug first).
+- **Session 3 (2026-11-03)** — Work group 2 finished: Voters edit action, validation and language; stale-response guard on resident and voter lists; import summary, lasting result and clearer errors; profiling and voter imports browser-tested on an isolated copy (`4339f7b`). Work group 3 started: Eligibility Checker bug reproduced and fixed, plus resident search beyond 100 (`e56efce`). Next: Request Eligibility layout (KPI cards top, filters below), then Certificates Request Board and Incident Reports.
