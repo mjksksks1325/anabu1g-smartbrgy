@@ -2000,26 +2000,63 @@ function elig_onResidentChange() {
   });
 }
 
+/** Residents found by the checker's search box, or null while the default list is shown. */
+let eligibilitySearchResults = null;
+let eligibilitySearchTimer = null;
+let eligibilitySearchVersion = 0;
+
+/**
+ * Rebuild the checker's resident list. Without an explicit preselection the current choice is kept,
+ * because the list is rebuilt whenever resident data reloads, including while the checker is open.
+ */
 function populateEligResidentDropdown(preselect) {
   const sel = document.getElementById('elig-resident-select');
   if (!sel) return;
+  const keep = preselect ?? sel.value;
   sel.innerHTML = '<option value="">— Pumili ng Residente —</option>';
-  const availableResidents = manualResidentsById.size > 0
+  const availableResidents = eligibilitySearchResults ?? (manualResidentsById.size > 0
     ? [...manualResidentsById.values()].map(residentFromApi)
-    : RESIDENTS;
+    : RESIDENTS);
   availableResidents.forEach(r => {
     const opt = document.createElement('option');
     opt.value = r.id;
     const age = calcAge(r.dob);
     opt.textContent = `${r.name} (${r.id}) — ${age} yrs${age >= 60 ? ' ' : ''}`;
-    if (preselect && r.id === preselect) opt.selected = true;
+    if (keep && r.id === keep) opt.selected = true;
     sel.appendChild(opt);
   });
+}
+
+/** Search all residents by name or resident ID, so the checker is not limited to the first 100 listed. */
+function searchEligibilityResidents() {
+  clearTimeout(eligibilitySearchTimer);
+  eligibilitySearchTimer = setTimeout(async () => {
+    const term = document.getElementById('elig-resident-search')?.value.trim() ?? '';
+    const version = ++eligibilitySearchVersion;
+    if (term === '') {
+      eligibilitySearchResults = null;
+      populateEligResidentDropdown();
+      return;
+    }
+    try {
+      const response = await fetch(`/staff/case-residents?${new URLSearchParams({ search: term, per_page: '100' })}`, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
+      const payload = await response.json();
+      if (version !== eligibilitySearchVersion) return;
+      if (!response.ok) throw new Error(payload?.message || 'Unable to search residents.');
+      eligibilitySearchResults = (payload.data || []).map(residentFromApi);
+      populateEligResidentDropdown();
+    } catch (error) {
+      if (version === eligibilitySearchVersion) showToast(error.message || 'Unable to search residents.', 'red');
+    }
+  }, 250);
 }
 
 function openEligibilityForResident(residentId) {
   closeModal('modal-view-resident');
   closeModal('modal-rr-detail');
+  const search = document.getElementById('elig-resident-search');
+  if (search) search.value = '';
+  eligibilitySearchResults = null;
   populateEligResidentDropdown(residentId);
   document.getElementById('elig-result').style.display = 'none';
   document.getElementById('elig-proceed-btn').style.display = 'none';
@@ -2027,6 +2064,8 @@ function openEligibilityForResident(residentId) {
 }
 
 function findEligibilityResident(residentNumber) {
+  const searched = eligibilitySearchResults?.find(item => item.id === residentNumber);
+  if (searched?.databaseId) return searched;
   const resident = RESIDENTS.find(item => item.id === residentNumber);
   if (resident?.databaseId) return resident;
 

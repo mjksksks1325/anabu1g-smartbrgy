@@ -1576,5 +1576,11 @@
     "Halimbawa: 045": "Halimbawa: 045",
     "Update the voter information of this resident. Every change is recorded in the audit log.": "I-update ang voter information ng residenteng ito. Nakatala sa audit log ang bawat pagbabago.",
     "Use letters, numbers, spaces and hyphens only, for example 0123A.": "Letra, numero, espasyo at gitling lamang, halimbawa 0123A.",
-    "Use letters, numbers and hyphens only, for example 1234-5678-9012.": "Letra, numero at gitling lamang, halimbawa 1234-5678-9012."
+    "Use letters, numbers and hyphens only, for example 1234-5678-9012.": "Letra, numero at gitling lamang, halimbawa 1234-5678-9012.",
+    "Find resident": "Hanapin ang residente",
+    "Type a name or resident ID": "I-type ang pangalan o resident ID",
+    "The list shows up to 100 residents. Search to find anyone else.": "Hanggang 100 residente ang nasa listahan. Maghanap para makita ang iba.",
+    "Unable to search residents.": "Hindi makapaghanap ng residente.",
+    "Resident *": "Residente *",
+    "Document Type *": "Uri ng dokumento *"
 }

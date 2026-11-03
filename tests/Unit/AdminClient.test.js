@@ -1058,3 +1058,47 @@ test('a slower earlier voter search cannot overwrite the newest results', async 
   assert.match(fields.get('voter-registry-tbody').innerHTML, /Newest Result/);
   assert.doesNotMatch(fields.get('voter-registry-tbody').innerHTML, /Stale Result/);
 });
+
+function fakeSelect() {
+  const select = { options: [], value: '', innerHTML: '' };
+  Object.defineProperty(select, 'innerHTML', { set() { select.options = []; select.value = ''; }, get() { return ''; } });
+  select.appendChild = option => { select.options.push(option); if (option.selected) select.value = option.value; };
+  return select;
+}
+
+test('rebuilding the eligibility resident list keeps the resident already chosen', async () => {
+  const { context, fields } = await client();
+  const select = fakeSelect();
+  fields.set('elig-resident-select', select);
+  context.document.createElement = () => ({ value: '', textContent: '', selected: false });
+  vm.runInContext(`RESIDENTS.splice(0, RESIDENTS.length,
+    { databaseId: 1, id: 'ANB-1', name: 'Ana Cruz', dob: '1990-01-01' },
+    { databaseId: 2, id: 'ANB-2', name: 'Ben Reyes', dob: '1980-01-01' });`, context);
+
+  context.populateEligResidentDropdown(null);
+  select.value = 'ANB-2';
+  context.populateEligResidentDropdown(null);
+
+  assert.equal(select.value, 'ANB-2');
+  assert.equal(select.options.length, 2);
+});
+
+test('the eligibility search finds residents outside the default list and checks them by database id', async () => {
+  const { context, fields } = await client();
+  const select = fakeSelect();
+  fields.set('elig-resident-select', select);
+  fields.set('elig-resident-search', { value: 'Zamora' });
+  context.document.createElement = () => ({ value: '', textContent: '', selected: false });
+  const requested = [];
+  context.fetch = async url => { requested.push(url); return { ok: true, json: async () => ({ data: [{ id: 145, resident_number: 'ANB-145', full_name: 'Zed Zamora', first_name: 'Zed', last_name: 'Zamora', date_of_birth: '1970-01-01', status: 'active' }] }) }; };
+  vm.runInContext('setTimeout = callback => { callback(); return 1; };', context);
+
+  context.searchEligibilityResidents();
+  await new Promise(resolve => setImmediate(resolve));
+
+  const params = new URL(requested[0], 'http://localhost').searchParams;
+  assert.equal(params.get('search'), 'Zamora');
+  assert.equal(select.options.length, 1);
+  assert.equal(select.options[0].value, 'ANB-145');
+  assert.equal(context.findEligibilityResident('ANB-145').databaseId, 145);
+});

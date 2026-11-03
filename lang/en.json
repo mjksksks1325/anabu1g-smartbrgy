@@ -1379,5 +1379,11 @@
     "Halimbawa: 045": "Example: 045",
     "Update the voter information of this resident. Every change is recorded in the audit log.": "Update the voter information of this resident. Every change is recorded in the audit log.",
     "Use letters, numbers, spaces and hyphens only, for example 0123A.": "Use letters, numbers, spaces and hyphens only, for example 0123A.",
-    "Use letters, numbers and hyphens only, for example 1234-5678-9012.": "Use letters, numbers and hyphens only, for example 1234-5678-9012."
+    "Use letters, numbers and hyphens only, for example 1234-5678-9012.": "Use letters, numbers and hyphens only, for example 1234-5678-9012.",
+    "Find resident": "Find resident",
+    "Type a name or resident ID": "Type a name or resident ID",
+    "The list shows up to 100 residents. Search to find anyone else.": "The list shows up to 100 residents. Search to find anyone else.",
+    "Unable to search residents.": "Unable to search residents.",
+    "Resident *": "Resident *",
+    "Document Type *": "Document Type *"
 }

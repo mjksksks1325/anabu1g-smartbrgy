@@ -1257,7 +1257,8 @@
 <div class="modal-overlay" id="modal-eligibility-check">
   <div class="modal" style="max-width:540px;">
     <div class="modal-header"><div class="modal-title"> <span>Eligibility Checker</span></div><button type="button" class="modal-close" onclick="closeModal('modal-eligibility-check')" aria-label="Close">&times;</button></div>
-    <div class="form-group"><label class="form-label" for="elig-resident-select">Full Name ng Residente *</label><select class="form-input" id="elig-resident-select" required onchange="elig_onResidentChange()"><option value="">— Select Resident —</option></select></div>
+    <div class="form-group"><label class="form-label" for="elig-resident-search">Find resident</label><input class="form-input" type="search" id="elig-resident-search" autocomplete="off" maxlength="100" placeholder="Type a name or resident ID" oninput="searchEligibilityResidents()"/><div class="card-sub">The list shows up to 100 residents. Search to find anyone else.</div></div>
+    <div class="form-group"><label class="form-label" for="elig-resident-select">Resident *</label><select class="form-input" id="elig-resident-select" required onchange="elig_onResidentChange()"><option value="">— Select Resident —</option></select></div>
     <div class="form-group"><label class="form-label" for="elig-doc-select">Document Type *</label>
       <select class="form-input" id="elig-doc-select" required onchange="elig_onResidentChange()">
         <option value="">— Select Document —</option>
