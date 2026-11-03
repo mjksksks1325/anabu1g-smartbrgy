@@ -125,12 +125,13 @@ async function refreshDashboardStats() {
     set('dash-stat-issued', summary.issued_certificates);
     set('dash-stat-pending', summary.pending_requests);
     set('dash-stat-incidents', summary.open_incidents);
+    // The number is already the headline; the subtitle says what it covers instead of repeating it.
     document.getElementById('dash-sub-pending').textContent = summary.pending_requests
-      ? adminText('Pending requests: :count', { count: summary.pending_requests })
+      ? adminText('Not yet released')
       : adminText('No pending requests');
     document.getElementById('dash-sub-incidents').textContent = summary.open_incidents
-      ? adminText('Open incident reports: :count', { count: summary.open_incidents })
-      : adminText('No incidents filed');
+      ? adminText('Open, under review or referred')
+      : adminText('No open incident reports');
 
     const activity = payload.recent_activity || [];
     dashboardActivityItems = activity;
@@ -3915,6 +3916,12 @@ function showIncidentKpi(status, severity) {
   clearTimeout(incidentSearchTimer);
   loadIncidents(1);
   revealKpiResults(document.querySelector('#screen-incidents .incident-filter-bar'));
+}
+
+/** Dashboard "Open Incident Reports" card: open the incident list already narrowed to the reports it counts. */
+async function openDashboardIncidents() {
+  await showScreen('incidents', findNavItem('incidents'));
+  showIncidentKpi('active', '');
 }
 
 function filterIncidents() {

@@ -14,6 +14,23 @@ it('requires staff access for the dashboard summary', function () {
     $this->actingAs($viewer)->getJson(route('staff.dashboard.summary'))->assertForbidden();
 });
 
+it('counts every request not yet released or rejected as pending, including approved ones', function () {
+    $staff = User::factory()->assignedOperations()->create();
+    foreach (['pending', 'processing', 'approved', 'ready_for_release', 'released', 'rejected'] as $index => $status) {
+        DocumentRequest::query()->create([
+            'reference_code' => 'REQ-PEND-00'.$index,
+            'document_type' => 'Barangay Clearance',
+            'full_name' => 'Resident '.$index,
+            'address' => 'Anabu I-G',
+            'status' => $status,
+        ]);
+    }
+
+    $this->actingAs($staff)->getJson(route('staff.dashboard.summary'))
+        ->assertOk()
+        ->assertJsonPath('summary.pending_requests', 4);
+});
+
 it('returns database-backed dashboard totals and recent activity', function () {
     $staff = User::factory()->assignedOperations()->create();
     Resident::factory()->count(2)->create(['status' => 'active']);

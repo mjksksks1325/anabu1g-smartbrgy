@@ -227,12 +227,12 @@ body #app.admin-interface.admin-interface .stat-value { margin-top: 14px; font-s
 body #app.admin-interface.admin-interface .stat-sub { color: var(--staff-muted); }
 
 /* Quick actions are equal-weight shortcuts, not competing primary buttons. */
-body #app.admin-interface.admin-interface .dashboard-quick-action-list .btn, body.light-mode #app.admin-interface.admin-interface .dashboard-quick-action-list .btn {
+body #app.admin-interface.admin-interface .dashboard-quick-actions .dashboard-quick-action-list .btn, body.light-mode #app.admin-interface.admin-interface .dashboard-quick-actions .dashboard-quick-action-list .btn {
   justify-content: flex-start; gap: 10px; min-height: 52px; padding: 10px 16px; border: 1px solid var(--staff-border); border-radius: 8px;
   background: var(--staff-soft); color: var(--staff-ink); font-weight: 700; text-align: left;
 }
 body #app.admin-interface.admin-interface .dashboard-quick-action-list .btn > .nav-icon { width: 20px; height: 20px; padding: 6px; box-sizing: content-box; border-radius: 6px; background: var(--staff-active-bg); color: var(--staff-active-ink); }
-body #app.admin-interface.admin-interface .dashboard-quick-action-list .btn:hover { border-color: var(--staff-accent); background: var(--staff-hover-bg); color: var(--staff-ink); }
+body #app.admin-interface.admin-interface .dashboard-quick-actions .dashboard-quick-action-list .btn:hover, body.light-mode #app.admin-interface.admin-interface .dashboard-quick-actions .dashboard-quick-action-list .btn:hover { border-color: var(--staff-accent); background: var(--staff-hover-bg); color: var(--staff-ink); }
 
 /* ── Buttons: green = primary, neutral outline = secondary, red = destructive ── */
 body #app.admin-interface.admin-interface .btn, body.light-mode #app.admin-interface.admin-interface .btn:not(.btn-primary, .btn-green, .btn-danger, .btn-danger-outline),
@@ -835,3 +835,10 @@ body[data-personnel-layout="admin"].modal-open { overflow: hidden; }
 }
 /* List load failures: plain-language message with a Retry button (admin.js listErrorMarkup). */
 body #app.admin-interface.admin-interface .resident-table-error .list-retry { margin-left: 10px; vertical-align: middle; }
+/* Dashboard charts: the canvases are drawn at 240 px; show them large enough to read, legend beside on wide screens. */
+body #app.admin-interface.admin-interface .dashboard-pie { width: 200px; height: 200px; }
+@media (min-width: 1280px) {
+  body #app.admin-interface.admin-interface .dashboard-pie-wrap { grid-template-columns: 200px minmax(0, 1fr); align-items: center; justify-items: stretch; gap: 24px; }
+  body #app.admin-interface.admin-interface .dashboard-pie-wrap .dashboard-pie { justify-self: center; }
+  body #app.admin-interface.admin-interface .dashboard-pie-breakdown { grid-template-columns: minmax(0, 1fr); }
+}

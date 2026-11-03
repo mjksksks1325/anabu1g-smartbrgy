@@ -1674,5 +1674,10 @@
     "Active (open, under review, referred)": "Active (open, under review, referred)",
     "The records could not be loaded. Please try again.": "The records could not be loaded. Please try again.",
     "Could not reach the server. Check your connection, then try again.": "Could not reach the server. Check your connection, then try again.",
-    "Puroks could not be loaded. Close and reopen this form to try again.": "Puroks could not be loaded. Close and reopen this form to try again."
+    "Puroks could not be loaded. Close and reopen this form to try again.": "Puroks could not be loaded. Close and reopen this form to try again.",
+    "Not yet released": "Not yet released",
+    "Open, under review or referred": "Open, under review or referred",
+    "No open incident reports": "No open incident reports",
+    "Open Incident Reports": "Open Incident Reports",
+    "Show open incident reports": "Show open incident reports"
 }
