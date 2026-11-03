@@ -17,10 +17,10 @@ Update it at the end of every session. Statuses come from the source code, not f
 - Tests: Pest and Node (`node --test tests/Unit/*.test.js`). The full Pest suite needs more memory than the default: `php -d memory_limit=1G vendor/pestphp/pest/bin/pest --compact`. Destructive-route tests send `supervisorApproval()` (see `tests/Pest.php`).
 - Browser checks: run the app against a **copy** of `database/database.sqlite` (set `DB_DATABASE` and start `php -S 127.0.0.1:8010 ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php` from `public/`; `artisan serve` drops the override) and sign in with a seeded local staff account. Never seed test data into the real local database.
 
-## Test status (2026-11-04, session 8)
+## Test status (2026-11-04, session 9)
 
-- Node: 194 pass, 0 fail.
-- Pest: 1016 pass, 0 fail, 2 skipped. The skipped tests are the starter kit's open staff registration tests, intentionally off; see Final review.
+- Node: 196 pass, 0 fail.
+- Pest: 1021 pass, 0 fail, 2 skipped. The skipped tests are the starter kit's open staff registration tests, intentionally off; see Final review.
 - The 14 earlier failures were resolved as follows:
   - **Outdated tests (11):** they expected UI a teammate removed on purpose (`8e4e1a0`, `e7f1aa7`): the IoT status chip, the "My profile" and "Account security" items, 16 menu icons, and the raw role `admin` instead of `Super Admin`. One test also checked for `wire:navigate` where the link now uses `wire:navigate.hover`. These tests now assert the consolidated design.
   - **Real bugs (2):**
@@ -221,23 +221,23 @@ The copy had 50 residents, 30 voters, 14 incidents and 12 file movements.
 | # | Module / screen | Issue found | Severity | Impact | Fix | Status |
 |---|---|---|---|---|---|---|
 | A1 | All workspace dialogs | Confirmation dialogs appeared **behind** resident details, Manage Households, household import, incident, certificate-request and eligibility dialogs. Every overlay had `z-index: 800`, and the rule meant to lift the confirmation (`#app.admin-interface #modal-confirm-action`) never matched, because dialogs sit outside `#app`. Reproduced on the old code: a click on the confirmation's Cancel hit the details dialog behind it. | High | Users click the wrong layer; a confirmation can be dismissed without being seen. | `openModal`/`closeModal` now layer dialogs in open order. Dialogs underneath and the page are `inert`, the page cannot scroll, and focus returns to the opener, including openers that disabled themselves before confirming. Dead CSS rule removed; regression tests added. | `NEW` — verified with real Tab, Shift+Tab and Escape: focus is trapped, Escape closes only the top dialog, and focus returns to "Suspend portal account" and then to "View". |
-| A2 | Settings → Delete account | Staff self-deletion hard-deletes without an audit entry; captains and super admins approve their own deletion. | Critical | Loss of accountability. | Exact proposal under Decisions. | `APPROVAL` (tracked, unchanged) |
+| A2 | Settings → Delete account | Staff self-deletion hard-deletes without an audit entry; captains and super admins approve their own deletion. | Critical | Loss of accountability. | Removed the Delete account section and the `DeleteUserForm` Livewire component, so a direct call fails with "component not found". User Management deletion (`DeleteStaffUser`) and resident portal accounts are unchanged. Tests cover staff, captain and super admin. | `NEW` (approved 2026-11-04) — removed in `02b1f31` |
 | A3 | Dashboard → Pending Requests | Left out the valid `approved` status, which the board shows as Ready to Print. | High | Undercounted outstanding work. | Counts pending, processing, approved and ready for release. Test added. | `NEW` |
 | A4 | Dashboard → incident card | Counted open reports but was labelled "Incident Reports" and opened the unfiltered list. | High | The number did not match its destination. | Now "Open Incident Reports", and it opens the active filter. Verified: 14 → 14. | `NEW` |
 | A5 | KPI cards (Voters, Incidents, Users) | Most KPI cards were not interactive, even where a matching list exists. | Medium | Extra steps to reach the counted records. | The whole card is a button that applies the matching filter. Counts and destinations share one definition: a new `active` incident status uses `Incident::PENDING_STATUSES`. Verified with real clicks: voters 23/2/6/15, incidents 14/4, users 3/48/51 all matched. | `NEW` |
 | A6 | KPI cards with no honest destination | The following stay informational: Resolved This Month (resolution date versus incident-date filter), Request Eligibility (counts requests, filters residents), Active without 2FA (no filter), Certificates lanes (already visible below), Demographics gender and households. | — | — | Left informational on purpose. | decided |
-| A7 | Demographics → Registered Voters | Counts residents with an active registration whatever their status or age (seeded copy: **30**). Voters → Lahat ng Botante counts only active residents aged 15 and over (**23**). | High | Two different "registered voters" numbers. | Pick one definition. Recommended: the Voters module's (active resident, eligible age). | `APPROVAL` |
+| A7 | Demographics → Registered Voters | Counts residents with an active registration whatever their status or age (seeded copy: **30**). Voters → Lahat ng Botante counts only active residents aged 15 and over (**23**). | High | Two different "registered voters" numbers. | Cause: all 7 extra were residents under 15 with an active registration, which the registry excludes. Both cards now use `Resident::inVoterRegistry()` (active, not archived, aged 15+); the Demographics card links to the registry. Eligibility rules and stored data are unchanged. | `NEW` — `07fd22e` |
 | A8 | Lists: residents, voters, incidents, request records, issued certificates, audit, users | A load failure showed the raw browser text "Failed to fetch", or an empty list, with no way to retry. | Medium | Staff could not tell an outage from "no data". | Plain-language message and a Try again button. Server validation and permission messages are kept. | `NEW` |
 | A9 | Resident form, Purok form | Save could be clicked repeatedly while a request was in flight; a non-JSON error response (for example an expired session) produced a parser error. | High | Duplicate resident records; meaningless error text. | One request per save, button marked busy. Safe JSON parse. Verified: a real double-click sent one POST. | `NEW` |
 | A10 | Resident form → Purok | If the purok list failed to load, the required Purok select was empty with no option or message, so the form could not be saved. | Medium | Blocked registration with no explanation. | The form retries the load when it opens and explains a failure inside the field. | `NEW` |
 | A11 | Resident form validation | Checked in the browser. Empty save: server errors appear under the right fields, the first gets focus, and no misleading toast. A bad contact number gets a specific message, focus, and no request; input is kept. | — | — | No change needed. | verified |
 | A12 | Dashboard layout | KPI subtitles repeated the number. Quick actions used three button styles (the third rendered differently). The request donut was 150 px in a large card. | Low | Visual noise; weak chart. | Subtitles say what the number covers; one quick-action style; 200 px chart with its legend beside it on wide screens. | `NEW` |
-| A13 | Dashboard → Purok Breakdown (and similar panels) | On a load failure it says "No resident counts available by purok", which reads as a real empty state. | Medium | Misleading. | Use the A8 error state for panels too. | `TODO` |
-| A14 | Certificates & Clearances | The static five-step "Process Flow" card takes the top of the page every visit and pushes the request board below the fold. Board cards stack three full-width buttons each. | Medium | More scrolling; heavy cards. | Collapse the flow into a compact stepper or a disclosure. Put View and Reject beside the primary action. | `TODO` |
-| A15 | Resident form | Long single-column form; required fields are not marked before the first submit. | Medium | Slower data entry. | Mark required fields and group them into sections (identity, address and contact, household, status). | `TODO` |
-| A16 | Resident details → portal account | Suspending or reactivating a resident portal account is shown only when `role === 'admin'`. Barangay Captains (administrative access) do not see it. | Medium | Possibly an unintended permission gap. | Confirm whether captains should manage portal accounts. | `APPROVAL` (permission; unchanged) |
-| A17 | Smart Cabinet | Oversized notice text; cabinet cards nested inside a panel card. | Low | Visual weight. | Use standard notice size and remove the nested card. | `TODO` |
-| A18 | Incident numbers | `INC-YYYY-` plus a 26-character ULID wraps over three lines in tables and activity lists. | Low | Hard to scan. | Smaller monospace with wrapping limited to two lines. The identifier format is unchanged. | `TODO` |
+| A13 | Dashboard → Purok Breakdown (and similar panels) | On a load failure it says "No resident counts available by purok", which reads as a real empty state. | Medium | Misleading. | Purok panels show loading, a failure with Try again, or "No puroks have been added yet". A permission failure shows the server message. Failed loads show "—" instead of 0 on the incident, voter and user cards (`8667d67`). | `NEW` — `07fd22e` |
+| A14 | Certificates & Clearances | The static five-step "Process Flow" card takes the top of the page every visit and pushes the request board below the fold. Board cards stack three full-width buttons each. | Medium | More scrolling; heavy cards. | The flow is a one-line summary that expands to the same five steps (54 px instead of about 190 px), so the board starts above the fold. The card name opens the request, leaving one row of buttons. The summary cards jump to their lanes. Verified at 1440 px and 390 px, dark, Filipino. | `NEW` — `88b88a2` |
+| A15 | Resident form | Long single-column form; required fields are not marked before the first submit. | Medium | Slower data entry. | Real `<label for>` elements; Special Groups is a fieldset. Every server-required field is marked `*` and `required` up front (Address had been unmarked). `name` attributes route server errors to the right field. Household is marked Optional, and the photo field is simplified. | `NEW` — `c61c0fe` |
+| A16 | Resident details → portal account | Suspending or reactivating a resident portal account is shown only when `role === 'admin'`. Barangay Captains (administrative access) do not see it. | Medium | Possibly an unintended permission gap. | Cause: an inconsistent UI check, not a policy. The backend (`ResidentPortalAccountController@update`) allows `hasAdministrativeAccess()` (Captain or Super Admin); the UI tests `role === 'admin'`. Recommendation: test `AUTHENTICATED_USER.is_administrator` instead. That shows the button to Captains, who are already authorised, and hides it from ordinary admin-role accounts, which now get a 403. No permission would change. Not applied. | `APPROVAL` — recommendation below |
+| A17 | Smart Cabinet | Oversized notice text; cabinet cards nested inside a panel card. | Low | Visual weight. | One card level (cabinet and reader rows are flat inside their panels), a single divided detail grid, the cabinet state as a labelled list instead of raw JSON, normal notice size, and Filipino strings. Hardware logic is unchanged. | `NEW` — `8667d67` |
+| A18 | Incident numbers | `INC-YYYY-` plus a 26-character ULID wraps over three lines in tables and activity lists. | Low | Hard to scan. | One break after `INC-YYYY-`, with the ULID kept on one line; the full number stays in the copied text and the title. Verified at 1440 px and 390 px. | `NEW` — `8667d67` |
 
 **Not verified:** physical cabinet, RFID or face hardware. Screen-reader output (only semantics and focus were checked). Automated contrast scanning.
 
@@ -296,7 +296,9 @@ The copy had 50 residents, 30 voters, 14 incidents and 12 file movements.
 - **Losing access:** when a user loses a permission, items they can no longer open are hidden at read time; nothing is copied into the payload that the record endpoint would not show.
 - **Needs approval:** the event list, recipient rules, retention periods, and the migration.
 
-### Self-deletion from account settings — `APPROVAL` (high-priority security finding, not changed)
+### Self-deletion from account settings — resolved (approved and implemented 2026-11-04, `02b1f31`)
+
+Option (b) was applied: no staff role can delete its own account; staff accounts are removed only in User Management. The findings below are kept for the record.
 
 **How it works today (verified in code and with a throwaway probe test on the in-memory test database; the probe was not kept):**
 
@@ -385,3 +387,14 @@ The copy had 50 residents, 30 voters, 14 incidents and 12 file movements.
   - **Open:**
     - for approval: A2 self-deletion, A7 registered-voter definition, A16 captain portal-account permission;
     - to do: A13–A15, A17–A18.
+- **Session 9 (2026-11-04)** — Audit findings resolved.
+  - **Fixed:**
+    - A2 staff self-deletion removed (approved);
+    - A7 one registered-voter definition;
+    - A13 load states;
+    - A14 Certificates layout;
+    - A15 resident form;
+    - A17 Smart Cabinet;
+    - A18 incident numbers.
+  - **Open:** A16 recommendation only, awaiting a decision.
+  - **Verification:** real clicks and keys on the isolated copy; desktop, tablet and phone; light, dark and Filipino.

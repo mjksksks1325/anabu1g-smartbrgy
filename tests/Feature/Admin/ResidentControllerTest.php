@@ -350,7 +350,8 @@ it('exports request history as a branded formula-safe excel file', function () {
 });
 
 it('exports the current resident filters as a branded formula-safe excel file', function () {
-    $staff = User::factory()->assignedOperations()->create();
+    // A fixed name: a random one with an apostrophe is XML-escaped in the sheet and breaks the text match.
+    $staff = User::factory()->assignedOperations()->create(['name' => 'Records Officer']);
     Resident::factory()->create([
         'first_name' => 'Maria',
         'middle_name' => null,
