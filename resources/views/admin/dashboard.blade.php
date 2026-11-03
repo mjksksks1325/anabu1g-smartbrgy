@@ -333,7 +333,7 @@
 
       <div class="card voter-table-card">
         <div class="table-scroll"><table class="tbl voter-table">
-          <thead><tr><th>Resident ID</th><th>Buong Pangalan</th><th>Edad</th><th>Purok</th><th>Maaaring Iboto</th><th>Precinct</th><th>Cluster</th></tr></thead>
+          <thead><tr><th>Resident ID</th><th>Buong Pangalan</th><th>Edad</th><th>Purok</th><th>Maaaring Iboto</th><th>Precinct</th><th>Cluster</th>@can('voters.update')<th>Actions</th>@endcan</tr></thead>
           <tbody id="voter-registry-tbody"><tr><td colspan="7" class="resident-table-message">Loading voter list...</td></tr></tbody>
         </table></div>
         <div class="resident-pagination" id="voter-pagination"></div>
@@ -923,17 +923,19 @@
 <div class="modal-overlay" id="modal-voter-registration">
   <div class="modal voter-modal">
     <div class="modal-header">
-      <div><div class="modal-title">Add Voter</div><div class="modal-sub">Para sa barangay personnel: pumili ng existing resident na botante at ilagay ang kanilang voter information.</div></div>
+      <div><div class="modal-title" id="voter-modal-title">Add Voter</div><div class="modal-sub" id="voter-modal-sub">Para sa barangay personnel: pumili ng existing resident na botante at ilagay ang kanilang voter information.</div></div>
       <button type="button" class="modal-close" onclick="closeModal('modal-voter-registration')" aria-label="Close">&times;</button>
     </div>
     <div class="voter-privacy-panel"><strong>Eligibility:</strong> Edad 15–17 ay SK lamang, 18–30 ay SK at regular, at 31 pataas ay regular voter.</div>
-    <div class="form-group"><div class="form-label">Resident *</div><select class="form-input" id="voter-resident-id"><option value="">Pumili ng resident edad 15 pataas...</option></select></div>
-    <div class="form-group"><div class="form-label">COMELEC / Voter Number *</div><input class="form-input" id="voter-comelec-number" maxlength="30" autocomplete="off" placeholder="Halimbawa: 1234-5678-9012"/></div>
+    <div class="form-group" id="voter-resident-group"><label class="form-label" for="voter-resident-id">Resident *</label><select class="form-input" id="voter-resident-id" name="resident_id"><option value="">Pumili ng resident edad 15 pataas...</option></select></div>
+    <div class="form-group" id="voter-resident-readonly" hidden><div class="form-label">Resident</div><div class="voter-resident-name" id="voter-resident-name"></div></div>
+    <div class="form-group"><label class="form-label" for="voter-comelec-number" id="voter-comelec-label">COMELEC / Voter Number *</label><input class="form-input" id="voter-comelec-number" name="comelec_voter_number" maxlength="30" autocomplete="off" placeholder="Halimbawa: 1234-5678-9012"/><div class="card-sub" id="voter-comelec-hint" hidden></div></div>
     <div class="form-row">
-      <div class="form-group"><div class="form-label">Precinct Number *</div><input class="form-input" id="voter-precinct" maxlength="50" placeholder="Halimbawa: 0123A"/></div>
-      <div class="form-group"><div class="form-label">Cluster Number *</div><input class="form-input" id="voter-cluster" maxlength="50" placeholder="Halimbawa: 045"/></div>
+      <div class="form-group"><label class="form-label" for="voter-precinct">Precinct Number *</label><input class="form-input" id="voter-precinct" name="precinct_number" maxlength="50" placeholder="Halimbawa: 0123A"/></div>
+      <div class="form-group"><label class="form-label" for="voter-cluster">Cluster Number *</label><input class="form-input" id="voter-cluster" name="cluster_number" maxlength="50" placeholder="Halimbawa: 045"/></div>
     </div>
-    <div class="form-group"><div class="form-label">Existing Voter Registration Date *</div><input class="form-input" type="date" id="voter-registration-date"/><div class="card-sub">Ilagay ang petsa mula sa existing voter record ng resident.</div></div>
+    <div class="form-group"><label class="form-label" for="voter-registration-date">Existing Voter Registration Date *</label><input class="form-input" type="date" id="voter-registration-date" name="registration_date" max="{{ today()->toDateString() }}"/><div class="card-sub">Ilagay ang petsa mula sa existing voter record ng resident.</div></div>
+    <div class="form-group" id="voter-status-group" hidden><label class="form-label" for="voter-status">Registration status *</label><select class="form-input" id="voter-status" name="status"><option value="active">Active</option><option value="transferred">Transferred</option><option value="deceased">Deceased</option><option value="deregistered">Deregistered</option></select><div class="card-sub">Only active registrations appear in this list. Other statuses keep the record but remove it from the list.</div></div>
     <div class="modal-footer">
       <button type="button" class="btn btn-green" id="voter-save-button" onclick="saveVoterRegistration()">Save Voter</button>
     </div>

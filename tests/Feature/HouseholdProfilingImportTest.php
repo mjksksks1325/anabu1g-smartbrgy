@@ -178,6 +178,20 @@ it('flags a resident number that is unknown or belongs to someone else instead o
     $this->assertDatabaseCount('residents', 1);
 });
 
+it('keeps an unreadable birth date for correction and explains invalid contact numbers like the resident form', function () {
+    $this->actingAs(User::factory()->assignedOperations()->create());
+
+    $this->postJson(route('staff.resident-profiling-imports.preview'), ['file' => profilingFile([profilingRow(['date_of_birth' => '31/31/2020', 'contact_number' => '12345'])])])
+        ->assertOk()
+        ->assertJsonPath('rows.0.fields.date_of_birth', '31/31/2020')
+        ->assertJsonPath('rows.0.errors', [
+            'The date of birth field must be a valid date.',
+            'Enter 11 digits starting with 09 (09XXXXXXXXX) or +639 followed by 9 digits (+639XXXXXXXXX).',
+        ])
+        ->assertJsonPath('summary.invalid', 1);
+    $this->assertDatabaseCount('residents', 0);
+});
+
 it('links an existing resident without overwriting verified fields or request history', function () {
     $existing = Resident::factory()->create(['first_name' => 'Juan', 'middle_name' => null, 'last_name' => 'Dela Cruz', 'suffix' => null, 'date_of_birth' => '1980-05-14', 'address' => 'Verified address', 'contact_number' => '09170000000']);
     $request = DocumentRequest::query()->create(['resident_id' => $existing->id, 'reference_code' => 'REQ-PROFILE-LINK', 'document_type' => 'Barangay Clearance', 'full_name' => $existing->full_name, 'address' => $existing->address, 'status' => 'pending']);

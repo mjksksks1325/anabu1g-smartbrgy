@@ -78,9 +78,9 @@ class ImportHouseholdProfiling
                     ? Carbon::parse('1899-12-30')->addDays((int) $date)->toDateString()
                     : ($date ? Carbon::parse($date)->toDateString() : '');
             } catch (\Throwable) {
-                $fields['date_of_birth'] = '';
+                // Keep what was typed so staff can see and correct it; the date rule reports it as invalid.
             }
-            $validator = Validator::make($fields, $rules);
+            $validator = Validator::make($fields, $rules, (new StoreResidentRequest)->messages());
             $matches = collect();
             if (! $validator->errors()->hasAny(['first_name', 'last_name', 'date_of_birth'])) {
                 $matches = $this->identity->matches($fields)->map(fn (Resident $resident): array => [

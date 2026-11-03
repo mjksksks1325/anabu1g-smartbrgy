@@ -172,6 +172,26 @@ test('updates use version checks and append an encrypted audit record', function
         ->assertJsonValidationErrors('version');
 });
 
+test('voter number formats explain which characters are accepted when adding or editing', function () {
+    $user = User::factory()->assignedOperations()->create();
+    $registration = VoterRegistration::factory()->create();
+    $resident = Resident::factory()->create(['date_of_birth' => now()->subYears(30)->toDateString()]);
+    $expected = [
+        'precinct_number' => 'Use letters, numbers, spaces and hyphens only, for example 0123A.',
+        'cluster_number' => 'Use letters, numbers, spaces and hyphens only, for example 0123A.',
+    ];
+
+    $this->actingAs($user)
+        ->postJson(route('staff.voter-registrations.store'), voterPayload($resident, ['comelec_voter_number' => '1234#5678', 'precinct_number' => '##', 'cluster_number' => '@@']))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors([...$expected, 'comelec_voter_number' => 'Use letters, numbers and hyphens only, for example 1234-5678-9012.']);
+
+    $this->patchJson(route('staff.voter-registrations.update', $registration), ['precinct_number' => '##', 'cluster_number' => '@@', 'registration_date' => '2026-05-15', 'status' => 'active', 'version' => 1])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors($expected);
+    expect($registration->fresh()->version)->toBe(1);
+});
+
 test('tamper detection blocks updates after an out of band database change', function () {
     $user = User::factory()->assignedOperations()->create();
     $registration = VoterRegistration::factory()->create();

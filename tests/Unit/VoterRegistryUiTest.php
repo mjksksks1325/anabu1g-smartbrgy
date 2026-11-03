@@ -25,8 +25,8 @@ test('voter page supports adding voters and separates the list by purok and age 
         ->toContain('window.location.href = `/staff/voter-registrations-export?${query}`')
         ->toContain("query.set('eligibility', voterEligibilityFilter)")
         ->toContain("query.set('purok', voterPurokFilter)")
-        ->toContain("fetch('/staff/voter-registrations', {")
-        ->toContain("method: 'POST'")
+        ->toContain("fetch(editing ? `/staff/voter-registrations/\${Number(editing.id)}` : '/staff/voter-registrations', {")
+        ->toContain("method: editing ? 'PATCH' : 'POST'")
         ->toContain('registration.voter_eligibility_label')
         ->toContain("document.getElementById('voter-registration-date').value = '';");
     expect($adminStyles)

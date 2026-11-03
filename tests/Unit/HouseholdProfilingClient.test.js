@@ -32,6 +32,22 @@ test('editing a reviewed row disables save until a successful validation', async
   assert.equal(field('profiling-save').disabled, false);
 });
 
+test('saving keeps the dialog open with a lasting summary of what was imported', async () => {
+  const { context, field } = profilingClient(async () => ({ ok: true, json: async () => ({ message: 'Household profiling imported successfully.', result: { created: 4, linked: 1, skipped: 2, households: 3 } }) }));
+  const closed = [];
+  const toasts = [];
+  context.closeModal = id => closed.push(id);
+  context.showToast = (message, type) => toasts.push({ message, type });
+  context.loadResidents = context.loadPuroks = context.populateManualResidentDropdown = async () => {};
+
+  await context.saveHouseholdProfiling();
+
+  assert.deepEqual(closed, []);
+  assert.equal(field('profiling-preview').hidden, true);
+  assert.match(field('profiling-status').innerHTML, /4 new residents created<\/span> · <span>1 linked to existing records<\/span> · <span>2 skipped<\/span> · <span>3 households saved/);
+  assert.equal(toasts[0].type, 'green');
+});
+
 test('a failed validation keeps save disabled and shows the server error', async () => {
   const { context, field } = profilingClient(async () => ({ ok: false, json: async () => ({ errors: { file: ['The preview expired.'] } }) }));
   context.updateProfilingRow(0, 'first_name', 'Changed');

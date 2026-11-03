@@ -422,6 +422,20 @@ body[data-personnel-layout="iot"] :is(.panel-heading span, .empty-state p, .empl
 #app.admin-interface button.status-pill { font-family: inherit; cursor: pointer; }
 #app.admin-interface button.status-pill:focus-visible { outline: 2px solid var(--civic-primary); outline-offset: 2px; }
 #app.admin-interface .page-header-row { flex-wrap: wrap; gap: 12px; }
+/* Import preview summary: labelled counts; problems in red, duplicates in amber, ready rows in green. */
+body[data-personnel-layout="admin"] #profiling-summary { display: flex; flex-wrap: wrap; gap: 8px; }
+body[data-personnel-layout="admin"] .profiling-summary-item { display: inline-flex; align-items: baseline; gap: 6px; padding: 6px 10px; border: 1px solid var(--staff-border); border-radius: 8px; background: var(--staff-soft); color: var(--staff-muted); font-size: 12.5px; }
+body[data-personnel-layout="admin"] .profiling-summary-item strong { color: var(--staff-ink); font-size: 15px; }
+body[data-personnel-layout="admin"] .profiling-summary-item.is-ready { border-color: #9fd0b2; background: #e8f5ed; }
+body[data-personnel-layout="admin"] .profiling-summary-item.is-warning { border-color: #e7c27a; background: #fbf0dc; }
+body[data-personnel-layout="admin"] .profiling-summary-item.is-error { border-color: #e9a29b; background: #fbe9e7; }
+body[data-personnel-layout="admin"]:not(.light-mode) .profiling-summary-item.is-ready { border-color: #2f6a47; background: #16301f; }
+body[data-personnel-layout="admin"]:not(.light-mode) .profiling-summary-item.is-warning { border-color: #6b5520; background: #3a2d0c; }
+body[data-personnel-layout="admin"]:not(.light-mode) .profiling-summary-item.is-error { border-color: #7a2c25; background: #3d1a17; }
+body[data-personnel-layout="admin"] .profiling-result { display: block; padding: 12px 14px; border: 1px solid #9fd0b2; border-radius: 8px; background: #e8f5ed; color: var(--staff-ink); line-height: 1.6; }
+body[data-personnel-layout="admin"]:not(.light-mode) .profiling-result { border-color: #2f6a47; background: #16301f; }
+body[data-personnel-layout="admin"] .profiling-result strong { display: block; }
+
 /* Long forms are split into named sections. */
 body[data-personnel-layout="admin"] .modal .form-section-heading { margin: 22px 0 12px; padding-top: 16px; border-top: 1px solid var(--staff-row); color: var(--staff-accent); font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
 body[data-personnel-layout="admin"] .modal .modal-header + .form-section-heading { margin-top: 0; padding-top: 0; border-top: 0; }

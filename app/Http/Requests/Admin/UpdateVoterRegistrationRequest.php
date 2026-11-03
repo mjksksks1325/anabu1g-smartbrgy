@@ -37,6 +37,14 @@ class UpdateVoterRegistrationRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return StoreVoterRegistrationRequest::formatMessages();
+    }
+
     protected function prepareForValidation(): void
     {
         $identifier = trim((string) $this->input('comelec_voter_number'));

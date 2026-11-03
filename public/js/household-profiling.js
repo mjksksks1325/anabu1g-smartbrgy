@@ -109,7 +109,12 @@ function renderProfilingPreview() {
   document.getElementById('profiling-preview').hidden = false;
   document.getElementById('profiling-errors').textContent = '';
   const summary = profilingPreview.summary;
-  document.getElementById('profiling-summary').textContent = `${summary.households} households · ${summary.residents} residents · ${summary.heads} heads · ${summary.duplicates} possible/exact duplicates · ${Number(summary.existing || 0)} already in the system (skipped) · ${summary.invalid} invalid/unresolved rows · ${summary.ready} ready`;
+  const counts = [
+    [summary.residents, 'residents in file', ''], [summary.households, 'households', ''], [summary.heads, 'heads', ''],
+    [summary.ready, 'ready to save', 'is-ready'], [Number(summary.existing || 0), 'already in the system (skipped)', ''],
+    [summary.duplicates, 'possible or exact duplicates', summary.duplicates ? 'is-warning' : ''], [summary.invalid, 'invalid or unresolved', summary.invalid ? 'is-error' : ''],
+  ];
+  document.getElementById('profiling-summary').innerHTML = counts.map(([count, label, tone]) => `<span class="profiling-summary-item ${tone}"><strong>${Number(count).toLocaleString()}</strong> <span>${label}</span></span>`).join('');
   const groups = new Map();
   profilingPreview.rows.forEach(row => {
     const group = row.fields.household_group || 'Unassigned group — review required';
@@ -166,8 +171,12 @@ async function saveHouseholdProfiling() {
   try {
     const result = await profilingRequest('/staff/resident-profiling-imports', profilingReviewPayload());
     profilingPreview = null;
-    closeModal('modal-household-import');
-    showToast(`${result.message} Created: ${result.result.created}; linked: ${result.result.linked}; skipped: ${result.result.skipped}.`, 'green');
+    // Keep the dialog open with a lasting result instead of a notification that fades.
+    document.getElementById('profiling-preview').hidden = true;
+    document.getElementById('profiling-file').value = '';
+    const { created, linked, skipped, households } = result.result;
+    document.getElementById('profiling-status').innerHTML = `<span class="profiling-result"><strong>${escapeText(result.message)}</strong> <span>${Number(created)} new residents created</span> · <span>${Number(linked)} linked to existing records</span> · <span>${Number(skipped)} skipped</span> · <span>${Number(households)} households saved</span></span>`;
+    showToast(result.message, 'green');
     await loadResidents(1);
     await loadPuroks();
     await populateManualResidentDropdown();

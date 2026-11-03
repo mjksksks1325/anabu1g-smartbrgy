@@ -34,6 +34,28 @@ class StoreVoterRegistrationRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return self::formatMessages();
+    }
+
+    /**
+     * Format messages shared with the update request, so staff learn which characters are accepted.
+     *
+     * @return array<string, string>
+     */
+    public static function formatMessages(): array
+    {
+        return [
+            'comelec_voter_number.regex' => 'Use letters, numbers and hyphens only, for example 1234-5678-9012.',
+            'precinct_number.regex' => 'Use letters, numbers, spaces and hyphens only, for example 0123A.',
+            'cluster_number.regex' => 'Use letters, numbers, spaces and hyphens only, for example 0123A.',
+        ];
+    }
+
     protected function prepareForValidation(): void
     {
         $this->merge([

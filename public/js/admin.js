@@ -4151,10 +4151,14 @@ function residentFromApi(resident) {
   };
 }
 
+/** Only the newest resident list request may render; a slower earlier search must not overwrite it. */
+let residentLoadVersion = 0;
+
 async function loadResidents(page = 1) {
   if (!hasStaffPermission('records.view')) return;
+  const version = ++residentLoadVersion;
   const tbody = document.getElementById('records-tbody');
-  if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="resident-table-message">Loading resident records...</td></tr>';
+  if (tbody && RESIDENTS.length === 0) tbody.innerHTML = '<tr><td colspan="9" class="resident-table-message">Loading resident records...</td></tr>';
 
   const query = new URLSearchParams({ page: String(page), per_page: '15' });
   const search = document.getElementById('residents-search')?.value.trim();
@@ -4168,6 +4172,7 @@ async function loadResidents(page = 1) {
       headers: { 'Accept': 'application/json' }
     });
     const payload = await response.json();
+    if (version !== residentLoadVersion) return;
     if (!response.ok) throw new Error(payload?.message || 'Unable to load resident records.');
 
     RESIDENTS.splice(0, RESIDENTS.length, ...payload.data.map(residentFromApi));
@@ -4181,7 +4186,7 @@ async function loadResidents(page = 1) {
     renderDashPurokBreakdown();
     populateEligResidentDropdown(null);
   } catch (error) {
-    if (tbody) tbody.innerHTML = `<tr><td colspan="9" class="resident-table-message resident-table-error">${escapeText(error.message)}</td></tr>`;
+    if (tbody && version === residentLoadVersion) tbody.innerHTML = `<tr><td colspan="9" class="resident-table-message resident-table-error">${escapeText(error.message)}</td></tr>`;
   }
 }
 
@@ -5021,11 +5026,16 @@ let voterSearchTimer = null;
 let voterRegistrations = [];
 let voterEligibleResidents = [];
 
+/** Only the newest voter list request may render; a slower earlier search must not overwrite it. */
+let voterLoadVersion = 0;
+
 async function loadVoterRegistry(page = 1) {
   if (!hasStaffPermission('voters.view')) return;
   const tbody = document.getElementById('voter-registry-tbody');
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="7" class="resident-table-message">Loading voter list...</td></tr>';
+  const version = ++voterLoadVersion;
+  const columns = hasStaffPermission('voters.update') ? 8 : 7;
+  if (voterRegistrations.length === 0) tbody.innerHTML = `<tr><td colspan="${columns}" class="resident-table-message">Loading voter list...</td></tr>`;
 
   const query = new URLSearchParams({ page: String(page), per_page: '15' });
   const search = document.getElementById('voter-search')?.value.trim();
@@ -5039,6 +5049,7 @@ async function loadVoterRegistry(page = 1) {
       headers: { 'Accept': 'application/json' }
     });
     const payload = await response.json();
+    if (version !== voterLoadVersion) return;
     if (!response.ok) throw new Error(payload?.message || 'Unable to load the voters list.');
 
     voterRegistrations = payload.data || [];
@@ -5049,7 +5060,7 @@ async function loadVoterRegistry(page = 1) {
     renderVoterRegistry(payload.total || 0);
     updateVoterSummary(payload.summary || {});
   } catch (error) {
-    tbody.innerHTML = `<tr><td colspan="7" class="resident-table-message resident-table-error">${escapeText(error.message)}</td></tr>`;
+    if (version === voterLoadVersion) tbody.innerHTML = `<tr><td colspan="${columns}" class="resident-table-message resident-table-error">${escapeText(error.message)}</td></tr>`;
   }
 }
 
@@ -5057,8 +5068,9 @@ function renderVoterRegistry(total) {
   const tbody = document.getElementById('voter-registry-tbody');
   if (!tbody) return;
 
+  const canEdit = hasStaffPermission('voters.update');
   if (voterRegistrations.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="voter-empty-state"><strong>Walang nakitang botante.</strong><span>Subukang baguhin ang purok, age group, o search.</span></td></tr>';
+    tbody.innerHTML = `<tr><td colspan="${canEdit ? 8 : 7}" class="voter-empty-state"><strong>Walang nakitang botante.</strong><span>Subukang baguhin ang purok, age group, o search.</span></td></tr>`;
   } else {
     tbody.innerHTML = voterRegistrations.map(registration => {
       const eligibilityClass = registration.voter_eligibility === 'sk_only'
@@ -5073,6 +5085,9 @@ function renderVoterRegistry(total) {
         <td><span class="badge ${eligibilityClass}">${escapeText(registration.voter_eligibility_label)}</span></td>
         <td>${escapeText(registration.precinct_number)}</td>
         <td>${escapeText(registration.cluster_number)}</td>
+        ${canEdit ? `<td><div class="resident-actions">${registration.integrity_valid === false
+          ? '<span class="badge badge-red" title="Updates are blocked until an administrator reviews this record.">Locked for review</span>'
+          : `<button type="button" class="btn btn-xs" onclick="openEditVoter(${Number(registration.id)})" aria-label="Edit voter record of ${escapeText(registration.resident_name)}">Edit</button>`}</div></td>` : ''}
       </tr>`;
     }).join('');
   }
@@ -5136,8 +5151,31 @@ function populateVoterResidentSelect() {
   });
 }
 
+/** The registration being edited, or null while the dialog adds a new voter. */
+let editingVoterRegistration = null;
+
+/** Switch the shared voter dialog between adding a voter and editing an existing registration. */
+function setVoterDialogMode(registration) {
+  editingVoterRegistration = registration;
+  const editing = registration !== null;
+  document.getElementById('voter-modal-title').textContent = adminText(editing ? 'Edit Voter' : 'Add Voter');
+  const subtitle = document.getElementById('voter-modal-sub');
+  if (subtitle) {
+    subtitle.dataset.addText ??= subtitle.textContent;
+    subtitle.textContent = editing ? adminText('Update the voter information of this resident. Every change is recorded in the audit log.') : subtitle.dataset.addText;
+  }
+  document.getElementById('voter-resident-group').hidden = editing;
+  document.getElementById('voter-resident-readonly').hidden = !editing;
+  document.getElementById('voter-status-group').hidden = !editing;
+  document.getElementById('voter-comelec-label').textContent = adminText(editing ? 'COMELEC / Voter Number' : 'COMELEC / Voter Number *');
+  const hint = document.getElementById('voter-comelec-hint');
+  hint.hidden = !editing;
+  hint.textContent = editing ? adminText('Saved as :number. Leave blank to keep it.', { number: registration.masked_comelec_voter_number || '—' }) : '';
+}
+
 async function openVoterRegistration() {
   if (voterEligibleResidents.length === 0) await loadVoterRegistry(1);
+  setVoterDialogMode(null);
   populateVoterResidentSelect();
   document.getElementById('voter-resident-id').value = '';
   document.getElementById('voter-comelec-number').value = '';
@@ -5147,21 +5185,36 @@ async function openVoterRegistration() {
   openModal('modal-voter-registration');
 }
 
+function openEditVoter(registrationId) {
+  const registration = voterRegistrations.find(item => Number(item.id) === Number(registrationId));
+  if (!registration) return;
+  setVoterDialogMode(registration);
+  document.getElementById('voter-resident-name').textContent = `${registration.resident_name} — ${registration.resident_number}`;
+  document.getElementById('voter-comelec-number').value = '';
+  document.getElementById('voter-precinct').value = registration.precinct_number || '';
+  document.getElementById('voter-cluster').value = registration.cluster_number || '';
+  document.getElementById('voter-registration-date').value = registration.registration_date || '';
+  document.getElementById('voter-status').value = registration.status || 'active';
+  openModal('modal-voter-registration');
+}
+
 async function saveVoterRegistration() {
-  const payload = {
-    resident_id: Number(document.getElementById('voter-resident-id')?.value),
+  const editing = editingVoterRegistration;
+  const fields = {
     comelec_voter_number: document.getElementById('voter-comelec-number')?.value.trim(),
     precinct_number: document.getElementById('voter-precinct')?.value.trim(),
     cluster_number: document.getElementById('voter-cluster')?.value.trim(),
     registration_date: document.getElementById('voter-registration-date')?.value,
-    status: 'active'
   };
+  const payload = editing
+    ? { ...fields, status: document.getElementById('voter-status')?.value, version: Number(editing.version) }
+    : { resident_id: Number(document.getElementById('voter-resident-id')?.value), ...fields, status: 'active' };
   const button = document.getElementById('voter-save-button');
   if (button) button.disabled = true;
 
   try {
-    const response = await fetch('/staff/voter-registrations', {
-      method: 'POST',
+    const response = await fetch(editing ? `/staff/voter-registrations/${Number(editing.id)}` : '/staff/voter-registrations', {
+      method: editing ? 'PATCH' : 'POST',
       credentials: 'same-origin',
       headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', ...csrfRequestHeaders() },
       body: JSON.stringify(payload)
@@ -5173,8 +5226,8 @@ async function saveVoterRegistration() {
     }
 
     closeModal('modal-voter-registration');
-    showToast('Naidagdag na ang botante.', 'green');
-    await loadVoterRegistry(1);
+    showToast(editing ? 'Voter record updated.' : 'Naidagdag na ang botante.', 'green');
+    await loadVoterRegistry(editing ? voterCurrentPage : 1);
   } catch (error) {
     showToast(error.message || 'Hindi ma-save ang voter record.', 'red');
   } finally {

@@ -1002,3 +1002,59 @@ test('issued certificate history requests the selected page and filters and rend
   assert.match(pagination.innerHTML, /onclick="refreshIssuedCertificates\(1\)"/);
   assert.match(tbody.innerHTML, /No issued certificates match these filters/);
 });
+
+test('voter rows offer Edit only with voters.update, and editing sends the record version without changing the resident', async () => {
+  const { context, fields } = await client();
+  const element = () => ({ value: '', textContent: '', hidden: false, disabled: false, innerHTML: '' });
+  ['voter-registry-tbody', 'voter-pagination', 'voter-modal-title', 'voter-resident-group', 'voter-resident-readonly', 'voter-status-group', 'voter-comelec-label', 'voter-comelec-hint',
+    'voter-resident-name', 'voter-comelec-number', 'voter-precinct', 'voter-cluster', 'voter-registration-date', 'voter-status', 'voter-save-button', 'voter-resident-id'].forEach(id => fields.set(id, element()));
+  vm.runInContext(`voterRegistrations = [{ id: 9, resident_name: 'Maria Santos', resident_number: 'ANB-2026-AAAA', age: 40, purok: 'Purok 1', voter_eligibility: 'regular_only', voter_eligibility_label: 'Regular only',
+    precinct_number: '0123A', cluster_number: '045', registration_date: '2020-01-02', status: 'active', version: 3, integrity_valid: true, masked_comelec_voter_number: '****9012' }];`, context);
+
+  context.window.PERSONNEL_PERMISSIONS = ['voters.view'];
+  context.renderVoterRegistry(1);
+  assert.doesNotMatch(fields.get('voter-registry-tbody').innerHTML, /openEditVoter/);
+  context.window.PERSONNEL_PERMISSIONS = ['voters.view', 'voters.update'];
+  context.renderVoterRegistry(1);
+  assert.match(fields.get('voter-registry-tbody').innerHTML, /onclick="openEditVoter\(9\)"/);
+
+  vm.runInContext('openModal = () => {}; closeModal = () => {}; loadVoterRegistry = async () => true;', context);
+  context.openEditVoter(9);
+  assert.equal(fields.get('voter-resident-group').hidden, true);
+  assert.equal(fields.get('voter-status-group').hidden, false);
+  assert.equal(fields.get('voter-precinct').value, '0123A');
+  assert.match(fields.get('voter-comelec-hint').textContent, /\*\*\*\*9012/);
+
+  fields.get('voter-status').value = 'transferred';
+  let request;
+  context.fetch = async (url, options) => { request = { url, options }; return { ok: true, json: async () => ({}) }; };
+  await context.saveVoterRegistration();
+  assert.equal(request.url, '/staff/voter-registrations/9');
+  assert.equal(request.options.method, 'PATCH');
+  const body = JSON.parse(request.options.body);
+  assert.equal(body.version, 3);
+  assert.equal(body.status, 'transferred');
+  assert.equal(Object.hasOwn(body, 'resident_id'), false);
+  assert.deepEqual(JSON.parse(JSON.stringify(context.messages.at(-1))), { message: 'Voter record updated.', type: 'green' });
+});
+
+test('a slower earlier voter search cannot overwrite the newest results', async () => {
+  const { context, fields } = await client();
+  ['voter-registry-tbody', 'voter-pagination', 'voter-purok-filter', 'voter-stat-total', 'voter-stat-sk-only', 'voter-stat-sk-regular', 'voter-stat-regular-only'].forEach(id => fields.set(id, { innerHTML: '', textContent: '', value: '' }));
+  fields.set('voter-search', { value: '' });
+  context.window.PERSONNEL_PERMISSIONS = ['voters.view'];
+  vm.runInContext('populateVoterPurokFilter = () => {};', context);
+  const registration = name => ({ id: 1, resident_name: name, resident_number: 'ANB-1', age: 40, purok: 'Purok 1', voter_eligibility: 'regular_only', voter_eligibility_label: 'Regular only', precinct_number: '1', cluster_number: '1' });
+  const pending = [];
+  context.fetch = () => new Promise(resolve => pending.push(resolve));
+
+  const older = context.loadVoterRegistry(1);
+  const newer = context.loadVoterRegistry(1);
+  pending[1]({ ok: true, json: async () => ({ data: [registration('Newest Result')], total: 1, current_page: 1, last_page: 1 }) });
+  await newer;
+  pending[0]({ ok: true, json: async () => ({ data: [registration('Stale Result')], total: 1, current_page: 1, last_page: 1 }) });
+  await older;
+
+  assert.match(fields.get('voter-registry-tbody').innerHTML, /Newest Result/);
+  assert.doesNotMatch(fields.get('voter-registry-tbody').innerHTML, /Stale Result/);
+});
