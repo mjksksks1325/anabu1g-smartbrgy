@@ -249,6 +249,24 @@ test('demographics escapes resident names and puroks in the senior register', as
   assert.doesNotMatch(fields.get('senior-citizens-list').innerHTML, /<img|<script/);
 });
 
+test('the senior register shows ten residents per page with the shared pager', async () => {
+  const { context, fields } = await client();
+  const list = { innerHTML: '' };
+  const pager = { innerHTML: '' };
+  fields.set('senior-citizens-list', list);
+  fields.set('senior-citizens-pagination', pager);
+  vm.runInContext(`DEMOGRAPHIC_SUMMARY = { seniors: 13, senior_residents: Array.from({ length: 13 }, (_, index) => ({ resident_number: 'RES-' + index, full_name: 'Senior ' + index, purok: 'Purok 1', date_of_birth: '1950-01-01', age: 76, status: 'active' })) };`, context);
+
+  context.renderSeniorList();
+  assert.equal(list.innerHTML.match(/<tr>/g).length, 11);
+  assert.match(pager.innerHTML, /Showing 1–10 of 13 <span>senior citizens<\/span>/);
+  assert.match(pager.innerHTML, /onclick="changeSeniorPage\(2\)">Next/);
+
+  context.changeSeniorPage(2);
+  assert.equal(list.innerHTML.match(/<tr>/g).length, 4);
+  assert.match(list.innerHTML, /Senior 12/);
+});
+
 async function logoutClient() {
   const { context, fields } = await client();
   const buttons = [{ disabled: false }, { disabled: false }, { disabled: false, textContent: 'Log out' }];
@@ -743,9 +761,14 @@ test('special group cards open filtered resident records and the All button clea
   const { context, fields } = await client();
   const container = { innerHTML: '' };
   fields.set('special-groups-container', container);
-  context.DEMOGRAPHIC_SUMMARY = { total: 10, seniors: 2, special_groups: { PWD: 3 } };
+  vm.runInContext("DEMOGRAPHIC_SUMMARY = { total: 10, seniors: 2, special_groups: { PWD: 3, 'Solo Parent': 5 } };", context);
+  context.window.PERSONNEL_PERMISSIONS = ['demographics.view'];
   context.renderSpecialGroups();
-  assert.match(container.innerHTML, /role="button" tabindex="0" data-group="PWD" onclick="openSpecialGroupRecords\(this.dataset.group\)"/);
+  assert.doesNotMatch(container.innerHTML, /openSpecialGroupRecords|<button/);
+  context.window.PERSONNEL_PERMISSIONS = ['demographics.view', 'records.view'];
+  context.renderSpecialGroups();
+  assert.match(container.innerHTML, /<button class="special-group-row" type="button" data-group="PWD" onclick="openSpecialGroupRecords\(this.dataset.group\)"/);
+  assert.ok(container.innerHTML.indexOf('data-group="Solo Parent"') < container.innerHTML.indexOf('data-group="PWD"'), 'largest groups come first');
 
   const groupSelect = { value: '' };
   fields.set('resident-group-filter', groupSelect);

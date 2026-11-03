@@ -230,8 +230,8 @@ test('purok cards show household counts and support click and keyboard access wi
   vm.runInContext(adminSource.slice(adminSource.indexOf('function renderPurokCards()'), adminSource.indexOf('function renderAgeDistribution()')), context);
   context.renderPurokCards();
   const html = field('demo-purok-grid').innerHTML;
-  assert.match(html, /4 households/);
-  assert.ok(html.indexOf('of total population</div>') < html.indexOf('>4 households</div>'));
+  assert.match(html, />4 <span>households<\/span><\/div>/);
+  assert.ok(html.indexOf('of total population</div>') < html.indexOf('>4 <span>households</span></div>'));
   assert.match(html, /openPurokHouseholds\(7\)/);
   assert.match(html, /tabindex="0"/);
   assert.ok(!html.includes('<details'));

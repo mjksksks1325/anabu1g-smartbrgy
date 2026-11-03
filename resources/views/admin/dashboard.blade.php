@@ -221,7 +221,7 @@
         <div class="stat-card demo-kpi demo-kpi-blue"><div class="stat-label">Male Residents</div><div class="stat-value counter" id="demo-stat-male" data-target="0">0</div><div class="stat-sub" id="demo-sub-male">—</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="7" r="4"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></svg></div></div>
         <div class="stat-card demo-kpi demo-kpi-pink"><div class="stat-label">Female Residents</div><div class="stat-value counter" id="demo-stat-female" data-target="0">0</div><div class="stat-sub" id="demo-sub-female">—</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="7" r="4"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></svg></div></div>
         <div class="stat-card demo-kpi demo-kpi-yellow"><div class="stat-label">Senior Citizens</div><div class="stat-value counter" id="demo-stat-seniors" data-target="0">0</div><div class="stat-sub" id="demo-sub-seniors">Age 60 and above</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div></div>
-        <div class="stat-card demo-kpi demo-kpi-purple"><div class="stat-label">Total Households</div><div class="stat-value" id="demo-stat-households">0</div><div class="stat-sub">Registered households</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></div></div>
+        <div class="stat-card demo-kpi demo-kpi-purple"><div class="stat-label">Total Households</div><div class="stat-value" id="demo-stat-households">0</div><div class="stat-sub">Households with a household number</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></div></div>
         <div class="stat-card demo-kpi demo-kpi-teal"><div class="stat-label">Registered Voters</div><div class="stat-value" id="demo-stat-voters">0</div><div class="stat-sub">Active registrations of non-archived residents</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="10" width="16" height="10" rx="1.5"/><path d="M9 10V4h6v6"/><path d="m10 7 1.5 1.5L14 6"/></svg></div></div>
       </div>
 
@@ -238,16 +238,16 @@
         <div style="font-size:11px;color:var(--text-muted);margin-top:4px;"> Counts include all registered residents. Special groups (Senior Citizens, PWD, Solo Parents, etc.) are automatically tagged per zone.</div>
       </div>
 
-      <div class="two-col">
+      <div class="two-col demo-insights">
         <!-- Age Distribution -->
         <div class="card">
-          <div class="card-header"><div class="card-title">Age Distribution</div><div class="card-sub">Population breakdown by age group</div></div>
-          <div style="display:flex;flex-direction:column;gap:12px;" id="age-distribution-list"></div>
+          <div class="card-header"><div class="card-title">Age Distribution</div><div class="card-sub">Population breakdown by age group and sex</div></div>
+          <div class="age-distribution-list" id="age-distribution-list"></div>
         </div>
 
         <!-- Special Groups -->
         <div class="card">
-          <div class="card-header"><div class="card-title">Special Groups</div><div class="card-sub">Classified sectors of the community</div></div>
+          <div class="card-header"><div class="card-title">Special Groups</div><div class="card-sub">Classified sectors of the community, largest first</div></div>
           <div id="special-groups-container"></div>
         </div>
       </div>
@@ -259,31 +259,29 @@
           <span class="badge badge-senior"> Auto-Updated</span>
         </div>
         <div id="senior-citizens-list" class="table-scroll" tabindex="0" role="region" aria-label="Senior citizens register"></div>
-        <div style="margin-top:10px;padding:10px;background:var(--senior-bg);border:1px solid var(--senior-border);border-radius:var(--radius-sm);font-size:11.5px;color:var(--senior-color);">
-          ℹ <strong>Automated Process:</strong> The system checks each resident's date of birth. Upon reaching age 60, they are automatically added to this register and receive a Senior Citizen badge on their profile.
-        </div>
+        <div class="resident-pagination" id="senior-citizens-pagination"></div>
       </div>
     </div>
 
     <!-- RESIDENT RECORDS -->
     <div class="content{{ $activeScreen === 'records' ? ' active' : '' }}" id="screen-records">
-      @can('records.review')<p><a wire:navigate.hover class="btn btn-outline" href="{{ route('staff.resident-applications.index') }}">Review new resident applications <span class="badge">{{ $pendingRegistrationsCount ?? 0 }} pending</span></a></p>@endcan
       <div class="page-header-row">
         <div class="page-header"><h1>{{ auth()->user()->hasPermission('records.view') ? 'Resident Records' : 'Households' }}</h1><p>All registered residents — Barangay Anabu I-G</p></div>
+        @can('records.review')<a wire:navigate.hover class="btn resident-applications-link" href="{{ route('staff.resident-applications.index') }}">Review new resident applications <span class="badge{{ ($pendingRegistrationsCount ?? 0) > 0 ? ' badge-amber' : '' }}">{{ $pendingRegistrationsCount ?? 0 }} pending</span></a>@endcan
       </div>
       <div class="search-row resident-records-toolbar">
         <div class="search-wrap"><span class="si"></span><input class="search-input" @cannot('records.view') hidden @endcannot id="residents-search" autocomplete="off" placeholder="Search resident by name, ID, or purok..." oninput="filterResidents()"/></div>
         <button data-action-permission="records.create" class="btn btn-green" onclick="openAddResident()" @if(!auth()->user()->hasAnyPermission(['records.create'])) hidden style="display:none;" @endif> New Resident</button>
-        <button data-action-permission="households.view" class="btn btn-sm" onclick="openHouseholdManagement()" @if(!auth()->user()->hasAnyPermission(['households.view'])) hidden style="display:none;" @endif>Manage Households</button>
-        <button data-action-permission="records.import" class="btn btn-sm" onclick="openHouseholdProfilingImport()" @if(!auth()->user()->hasAnyPermission(['records.import'])) hidden style="display:none;" @endif>Import Residents / Household Profiling</button>
-        <button data-action-permission="records.export" class="btn btn-primary btn-sm" onclick="exportResidents()" @if(!auth()->user()->hasAnyPermission(['records.export'])) hidden style="display:none;" @endif>Export Excel</button>
+        <button data-action-permission="households.view" class="btn" onclick="openHouseholdManagement()" @if(!auth()->user()->hasAnyPermission(['households.view'])) hidden style="display:none;" @endif>Manage Households</button>
+        <button data-action-permission="records.import" class="btn" onclick="openHouseholdProfilingImport()" @if(!auth()->user()->hasAnyPermission(['records.import'])) hidden style="display:none;" @endif>Import Residents / Household Profiling</button>
+        <button data-action-permission="records.export" class="btn" onclick="exportResidents()" @if(!auth()->user()->hasAnyPermission(['records.export'])) hidden style="display:none;" @endif>Export Excel</button>
       </div>
-      <div class="status-bar" @cannot('records.view') hidden style="display:none;" @endcannot>
-        <div class="status-pill active" data-resident-status="" onclick="filterResidentStatus('',this)">All</div>
-        <div class="status-pill" data-resident-status="active" onclick="filterResidentStatus('Active',this)">Active</div>
-        <div class="status-pill" data-resident-status="inactive" onclick="filterResidentStatus('Inactive',this)">Inactive</div>
-        <div class="status-pill" data-resident-status="senior" onclick="filterResidentStatus('Senior',this)">Senior Citizens</div>
-        <div class="status-pill" data-resident-status="archived" onclick="filterResidentStatus('Archived',this)">Archived</div>
+      <div class="status-bar" role="group" aria-label="Filter residents" @cannot('records.view') hidden style="display:none;" @endcannot>
+        <button type="button" class="status-pill active" aria-pressed="true" data-resident-status="" onclick="filterResidentStatus('',this)">All</button>
+        <button type="button" class="status-pill" aria-pressed="false" data-resident-status="active" onclick="filterResidentStatus('Active',this)">Active</button>
+        <button type="button" class="status-pill" aria-pressed="false" data-resident-status="inactive" onclick="filterResidentStatus('Inactive',this)">Inactive</button>
+        <button type="button" class="status-pill" aria-pressed="false" data-resident-status="senior" onclick="filterResidentStatus('Senior',this)">Senior Citizens</button>
+        <button type="button" class="status-pill" aria-pressed="false" data-resident-status="archived" onclick="filterResidentStatus('Archived',this)">Archived</button>
         <label class="resident-group-select" for="resident-group-filter"><span>Special group</span>
           <select class="form-input" id="resident-group-filter" onchange="filterResidentSpecialGroup(this.value)">
             <option value="">All special groups</option>
@@ -323,14 +321,14 @@
         <div class="search-wrap"><span class="si"></span><input class="search-input" id="voter-search" autocomplete="off" placeholder="Maghanap ng pangalan o resident ID..." oninput="filterVoterRegistry()"/></div>
         <select class="form-input voter-purok-filter" id="voter-purok-filter" aria-label="Filter voters by purok" onchange="filterVoterPurok(this.value)"><option value="">Lahat ng Purok</option></select>
         <button data-action-permission="voters.create" class="btn btn-green" onclick="openVoterRegistration()" @if(!auth()->user()->hasAnyPermission(['voters.create'])) hidden style="display:none;" @endif>Add Voter</button>
-        <button data-action-permission="voters.import" class="btn btn-primary" onclick="openVotersImport()" @if(!auth()->user()->hasAnyPermission(['voters.import'])) hidden style="display:none;" @endif>Import CSV</button>
-        <button data-action-permission="voters.export" class="btn btn-primary" onclick="exportVoterRegistry()" @if(!auth()->user()->hasAnyPermission(['voters.export'])) hidden style="display:none;" @endif>Export List</button>
+        <button data-action-permission="voters.import" class="btn" onclick="openVotersImport()" @if(!auth()->user()->hasAnyPermission(['voters.import'])) hidden style="display:none;" @endif>Import CSV</button>
+        <button data-action-permission="voters.export" class="btn" onclick="exportVoterRegistry()" @if(!auth()->user()->hasAnyPermission(['voters.export'])) hidden style="display:none;" @endif>Export List</button>
       </div>
-      <div class="status-pills voter-filter-pills">
-        <div class="status-pill active" onclick="filterVoterEligibility('',this)">Lahat ng Edad</div>
-        <div class="status-pill" onclick="filterVoterEligibility('sk_only',this)">SK Lamang (15–17)</div>
-        <div class="status-pill" onclick="filterVoterEligibility('sk_and_regular',this)">SK at Regular (18–30)</div>
-        <div class="status-pill" onclick="filterVoterEligibility('regular_only',this)">Regular Lamang (31+)</div>
+      <div class="status-pills voter-filter-pills" role="group" aria-label="Filter voters by age group">
+        <button type="button" class="status-pill active" aria-pressed="true" onclick="filterVoterEligibility('',this)">Lahat ng Edad</button>
+        <button type="button" class="status-pill" aria-pressed="false" onclick="filterVoterEligibility('sk_only',this)">SK Lamang (15–17)</button>
+        <button type="button" class="status-pill" aria-pressed="false" onclick="filterVoterEligibility('sk_and_regular',this)">SK at Regular (18–30)</button>
+        <button type="button" class="status-pill" aria-pressed="false" onclick="filterVoterEligibility('regular_only',this)">Regular Lamang (31+)</button>
       </div>
 
       <div class="card voter-table-card">
@@ -734,6 +732,7 @@
 <div class="modal-overlay" id="modal-resident">
   <div class="modal">
     <div class="modal-header"><div class="modal-title" id="modal-resident-title"> <span>I-register ang Bagong Resident</span></div><button type="button" class="modal-close" onclick="closeModal('modal-resident')" aria-label="Close">&times;</button></div>
+    <h3 class="form-section-heading">Personal information</h3>
     <div class="form-row">
       <div class="form-group"><div class="form-label">Last Name *</div><input class="form-input" id="res-lastname" placeholder="Santos"/></div>
       <div class="form-group"><div class="form-label">First Name *</div><input class="form-input" id="res-name" placeholder="Maria"/></div>
@@ -747,13 +746,22 @@
       <div class="form-group"><div class="form-label">Gender *</div><select class="form-input" id="res-gender"><option>Male</option><option>Female</option></select></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label class="form-label" for="res-nationality">Nationality</label><input class="form-input" id="res-nationality" maxlength="100" placeholder="Not provided"></div>
-      <div class="form-group"><label class="form-label" for="res-photo">Resident photo (supported image files; up to 5 MB)</label><input class="form-input" type="file" id="res-photo" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.avif,.heic,.heif,image/jpeg,image/png,image/gif,image/bmp,image/webp,image/avif,image/heic,image/heif" onchange="validateResidentPhoto(this)"><img id="res-photo-preview" alt="Current resident photo" style="max-width:90px;max-height:100px;display:none"></div>
-      <div class="form-group"><label><input type="checkbox" id="res-verified-indigent"> Indigency verified by barangay staff</label></div>
       <div class="form-group"><div class="form-label">Civil Status</div><select class="form-input" id="res-civil"><option>Single</option><option>Married</option><option>Widowed</option><option>Separated</option></select></div>
-      <div class="form-group"><div class="form-label">Purok / Zone *</div><select class="form-input" id="res-purok"><option>Purok 1 - Sampaguita</option><option>Purok 2 - Rosal</option><option>Purok 3 - Camia</option><option>Purok 4 - Ilang-Ilang</option><option>Purok 5 - Mabini</option></select></div>
+      <div class="form-group"><label class="form-label" for="res-nationality">Nationality</label><input class="form-input" id="res-nationality" maxlength="100" placeholder="Not provided"></div>
     </div>
-    <div class="form-group"><div class="form-label">Detailed Address</div><input class="form-input" id="res-address" placeholder="Block, Lot, Street"/></div>
+    <div class="form-group"><label class="form-label" for="res-photo">Resident photo (supported image files; up to 5 MB)</label><input class="form-input" type="file" id="res-photo" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.avif,.heic,.heif,image/jpeg,image/png,image/gif,image/bmp,image/webp,image/avif,image/heic,image/heif" onchange="validateResidentPhoto(this)"><img id="res-photo-preview" alt="Current resident photo" style="max-width:90px;max-height:100px;display:none"></div>
+
+    <h3 class="form-section-heading">Address and contact</h3>
+    <div class="form-row">
+      <div class="form-group"><div class="form-label">Purok / Zone *</div><select class="form-input" id="res-purok"><option>Purok 1 - Sampaguita</option><option>Purok 2 - Rosal</option><option>Purok 3 - Camia</option><option>Purok 4 - Ilang-Ilang</option><option>Purok 5 - Mabini</option></select></div>
+      <div class="form-group"><div class="form-label">Detailed Address</div><input class="form-input" id="res-address" placeholder="Block, Lot, Street"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label" for="res-contact">Contact Number</label><input class="form-input" id="res-contact" type="tel" inputmode="tel" autocomplete="tel" maxlength="13" placeholder="09XXXXXXXXX or +639XXXXXXXXX" oninput="formatResidentContact(this)"/><div class="form-hint">11 digits starting with 09, or +639 followed by 9 digits. Saved as 09XXXXXXXXX.</div></div>
+      <div class="form-group"><div class="form-label">Type of Residency</div><select class="form-input" id="res-type"><option>Homeowner</option><option>Renter</option><option>Boarder</option></select></div>
+    </div>
+
+    <h3 class="form-section-heading">Sectors and record status</h3>
     <div class="form-group">
       <div class="form-label">Special Groups</div>
       <div class="special-check-grid">
@@ -767,15 +775,14 @@
         <label><input type="checkbox" class="res-special-group" value="Malnourished Child"/> Malnourished Child</label>
       </div>
     </div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label" for="res-contact">Contact Number</label><input class="form-input" id="res-contact" type="tel" inputmode="tel" autocomplete="tel" maxlength="13" placeholder="09XXXXXXXXX or +639XXXXXXXXX" oninput="formatResidentContact(this)"/><div class="form-hint">11 digits starting with 09, or +639 followed by 9 digits.</div></div>
-      <div class="form-group"><div class="form-label">Type of Residency</div><select class="form-input" id="res-type"><option>Homeowner</option><option>Renter</option><option>Boarder</option></select></div>
-    </div>
+    <div class="form-group"><label><input type="checkbox" id="res-verified-indigent"> Indigency verified by barangay staff</label></div>
     <div class="form-row resident-admin-fields">
       <div class="form-group"><div class="form-label">Record Status</div><select class="form-input" id="res-status"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
       <label class="resident-standing"><input type="checkbox" id="res-good-standing" checked/> Resident is in good standing</label>
     </div>
     <input type="hidden" id="res-edit-id" value=""/>
+
+    <h3 class="form-section-heading">Household</h3>
     <div class="form-group">
       <label class="form-label" for="res-household-search">Find household by number, head or address</label>
       <input class="form-input" id="res-household-search" autocomplete="off" maxlength="100" oninput="searchResidentHouseholds()" placeholder="HH-000001, name or address"/>

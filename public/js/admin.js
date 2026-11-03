@@ -83,13 +83,13 @@ const BASE_RESIDENT_SAMPLE_COUNT = RESIDENTS.length;
 const SPECIAL_GROUP_META = {
   'Senior Citizen': { icon: '', label: 'Senior Citizens', color: 'var(--senior-color)', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.2)', sub: '(60+)' },
   'PWD': { icon: '', label: 'Persons w/ Disability', color: '#A78BFA', bg: 'rgba(139,92,246,0.08)', border: 'rgba(139,92,246,0.2)', sub: 'PWD registered' },
-  'Solo Parent': { icon: '', label: 'Solo Parents', color: 'var(--blue-400)', bg: 'rgba(42,126,211,0.08)', border: 'rgba(42,126,211,0.2)', sub: 'With solo parent ID' },
-  'Indigenous People': { icon: '', label: 'Indigenous People', color: 'var(--green-500)', bg: 'rgba(0,255,106,0.06)', border: 'rgba(0,255,106,0.15)', sub: 'Registered IP' },
+  'Solo Parent': { icon: '', label: 'Solo Parents', color: '#2563eb', bg: 'rgba(42,126,211,0.08)', border: 'rgba(42,126,211,0.2)', sub: 'With solo parent ID' },
+  'Indigenous People': { icon: '', label: 'Indigenous People', color: '#0f8a8a', bg: 'rgba(0,255,106,0.06)', border: 'rgba(0,255,106,0.15)', sub: 'Registered IP' },
   '4Ps Beneficiary': { icon: '', label: '4Ps Beneficiaries', color: '#EF4444', bg: 'rgba(239,68,68,0.07)', border: 'rgba(239,68,68,0.18)', sub: 'DSWD-registered' },
   'Teenage Mother': { icon: '', label: 'Teenage Mothers', color: '#F472B6', bg: 'rgba(244,114,182,0.07)', border: 'rgba(244,114,182,0.2)', sub: 'Ages 13-19' },
   'Out-of-School Youth': { icon: '', label: 'Out-of-School Youth', color: '#34D399', bg: 'rgba(52,211,153,0.07)', border: 'rgba(52,211,153,0.18)', sub: 'Ages 15-30' },
   'Unemployed Adult': { icon: '', label: 'Unemployed Adults', color: '#FB923C', bg: 'rgba(251,146,60,0.07)', border: 'rgba(251,146,60,0.18)', sub: 'Ages 18-60' },
-  'Malnourished Child': { icon: '', label: 'Malnourished Children', color: '#F87171', bg: 'rgba(248,113,113,0.07)', border: 'rgba(248,113,113,0.2)', sub: 'Under 13 years old' },
+  'Malnourished Child': { icon: '', label: 'Malnourished Children', color: '#65a30d', bg: 'rgba(248,113,113,0.07)', border: 'rgba(248,113,113,0.2)', sub: 'Under 13 years old' },
 };
 
 function totalPopulation() {
@@ -393,13 +393,9 @@ async function openDashboardActivity(index) {
 
 function refreshPopulationStats() {
   const total = totalPopulation();
-  const households = Number(DEMOGRAPHIC_SUMMARY?.households?.total_households || 0);
   document.querySelectorAll('[data-target="4812"]').forEach(el => {
     el.dataset.target = total;
     el.textContent = total.toLocaleString();
-  });
-  document.querySelectorAll('.stat-sub').forEach(el => {
-    if (el.textContent.includes('Registered households')) el.textContent = `Registered households: ${households.toLocaleString()}`;
   });
 }
 
@@ -2231,22 +2227,20 @@ function renderSpecialGroups() {
     const meta = SPECIAL_GROUP_META[key];
     return { ...meta, key, count, pct: total ? ((count / total) * 100).toFixed(1) : '0.0' };
   });
-  container.innerHTML = '<div class="special-groups-grid">' +
-    groups.map(g => `
-      <div class="special-group-card" role="button" tabindex="0" data-group="${escapeText(g.key)}" onclick="openSpecialGroupRecords(this.dataset.group)" onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openSpecialGroupRecords(this.dataset.group); }" aria-label="${escapeText(g.label)}: ${g.count.toLocaleString()}. View in Resident Records" style="border-color:${g.border};background:linear-gradient(135deg,${g.bg},var(--bg-card));">
-        <div class="sg-header">
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span style="font-size:20px;">${g.icon}</span>
-            <div>
-              <div class="sg-label">${g.label}</div>
-              <div class="sg-sub">${g.sub}</div>
-            </div>
-          </div>
-        </div>
-        <div class="sg-count" style="color:${g.color};">${g.count.toLocaleString()}</div>
-        <div class="sg-pct">${g.pct}% ${adminText('of population')}</div>
-        <div class="sg-link">${adminText('View in Resident Records')} &rarr;</div>
-      </div>`).join('') + '</div>';
+  // Rows open the filtered Resident Records list only for staff who may view resident records.
+  const canOpenRecords = hasStaffPermission('records.view');
+  const largest = Math.max(...groups.map(g => g.count), 1);
+  container.innerHTML = `${canOpenRecords ? '<p class="special-group-hint">Select a group to see its residents in Resident Records.</p>' : ''}<ul class="special-group-list">` +
+    groups.sort((first, second) => second.count - first.count).map(g => {
+      const tag = canOpenRecords ? 'button' : 'div';
+      const action = canOpenRecords ? ` type="button" data-group="${escapeText(g.key)}" onclick="openSpecialGroupRecords(this.dataset.group)"` : '';
+      return `<li><${tag} class="special-group-row"${action} style="--group-color:${g.color};">
+        <span class="special-group-dot" aria-hidden="true"></span>
+        <span class="special-group-name"><strong>${escapeText(g.label)}</strong><small>${escapeText(g.sub)}</small></span>
+        <span class="special-group-meter" aria-hidden="true"><span style="width:${(g.count / largest * 100).toFixed(0)}%;"></span></span>
+        <span class="special-group-count"><strong>${g.count.toLocaleString()}</strong><small>${g.pct}%</small></span>
+      </${tag}></li>`;
+    }).join('') + '</ul>';
 }
 
 function renderPurokCards() {
@@ -2278,7 +2272,7 @@ function renderPurokCards() {
         <div class="demo-purok-name"> ${escapeText(p.label)}</div>
         <div class="demo-purok-pop" style="color:${p.color};">${count.toLocaleString()}</div>
         <div class="demo-purok-pct">${pct}% of total population</div>
-        <div class="demo-purok-pct">${Number(p.householdsCount || 0)} households</div>
+        <div class="demo-purok-pct">${Number(p.householdsCount || 0).toLocaleString()} <span>${Number(p.householdsCount || 0) === 1 ? 'household' : 'households'}</span></div>
         <div class="demo-purok-bar" style="margin:8px 0 6px;"><div class="progress-bar"><div class="progress-fill" style="width:${barPct}%;background:${p.color};"></div></div></div>
         <div class="sg-tags">
           ${seniors > 0 ? `<span class="demo-purok-tag is-senior"> ${seniors} Seniors</span>` : ''}
@@ -2293,10 +2287,11 @@ function renderAgeDistribution() {
   const list = document.getElementById('age-distribution-list');
   if (!list) return;
   const groups = [
-    { label: '0–12 (Children)',        color: '#60A5FA',             min: 0,  max: 12  },
-    { label: '13–17 (Youth)',           color: 'var(--green-400)',    min: 13, max: 17  },
-    { label: '18–35 (Young Adults)',    color: 'var(--green-500)',    min: 18, max: 35  },
-    { label: '36–59 (Middle Age)',      color: 'var(--blue-400)',     min: 36, max: 59  },
+    // Ordered age bands use one blue scale, light to dark; seniors keep the Senior Citizens amber.
+    { label: '0–12 (Children)',        color: '#93c5fd',             min: 0,  max: 12  },
+    { label: '13–17 (Youth)',           color: '#60a5fa',             min: 13, max: 17  },
+    { label: '18–35 (Young Adults)',    color: '#3b82f6',             min: 18, max: 35  },
+    { label: '36–59 (Middle Age)',      color: '#1d4ed8',             min: 36, max: 59  },
     { label: '60+ (Senior Citizens)',   color: 'var(--senior-color)', min: 60, max: 999 },
   ];
   const counts = groups.map(g => ({ ...g, count: 0 }));
@@ -2315,16 +2310,29 @@ function renderAgeDistribution() {
   }
   const total = Number(DEMOGRAPHIC_SUMMARY?.total ?? RESIDENTS.length);
   const maxCount = Math.max(...counts.map(g => g.count), 1);
+  const male = Number(DEMOGRAPHIC_SUMMARY?.households?.male ?? DEMOGRAPHIC_SUMMARY?.male ?? 0);
+  const female = Number(DEMOGRAPHIC_SUMMARY?.households?.female ?? DEMOGRAPHIC_SUMMARY?.female ?? 0);
+  const bySex = male + female;
   list.innerHTML = counts.map(g => {
     const pct = total > 0 ? ((g.count / total) * 100).toFixed(1) : '0.0';
     const barPct = (g.count / maxCount * 100).toFixed(0);
     return `
     <div class="age-bar-item">
       <div class="age-bar-label">${g.label}</div>
-      <div style="flex:1;"><div class="progress-bar"><div class="progress-fill" style="width:${barPct}%;background:${g.color};"></div></div></div>
-      <div class="age-bar-count" style="color:${g.color};">${g.count.toLocaleString()} <span style="font-size:10px;font-weight:400;color:var(--text-muted);">(${pct}%)</span></div>
+      <div class="age-bar-track" aria-hidden="true"><div class="age-bar-fill" style="width:${barPct}%;background:${g.color};"></div></div>
+      <div class="age-bar-count">${g.count.toLocaleString()} <span>(${pct}%)</span></div>
     </div>`;
-  }).join('');
+  }).join('') + (bySex > 0 ? `
+    <div class="demo-sex-split">
+      <div class="demo-sex-split-title">By sex</div>
+      <div class="demo-sex-split-bar" role="img" aria-label="Male ${male.toLocaleString()}, Female ${female.toLocaleString()}">
+        <span class="is-male" style="width:${(male / bySex * 100).toFixed(1)}%;"></span><span class="is-female" style="width:${(female / bySex * 100).toFixed(1)}%;"></span>
+      </div>
+      <div class="demo-sex-split-legend">
+        <span><i class="is-male" aria-hidden="true"></i>Male <strong>${male.toLocaleString()}</strong> (${(male / bySex * 100).toFixed(1)}%)</span>
+        <span><i class="is-female" aria-hidden="true"></i>Female <strong>${female.toLocaleString()}</strong> (${(female / bySex * 100).toFixed(1)}%)</span>
+      </div>
+    </div>` : '');
 }
 
 function renderDemographicsStats() {
@@ -3428,6 +3436,14 @@ function launchApp(name = 'Staff', role = 'Staff') {
 // ═══════════════════════════════════════
 // ENGLISH TRANSLATIONS for JS-generated text
 // ═══════════════════════════════════════
+const SENIOR_PAGE_SIZE = 10;
+let seniorCurrentPage = 1;
+
+function changeSeniorPage(page) {
+  seniorCurrentPage = page;
+  renderSeniorList();
+}
+
 function renderSeniorList() {
   const container = document.getElementById('senior-citizens-list');
   if (!container) return;
@@ -3445,12 +3461,17 @@ function renderSeniorList() {
   if (countEl) countEl.textContent = Number(DEMOGRAPHIC_SUMMARY?.seniors ?? seniors.length).toLocaleString();
   if (seniors.length === 0) {
     container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;">No registered senior citizens.</div>';
+    renderPager('senior-citizens-pagination', { total: 0 });
     return;
   }
+  const lastPage = Math.max(1, Math.ceil(seniors.length / SENIOR_PAGE_SIZE));
+  seniorCurrentPage = Math.min(seniorCurrentPage, lastPage);
+  const pageSeniors = seniors.slice((seniorCurrentPage - 1) * SENIOR_PAGE_SIZE, seniorCurrentPage * SENIOR_PAGE_SIZE);
+  renderPager('senior-citizens-pagination', { page: seniorCurrentPage, lastPage, total: seniors.length, perPage: SENIOR_PAGE_SIZE, noun: ['senior citizen', 'senior citizens'], loader: 'changeSeniorPage' });
   container.innerHTML = `
     <table class="tbl">
       <thead><tr><th>Resident ID</th><th>Full Name</th><th>Age</th><th>Date of Birth</th><th>Zone / Purok</th><th>Status</th><th>Classification</th></tr></thead>
-      <tbody>${seniors.map(r => {
+      <tbody>${pageSeniors.map(r => {
         const age = Number(r.age ?? calcAge(r.dob));
         return `<tr>
           <td><span style="font-family:var(--font-mono);font-size:10.5px;color:var(--blue-400);">${escapeText(r.id)}</span></td>
@@ -3462,7 +3483,7 @@ function renderSeniorList() {
           <td><span class="badge badge-senior"> Senior Citizen</span></td>
         </tr>`;
       }).join('')}</tbody>
-    </table>`;
+    </table>${Number(DEMOGRAPHIC_SUMMARY?.seniors ?? 0) > seniors.length ? '<p class="senior-register-note">This register lists the first 100 senior citizens by surname. Open Resident Records and choose Senior Citizens to see everyone.</p>' : ''}`;
 }
 
 // Override openViewResident for English
@@ -4179,7 +4200,7 @@ function renderResidentsTable() {
     const archivedBadge = resident.archived ? `<span class="badge badge-red">Archived</span><small>${escapeText(String(resident.archivedAt || '').slice(0, 10))}</small>` : `<span class="badge ${resident.status === 'Active' ? 'badge-green' : 'badge-red'}">${escapeText(resident.status)}</span>`;
     const actions = resident.archived
       ? `<button data-action-permission="records.archive" class="btn btn-xs btn-green" onclick="restoreResident(${resident.databaseId})">Restore</button>`
-      : `<button class="btn btn-xs btn-primary" onclick="openViewResident('${resident.id}')">View</button>
+      : `<button class="btn btn-xs" onclick="openViewResident('${resident.id}')">View</button>
          <button data-action-permission="records.update" class="btn btn-xs" onclick="openEditResident('${resident.id}')">Edit</button>
          <button data-action-permission="records.archive" class="btn btn-xs btn-danger-outline" onclick="deleteResident('${resident.id}')">Archive</button>`;
 
@@ -4267,6 +4288,7 @@ function renderResidentGroupFilter() {
       ? residentStatusFilter === '' && residentSpecialGroupFilter === ''
       : status === residentStatusFilter.toLowerCase();
     pill.classList.toggle('active', active);
+    pill.setAttribute?.('aria-pressed', String(active));
   });
 }
 
@@ -5077,8 +5099,9 @@ function filterVoterRegistry() {
 }
 
 function filterVoterEligibility(eligibility, element) {
-  document.querySelectorAll('#screen-voters .status-pill').forEach(pill => pill.classList.remove('active'));
+  document.querySelectorAll('#screen-voters .status-pill').forEach(pill => { pill.classList.remove('active'); pill.setAttribute?.('aria-pressed', 'false'); });
   element?.classList.add('active');
+  element?.setAttribute?.('aria-pressed', 'true');
   voterEligibilityFilter = eligibility;
   loadVoterRegistry(1);
 }

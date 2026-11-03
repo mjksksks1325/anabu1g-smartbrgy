@@ -557,7 +557,9 @@ body:not(.light-mode) #app.admin-interface .staff-theme-icon-button .staff-theme
 }
 
 /* Demographics, Voters and Certificates KPI cards: each indicator keeps its own color. */
-#app.admin-interface :is(#demographics-stats-grid, #voter-stats-grid, #cert-stats-grid) .stat-card.demo-kpi { --kpi: #16845a; --kpi-soft: rgba(22, 132, 90, 0.10); border-top: 4px solid var(--kpi) !important; background: linear-gradient(160deg, var(--kpi-soft), var(--stat-card-bg) 70%); }
+/* Default accent at a lower specificity than the .demo-kpi-* colour rules below, so each card keeps its own colour. */
+#app.admin-interface .demo-kpi { --kpi: #16845a; --kpi-soft: rgba(22, 132, 90, 0.10); }
+#app.admin-interface :is(#demographics-stats-grid, #voter-stats-grid, #cert-stats-grid) .stat-card.demo-kpi { border-top: 4px solid var(--kpi) !important; background: linear-gradient(160deg, var(--kpi-soft), var(--stat-card-bg) 70%); }
 #app.admin-interface :is(#demographics-stats-grid, #voter-stats-grid, #cert-stats-grid) .demo-kpi .stat-icon { background: var(--kpi-soft); color: var(--kpi); }
 #app.admin-interface :is(#demographics-stats-grid, #voter-stats-grid, #cert-stats-grid) .demo-kpi .stat-value { color: var(--kpi); }
 #app.admin-interface :is(#demographics-stats-grid, #voter-stats-grid, #cert-stats-grid) .demo-kpi-green { --kpi: #16845a; --kpi-soft: rgba(22, 132, 90, 0.12); }

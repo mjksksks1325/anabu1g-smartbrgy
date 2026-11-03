@@ -47,6 +47,21 @@ class Resident extends Model
 
     protected $hidden = ['photo_path', 'portal_registration_hash', 'portal_registration_expires_at', 'portal_registration_email', 'portal_registration_sent_at'];
 
+    /**
+     * Store mobile numbers in one local format: spaces, dashes and brackets are removed and +639XXXXXXXXX
+     * becomes 09XXXXXXXXX. Anything else is returned as typed so validation can reject it.
+     */
+    public static function normalizeContactNumber(mixed $value): ?string
+    {
+        $number = preg_replace('/[\s()-]+/', '', (string) $value);
+
+        if ($number === '' || $number === null) {
+            return null;
+        }
+
+        return preg_match('/^\+639\d{9}$/', $number) === 1 ? '0'.substr($number, 3) : $number;
+    }
+
     /** @return HasOne<User, $this> */
     public function portalAccount(): HasOne
     {

@@ -68,7 +68,7 @@ class ImportHouseholdProfiling
             $fields['gender'] = match (Str::lower($fields['gender'])) {
                 'm', 'male' => 'Male', 'f', 'female' => 'Female', default => $fields['gender']
             };
-            $fields['contact_number'] = preg_replace('/[\s-]+/', '', $fields['contact_number']) ?: null;
+            $fields['contact_number'] = Resident::normalizeContactNumber($fields['contact_number']);
             foreach (['middle_name', 'suffix'] as $nullable) {
                 $fields[$nullable] = $fields[$nullable] ?: null;
             }

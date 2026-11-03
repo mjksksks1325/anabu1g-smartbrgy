@@ -76,7 +76,7 @@ class StoreResidentRequest extends FormRequest
             'middle_name' => $this->normalizeName($this->input('middle_name')),
             'last_name' => $this->normalizeName($this->input('last_name')),
             'suffix' => $this->normalizeName($this->input('suffix')),
-            'contact_number' => preg_replace('/[\s-]+/', '', (string) $this->input('contact_number')) ?: null,
+            'contact_number' => Resident::normalizeContactNumber($this->input('contact_number')),
         ]);
     }
 

@@ -235,15 +235,15 @@ body #app.admin-interface.admin-interface .dashboard-quick-action-list .btn > .n
 body #app.admin-interface.admin-interface .dashboard-quick-action-list .btn:hover { border-color: var(--staff-accent); background: var(--staff-hover-bg); color: var(--staff-ink); }
 
 /* ── Buttons: green = primary, neutral outline = secondary, red = destructive ── */
-body #app.admin-interface.admin-interface .btn, body.light-mode #app.admin-interface.admin-interface .btn:not(.btn-primary, .btn-green, .btn-danger),
-body[data-personnel-layout="admin"] .modal .btn:not(.btn-primary):not(.btn-green):not(.btn-danger),
+body #app.admin-interface.admin-interface .btn, body.light-mode #app.admin-interface.admin-interface .btn:not(.btn-primary, .btn-green, .btn-danger, .btn-danger-outline),
+body[data-personnel-layout="admin"] .modal .btn:not(.btn-primary):not(.btn-green):not(.btn-danger):not(.btn-danger-outline),
 body[data-personnel-layout="iot"] :is(.button.quiet, .site-header .button.quiet), html[data-theme=dark] body[data-personnel-layout="iot"] .button.quiet,
 body[data-personnel-layout="iot"] .document-request-detail .btn:not(.btn-green),
 .staff-settings-topbar-actions :is(button, a), .dark .staff-settings-topbar-actions :is(button, a),
 .personnel-confirm-actions button, .personnel-logout-actions button {
   border: 1px solid var(--staff-quiet-border); background: var(--staff-quiet-bg); color: var(--staff-quiet-ink);
 }
-body #app.admin-interface.admin-interface .btn:hover, body.light-mode #app.admin-interface.admin-interface .btn:not(.btn-primary, .btn-green, .btn-danger):hover,
+body #app.admin-interface.admin-interface .btn:hover, body.light-mode #app.admin-interface.admin-interface .btn:not(.btn-primary, .btn-green, .btn-danger, .btn-danger-outline):hover,
 body[data-personnel-layout="iot"] .button.quiet:hover, .staff-settings-topbar-actions :is(button, a):hover,
 .personnel-confirm-actions button:hover, .personnel-logout-actions button:hover {
   border-color: var(--staff-ink); background: var(--staff-quiet-hover); color: var(--staff-quiet-ink);
@@ -418,6 +418,63 @@ body[data-personnel-layout="iot"] .pill.neutral { border-color: var(--staff-bord
 body[data-personnel-layout="iot"] :is(.employee-card, .device-card) { border-color: var(--staff-border); }
 body[data-personnel-layout="iot"] :is(.panel-heading span, .empty-state p, .employee-card p, .device-card p), html[data-theme=dark] body[data-personnel-layout="iot"] :is(.panel-heading span, .empty-state p) { color: var(--staff-muted); }
 
+/* Filter pills are buttons: keep the pill look, add a visible keyboard focus ring. */
+#app.admin-interface button.status-pill { font-family: inherit; cursor: pointer; }
+#app.admin-interface button.status-pill:focus-visible { outline: 2px solid var(--civic-primary); outline-offset: 2px; }
+#app.admin-interface .page-header-row { flex-wrap: wrap; gap: 12px; }
+/* Long forms are split into named sections. */
+body[data-personnel-layout="admin"] .modal .form-section-heading { margin: 22px 0 12px; padding-top: 16px; border-top: 1px solid var(--staff-row); color: var(--staff-accent); font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+body[data-personnel-layout="admin"] .modal .modal-header + .form-section-heading { margin-top: 0; padding-top: 0; border-top: 0; }
+#app.admin-interface .page-header-row > .btn.resident-applications-link { display: inline-flex; align-items: center; gap: 8px; width: auto; margin-left: auto; white-space: nowrap; }
+
+/* ── Demographics: age and sex chart, special-group list, senior register ── */
+#app.admin-interface { --sex-male: #2563eb; --sex-female: #db2777; }
+body:not(.light-mode) #app.admin-interface { --sex-male: #7aa7ff; --sex-female: #f27ab6; }
+#app.admin-interface .demo-insights { align-items: start; }
+#app.admin-interface .age-distribution-list { display: flex; flex-direction: column; gap: 14px; }
+#app.admin-interface .age-bar-item { grid-template-columns: minmax(120px, 170px) minmax(0, 1fr) 92px; gap: 12px; }
+#app.admin-interface .age-bar-label { color: var(--staff-ink); font-size: 13px; font-weight: 600; }
+#app.admin-interface .age-bar-track { height: 14px; overflow: hidden; border-radius: 7px; background: var(--staff-row); }
+#app.admin-interface .age-bar-fill { height: 100%; min-width: 2px; border-radius: 7px; }
+#app.admin-interface .age-bar-count { color: var(--staff-ink); font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+#app.admin-interface .age-bar-count span { color: var(--staff-muted); font-size: 11px; font-weight: 500; }
+#app.admin-interface .demo-sex-split { margin-top: 6px; padding-top: 16px; border-top: 1px solid var(--staff-row); }
+#app.admin-interface .demo-sex-split-title { margin-bottom: 8px; color: var(--staff-muted); font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+#app.admin-interface .demo-sex-split-bar { display: flex; height: 14px; overflow: hidden; border-radius: 7px; background: var(--staff-row); }
+#app.admin-interface .demo-sex-split-bar .is-male { background: var(--sex-male); }
+#app.admin-interface .demo-sex-split-bar .is-female { background: var(--sex-female); }
+#app.admin-interface .demo-sex-split-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; color: var(--staff-muted); font-size: 12.5px; }
+#app.admin-interface .demo-sex-split-legend strong { color: var(--staff-ink); }
+#app.admin-interface .demo-sex-split-legend i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 3px; vertical-align: -1px; }
+#app.admin-interface .demo-sex-split-legend i.is-male { background: var(--sex-male); }
+#app.admin-interface .demo-sex-split-legend i.is-female { background: var(--sex-female); }
+#app.admin-interface .special-group-hint { margin: -4px 0 10px; color: var(--staff-muted); font-size: 12px; }
+#app.admin-interface .special-group-list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+#app.admin-interface .special-group-row { display: grid; grid-template-columns: 10px minmax(0, 1.6fr) minmax(60px, 1fr) 76px; align-items: center; gap: 12px; width: 100%; padding: 7px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--staff-ink); font: inherit; text-align: left; }
+#app.admin-interface button.special-group-row { cursor: pointer; }
+#app.admin-interface button.special-group-row:hover { background: var(--staff-hover-bg); }
+#app.admin-interface button.special-group-row:focus-visible { outline: 2px solid var(--civic-primary); outline-offset: 1px; }
+#app.admin-interface .special-group-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--group-color); }
+#app.admin-interface .special-group-name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; min-width: 0; }
+#app.admin-interface .special-group-name strong { font-size: 13px; font-weight: 700; }
+#app.admin-interface .special-group-name small, #app.admin-interface .special-group-count small { color: var(--staff-muted); font-size: 11px; }
+#app.admin-interface .special-group-meter { height: 8px; overflow: hidden; border-radius: 4px; background: var(--staff-row); }
+#app.admin-interface .special-group-meter span { display: block; height: 100%; border-radius: 4px; background: var(--group-color); }
+#app.admin-interface .special-group-count { display: flex; align-items: baseline; justify-content: flex-end; gap: 6px; font-variant-numeric: tabular-nums; }
+#app.admin-interface .special-group-count strong { font-size: 15px; }
+#app.admin-interface .senior-register-note { margin: 10px 0 0; color: var(--staff-muted); font-size: 12px; }
+@media (max-width: 760px) {
+  /* Two summary cards per row on phones instead of six full-width cards. */
+  #app.admin-interface :is(#demographics-stats-grid, #voter-stats-grid, #cert-stats-grid) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  #app.admin-interface :is(#demographics-stats-grid, #voter-stats-grid, #cert-stats-grid) .stat-card { padding: 14px; }
+  #app.admin-interface :is(#demographics-stats-grid, #voter-stats-grid, #cert-stats-grid) .stat-value { margin-top: 8px; font-size: 26px; }
+  #app.admin-interface :is(#demographics-stats-grid, #voter-stats-grid, #cert-stats-grid) .stat-sub { font-size: 11px; }
+  #app.admin-interface .age-bar-item { grid-template-columns: minmax(0, 1fr) 84px; }
+  #app.admin-interface .age-bar-track { grid-column: 1 / -1; grid-row: 2; }
+  #app.admin-interface .special-group-row { grid-template-columns: 10px minmax(0, 1fr) 64px; }
+  #app.admin-interface .special-group-meter { display: none; }
+}
+
 /* Account settings (Flux components read the accent from these variables). */
 body.civic-settings { --color-accent: #17663a; --color-accent-content: #17663a; --color-accent-foreground: #fff; }
 .dark body.civic-settings { --color-accent: #17663a; --color-accent-content: #9edbb5; --color-accent-foreground: #fff; }
@@ -440,10 +497,10 @@ body:not(.light-mode) #app.admin-interface.admin-interface .demo-purok-tag.is-4p
 .personnel-logout-actions #logout-confirm { border-color: var(--staff-danger); background: var(--staff-danger); color: #fff; }
 .personnel-logout-actions #logout-confirm:hover { border-color: var(--staff-danger-hover); background: var(--staff-danger-hover); }
 /* Reversible negative actions (archive, remove from household): red outline; Delete and Reject stay solid red. */
-body #app.admin-interface.admin-interface .btn-danger-outline, body[data-personnel-layout="iot"] .button.danger-outline {
+body #app.admin-interface.admin-interface .btn-danger-outline, body.light-mode #app.admin-interface.admin-interface .btn-danger-outline, body[data-personnel-layout="iot"] .button.danger-outline {
   border: 1px solid var(--staff-danger); background: var(--staff-quiet-bg); color: var(--staff-danger);
 }
-body #app.admin-interface.admin-interface .btn-danger-outline:hover, body[data-personnel-layout="iot"] .button.danger-outline:hover { background: #fbe9e7; color: var(--staff-danger-hover); }
+body #app.admin-interface.admin-interface .btn-danger-outline:hover, body.light-mode #app.admin-interface.admin-interface .btn-danger-outline:hover, body[data-personnel-layout="iot"] .button.danger-outline:hover { border-color: var(--staff-danger-hover); background: #fbe9e7; color: var(--staff-danger-hover); }
 :is(body:not(.light-mode) #app.admin-interface.admin-interface .btn-danger-outline, html[data-theme=dark] body[data-personnel-layout="iot"] .button.danger-outline) { border-color: #e06c61; color: #f2a49c; }
 :is(body:not(.light-mode) #app.admin-interface.admin-interface .btn-danger-outline, html[data-theme=dark] body[data-personnel-layout="iot"] .button.danger-outline):hover { background: #3d1a17; color: #f6c1bb; }
 /* Small screens: the sidebar is an overlay drawer (an older unconditional rule had pinned it into the page flow). */
