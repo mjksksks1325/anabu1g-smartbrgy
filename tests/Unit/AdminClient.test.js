@@ -857,6 +857,18 @@ test('list load failures explain network errors in plain words, keep server mess
   assert.doesNotMatch(tbody.innerHTML, /Failed to fetch/);
 });
 
+test('purok panels say loading, failed with a retry, or genuinely empty instead of "no data"', async () => {
+  const { context } = await client();
+  vm.runInContext("PUROK_DATA.splice(0); purokLoadState = 'loading';", context);
+  assert.match(context.purokPanelState(), /Loading purok data/);
+  vm.runInContext("purokLoadState = 'failed'; purokLoadError = new TypeError('Failed to fetch');", context);
+  assert.match(context.purokPanelState(), /Could not reach the server.*onclick="loadPuroks\(\)">Try again/s);
+  vm.runInContext("purokLoadState = 'loaded'; purokLoadError = null;", context);
+  assert.match(context.purokPanelState(), /No puroks have been added yet/);
+  vm.runInContext("PUROK_DATA.push({ key: 'Purok 1', label: 'Purok 1' });", context);
+  assert.equal(context.purokPanelState(), null);
+});
+
 test('dialogs open on their first usable field and keep a single dialog role', async () => {
   const { context, fields } = await client();
   const focused = [];

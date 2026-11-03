@@ -335,9 +335,7 @@ class VoterRegistrationController extends Controller
             ->with('resident:id,resident_number,first_name,middle_name,last_name,suffix,purok,status,date_of_birth')
             ->where('status', 'active')
             ->whereHas('resident', function (Builder $query) use ($filters): void {
-                $query->where('status', 'active')
-                    ->whereNull('deleted_at')
-                    ->whereDate('date_of_birth', '<=', today()->subYears(15));
+                $query->inVoterRegistry();
 
                 if (isset($filters['purok'])) {
                     $query->where('purok', $filters['purok']);

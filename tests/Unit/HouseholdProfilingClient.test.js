@@ -240,6 +240,7 @@ test('clicking a household shows its family members in the detail modal', async 
 test('purok cards show household counts and support click and keyboard access without inline lists', () => {
   const { context, field } = profilingClient();
   context.syncPurokSelects = () => {};
+  context.purokPanelState = () => null;
   context.RESIDENTS = [];
   context.DEMOGRAPHIC_SUMMARY = { total: 0 };
   context.PUROK_DATA = [{ databaseId: 7, label: 'Purok 7', key: 'Purok 7', color: '#fff', householdsCount: 4 }];

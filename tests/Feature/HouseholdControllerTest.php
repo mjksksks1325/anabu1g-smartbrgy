@@ -388,7 +388,7 @@ it('exports household columns while preserving resident filters and formula prot
 it('provides household size and demographic query support excluding archived members', function () {
     $household = Household::factory()->create();
     $male = Resident::factory()->create(['gender' => 'Male', 'last_name' => 'Alpha']);
-    $female = Resident::factory()->create(['gender' => 'Female', 'last_name' => 'Beta']);
+    $female = Resident::factory()->create(['gender' => 'Female', 'last_name' => 'Beta', 'date_of_birth' => now()->subYears(30)]);
     Resident::factory()->archived()->create(['gender' => 'Male']);
     VoterRegistration::factory()->for($female)->create(['status' => 'active']);
     app(ManageHouseholds::class)->assign($male, $household->id, null, true);
@@ -504,7 +504,7 @@ it('returns the six household demographics with accurate averages and zero house
     $first = Household::factory()->create();
     Household::factory()->create();
     $male = Resident::factory()->create(['gender' => 'Male']);
-    $female = Resident::factory()->create(['gender' => 'Female']);
+    $female = Resident::factory()->create(['gender' => 'Female', 'date_of_birth' => now()->subYears(30)]);
     Resident::factory()->create(['gender' => 'Female', 'status' => 'inactive']);
     Resident::factory()->archived()->create(['gender' => 'Male']);
     VoterRegistration::factory()->for($female)->create(['status' => 'active']);

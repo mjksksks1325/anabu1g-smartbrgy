@@ -62,7 +62,7 @@ class Household extends Model
             'total_residents' => Resident::query()->count(),
             'male' => Resident::query()->where('gender', 'Male')->count(),
             'female' => Resident::query()->where('gender', 'Female')->count(),
-            'registered_voters' => Resident::query()->whereHas('voterRegistration', fn ($query) => $query->where('status', 'active'))->count(),
+            'registered_voters' => Resident::query()->inVoterRegistry()->whereHas('voterRegistration', fn ($query) => $query->where('status', 'active'))->count(),
             'average_household_size' => $householdCount > 0 ? round(Resident::query()->whereNotNull('household_id')->count() / $householdCount, 2) : 0.0,
         ];
     }

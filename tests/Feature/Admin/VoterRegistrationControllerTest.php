@@ -245,3 +245,18 @@ test('voters page describes personnel recording existing voter information', fun
         ->assertSee('hindi ito pagpaparehistro sa COMELEC')
         ->assertDontSee('Voter Registry');
 });
+
+test('demographics and the voter registry report the same registered-voter count', function () {
+    $staff = User::factory()->assignedOperations()->create();
+    $counted = Resident::factory()->create(['status' => 'active', 'date_of_birth' => now()->subYears(40)]);
+    $inactive = Resident::factory()->create(['status' => 'inactive', 'date_of_birth' => now()->subYears(40)]);
+    $tooYoung = Resident::factory()->create(['status' => 'active', 'date_of_birth' => now()->subYears(12)]);
+    foreach ([$counted, $inactive, $tooYoung] as $resident) {
+        VoterRegistration::factory()->create(['resident_id' => $resident->id, 'status' => 'active']);
+    }
+
+    $registry = $this->actingAs($staff)->getJson(route('staff.voter-registrations.index'))->assertOk();
+
+    expect($registry->json('summary.total'))->toBe(1)
+        ->and(\App\Models\Household::demographics()['registered_voters'])->toBe(1);
+});

@@ -1680,5 +1680,10 @@
     "No open incident reports": "No open incident reports",
     "Open Incident Reports": "Open Incident Reports",
     "Show open incident reports": "Show open incident reports",
-    "Need this account removed? Ask an administrator. Staff accounts are removed in User Management so their records and history stay intact.": "Need this account removed? Ask an administrator. Staff accounts are removed in User Management so their records and history stay intact."
+    "Need this account removed? Ask an administrator. Staff accounts are removed in User Management so their records and history stay intact.": "Need this account removed? Ask an administrator. Staff accounts are removed in User Management so their records and history stay intact.",
+    "Loading purok data…": "Loading purok data…",
+    "No puroks have been added yet.": "No puroks have been added yet.",
+    "Purok data could not be loaded.": "Purok data could not be loaded.",
+    "Same registry as the Voters module": "Same registry as the Voters module",
+    "Open voter registry": "Open voter registry"
 }

@@ -566,7 +566,23 @@ async function savePurokRecord() {
   }
 }
 
+/** 'loading' | 'loaded' | 'failed': lets purok panels tell "still loading" and "could not load" apart from "no data". */
+let purokLoadState = 'loading';
+let purokLoadError = null;
+
+/**
+ * Message for a panel that depends on the purok list, or null when the list has data to show.
+ * Distinguishes loading, a failed load (with retry) and a barangay that has no puroks yet.
+ */
+function purokPanelState() {
+  if (PUROK_DATA.length > 0) return null;
+  if (purokLoadState === 'failed') return `<div class="dashboard-empty resident-table-error">${listErrorMarkup(purokLoadError, 'loadPuroks()', 'Purok data could not be loaded.')}</div>`;
+  if (purokLoadState === 'loading') return `<div class="dashboard-empty" role="status">${escapeText(adminText('Loading purok data…'))}</div>`;
+  return `<div class="dashboard-empty">${escapeText(adminText('No puroks have been added yet.'))}</div>`;
+}
+
 async function loadPuroks() {
+  purokLoadState = 'loading';
   try {
     const response = await fetch('/staff/puroks', {
       credentials: 'same-origin',
@@ -587,12 +603,18 @@ async function loadPuroks() {
       fourPsCount: Number(purok.four_ps_count || 0)
     })));
     DEMOGRAPHIC_SUMMARY = payload.demographics;
+    purokLoadState = 'loaded';
+    purokLoadError = null;
     syncPurokSelects();
     renderDemographics();
     renderDashPurokBreakdown();
     return true;
   } catch (error) {
     console.error('Purok loading failed:', error);
+    purokLoadState = 'failed';
+    purokLoadError = error;
+    renderDashPurokBreakdown();
+    renderPurokCards();
     if (PUROK_DATA.length === 0) {
       // Without puroks the required Purok field cannot be filled: say so in the field instead of leaving it blank.
       document.querySelectorAll('#res-purok').forEach(select => {
@@ -1063,6 +1085,12 @@ let dashboardPurokDataSignature = null;
 function renderDashPurokBreakdown() {
   const container = document.getElementById('dash-purok-breakdown');
   if (!container) return;
+  const panelState = purokPanelState();
+  if (panelState) {
+    container.innerHTML = panelState;
+    dashboardPurokDataSignature = null;
+    return;
+  }
   syncPurokSelects();
   const countByPurok = {};
   RESIDENTS.forEach(r => { countByPurok[r.purok] = (countByPurok[r.purok] || 0) + 1; });
@@ -2405,6 +2433,11 @@ function renderSpecialGroups() {
 function renderPurokCards() {
   const grid = document.getElementById('demo-purok-grid');
   if (!grid) return;
+  const panelState = purokPanelState();
+  if (panelState) {
+    grid.innerHTML = panelState;
+    return;
+  }
   syncPurokSelects();
   grid.innerHTML = '';
   const countByPurok = {};
@@ -5361,6 +5394,12 @@ function showVoterKpi(eligibility) {
     .find(button => (button.getAttribute('onclick') || '').includes(`'${eligibility}'`));
   filterVoterEligibility(eligibility, pill);
   revealKpiResults(document.querySelector('#screen-voters .voter-search-row'));
+}
+
+/** Demographics "Registered Voters" counts the same registry as the Voters module's total. */
+async function openVoterRegistryFromDemographics() {
+  await showScreen('voters', findNavItem('voters'));
+  showVoterKpi('');
 }
 
 function filterVoterPurok(purok) {

@@ -6,6 +6,7 @@ use App\Actions\CheckRequestRestrictions;
 use App\CertificateType;
 use Carbon\CarbonInterface;
 use Database\Factories\ResidentFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -114,6 +115,20 @@ class Resident extends Model
     public function voterRegistration(): HasOne
     {
         return $this->hasOne(VoterRegistration::class);
+    }
+
+    /**
+     * Residents the voter registry lists: active, not archived, and at least 15 years old (SK minimum).
+     * Demographics and the Voters module both count registered voters through this scope.
+     *
+     * @param  Builder<Resident>  $query
+     * @return Builder<Resident>
+     */
+    public function scopeInVoterRegistry(Builder $query): Builder
+    {
+        return $query->where('status', 'active')
+            ->whereNull('deleted_at')
+            ->whereDate('date_of_birth', '<=', today()->subYears(15));
     }
 
     /** @return array{eligible: bool, reasons: list<string>} */
