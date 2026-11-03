@@ -422,6 +422,84 @@ body[data-personnel-layout="iot"] :is(.panel-heading span, .empty-state p, .empl
 #app.admin-interface button.status-pill { font-family: inherit; cursor: pointer; }
 #app.admin-interface button.status-pill:focus-visible { outline: 2px solid var(--civic-primary); outline-offset: 2px; }
 #app.admin-interface .page-header-row { flex-wrap: wrap; gap: 12px; }
+/* ── Certificates: readable lane titles, roomier lanes, card actions that never wrap mid-label ── */
+/* Process steps use soft tiles with a coloured icon, like the summary cards (a later rule had hidden the white icon). */
+#app.admin-interface .cert-flow-icon { background: color-mix(in srgb, var(--flow-accent, var(--civic-primary)) 14%, var(--staff-card)); color: var(--flow-accent, var(--civic-primary)); box-shadow: none; }
+#app.admin-interface .cert-flow-icon svg { stroke: currentColor; color: inherit; }
+body:not(.light-mode) #app.admin-interface :is(.cert-flow-icon, .cert-flow-number) { color: color-mix(in srgb, var(--flow-accent, #2f9e62) 55%, #ffffff); }
+@media (max-width: 760px) {
+  #app.admin-interface :is(#screen-incidents, #screen-request-records) .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  #app.admin-interface :is(#screen-incidents, #screen-request-records) .stat-card { padding: 14px; }
+  #app.admin-interface :is(#screen-incidents, #screen-request-records) .stat-value { margin-top: 8px; font-size: 26px; }
+}
+#app.admin-interface .incident-table .badge, #app.admin-interface .issued-history-table .badge { white-space: nowrap; }
+#app.admin-interface .card:has(> .card-header #elig-rules-toggle[aria-expanded="false"]) > .card-header { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
+#app.admin-interface .cert-lane { max-height: 640px; }
+#app.admin-interface .cert-lane-header { align-items: center; }
+#app.admin-interface .cert-lane-title { display: inline-flex; align-items: center; gap: 8px; color: var(--staff-ink); font-size: 15px; font-weight: 800; letter-spacing: 0; text-transform: none; }
+#app.admin-interface .cert-lane-title::before { content: ""; flex: 0 0 auto; width: 10px; height: 10px; border-radius: 50%; background: var(--lane-color); }
+#app.admin-interface .cert-card-actions[data-action-count] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#app.admin-interface .cert-card-actions[data-action-count="1"] { grid-template-columns: minmax(0, 1fr); }
+#app.admin-interface .cert-card-actions[data-action-count="3"] > .cert-card-action:first-child { grid-column: 1 / -1; }
+#app.admin-interface .cert-card-actions .btn { min-height: 34px; padding-inline: 8px; white-space: nowrap; }
+#app.admin-interface .issued-history-table td { white-space: nowrap; }
+#app.admin-interface .issued-history-table td:nth-child(2), #app.admin-interface .issued-history-table td:nth-child(3) { white-space: normal; }
+#app.admin-interface .issued-history-table .issued-date small { display: block; color: var(--staff-muted); font-size: 11.5px; }
+#app.admin-interface .issued-history-table .resident-actions > .btn:not(:has(> svg:only-child)) { width: auto; min-width: 64px; }
+
+/* ── Request Eligibility: one toolbar, then a single card of compact resident rows ── */
+#app.admin-interface .rr-header-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+#app.admin-interface .rr-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 14px; }
+#app.admin-interface .rr-toolbar .search-wrap { flex: 1 1 320px; max-width: none; }
+#app.admin-interface .rr-toolbar .status-pills { margin: 0; }
+#app.admin-interface .rr-list-card { padding: 0; overflow: hidden; }
+#app.admin-interface .rr-list { margin: 0; padding: 0; list-style: none; }
+#app.admin-interface .rr-row + .rr-row { border-top: 1px solid var(--staff-row); }
+#app.admin-interface .rr-row-summary { display: flex; align-items: center; gap: 12px; padding: 10px 16px; }
+#app.admin-interface .rr-row-toggle { display: flex; flex: 1 1 auto; align-items: center; gap: 12px; min-width: 0; padding: 4px; border: 0; border-radius: 8px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+#app.admin-interface .rr-row-toggle:hover { background: var(--staff-hover-bg); }
+#app.admin-interface .rr-row-toggle:focus-visible { outline: 2px solid var(--civic-primary); outline-offset: 2px; }
+#app.admin-interface .rr-avatar { flex: 0 0 auto; width: 34px; height: 34px; border: 1px solid var(--staff-border); background: var(--staff-soft); color: var(--staff-accent); font-size: 13px; }
+#app.admin-interface .rr-row-name { display: flex; flex-direction: column; min-width: 0; }
+#app.admin-interface .rr-row-name strong { color: var(--staff-ink); font-size: 13.5px; }
+#app.admin-interface .rr-row-name small { color: var(--staff-muted); font-size: 11.5px; overflow-wrap: anywhere; }
+#app.admin-interface .rr-chevron { width: 8px; height: 8px; margin-left: auto; border-right: 2px solid var(--staff-muted); border-bottom: 2px solid var(--staff-muted); transform: rotate(45deg); transition: transform .15s ease; }
+#app.admin-interface .rr-row-toggle[aria-expanded="true"] .rr-chevron { transform: rotate(-135deg); }
+#app.admin-interface .rr-request-count { flex: 0 0 auto; min-width: 82px; color: var(--staff-muted); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
+#app.admin-interface .rr-row-summary > .badge { flex: 0 0 auto; }
+#app.admin-interface .rr-requests-panel { padding: 0 16px 14px 62px; background: transparent; }
+@media (prefers-reduced-motion: reduce) { #app.admin-interface .rr-chevron { transition: none; } }
+@media (max-width: 640px) {
+  #app.admin-interface .rr-row-summary { flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
+  #app.admin-interface .rr-row-toggle { flex-basis: 100%; }
+  #app.admin-interface .rr-request-count { min-width: 0; margin-right: auto; text-align: left; }
+  #app.admin-interface .rr-requests-panel { padding: 0 12px 12px; }
+}
+
+/* ── Incident Reports: search on its own row, labelled filters below, a table that fits without sideways scrolling ── */
+#app.admin-interface .incident-filter-bar { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px 12px; align-items: center; }
+#app.admin-interface .incident-filter-bar .incident-filter-search { grid-column: 1 / -1; }
+#app.admin-interface .incident-date-filter { display: flex; align-items: center; gap: 8px; min-width: 0; margin: 0; }
+#app.admin-interface .incident-date-filter > span { flex: 0 0 auto; color: var(--staff-muted); font-size: 12px; font-weight: 700; }
+#app.admin-interface .incident-date-filter > .form-input { flex: 1 1 auto; min-width: 0; }
+#app.admin-interface .incident-table { min-width: 920px; }
+#app.admin-interface .incident-table .incident-cell-main { text-align: left; }
+#app.admin-interface .incident-table .incident-cell-main strong { display: block; color: var(--staff-ink); font-size: 13px; }
+#app.admin-interface .incident-table .incident-cell-main .resident-number { display: block; margin-top: 2px; font-size: 10.5px; overflow-wrap: anywhere; }
+#app.admin-interface .incident-table .incident-cell-date span { display: block; white-space: nowrap; }
+#app.admin-interface .incident-table .incident-cell-date small { color: var(--staff-muted); font-size: 11.5px; white-space: nowrap; }
+#app.admin-interface .incident-table .incident-row { cursor: pointer; }
+#app.admin-interface .incident-table .incident-row:focus-visible { outline: 2px solid var(--civic-primary); outline-offset: -2px; }
+#app.admin-interface .incident-table .resident-actions > .btn:not(:has(> svg:only-child)) { width: auto; min-width: 62px; padding-inline: 10px; white-space: nowrap; }
+@media (max-width: 1100px) {
+  #app.admin-interface .incident-filter-bar { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  #app.admin-interface .incident-filter-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  #app.admin-interface .incident-filter-bar #incident-assignee-filter { grid-column: 1 / -1; }
+  #app.admin-interface .incident-date-filter { flex-direction: column; align-items: stretch; gap: 4px; }
+}
+
 /* Import preview summary: labelled counts; problems in red, duplicates in amber, ready rows in green. */
 body[data-personnel-layout="admin"] #profiling-summary { display: flex; flex-wrap: wrap; gap: 8px; }
 body[data-personnel-layout="admin"] .profiling-summary-item { display: inline-flex; align-items: baseline; gap: 6px; padding: 6px 10px; border: 1px solid var(--staff-border); border-radius: 8px; background: var(--staff-soft); color: var(--staff-muted); font-size: 12.5px; }

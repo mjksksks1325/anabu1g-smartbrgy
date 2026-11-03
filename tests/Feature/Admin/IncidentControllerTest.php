@@ -78,6 +78,16 @@ it('files a validated incident with a private attachment', function () {
     Storage::disk('local')->assertExists($incident->attachments[0]['path']);
 });
 
+it('names incident form fields the way staff see them in validation messages', function () {
+    $staff = User::factory()->assignedOperations()->create();
+
+    $this->actingAs($staff)->postJson(route('staff.incidents.store'), incidentPayload(['occurred_date' => '', 'location' => '']))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['occurred_date' => 'The incident date field is required.', 'location' => 'The location field is required.']);
+
+    expect(Incident::query()->count())->toBe(0);
+});
+
 it('rejects invalid incident data and unsafe attachments', function () {
     Storage::fake('local');
     $staff = User::factory()->assignedOperations()->create();

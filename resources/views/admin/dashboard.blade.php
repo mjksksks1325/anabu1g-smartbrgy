@@ -343,9 +343,8 @@
     <!-- CERTIFICATES -->
     <div class="content{{ $activeScreen === 'certificates' ? ' active' : '' }}" id="screen-certificates">
       <div class="page-header-row">
-        <div class="page-header"><h1>Certificates &amp; <span>Clearances</span></h1><p>Issue and track official barangay documents</p></div>
-        <div style="display:flex;gap:8px;">
-          <button class="btn btn-primary btn-sm" onclick="showPublicPortal()"> Public Portal</button>
+        <div class="page-header"><h1>Certificates &amp; Clearances</h1><p>Issue and track official barangay documents</p></div>
+        <div class="rr-header-actions">
           <button class="btn btn-sm" type="button" onclick="openCertificateFees()">Certificates &amp; Fees</button>
         </div>
       </div>
@@ -396,11 +395,11 @@
             @endforeach
           </select>
           <select class="form-input" id="issued-source-filter" aria-label="Request source" onchange="refreshIssuedCertificates(1)"><option value="">All sources</option><option value="online">Online</option><option value="onsite">Walk-in / onsite</option></select>
-          <input class="form-input" type="date" id="issued-date-from" aria-label="Issued from" onchange="refreshIssuedCertificates(1)"/>
-          <input class="form-input" type="date" id="issued-date-to" aria-label="Issued to" onchange="refreshIssuedCertificates(1)"/>
+          <label class="incident-date-filter"><span>From</span><input class="form-input" type="date" id="issued-date-from" aria-label="Issued from" onchange="refreshIssuedCertificates(1)"/></label>
+          <label class="incident-date-filter"><span>To</span><input class="form-input" type="date" id="issued-date-to" aria-label="Issued to" onchange="refreshIssuedCertificates(1)"/></label>
         </form>
         <div class="table-scroll">
-          <table class="tbl">
+          <table class="tbl issued-history-table">
             <thead><tr><th>Certificate No.</th><th>Resident</th><th>Document</th><th>Source</th><th>Fee</th><th>Date Issued</th><th>Issued By</th><th>Actions</th></tr></thead>
             <tbody id="issued-certificates-tbody">
               <tr><td colspan="8" style="text-align:center;color:var(--text-muted);">Loading issued certificates...</td></tr>
@@ -414,8 +413,8 @@
     <!-- INCIDENTS -->
     <div class="content{{ $activeScreen === 'incidents' ? ' active' : '' }}" id="screen-incidents">
       <div class="page-header-row">
-        <div class="page-header"><h1>Incident <span>Reports</span></h1><p>Complaints and incidents in the barangay</p></div>
-        <button data-action-permission="incidents.submit|vawc.submit" class="btn btn-danger" onclick="openAddIncident()" @if(!auth()->user()->hasAnyPermission(['incidents.submit', 'vawc.submit'])) hidden style="display:none;" @endif> File Incident</button>
+        <div class="page-header"><h1>Incident Reports</h1><p>Complaints and incidents in the barangay</p></div>
+        <button data-action-permission="incidents.submit|vawc.submit" class="btn btn-primary" onclick="openAddIncident()" @if(!auth()->user()->hasAnyPermission(['incidents.submit', 'vawc.submit'])) hidden style="display:none;" @endif> File Incident</button>
       </div>
       <div class="stats-grid stats-grid-3">
         <div class="stat-card red"><div class="stat-label">Open / Under Review</div><div class="stat-value" id="inc-stat-pending">0</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div></div>
@@ -423,17 +422,17 @@
         <div class="stat-card amber"><div class="stat-label">High Severity</div><div class="stat-value" id="inc-stat-high">0</div><div class="stat-icon"><x-staff-icon name="alert" /></div></div>
       </div>
       <div class="incident-filter-bar" role="search" aria-label="Filter incident reports">
-        <div class="search-wrap"><span class="si"></span><input class="search-input" id="incident-search" autocomplete="off" placeholder="Search ID, type, location, or name..." oninput="filterIncidents()"/></div>
+        <div class="search-wrap incident-filter-search"><span class="si"></span><input class="search-input" id="incident-search" type="search" autocomplete="off" aria-label="Search incident reports" placeholder="Search ID, type, location, or name..." oninput="filterIncidents()"/></div>
         <select class="form-input" id="incident-status-filter" aria-label="Incident status" onchange="filterIncidents()"><option value="">Lahat ng Status</option><option value="open">Open</option><option value="under_review">Under Review</option><option value="referred">Referred</option><option value="resolved">Resolved</option><option value="closed">Closed</option><option value="pending">Pending (legacy)</option><option value="under_investigation">Under Investigation (legacy)</option><option value="dismissed">Dismissed (legacy)</option></select>
         <select class="form-input" id="incident-severity-filter" aria-label="Incident severity" onchange="filterIncidents()"><option value="">Lahat ng Severity</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select>
-        <input class="form-input" type="date" id="incident-date-from" aria-label="Incident date from" onchange="filterIncidents()"/>
-        <input class="form-input" type="date" id="incident-date-to" aria-label="Incident date to" onchange="filterIncidents()"/>
+        <label class="incident-date-filter"><span>From</span><input class="form-input" type="date" id="incident-date-from" aria-label="Incident date from" onchange="filterIncidents()"/></label>
+        <label class="incident-date-filter"><span>To</span><input class="form-input" type="date" id="incident-date-to" aria-label="Incident date to" onchange="filterIncidents()"/></label>
         <select class="form-input" id="incident-assignee-filter" aria-label="Assigned staff" onchange="filterIncidents()"><option value="">All assigned staff</option></select>
       </div>
       <div class="card">
         <div class="table-scroll" tabindex="0" role="region" aria-label="Incident reports table"><table class="tbl incident-table">
-          <thead><tr><th>Incident ID</th><th>Uri</th><th>Lokasyon</th><th>Petsa</th><th>Nag-report</th><th>Ine-reklamo</th><th>Severity</th><th>Status</th><th>Actions</th></tr></thead>
-          <tbody id="incidents-tbody"><tr><td colspan="9" class="resident-table-message">Loading incident reports...</td></tr></tbody>
+          <thead><tr><th>Incident</th><th>Date</th><th>Location</th><th>Complainant</th><th>Respondent</th><th>Severity</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="incidents-tbody"><tr><td colspan="8" class="resident-table-message">Loading incident reports...</td></tr></tbody>
         </table></div>
         <div class="resident-pagination" id="incident-pagination"></div>
       </div>
@@ -442,10 +441,10 @@
     <!-- REQUEST RECORDS -->
     <div class="content{{ $activeScreen === 'request-records' ? ' active' : '' }}" id="screen-request-records">
       <div class="page-header-row">
-        <div class="page-header"><h1>Request <span>Eligibility</span></h1><p>Complete document request history per resident — eligibility tracking & audit trail</p></div>
-        <div style="display:flex;gap:8px;">
-          <button class="btn btn-primary btn-sm" onclick="openModal('modal-eligibility-check')"> Check Eligibility</button>
-          @can('eligibility.export')<a class="btn btn-green btn-sm" href="{{ route('staff.request-records.export') }}"> Export</a>@endcan
+        <div class="page-header"><h1>Request Eligibility</h1><p>Complete document request history per resident — eligibility tracking & audit trail</p></div>
+        <div class="rr-header-actions">
+          <button class="btn btn-primary" onclick="openModal('modal-eligibility-check')">Check Eligibility</button>
+          @can('eligibility.export')<a class="btn" href="{{ route('staff.request-records.export') }}">Export</a>@endcan
         </div>
       </div>
 
@@ -458,22 +457,22 @@
       </div>
 
       <!-- Search & Filter -->
-      <div class="search-row">
-        <div class="search-wrap"><span class="si"></span><input class="search-input" id="rr-search" autocomplete="off" placeholder="Search resident by name or ID..." oninput="filterRequestRecords()"/></div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;">
-          <button class="btn btn-sm rr-filter-btn active" onclick="filterRRStatus('',this)">All</button>
-          <button class="btn btn-sm rr-filter-btn" onclick="filterRRStatus('eligible',this)"> Eligible</button>
-          <button class="btn btn-sm rr-filter-btn" onclick="filterRRStatus('ineligible',this)"> Needs Review</button>
+      <div class="rr-toolbar" role="search" aria-label="Find residents and their request history">
+        <div class="search-wrap"><span class="si"></span><input class="search-input" id="rr-search" type="search" autocomplete="off" aria-label="Search resident by name or ID" placeholder="Search resident by name or ID..." oninput="filterRequestRecords()"/></div>
+        <div class="status-pills" role="group" aria-label="Filter by standing">
+          <button type="button" class="status-pill rr-filter-btn active" aria-pressed="true" onclick="filterRRStatus('',this)">All</button>
+          <button type="button" class="status-pill rr-filter-btn" aria-pressed="false" onclick="filterRRStatus('eligible',this)">Good Standing</button>
+          <button type="button" class="status-pill rr-filter-btn" aria-pressed="false" onclick="filterRRStatus('ineligible',this)">Needs Review</button>
         </div>
       </div>
-      <div id="rr-resident-list" style="display:flex;flex-direction:column;gap:10px;margin-top:4px;"></div>
+      <div id="rr-resident-list"></div>
       <div class="resident-pagination" id="rr-pagination"></div>
 
       <!-- Eligibility Rules Reference -->
       <div class="card" style="margin-bottom:14px;">
-        <div class="card-header" onclick="toggleEligRules()" style="cursor:pointer;">
-          <div><div class="card-title">Eligibility Rules Reference</div><div class="card-sub">Click to expand — rules applied per document type</div></div>
-          <span style="color:var(--text-muted);font-size:12px;" id="elig-rules-chevron">▼ Show</span>
+        <div class="card-header">
+          <div><div class="card-title">Eligibility Rules Reference</div><div class="card-sub">Rules applied per document type</div></div>
+          <button type="button" class="btn btn-xs" id="elig-rules-toggle" aria-expanded="false" aria-controls="elig-rules-panel" onclick="toggleEligRules()"><span id="elig-rules-chevron">Show</span></button>
         </div>
         <div id="elig-rules-panel" style="display:none;">
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:4px;" id="elig-rules-grid"></div>
@@ -484,7 +483,7 @@
         <div class="card-header"><div><div class="card-title">Reviewed document restrictions</div><div class="card-sub">An incident or BPO alone does not block requests. A restriction requires an explicit reviewed decision.</div></div>
           @can('create', App\Models\ResidentRequestRestriction::class)<button class="btn btn-primary btn-sm" onclick="openRestrictionForm()">Add restriction</button>@endcan
         </div>
-        <div class="search-row"><input class="search-input" id="restriction-search" autocomplete="off" aria-label="Search restrictions by resident" placeholder="Search resident name or resident number"/><button class="btn btn-sm" onclick="loadRestrictions(1)">Search</button></div>
+        <form class="rr-toolbar" role="search" aria-label="Search restrictions" onsubmit="event.preventDefault(); loadRestrictions(1);"><div class="search-wrap"><span class="si"></span><input class="search-input" id="restriction-search" type="search" autocomplete="off" aria-label="Search restrictions by resident" placeholder="Search resident name or resident number"/></div><button class="btn" type="submit">Search</button></form>
         <div class="table-scroll"><table class="tbl"><thead><tr><th>Resident</th><th>Document scope</th><th>Status</th><th>Dates / decision</th><th>Actions</th></tr></thead><tbody id="restrictions-tbody"></tbody></table></div>
         <div class="resident-pagination" id="restrictions-pagination"></div>
       </div>
@@ -1046,25 +1045,25 @@
     <div class="modal-header"><div class="modal-title" id="inc-modal-title"> File Incident Report</div><button type="button" class="modal-close" onclick="closeModal('modal-incident')" aria-label="Close">&times;</button></div>
     <div class="form-group"><div class="form-label">Incident Type *</div>
       @if(auth()->user()->hasAnyPermission(['vawc.submit', 'vawc.update']))<label><input type="checkbox" id="inc-sensitive"> Restricted VAWC / BPO case</label>@endif
-      <select class="form-input" id="inc-type"><option value="">Select type...</option><option>Noise Complaint</option><option>Property Dispute</option><option>Domestic Dispute</option><option>Vandalism</option><option>Theft</option><option>Physical Assault</option><option>Iba pa</option></select>
+      <select class="form-input" id="inc-type" name="incident_type"><option value="">Select type...</option><option>Noise Complaint</option><option>Property Dispute</option><option>Domestic Dispute</option><option>Vandalism</option><option>Theft</option><option>Physical Assault</option><option>Iba pa</option></select>
     </div>
     <div class="form-row">
-      <div class="form-group"><div class="form-label">Incident Date *</div><input class="form-input" type="date" id="inc-date"/></div>
-      <div class="form-group"><div class="form-label">Time</div><input class="form-input" type="time" id="inc-time"/></div>
+      <div class="form-group"><div class="form-label">Incident Date *</div><input class="form-input" type="date" id="inc-date" name="occurred_date"/></div>
+      <div class="form-group"><div class="form-label">Time</div><input class="form-input" type="time" id="inc-time" name="occurred_time"/></div>
     </div>
-    <div class="form-group"><div class="form-label">Location *</div><input class="form-input" id="inc-location" placeholder="Purok, Street..."/></div>
-    <div class="form-group"><div class="form-label">Complainant / Reporter</div><input class="form-input" id="inc-reported" placeholder="Full name of complainant or Anonymous"/></div>
-    <div class="form-group"><div class="form-label">Ine-reklamo</div><input class="form-input" id="inc-complainee" placeholder="Buong pangalan ng ine-reklamo"/></div>
+    <div class="form-group"><div class="form-label">Location *</div><input class="form-input" id="inc-location" name="location" placeholder="Purok, Street..."/></div>
+    <div class="form-group"><div class="form-label">Complainant / Reporter</div><input class="form-input" id="inc-reported" name="complainant_name" placeholder="Full name of complainant or Anonymous"/></div>
+    <div class="form-group"><div class="form-label">Respondent</div><input class="form-input" id="inc-complainee" name="respondent_name" placeholder="Full name of the respondent, if known"/></div>
       <div class="form-row incident-resident-link-row">
       <div class="form-group incident-resident-link"><label class="form-label" for="inc-complainant-search">Link complainant resident (optional)</label><input class="form-input" id="inc-complainant-search" autocomplete="off" placeholder="Search name / resident number" aria-controls="inc-complainant-results" aria-autocomplete="list" oninput="searchCaseResidents('inc-complainant')"/><div class="incident-resident-results" id="inc-complainant-results" role="listbox" aria-label="Matching complainant residents" hidden></div><select class="form-input" id="inc-complainant-resident" aria-label="Linked complainant resident"><option value="">External person / no resident link</option></select><small class="incident-resident-selection" id="inc-complainant-selection" aria-live="polite">Search, then choose a matching resident.</small></div>
       <div class="form-group incident-resident-link"><label class="form-label" for="inc-respondent-search">Link respondent resident (optional)</label><input class="form-input" id="inc-respondent-search" autocomplete="off" placeholder="Search name / resident number" aria-controls="inc-respondent-results" aria-autocomplete="list" oninput="searchCaseResidents('inc-respondent')"/><div class="incident-resident-results" id="inc-respondent-results" role="listbox" aria-label="Matching respondent residents" hidden></div><select class="form-input" id="inc-respondent-resident" aria-label="Linked respondent resident"><option value="">External person / no resident link</option></select><small class="incident-resident-selection" id="inc-respondent-selection" aria-live="polite">Search, then choose a matching resident.</small></div>
     </div>
     <div class="form-group"><label class="form-label" for="inc-assigned-to">Assigned staff</label><select class="form-input" id="inc-assigned-to"><option value="">Loading staff…</option></select><small class="incident-resident-selection">Staff responsible for follow-up and case updates.</small></div>
     <div class="form-group"><label class="form-label" for="inc-remarks">Internal remarks</label><textarea class="form-input" id="inc-remarks" rows="2"></textarea></div>
-    <div class="form-group"><div class="form-label">Severity</div><select class="form-input" id="inc-severity"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></div>
-    <div class="form-group" id="inc-status-group" style="display:none;"><div class="form-label">Status *</div><select class="form-input" id="inc-status" onchange="toggleIncidentResolution()"><option value="open">Open</option><option value="under_review">Under Review</option><option value="referred">Referred</option><option value="resolved">Resolved</option><option value="closed">Closed</option><option value="pending">Pending (legacy)</option><option value="under_investigation">Under Investigation (legacy)</option><option value="dismissed">Dismissed (legacy)</option></select></div>
-    <div class="form-group" id="inc-resolution-group" style="display:none;"><div class="form-label">Resolution Notes *</div><textarea class="form-input" id="inc-resolution-notes" rows="3" placeholder="Ilagay ang resolution o kasunduan..."></textarea></div>
-    <div class="form-group"><div class="form-label">Incident Details *</div><textarea class="form-input" id="inc-details" rows="4" placeholder="Describe what happened..."></textarea></div>
+    <div class="form-group"><div class="form-label">Severity</div><select class="form-input" id="inc-severity" name="severity"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></div>
+    <div class="form-group" id="inc-status-group" style="display:none;"><div class="form-label">Status *</div><select class="form-input" id="inc-status" name="status" onchange="toggleIncidentResolution()"><option value="open">Open</option><option value="under_review">Under Review</option><option value="referred">Referred</option><option value="resolved">Resolved</option><option value="closed">Closed</option><option value="pending">Pending (legacy)</option><option value="under_investigation">Under Investigation (legacy)</option><option value="dismissed">Dismissed (legacy)</option></select></div>
+    <div class="form-group" id="inc-resolution-group" style="display:none;"><div class="form-label">Resolution Notes *</div><textarea class="form-input" id="inc-resolution-notes" name="resolution_notes" rows="3" placeholder="Ilagay ang resolution o kasunduan..."></textarea></div>
+    <div class="form-group"><div class="form-label">Incident Details *</div><textarea class="form-input" id="inc-details" name="details" rows="4" placeholder="Describe what happened..."></textarea></div>
     <div class="form-group">
       <div class="form-label">Attachments <span style="color:var(--text-muted);font-weight:400;">(optional — supported image files only; up to 5 MB each)</span></div>
       <input class="form-input" type="file" id="inc-attachments" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.avif,.heic,.heif,image/jpeg,image/png,image/gif,image/bmp,image/webp,image/avif,image/heic,image/heif" multiple style="padding:6px;cursor:pointer;"/>
@@ -1072,7 +1071,7 @@
     </div>
     <input type="hidden" id="inc-edit-id" value=""/>
     <div class="modal-footer">
-      <button class="btn btn-danger" onclick="saveIncident()"> File Report</button>
+      <button class="btn btn-primary" id="inc-save-button" type="button" onclick="saveIncident()">File Report</button>
     </div>
   </div>
 </div>
@@ -1087,8 +1086,8 @@
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border);">
       <span style="font-family:var(--font-mono);font-size:13px;color:var(--blue-400);font-weight:700;" id="view-inc-id">—</span>
       <span style="font-size:13px;font-weight:700;color:var(--text-primary);flex:1;" id="view-inc-type">—</span>
-      <span style="font-size:12px;font-weight:700;padding:2px 10px;border-radius:999px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);" id="view-inc-severity">—</span>
-      <span style="font-size:12px;font-weight:700;padding:2px 10px;border-radius:999px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);" id="view-inc-status">—</span>
+      <span class="badge" id="view-inc-severity">—</span>
+      <span class="badge" id="view-inc-status">—</span>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
       <div>

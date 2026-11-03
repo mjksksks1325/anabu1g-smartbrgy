@@ -19,12 +19,14 @@ function caseClient(api) {
     escapeText: value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character])),
   });
   vm.runInContext(source, context);
+  vm.runInContext(adminSource.slice(adminSource.indexOf('function renderPager('), adminSource.indexOf('function renderIssuedCertificatesPagination(')), context);
   return { context, field };
 }
 
 test('restriction list escapes internal decision text and shows explicit review actions only to admins', async () => {
   const { context, field } = caseClient(async () => ({ data: [{ id: 1, resident: { full_name: '<script>name</script>' }, status: 'pending_review', reason_category: '<img src=x>', internal_reason: '<svg onload=alert(1)>' }], total: 1, current_page: 1, last_page: 1 }));
   await context.loadRestrictions();
+  assert.match(field('restrictions-pagination').innerHTML, /Showing 1–1 of 1 <span>restriction<\/span>/);
   assert.match(field('restrictions-tbody').innerHTML, /Review &amp; Activate/);
   assert.match(field('restrictions-tbody').innerHTML, /&lt;script&gt;/);
   assert.ok(!field('restrictions-tbody').innerHTML.includes('<svg'));

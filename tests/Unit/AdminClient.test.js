@@ -1102,3 +1102,30 @@ test('the eligibility search finds residents outside the default list and checks
   assert.equal(select.options[0].value, 'ANB-145');
   assert.equal(context.findEligibilityResident('ANB-145').databaseId, 145);
 });
+
+test('incident rows use status colours by meaning, split date and time, and open the record from the row', async () => {
+  const { context, fields } = await client();
+  const tbody = { innerHTML: '', rows: [], appendChild(row) { this.rows.push(row); } };
+  fields.set('incidents-tbody', tbody);
+  fields.set('incident-pagination', { innerHTML: '' });
+  context.document.createElement = () => {
+    const listeners = {};
+    return { className: '', tabIndex: -1, innerHTML: '', listeners, setAttribute() {}, addEventListener(type, handler) { listeners[type] = handler; }, querySelectorAll: () => [] };
+  };
+  vm.runInContext(`INCIDENTS.splice(0, INCIDENTS.length, { id: 4, incident_number: 'INC-1', incident_type: 'Theft', occurred_at_display: 'Nov 2, 2026 3:30 PM', location: 'Purok 1',
+    complainant_name: 'Ana Cruz', respondent_name: null, severity: 'high', severity_label: 'High', status: 'closed', status_label: 'Closed', can_update: true, can_archive: false });
+    opened = []; openViewIncident = id => opened.push(id);`, context);
+
+  context.renderIncidents(1);
+  const row = tbody.rows[0];
+
+  assert.match(row.innerHTML, /class="badge badge-gray">Closed/);
+  assert.match(row.innerHTML, /<span>Nov 2, 2026<\/span><small>3:30 PM<\/small>/);
+  assert.doesNotMatch(row.innerHTML, /btn-primary/);
+  row.listeners.click({ target: { closest: () => ({ tagName: 'BUTTON' }) } });
+  assert.equal(context.opened.length, 0);
+  row.listeners.click({ target: { closest: () => null } });
+  assert.deepEqual([...context.opened], [4]);
+  assert.equal(context.incidentStatusBadge('open'), 'badge-blue');
+  assert.equal(context.incidentStatusBadge('referred'), 'badge-purple');
+});

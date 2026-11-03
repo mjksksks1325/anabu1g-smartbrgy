@@ -1571,9 +1571,9 @@ function renderIssuedCertificates(certificates, meta = null) {
   }
 
   certificates.forEach(certificate => {
-    const issuedDate = certificate.issued_at
-      ? new Date(certificate.issued_at).toLocaleString('en-PH')
-      : '—';
+    const issuedAt = certificate.issued_at ? new Date(certificate.issued_at) : null;
+    const issuedDate = issuedAt ? issuedAt.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+    const issuedTime = issuedAt ? issuedAt.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' }) : '';
     const fee = Number(certificate.amount_paid) > 0
       ? `PHP ${Number(certificate.amount_paid).toFixed(2)}`
       : 'FREE';
@@ -1587,9 +1587,9 @@ function renderIssuedCertificates(certificates, meta = null) {
       <td>${escapeText(certificate.certificate_type)}</td>
       <td><span class="badge ${sourceBadgeClass}">${escapeText(source.toUpperCase())}</span></td>
       <td>${escapeText(fee)}</td>
-      <td>${escapeText(issuedDate)}</td>
+      <td class="issued-date">${escapeText(issuedDate)}<small>${escapeText(issuedTime)}</small></td>
       <td>${escapeText(certificate.issued_by || 'Barangay Staff')}</td>
-      <td><div style="display:flex;gap:5px;"><button data-action-permission="documents.print" class="btn btn-xs btn-green issued-reprint"> Reprint</button><button class="btn btn-xs issued-verify"> Verify</button></div></td>`;
+      <td><div class="resident-actions"><button type="button" data-action-permission="documents.print" class="btn btn-xs issued-reprint">Reprint</button><button type="button" class="btn btn-xs issued-verify">Verify</button></div></td>`;
 
     row.querySelector('.issued-reprint')?.addEventListener('click', () => {
       window.open(certificate.print_url, '_blank');
@@ -1634,57 +1634,6 @@ function legacyRenderUsers() {
       <td><button class="btn btn-xs btn-primary" onclick="showToast('Managing user ${u.name}', '')">Manage</button></td>`;
     tbody.appendChild(tr);
   });
-}
-
-// ═══════════════════════════════════════
-// PUBLIC PORTAL
-// ═══════════════════════════════════════
-let selectedCertType = null;
-function showPublicPortal() {
-  document.getElementById('public-portal').classList.add('show');
-  document.getElementById('portal-confirm').classList.remove('show');
-  selectedCertType = null;
-  document.querySelectorAll('.cert-type-btn').forEach(b => b.classList.remove('selected'));
-  document.getElementById('portal-form').style.display = 'none';
-  document.getElementById('portal-cert-grid').style.display = 'grid';
-  document.getElementById('portal-btn-next').style.display = 'none';
-  const emailInput = document.getElementById('portal-email');
-  if (emailInput) emailInput.value = '';
-  const attInput = document.getElementById('portal-attachment');
-  if (attInput) attInput.value = '';
-  const attPreview = document.getElementById('portal-attachment-preview');
-  if (attPreview) { attPreview.style.display = 'none'; attPreview.innerHTML = ''; }
-}
-function hidePublicPortal() { document.getElementById('public-portal').classList.remove('show'); }
-function selectCertType(id) {
-  selectedCertType = id;
-  document.querySelectorAll('.cert-type-btn').forEach(b => b.classList.remove('selected'));
-  event.currentTarget.classList.add('selected');
-  document.getElementById('portal-btn-next').style.display = 'block';
-}
-function portalNext() {
-  if (!selectedCertType) { showToast(adminText('Pumili muna ng uri ng dokumento.'), 'red'); return; }
-  document.getElementById('portal-cert-grid').style.display = 'none';
-  document.getElementById('portal-btn-next').style.display = 'none';
-  document.getElementById('portal-form').style.display = 'block';
-  const ct = CERTIFICATE_TYPES.find(c => c.id === selectedCertType);
-  document.getElementById('portal-selected-cert').textContent = ct ? ct.label : '';
-}
-function submitPortalRequest() {
-  const name = document.getElementById('portal-name')?.value?.trim();
-  const addr = document.getElementById('portal-address')?.value?.trim();
-  const purpose = document.getElementById('portal-purpose')?.value?.trim();
-  if (!name || !addr || !purpose) { showToast(adminText('Kumpletuhin ang lahat ng required fields.'), 'red'); return; }
-  const code = 'REQ-' + (7743 + Math.floor(Math.random() * 100));
-  document.getElementById('portal-confirm-code').textContent = code;
-  document.getElementById('portal-form').style.display = 'none';
-  document.getElementById('portal-confirm').classList.add('show');
-  const ct = CERTIFICATE_TYPES.find(c => c.id === selectedCertType);
-  CERT_REQUESTS.unshift({ code, name, type: ct?.label || 'Certificate', requested: new Date().toLocaleString('en-PH'), status: 'Processing', via: 'Online' });
-  renderCertRequests();
-  const badge = document.getElementById('cert-nav-badge');
-  if (badge) { const n = (parseInt(badge.textContent) || 0) + 1; badge.textContent = n; badge.style.display = 'flex'; }
-  showToast(`Online request ${code} submitted!`, 'green');
 }
 
 // ═══════════════════════════════════════
@@ -1953,13 +1902,13 @@ function legacyRenderRequestRecords(nameFilter = '', statusFilter = '') {
   });
 }
 
-function toggleRRCard(header) {
-  const card = header.closest('.rr-resident-card');
-  const panelEl = card.querySelector('.rr-requests-panel');
-  const chevron = header.querySelector('.rr-chevron');
-  const isOpen = panelEl.style.display !== 'none';
-  panelEl.style.display = isOpen ? 'none' : 'block';
-  if (chevron) chevron.textContent = isOpen ? '▼' : '▲';
+/** Show or hide a resident's request history; the toggle button reports its state to assistive technology. */
+function toggleRRCard(toggle) {
+  const panel = document.getElementById(toggle.getAttribute('aria-controls'));
+  if (!panel) return;
+  const open = toggle.getAttribute('aria-expanded') !== 'true';
+  toggle.setAttribute('aria-expanded', String(open));
+  panel.hidden = !open;
 }
 
 function advanceRequestRecord(code, nextStatus) {
@@ -2407,10 +2356,11 @@ function renderDemographics() {
 // CERTIFICATES KANBAN
 // ═══════════════════════════════════════
 const CERT_LANES = [
-  { id: 'online',     label: 'Online Requests', color: '#A78BFA',          icon: '', next: 'In Progress',    nextLabel: '▶ Process',        nextClass: 'btn-primary' },
-  { id: 'processing', label: 'Processing',       color: '#F59E0B',          icon: '', next: 'Ready to Print', nextLabel: '▶ Ready to Print', nextClass: 'btn-primary' },
-  { id: 'ready',      label: 'Ready to Print',   color: 'var(--blue-400)', icon: '', next: 'Completed',      nextLabel: ' Print & Release',nextClass: 'btn-green'   },
-  { id: 'completed',  label: 'Released / Done',  color: 'var(--green-500)',icon: '', next: null,              nextLabel: null,               nextClass: ''            },
+  // Lane colours match the summary cards above the board: online purple, in progress amber, ready blue, released green.
+  { id: 'online',     label: 'New online requests', color: '#7c3aed', icon: '', next: 'In Progress',    nextLabel: 'Process',         nextClass: 'btn-primary' },
+  { id: 'processing', label: 'Processing',          color: '#b7791f', icon: '', next: 'Ready to Print', nextLabel: 'Mark ready',      nextClass: 'btn-primary' },
+  { id: 'ready',      label: 'Ready to Print',      color: '#2563eb', icon: '', next: 'Completed',      nextLabel: 'Print & release', nextClass: 'btn-green'   },
+  { id: 'completed',  label: 'Released / Done',     color: '#16845a', icon: '', next: null,              nextLabel: null,              nextClass: ''            },
 ];
 
 function getLane(status, via) {
@@ -3382,7 +3332,8 @@ function toggleEligRules() {
   if (!panel) return;
   const visible = panel.style.display !== 'none';
   panel.style.display = visible ? 'none' : 'block';
-  if (chevron) chevron.textContent = visible ? '▼ Show' : '▲ Hide';
+  if (chevron) chevron.textContent = visible ? 'Show' : 'Hide';
+  document.getElementById('elig-rules-toggle')?.setAttribute('aria-expanded', String(!visible));
   if (!visible) renderEligRulesGrid();
 }
 
@@ -3677,7 +3628,7 @@ function legacyEnglishSaveResident() {
 async function loadIncidents(page = 1) {
   const tbody = document.getElementById('incidents-tbody');
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="9" class="resident-table-message">Loading incident reports...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="8" class="resident-table-message">Loading incident reports...</td></tr>';
   const query = new URLSearchParams({ page: String(page), per_page: '15' });
   const search = document.getElementById('incident-search')?.value.trim();
   const status = document.getElementById('incident-status-filter')?.value;
@@ -3700,7 +3651,7 @@ async function loadIncidents(page = 1) {
     renderIncidents(payload.total || 0);
     updateIncidentSummary(payload.summary || {});
   } catch (error) {
-    tbody.innerHTML = `<tr><td colspan="9" class="resident-table-message resident-table-error">${escapeText(error.message)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="resident-table-message resident-table-error">${escapeText(error.message)}</td></tr>`;
   }
 }
 
@@ -3710,35 +3661,57 @@ function renderIncidents(total = 0) {
   tbody.innerHTML = '';
 
   if (INCIDENTS.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9" class="resident-table-message">Walang nakitang incident report.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="resident-table-message">Walang nakitang incident report.</td></tr>';
   }
 
   INCIDENTS.forEach(incident => {
     const severityClass = incident.severity === 'high' ? 'badge-red' : incident.severity === 'medium' ? 'badge-amber' : 'badge-gray';
-    const statusClass = incident.status === 'resolved' ? 'badge-green' : incident.status === 'dismissed' ? 'badge-gray' : 'badge-amber';
     const archiveButton = incident.can_archive
-      ? `<button data-action-permission="incidents.archive|vawc.archive" class="btn btn-xs btn-danger-outline" onclick="archiveIncident(${incident.id})">Archive</button>`
+      ? `<button type="button" data-action-permission="incidents.archive|vawc.archive" class="btn btn-xs btn-danger-outline" onclick="archiveIncident(${incident.id})">Archive</button>`
       : '';
+    // "Nov 2, 2026 3:30 PM" reads better as a date line and a time line than wrapped word by word.
+    const [, occurredDate = incident.occurred_at_display, occurredTime = ''] = String(incident.occurred_at_display || '').match(/^(\w{3} \d{1,2}, \d{4}) (.+)$/) || [];
     const row = document.createElement('tr');
+    row.className = 'incident-row';
+    row.tabIndex = 0;
+    row.setAttribute('aria-label', `${incident.incident_number}, ${incident.incident_type}. Open incident details`);
     row.innerHTML = `
-      <td><span class="resident-number">${escapeText(incident.incident_number)}</span></td>
-      <td><strong>${escapeText(incident.incident_type)}</strong></td>
+      <td class="incident-cell-main"><strong>${escapeText(incident.incident_type)}</strong><span class="resident-number">${escapeText(incident.incident_number)}</span></td>
+      <td class="incident-cell-date"><span>${escapeText(occurredDate)}</span><small>${escapeText(occurredTime)}</small></td>
       <td>${escapeText(incident.location)}</td>
-      <td>${escapeText(incident.occurred_at_display)}</td>
       <td>${escapeText(incident.complainant_name)}</td>
       <td>${incident.respondent_name ? escapeText(incident.respondent_name) : '—'}</td>
       <td><span class="badge ${severityClass}">${escapeText(incident.severity_label)}</span></td>
-      <td><span class="badge ${statusClass}">${escapeText(incident.status_label)}</span></td>
-      <td class="resident-actions">
-        <button class="btn btn-xs" onclick="openViewIncident(${incident.id})">View</button>
-        ${incident.can_update ? `<button data-action-permission="incidents.update|vawc.update" class="btn btn-xs btn-primary" onclick="openEditIncident(${incident.id})">Edit</button>` : ''}
+      <td><span class="badge ${incidentStatusBadge(incident.status)}">${escapeText(incident.status_label)}</span></td>
+      <td><div class="resident-actions">
+        <button type="button" class="btn btn-xs" onclick="openViewIncident(${incident.id})">View</button>
+        ${incident.can_update ? `<button type="button" data-action-permission="incidents.update|vawc.update" class="btn btn-xs" onclick="openEditIncident(${incident.id})">Edit</button>` : ''}
         ${archiveButton}
-      </td>`;
+      </div></td>`;
+    // The whole row opens the record; its own buttons keep their actions.
+    row.addEventListener('click', event => { if (!event.target.closest('button, a')) openViewIncident(incident.id); });
+    row.addEventListener('keydown', event => {
+      if (event.target === row && (event.key === 'Enter' || event.key === ' ')) {
+        event.preventDefault();
+        openViewIncident(incident.id);
+      }
+    });
     applyStaffActionVisibility(row);
     tbody.appendChild(row);
   });
 
   renderPager('incident-pagination', { page: incidentCurrentPage, lastPage: incidentLastPage, total, noun: ['report', 'reports'], loader: 'loadIncidents' });
+}
+
+/** Status colours by meaning: new is blue, in progress amber, handed over purple, done green, ended grey. */
+function incidentStatusBadge(status) {
+  return ({
+    open: 'badge-blue', pending: 'badge-blue',
+    under_review: 'badge-amber', under_investigation: 'badge-amber',
+    referred: 'badge-purple',
+    resolved: 'badge-green',
+    closed: 'badge-gray', dismissed: 'badge-gray',
+  })[status] || 'badge-gray';
 }
 
 function updateIncidentSummary(summary) {
@@ -3766,6 +3739,10 @@ function openViewIncident(id) {
   set('view-inc-description', incident.details);
   set('view-inc-severity', incident.severity_label);
   set('view-inc-status', incident.status_label);
+  const severityBadge = document.getElementById('view-inc-severity');
+  if (severityBadge) severityBadge.className = `badge ${incident.severity === 'high' ? 'badge-red' : incident.severity === 'medium' ? 'badge-amber' : 'badge-gray'}`;
+  const statusBadge = document.getElementById('view-inc-status');
+  if (statusBadge) statusBadge.className = `badge ${incidentStatusBadge(incident.status)}`;
   const editButton = document.getElementById('view-inc-edit-btn');
   if (editButton) editButton.hidden = !incident.can_update;
   if (editButton) editButton.onclick = () => { closeModal('modal-view-incident'); openEditIncident(id); };
@@ -3804,7 +3781,7 @@ async function openEditIncident(id) {
   document.getElementById('inc-attachments').value = '';
   document.getElementById('inc-attachments-preview').innerHTML = '';
   document.getElementById('inc-modal-title').textContent = 'Edit Incident Report';
-  document.querySelector('#modal-incident .btn-danger').textContent = 'Save Changes';
+  document.getElementById('inc-save-button').textContent = 'Save Changes';
   toggleIncidentResolution();
   if (typeof prepareIncidentLinks === 'function') prepareIncidentLinks(incident);
   openModal('modal-incident');
@@ -3828,7 +3805,7 @@ async function openAddIncident() {
   document.getElementById('inc-attachments').value = '';
   document.getElementById('inc-attachments-preview').innerHTML = '';
   document.getElementById('inc-modal-title').textContent = 'File Incident Report';
-  document.querySelector('#modal-incident .btn-danger').textContent = 'File Report';
+  document.getElementById('inc-save-button').textContent = 'File Report';
   if (typeof prepareIncidentLinks === 'function') prepareIncidentLinks();
   openModal('modal-incident');
   if (typeof loadCaseStaff === 'function') {
@@ -3867,7 +3844,7 @@ async function saveIncident() {
     formData.append('resolution_notes', document.getElementById('inc-resolution-notes')?.value.trim() || '');
   }
   [...(document.getElementById('inc-attachments')?.files || [])].forEach(file => formData.append('attachments[]', file));
-  const button = document.querySelector('#modal-incident .btn-danger');
+  const button = document.getElementById('inc-save-button');
   if (button) button.disabled = true;
 
   try {
@@ -3911,10 +3888,14 @@ async function archiveIncident(id) {
   }
 }
 
+/** Only the newest request-record search may render. */
+let requestRecordLoadVersion = 0;
+
 async function loadRequestRecords(page = 1) {
   const container = document.getElementById('rr-resident-list');
   if (!container) return;
-  container.innerHTML = '<div class="resident-table-message">Loading request records...</div>';
+  const version = ++requestRecordLoadVersion;
+  if (requestRecordResidents.length === 0) container.innerHTML = '<div class="card rr-list-card"><div class="resident-table-message">Loading request records...</div></div>';
   const query = new URLSearchParams({ page: String(page), per_page: '15' });
   if (rrCurrentFilter.trim()) query.set('search', rrCurrentFilter.trim());
   if (rrCurrentStatusFilter) query.set('eligibility', rrCurrentStatusFilter);
@@ -3925,6 +3906,7 @@ async function loadRequestRecords(page = 1) {
       headers: { 'Accept': 'application/json' }
     });
     const payload = await response.json();
+    if (version !== requestRecordLoadVersion) return;
     if (!response.ok) throw new Error(payload?.message || 'Hindi ma-load ang request records.');
     requestRecordResidents = payload.data || [];
     rrCurrentPage = Number(payload.current_page || 1);
@@ -3937,7 +3919,7 @@ async function loadRequestRecords(page = 1) {
     set('rr-blocked', summary.blocked);
     set('rr-review', summary.needs_review);
   } catch (error) {
-    container.innerHTML = `<div class="resident-table-message resident-table-error">${escapeText(error.message)}</div>`;
+    if (version === requestRecordLoadVersion) container.innerHTML = `<div class="card rr-list-card"><div class="resident-table-message resident-table-error">${escapeText(error.message)}</div></div>`;
   }
 }
 
@@ -3946,9 +3928,9 @@ function renderRequestRecords(total = 0) {
   if (!container) return;
 
   if (requestRecordResidents.length === 0) {
-    container.innerHTML = '<div class="resident-table-message">Walang nakitang resident request record.</div>';
+    container.innerHTML = '<div class="card rr-list-card"><div class="resident-table-message">Walang nakitang resident request record.</div></div>';
   } else {
-    container.innerHTML = requestRecordResidents.map(resident => {
+    container.innerHTML = '<div class="card rr-list-card"><ul class="rr-list">' + requestRecordResidents.map(resident => {
       const eligible = resident.status === 'active' && Boolean(resident.is_in_good_standing);
       const requests = Array.isArray(resident.document_requests) ? resident.document_requests : [];
       const requestRows = requests.length === 0
@@ -3965,27 +3947,23 @@ function renderRequestRecords(total = 0) {
             </tr>`;
           }).join('');
 
-      return `<div class="card rr-resident-card" style="margin-bottom:0;">
-        <div class="rr-resident-header" onclick="toggleRRCard(this)">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <div class="rr-avatar">${escapeText(String(resident.full_name || '?').charAt(0))}</div>
-            <div>
-              <div style="font-weight:700;color:var(--text-primary);font-size:13.5px;">${escapeText(resident.full_name)}</div>
-              <div style="font-size:11px;color:var(--text-muted);">${escapeText(resident.resident_number)} &nbsp;•&nbsp; ${escapeText(resident.purok)} &nbsp;•&nbsp; ${Number(resident.age)} yrs old</div>
-            </div>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span class="badge ${eligible ? 'badge-green' : 'badge-red'}">${eligible ? 'Good Standing' : 'Needs Review'}</span>
-            <span class="badge badge-gray">${requests.length} req</span>
-            <button class="btn btn-xs btn-primary" onclick="event.stopPropagation();openEligibilityForRequestResident(${resident.id})">Check</button>
-            <span class="rr-chevron">▼</span>
-          </div>
+      const panelId = `rr-requests-${Number(resident.id)}`;
+      return `<li class="rr-row">
+        <div class="rr-row-summary">
+          <button type="button" class="rr-row-toggle" aria-expanded="false" aria-controls="${panelId}" onclick="toggleRRCard(this)">
+            <span class="rr-avatar" aria-hidden="true">${escapeText(String(resident.full_name || '?').charAt(0))}</span>
+            <span class="rr-row-name"><strong>${escapeText(resident.full_name)}</strong><small>${escapeText(resident.resident_number)} · ${escapeText(resident.purok)} · ${Number(resident.age)} yrs old</small></span>
+            <span class="rr-chevron" aria-hidden="true"></span>
+          </button>
+          <span class="badge ${eligible ? 'badge-green' : 'badge-red'}">${eligible ? 'Good Standing' : 'Needs Review'}</span>
+          <span class="rr-request-count">${requests.length} <span>${requests.length === 1 ? 'request' : 'requests'}</span></span>
+          <button type="button" class="btn btn-xs" onclick="openEligibilityForRequestResident(${resident.id})">Check</button>
         </div>
-        <div class="rr-requests-panel" style="display:none;">
+        <div class="rr-requests-panel" id="${panelId}" hidden>
           <div class="table-scroll"><table class="tbl"><thead><tr><th>Code</th><th>Document</th><th>Date</th><th>Source</th><th>Status</th></tr></thead><tbody>${requestRows}</tbody></table></div>
         </div>
-      </div>`;
-    }).join('');
+      </li>`;
+    }).join('') + '</ul></div>';
   }
 
   renderPager('rr-pagination', { page: rrCurrentPage, lastPage: rrLastPage, total, noun: ['resident', 'residents'], loader: 'loadRequestRecords' });
@@ -4009,8 +3987,9 @@ function filterRequestRecords() {
 }
 
 function filterRRStatus(status, element) {
-  document.querySelectorAll('.rr-filter-btn').forEach(button => button.classList.remove('active'));
+  document.querySelectorAll('.rr-filter-btn').forEach(button => { button.classList.remove('active'); button.setAttribute?.('aria-pressed', 'false'); });
   element?.classList.add('active');
+  element?.setAttribute?.('aria-pressed', 'true');
   rrCurrentStatusFilter = status;
   void loadRequestRecords(1);
 }
