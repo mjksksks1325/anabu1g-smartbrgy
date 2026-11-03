@@ -756,6 +756,67 @@ test('user cards open details from a name button instead of nesting buttons in a
   assert.match(html, />Super Admin</);
 });
 
+test('a confirmation opened from a detail dialog is layered above it, which becomes inert until it closes', async () => {
+  const { context, fields } = await client();
+  const overlay = name => {
+    const classes = new Set();
+    return {
+      name, style: {}, inert: false, focused: 0,
+      classList: { add: value => classes.add(value), remove: value => classes.delete(value), contains: value => classes.has(value) },
+      setAttribute() {}, querySelector: () => null, querySelectorAll: () => [],
+    };
+  };
+  const details = overlay('details');
+  const confirmation = overlay('confirmation');
+  const app = { inert: false };
+  const pageButton = { isConnected: true, focus() { this.focused = true; } };
+  const archiveButton = { isConnected: true, focus() { this.focused = true; } };
+  fields.set('modal-view-resident', details);
+  fields.set('modal-confirm-action', confirmation);
+  fields.set('app', app);
+  const bodyClasses = new Set();
+  context.document.body = { classList: { toggle: (name, on) => (on ? bodyClasses.add(name) : bodyClasses.delete(name)) } };
+
+  context.document.activeElement = pageButton;
+  context.openModal('modal-view-resident');
+  context.document.activeElement = archiveButton;
+  context.openModal('modal-confirm-action');
+
+  assert.ok(Number(confirmation.style.zIndex) > Number(details.style.zIndex));
+  assert.equal(details.inert, true);
+  assert.equal(confirmation.inert, false);
+  assert.equal(app.inert, true);
+  assert.equal(bodyClasses.has('modal-open'), true);
+  assert.equal(context.topOpenModal(), confirmation);
+
+  context.closeModal('modal-confirm-action');
+  assert.equal(details.inert, false);
+  assert.equal(archiveButton.focused, true);
+  assert.equal(context.topOpenModal(), details);
+  assert.equal(app.inert, true);
+
+  context.closeModal('modal-view-resident');
+  assert.equal(app.inert, false);
+  assert.equal(bodyClasses.has('modal-open'), false);
+  assert.equal(pageButton.focused, true);
+  assert.equal(details.style.zIndex, '');
+});
+
+test('a confirmation whose opener was disabled before opening still returns focus to that opener', async () => {
+  const { context, fields, documentEvents } = await client();
+  const overlay = { style: {}, inert: false, classList: { add() {}, remove() {}, contains: () => true }, setAttribute() {}, querySelector: () => null, querySelectorAll: () => [] };
+  fields.set('modal-confirm-action', overlay);
+  const suspendButton = { isConnected: true, disabled: false, focused: false, focus() { this.focused = true; } };
+  context.document.body = { classList: { toggle() {} } };
+  documentEvents.get('focusin').forEach(handler => handler({ target: suspendButton }));
+  context.document.activeElement = context.document.body;
+
+  context.openModal('modal-confirm-action');
+  context.closeModal('modal-confirm-action');
+
+  assert.equal(suspendButton.focused, true);
+});
+
 test('dialogs open on their first usable field and keep a single dialog role', async () => {
   const { context, fields } = await client();
   const focused = [];

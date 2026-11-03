@@ -828,3 +828,5 @@ body[data-personnel-layout="iot"] .announcement-form input[type="file"]::file-se
 body[data-personnel-layout="iot"] .announcement-form input[type="file"]::file-selector-button:hover { background: var(--staff-quiet-hover); }
 body[data-personnel-layout="iot"] .announcement-form .field-feedback-message { margin-top: -10px; color: var(--staff-danger); font-size: 12px; font-weight: 600; }
 body[data-personnel-layout="iot"] .announcement-form [aria-invalid="true"] { border-color: var(--staff-danger); }
+/* ── Dialog layers: admin.js (syncModalLayers) orders open dialogs by z-index; the page behind them does not scroll ── */
+body[data-personnel-layout="admin"].modal-open { overflow: hidden; }

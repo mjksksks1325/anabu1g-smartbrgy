@@ -1659,9 +1659,12 @@ function openModal(id) {
   if (!element) return;
   const existing = modalStack.findIndex(entry => entry.id === id);
   if (existing >= 0) modalStack.splice(existing, 1);
-  modalStack.push({ id, trigger: document.activeElement });
+  const active = document.activeElement;
+  // A handler may disable its button before opening a confirmation, which drops focus to <body>: fall back to that button.
+  modalStack.push({ id, trigger: active && active !== document.body ? active : lastFocusedControl });
   window.PasswordVisibility?.hide(element);
   element.classList.add('show');
+  syncModalLayers();
   // A dialog that already declares its own role (e.g. the confirmation alertdialog) must not be wrapped in a second one.
   if (!element.querySelector('[role="dialog"], [role="alertdialog"]')) {
     element.setAttribute('role', 'dialog');
@@ -1674,6 +1677,25 @@ function openModal(id) {
   const firstField = [...(element.querySelectorAll?.('input:not([type="hidden"]), select, textarea') ?? [])].find(usable);
   (firstField || element.querySelector('button, [tabindex="0"]'))?.focus();
 }
+
+/**
+ * Keep the open dialogs layered in the order they were opened, not in source order: the newest dialog sits on top,
+ * every dialog below it and the page behind them are inert (no clicks, no Tab focus), and the page does not scroll.
+ */
+const MODAL_BASE_LAYER = 800;
+let lastFocusedControl = null;
+document.addEventListener('focusin', event => { lastFocusedControl = event.target; }, true);
+function syncModalLayers() {
+  const open = modalStack.map(entry => document.getElementById(entry.id)).filter(element => element && (element.classList?.contains?.('show') ?? true));
+  open.forEach((element, index) => {
+    if (element.style) element.style.zIndex = String(MODAL_BASE_LAYER + index + 1);
+    element.inert = index !== open.length - 1;
+  });
+  const app = document.getElementById('app');
+  if (app) app.inert = open.length > 0;
+  document.body?.classList?.toggle('modal-open', open.length > 0);
+}
+
 let confirmActionResolver = null;
 
 /**
@@ -1729,7 +1751,36 @@ function settleConfirmAction(confirmed) {
   resolve?.(confirmed);
 }
 
-function closeModal(id) { if (id === 'modal-confirm-action') { settleConfirmAction(false); const passwordInput = document.getElementById('confirm-action-super-admin-password'); if (passwordInput) passwordInput.value = ''; const usernameInput = document.getElementById('confirm-action-username'); if (usernameInput) usernameInput.value = ''; const passwordError = document.getElementById('confirm-action-password-error'); if (passwordError) { passwordError.hidden = true; passwordError.textContent = ''; } } if (id === 'modal-view-resident') document.getElementById('resident-activation-result')?.replaceChildren(); if (id === 'modal-resident' || id === 'modal-incident') dashboardActionOrigin = false; const el = document.getElementById(id); if (el) { window.PasswordVisibility?.hide(el); el.classList.remove('show'); } const index = modalStack.findLastIndex(entry => entry.id === id); if (index >= 0) modalStack.splice(index, 1)[0].trigger?.focus?.(); }
+function closeModal(id) { if (id === 'modal-confirm-action') { settleConfirmAction(false); const passwordInput = document.getElementById('confirm-action-super-admin-password'); if (passwordInput) passwordInput.value = ''; const usernameInput = document.getElementById('confirm-action-username'); if (usernameInput) usernameInput.value = ''; const passwordError = document.getElementById('confirm-action-password-error'); if (passwordError) { passwordError.hidden = true; passwordError.textContent = ''; } } if (id === 'modal-view-resident') document.getElementById('resident-activation-result')?.replaceChildren(); if (id === 'modal-resident' || id === 'modal-incident') dashboardActionOrigin = false; const el = document.getElementById(id);
+  if (el) {
+    window.PasswordVisibility?.hide(el);
+    el.classList.remove('show');
+    if (el.style) el.style.zIndex = '';
+    el.inert = false;
+  }
+  const index = modalStack.findLastIndex(entry => entry.id === id);
+  const closed = index >= 0 ? modalStack.splice(index, 1)[0] : null;
+  // Re-enable the dialog underneath before returning focus to the control that opened this one.
+  syncModalLayers();
+  restoreModalFocus(closed?.trigger);
+}
+
+/**
+ * Return focus to the control that opened a dialog. Handlers that disable their button while awaiting a
+ * confirmation re-enable it a tick later, so a disabled opener is retried once before falling back to the
+ * dialog that is now on top.
+ */
+function restoreModalFocus(trigger, retried = false) {
+  if (trigger && trigger.isConnected !== false && !trigger.disabled) {
+    trigger.focus?.();
+    return;
+  }
+  if (trigger?.disabled && !retried) {
+    setTimeout(() => restoreModalFocus(trigger, true), 0);
+    return;
+  }
+  topOpenModal()?.querySelector('button:not([disabled]), input, select, textarea, [tabindex="0"]')?.focus?.();
+}
 document.addEventListener('click', function(e) { if (e.target.classList.contains('modal-overlay')) closeModal(e.target.id); });
 
 // ═══════════════════════════════════════

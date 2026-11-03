@@ -602,7 +602,6 @@ html.dark #app.admin-interface .resident-row-clickable:is(:hover, :focus-visible
 body:not(.light-mode) #app.admin-interface .resident-row-clickable:is(:hover, :focus-visible) .resident-number,
 html[data-theme="dark"] #app.admin-interface .resident-row-clickable:is(:hover, :focus-visible) .resident-number,
 html.dark #app.admin-interface .resident-row-clickable:is(:hover, :focus-visible) .resident-number { color: #a9d3ff; }
-#app.admin-interface #modal-confirm-action { z-index: 950; }
 #app.admin-interface .confirm-action-modal { max-width: 460px; }
 #app.admin-interface .credential-username-sink { position: absolute !important; left: -10000px !important; top: auto !important; width: 1px !important; height: 1px !important; padding: 0 !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
 #app.admin-interface .confirm-action-message { margin: 4px 0 8px; color: var(--text-primary); font-size: 14px; line-height: 1.55; }
