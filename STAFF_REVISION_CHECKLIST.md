@@ -17,10 +17,10 @@ Update it at the end of every session. Statuses come from the source code, not f
 - Tests: Pest and Node (`node --test tests/Unit/*.test.js`). The full Pest suite needs more memory than the default: `php -d memory_limit=1G vendor/pestphp/pest/bin/pest --compact`. Destructive-route tests send `supervisorApproval()` (see `tests/Pest.php`).
 - Browser checks: run the app against a **copy** of `database/database.sqlite` (set `DB_DATABASE` and start `php -S 127.0.0.1:8010 ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php` from `public/`; `artisan serve` drops the override) and sign in with a seeded local staff account. Never seed test data into the real local database.
 
-## Test status (2026-11-03, after `e877a4b`)
+## Test status (2026-11-03, after `d791e49`)
 
-- Node: 183 pass, 0 fail.
-- Pest: 989 pass, 14 fail, 2 skipped. All 14 are in account settings, profile and navigation (Work Group 5). They need a decision on the intended design, not a quick assertion change:
+- Node: 185 pass, 0 fail.
+- Pest: 991 pass, 14 fail, 2 skipped. All 14 are in account settings, profile and navigation (Work Group 5). They need a decision on the intended design, not a quick assertion change:
   - `GovernmentPagesTest`: expects the removed top-bar `IoT status` chip and a `My profile` menu item; sidebar icon count 15 vs 16; account role shown as `Super Admin` where the test expects `admin` (×4 settings/IoT pages); sidebar scroll container.
   - `Settings/ProfileUpdateTest`: settings sidebar icon count 15 vs 16 (×2); `Account security` link order; **account deletion now asks for the active Super Admin password** (`DeleteUserForm`, changed in `e7f1aa7`), and the test still sends the user's own password.
   - `PasswordVisibilityTest` and `PersonnelPasswordConfirmationTest`: expected password toggles and security links not found on the dashboard.
@@ -110,11 +110,41 @@ Update it at the end of every session. Statuses come from the source code, not f
 | Form validation | `NEW` | Fields carry request names, so type, date, location, details and complainant errors appear on the field (several only reached a toast); messages say "incident date" instead of "occurred date". |
 | Confidentiality | unchanged | Verified: Kagawad (`vawc.view`) sees VAWC cases; Secretary gets 403 from the incidents API and has no Incidents menu. |
 
-## 8. RFID File Tracking — pagination `DONE`; `TODO`: search above Movement History, inline filters, drop the redundant Recorded Events KPI and Filter Events button.
+## 8. RFID File Tracking — `NEW` (browser-verified; `d791e49`)
 
-## 9. Employee Cabinet Access — pagination and a details dialog per employee `DONE`; `TODO`: list usability and access-status clarity.
+| Item | Status | Notes |
+|---|---|---|
+| Search above Movement History, filters in one row | `DONE` | Already in place (search + action, date, cabinet, drawer in one desktop row). |
+| Filter Events button / Recorded Events KPI | `DONE` | Neither exists: filters apply on change and the count sits beside the heading. The duplicate "Recorded events only" pill was removed. |
+| Predictable filtering | `NEW` | Results update in place: typing no longer reloads the page and loses the cursor (verified: focus and caret kept), stale responses are ignored, a filtered empty result says so, pager links load in place. |
+| Bug: wrong filter URL | `NEW` (fixed) | The script read `form.action`, which the "action" filter field shadows; fixed and covered by `IotFilters.test.js`. |
+| Pagination | `NEW` | Shared pager partial (`partials/staff-pager`), same layout as the workspace pager. |
+| Table | `NEW` | Date over time, current status as a pill, monospace tag; no sideways scroll at desktop width. |
+| Trust banner ("Physical files, digitally accountable.") | kept / `APPROVAL` | Decorative and repeats the notice, but a teammate added it with a test (`963fb3a`). Remove only if you agree. |
+| Tracking logic, permissions | unchanged | Secretary and Kagawad (rfid.view) 200; Tanod 403. |
 
-## 10. Audit Log — pagination, detail dialog and a four-column layout with Category first `DONE`; `TODO`: shared pager styling, search/filter layout.
+## 9. Employee Cabinet Access — `NEW` (browser-verified; `d791e49`)
+
+| Item | Status | Notes |
+|---|---|---|
+| Details in a dialog | `DONE` / `NEW` | Dialog existed; it now closes with a labelled X and returns focus to Details. |
+| Scannable rows | `NEW` | Status chips: website account, cabinet permission, RFID and face enrollment, drawers; effective-access state beside Details. |
+| Filters | `NEW` | Read-only access filter (effective / enabled but not yet effective / disabled) mirroring `isEffective()`; loads in place. |
+| Pagination | `NEW` | Shared pager partial (15 per page). |
+| Confirmations | `DONE` | Deactivation already confirms in a dialog; enabling, enrollment requests and drawer changes are unchanged. |
+| Security, permissions, hardware actions | unchanged | Secretary, Kagawad, Tanod: 403. |
+
+## 10. Audit Log — `NEW` (browser-verified; `d791e49`)
+
+| Item | Status | Notes |
+|---|---|---|
+| Type → Category | `NEW` | One Category dropdown replaces six type buttons and adds the missing "Accounts and sign-ins" (login) category; no filter lost. |
+| Toolbar | `NEW` | Search, category and date in one row (stacked on phones). |
+| Pagination | `NEW` | Shared pager; the duplicate footer count and refresh note were removed (refresh interval now on the live badge); no inner scroll box. |
+| Detail dialog | `DONE` / `NEW` | Rows already opened details (click and Enter); now: category, date and time, action, performed by (name and user ID), affected record, details; permission changes as lists instead of raw JSON. Read-only. |
+| Summary cards | `BUG` → `NEW` | Fourth card said "Account Changes" but counts security and cabinet events; relabelled. Two per row on phones. |
+| Access | unchanged | Administrators only; Secretary, Kagawad, Tanod get 403 from the audit API. |
+
 
 ## 11. User Management — `TODO`: role filter vs stored roles (admin / captain / staff / viewer options), nested buttons in cards, suspension confirmation.
 
@@ -165,3 +195,4 @@ Update it at the end of every session. Statuses come from the source code, not f
 - **Session 2 (2026-11-03)** — Browser verification of work group 1 against a scratch database copy (found and fixed the "2tal" translation bug, `2c6655d`). Repaired outdated tests and a real navigation stylesheet regression; destructive-route tests now send a valid supervisor password (`0d611b4`). Resident-number import matching (`f10b9be`). Work group 2: Demographics, Resident Records and Voters layouts, contact-number storage, Filipino coverage (`c8034f5`). Next: remaining work group 2 items (Voters table, import/export in the browser), then work group 3 (Eligibility bug first).
 - **Session 3 (2026-11-03)** — Work group 2 finished: Voters edit action, validation and language; stale-response guard on resident and voter lists; import summary, lasting result and clearer errors; profiling and voter imports browser-tested on an isolated copy (`4339f7b`). Work group 3 started: Eligibility Checker bug reproduced and fixed, plus resident search beyond 100 (`e56efce`). Next: Request Eligibility layout (KPI cards top, filters below), then Certificates Request Board and Incident Reports.
 - **Session 4 (2026-11-03)** — Work group 3 finished: Request Eligibility, Certificates & Clearances and Incident Reports reworked and browser-verified on an isolated copy (captain, kagawad and secretary accounts; light, dark, Filipino, 390 px) (`e877a4b`). Bugs fixed: incident table clipped at desktop width, broken "Public Portal" button with fake-request code, invisible process-step icons, incident errors that only reached a toast, restriction-list pager error hidden by its test harness. Next: work group 4 (RFID File Tracking, Employee Cabinet Access, Audit Log).
+- **Session 5 (2026-11-03)** — Work group 4 finished: RFID File Tracking, Employee Cabinet Access and Audit Log reworked and browser-verified on an isolated copy (captain, secretary, kagawad, tanod; light, dark, Filipino, 390 px) (`d791e49`). Bugs fixed: shadowed form.action in the in-place filter, mislabelled audit summary card, missing login category, unreadable dark-mode pills on IoT pages. Next: work group 5 (User Management, Account and Settings, My Profile, Account Security, Notifications) together with the 14 failing settings tests.
