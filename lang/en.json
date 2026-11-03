@@ -1685,5 +1685,15 @@
     "No puroks have been added yet.": "No puroks have been added yet.",
     "Purok data could not be loaded.": "Purok data could not be loaded.",
     "Same registry as the Voters module": "Same registry as the Voters module",
-    "Open voter registry": "Open voter registry"
+    "Open voter registry": "Open voter registry",
+    "How a request moves": "How a request moves",
+    "Show steps": "Show steps",
+    "View request :code for :name": "View request :code for :name",
+    "Go to New online requests": "Go to New online requests",
+    "Go to Processing": "Go to Processing",
+    "Go to Ready to Print": "Go to Ready to Print",
+    "Go to Released": "Go to Released",
+    "Hide steps": "Hide steps",
+    "Eligibility": "Eligibility",
+    "Release": "Release"
 }

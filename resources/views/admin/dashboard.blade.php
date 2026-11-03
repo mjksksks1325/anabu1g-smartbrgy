@@ -357,7 +357,8 @@
 
       <!-- Process Flow -->
       <section class="card cert-flow-card" aria-labelledby="cert-flow-title">
-        <div class="card-header"><div><div class="card-title" id="cert-flow-title">Certificate Process Flow</div><div class="card-sub">How every document request moves from request to release</div></div></div>
+        <details class="cert-flow-details">
+          <summary><span class="cert-flow-summary-title" id="cert-flow-title">How a request moves</span><span class="cert-flow-inline" aria-hidden="true">Received <span>→</span> Eligibility <span>→</span> Processing <span>→</span> Print with QR <span>→</span> Release</span><span class="cert-flow-toggle"><span class="cert-flow-toggle-show">Show steps</span><span class="cert-flow-toggle-hide">Hide steps</span></span></summary>
         <ol class="cert-flow">
           <li class="cert-flow-step"><span class="cert-flow-icon"><x-staff-icon name="clipboard" /></span><div><span class="cert-flow-number">Step 1</span><strong>Request received</strong><p>Online or walk-in request is logged with a reference code.</p></div></li>
           <li class="cert-flow-step"><span class="cert-flow-icon"><x-staff-icon name="shield" /></span><div><span class="cert-flow-number">Step 2</span><strong>Eligibility check</strong><p>Resident status, standing and restrictions are verified.</p></div></li>
@@ -365,14 +366,15 @@
           <li class="cert-flow-step"><span class="cert-flow-icon"><x-staff-icon name="certificate" /></span><div><span class="cert-flow-number">Step 4</span><strong>Print with QR</strong><p>The certificate is printed with its verification QR code.</p></div></li>
           <li class="cert-flow-step"><span class="cert-flow-icon"><x-staff-icon name="check" /></span><div><span class="cert-flow-number">Step 5</span><strong>Release &amp; signature</strong><p>The resident signs and receives the document.</p></div></li>
         </ol>
+        </details>
       </section>
 
       <!-- Summary Stats -->
       <div class="stats-grid stats-grid-4" id="cert-stats-grid" style="margin-bottom:16px;" role="region" aria-label="Document request summary" tabindex="0">
-        <div class="stat-card demo-kpi demo-kpi-purple"><div class="stat-label">Online Requests</div><div class="stat-value" id="cert-online">0</div><div class="stat-sub">New from the public portal</div><div class="stat-icon"><x-staff-icon name="globe" /></div></div>
-        <div class="stat-card demo-kpi demo-kpi-yellow"><div class="stat-label">Pending / Processing</div><div class="stat-value" id="cert-pending">0</div><div class="stat-sub">Walk-in and in progress</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div></div>
-        <div class="stat-card demo-kpi demo-kpi-blue"><div class="stat-label">Ready to Print</div><div class="stat-value" id="cert-ready">0</div><div class="stat-sub">Awaiting release</div><div class="stat-icon"><x-staff-icon name="document" /></div></div>
-        <div class="stat-card demo-kpi demo-kpi-green"><div class="stat-label">Released Requests</div><div class="stat-value" id="cert-today">0</div><div class="stat-sub">Released / Completed</div><div class="stat-icon"><x-staff-icon name="check" /></div></div>
+        <div class="stat-card demo-kpi demo-kpi-purple"><div class="stat-label">Online Requests</div><div class="stat-value" id="cert-online">0</div><div class="stat-sub">New from the public portal</div><div class="stat-icon"><x-staff-icon name="globe" /></div><button type="button" class="stat-link" onclick="showCertLane('online')">Go to New online requests</button></div>
+        <div class="stat-card demo-kpi demo-kpi-yellow"><div class="stat-label">Pending / Processing</div><div class="stat-value" id="cert-pending">0</div><div class="stat-sub">Walk-in and in progress</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><button type="button" class="stat-link" onclick="showCertLane('processing')">Go to Processing</button></div>
+        <div class="stat-card demo-kpi demo-kpi-blue"><div class="stat-label">Ready to Print</div><div class="stat-value" id="cert-ready">0</div><div class="stat-sub">Awaiting release</div><div class="stat-icon"><x-staff-icon name="document" /></div><button type="button" class="stat-link" onclick="showCertLane('ready')">Go to Ready to Print</button></div>
+        <div class="stat-card demo-kpi demo-kpi-green"><div class="stat-label">Released Requests</div><div class="stat-value" id="cert-today">0</div><div class="stat-sub">Released / Completed</div><div class="stat-icon"><x-staff-icon name="check" /></div><button type="button" class="stat-link" onclick="showCertLane('completed')">Go to Released</button></div>
       </div>
 
       <!-- Kanban Board -->

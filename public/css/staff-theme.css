@@ -844,3 +844,28 @@ body #app.admin-interface.admin-interface .dashboard-pie { width: 200px; height:
 }
 /* Staff settings: account removal is handled by administrators (no self-deletion). */
 body.civic-settings .settings-account-removal-note { margin-top: 32px; padding: 12px 14px; border: 1px solid var(--staff-border); border-radius: 8px; background: var(--staff-soft); color: var(--staff-muted); font-size: 13px; line-height: 1.5; }
+/* ── Certificates: the process flow is a one-line summary that expands; request cards need one row of buttons ── */
+body #app.admin-interface.admin-interface .cert-flow-card { padding: 0; }
+body #app.admin-interface.admin-interface .cert-flow-details > summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; min-height: 52px; padding: 12px 20px; cursor: pointer; list-style: none; }
+body #app.admin-interface.admin-interface .cert-flow-details > summary::-webkit-details-marker { display: none; }
+body #app.admin-interface.admin-interface .cert-flow-details > summary:focus-visible { outline: 3px solid var(--staff-focus); outline-offset: -3px; border-radius: 10px; }
+body #app.admin-interface.admin-interface .cert-flow-summary-title { color: var(--staff-ink); font-size: 14px; font-weight: 700; }
+body #app.admin-interface.admin-interface .cert-flow-inline { flex: 1 1 320px; color: var(--staff-muted); font-size: 13px; }
+body #app.admin-interface.admin-interface .cert-flow-inline span { margin: 0 4px; color: var(--staff-accent); }
+body #app.admin-interface.admin-interface .cert-flow-toggle { margin-left: auto; color: var(--staff-accent); font-size: 13px; font-weight: 700; }
+body #app.admin-interface.admin-interface .cert-flow-details .cert-flow-toggle-hide, body #app.admin-interface.admin-interface .cert-flow-details[open] .cert-flow-toggle-show { display: none; }
+body #app.admin-interface.admin-interface .cert-flow-details[open] .cert-flow-toggle-hide { display: inline; }
+body #app.admin-interface.admin-interface .cert-flow-details .cert-flow { padding: 0 20px 20px; }
+body #app.admin-interface.admin-interface #cert-stats-grid .stat-card { min-height: 0; }
+body #app.admin-interface.admin-interface .cert-card { position: relative; }
+body #app.admin-interface.admin-interface .cert-card-open { display: block; width: 100%; padding: 0; border: 0; background: none; color: var(--staff-ink); font: inherit; font-size: 14px; font-weight: 700; text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+body #app.admin-interface.admin-interface .cert-card-open::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+body #app.admin-interface.admin-interface .cert-card-open:hover { color: var(--staff-accent); text-decoration: underline; }
+body #app.admin-interface.admin-interface .cert-card:has(.cert-card-open:focus-visible) { outline: 3px solid var(--staff-focus); outline-offset: 2px; }
+body #app.admin-interface.admin-interface .cert-card-open:focus-visible { outline: none; }
+body #app.admin-interface.admin-interface .cert-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 4px; }
+body #app.admin-interface.admin-interface .cert-card-meta .cert-card-code { color: var(--staff-muted); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; }
+body #app.admin-interface.admin-interface .cert-card-meta .badge { font-size: 11px !important; }
+body #app.admin-interface.admin-interface .cert-card-actions { position: relative; z-index: 1; margin-top: 10px; }
+body #app.admin-interface.admin-interface .cert-card-actions[data-action-count] { grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); }
+body #app.admin-interface.admin-interface .cert-card-actions[data-action-count="3"] > .cert-card-action:first-child { grid-column: auto; }

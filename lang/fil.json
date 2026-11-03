@@ -1870,5 +1870,13 @@
     "No puroks have been added yet.": "Wala pang naidaragdag na purok.",
     "Purok data could not be loaded.": "Hindi ma-load ang datos ng purok.",
     "Same registry as the Voters module": "Kapareho ng talaan sa module ng Botante",
-    "Open voter registry": "Buksan ang talaan ng botante"
+    "Open voter registry": "Buksan ang talaan ng botante",
+    "How a request moves": "Paano umuusad ang request",
+    "Show steps": "Ipakita ang mga hakbang",
+    "View request :code for :name": "Tingnan ang request :code ni :name",
+    "Go to New online requests": "Pumunta sa mga bagong online request",
+    "Go to Processing": "Pumunta sa Pinoproseso",
+    "Go to Ready to Print": "Pumunta sa Handa nang i-print",
+    "Go to Released": "Pumunta sa Nailabas na",
+    "Hide steps": "Itago ang mga hakbang"
 }

@@ -1867,6 +1867,13 @@ function restoreModalFocus(trigger, retried = false) {
     setTimeout(() => restoreModalFocus(trigger, true), 0);
     return;
   }
+  // A list that re-rendered while the dialog was open replaced the opener: focus its replacement (same id or action).
+  if (trigger && trigger.isConnected === false) {
+    const action = trigger.getAttribute?.('onclick');
+    const replacement = (trigger.id && document.getElementById(trigger.id))
+      || (action && [...document.querySelectorAll('[onclick]')].find(element => element.getAttribute('onclick') === action));
+    if (replacement && !topOpenModal()) { replacement.focus?.(); return; }
+  }
   topOpenModal()?.querySelector('button:not([disabled]), input, select, textarea, [tabindex="0"]')?.focus?.();
 }
 document.addEventListener('click', function(e) { if (e.target.classList.contains('modal-overlay')) closeModal(e.target.id); });
@@ -2851,61 +2858,25 @@ function renderCertKanban(filter = '') {
 
               : '';
 
-            const viewBtn = `
-              <button
-                class="btn btn-xs cert-card-action cert-card-view"
-                onclick="openViewCertReq('${r.code}')"
-              >
-                 View
-              </button>
-            `;
-
             const rejectBtn = hasStaffPermission('documents.process') && lane.id !== 'completed' && r.via === 'Online'
-              ? `
-                <button data-action-permission="documents.process"
-                  class="btn btn-xs btn-danger cert-card-action"
-                  onclick="openRejectRequest(${Number(r.id)}, '${r.code}', event)"
-                >
-                  Reject
-                </button>
-              `
+              ? `<button type="button" data-action-permission="documents.process" class="btn btn-xs btn-danger-outline cert-card-action" onclick="openRejectRequest(${Number(r.id)}, '${r.code}', event)">Reject</button>`
               : '';
-
-            const actionCount = [proceedBtn, viewBtn, rejectBtn].filter(Boolean).length;
-            const btnRow = `
-              <div class="cert-card-actions" data-action-count="${actionCount}">
-                ${proceedBtn}
-                ${viewBtn}
-                ${rejectBtn}
-              </div>
-            `;
+            // The requester's name opens the details (it stretches over the card); a separate View button is only
+            // shown when the card has no other action, so each card needs at most one row of buttons.
+            const viewBtn = proceedBtn || rejectBtn
+              ? ''
+              : `<button type="button" class="btn btn-xs cert-card-action cert-card-view" onclick="openViewCertReq('${r.code}')">View</button>`;
+            const actionCount = [proceedBtn, rejectBtn, viewBtn].filter(Boolean).length;
+            const btnRow = `<div class="cert-card-actions" data-action-count="${actionCount}">${proceedBtn}${rejectBtn}${viewBtn}</div>`;
 
             return `
               <div class="cert-card">
-
                 <div class="cert-card-heading">
-                  <div class="cert-card-name">
-                    ${escapeText(r.name)}
-                  </div>
+                  <button type="button" class="cert-card-name cert-card-open" onclick="openViewCertReq('${r.code}')" aria-label="${escapeText(adminText('View request :code for :name', { code: r.code, name: r.name }))}">${escapeText(r.name)}</button>
                 </div>
-
-                <div class="cert-card-type">
-                  ${escapeText(r.type)}
-                </div>
-
-                <div class="cert-card-code">
-                  ${escapeText(r.code)}
-                </div>
-
-                <div
-                  class="cert-card-meta"
-                  style="margin-top:5px;"
-                >
-                  ${viaBadge}
-                </div>
-
+                <div class="cert-card-type">${escapeText(r.type)}</div>
+                <div class="cert-card-meta"><span class="cert-card-code">${escapeText(r.code)}</span>${viaBadge}</div>
                 ${btnRow}
-
               </div>
             `;
           }).join('')
@@ -2940,6 +2911,15 @@ function renderCertKanban(filter = '') {
   setCount('cert-ready', laneCounts.ready);
   setCount('cert-online', laneCounts.online);
 
+}
+
+/** Certificate KPI cards: each counts one board lane; jump to that lane (they stack far down on small screens). */
+function showCertLane(laneId) {
+  const lane = document.querySelector(`#cert-kanban-board .cert-lane[data-lane-id="${laneId}"]`);
+  if (!lane) return;
+  revealKpiResults(lane);
+  lane.setAttribute('tabindex', '-1');
+  lane.focus({ preventScroll: true });
 }
 
 function filterCertBoard(val) { renderCertKanban(val.toLowerCase()); }
