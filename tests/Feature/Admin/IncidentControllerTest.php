@@ -131,6 +131,21 @@ it('filters incident reports and returns authoritative summary counts', function
         ->assertJsonPath('summary.high', 1);
 });
 
+it('lists exactly the reports the active and high-severity summary cards count', function () {
+    $staff = User::factory()->assignedOperations()->create();
+    foreach ([['open', 'high'], ['under_review', 'low'], ['referred', 'high'], ['pending', 'medium'], ['resolved', 'high'], ['closed', 'high'], ['dismissed', 'low']] as [$status, $severity]) {
+        Incident::factory()->for($staff, 'reporter')->create(['status' => $status, 'severity' => $severity, 'resolved_at' => $status === 'resolved' ? now() : null]);
+    }
+
+    $active = $this->actingAs($staff)->getJson(route('staff.incidents.index', ['status' => 'active']))->assertOk();
+    $active->assertJsonCount(4, 'data')->assertJsonPath('summary.pending', 4)->assertJsonPath('total', 4);
+    expect(collect($active->json('data'))->pluck('status')->sort()->values()->all())->toBe(['open', 'pending', 'referred', 'under_review']);
+
+    $this->getJson(route('staff.incidents.index', ['status' => 'active', 'severity' => 'high']))->assertOk()
+        ->assertJsonPath('total', 2)->assertJsonPath('summary.high', 2);
+    $this->getJson(route('staff.incidents.index', ['status' => 'everything']))->assertUnprocessable()->assertJsonValidationErrors('status');
+});
+
 it('requires resolution notes before resolving an incident', function () {
     $staff = User::factory()->assignedOperations()->create();
     $incident = Incident::factory()->for($staff, 'reporter')->create();

@@ -514,7 +514,30 @@ function openAddPurok() {
   openModal('modal-purok');
 }
 
+const submitLocks = new Set();
+
+/**
+ * Run a save once at a time: a second click while the request is in flight does nothing, and the button
+ * shows it is busy. Prevents duplicate records from a double-click or a slow connection.
+ */
+async function runSubmitOnce(key, buttonId, task) {
+  if (submitLocks.has(key)) return undefined;
+  submitLocks.add(key);
+  const button = document.getElementById(buttonId);
+  if (button) { button.disabled = true; button.setAttribute?.('aria-busy', 'true'); }
+  try {
+    return await task();
+  } finally {
+    submitLocks.delete(key);
+    if (button) { button.disabled = false; button.removeAttribute?.('aria-busy'); }
+  }
+}
+
 async function savePurok() {
+  return runSubmitOnce('purok', 'purok-save-button', savePurokRecord);
+}
+
+async function savePurokRecord() {
   const name = document.getElementById('purok-label')?.value.trim();
   const color = document.getElementById('purok-color')?.value || '#22C55E';
   if (!name) {
@@ -569,9 +592,29 @@ async function loadPuroks() {
     return true;
   } catch (error) {
     console.error('Purok loading failed:', error);
-    showToast(error.message || 'Unable to load demographics.', 'red');
+    if (PUROK_DATA.length === 0) {
+      // Without puroks the required Purok field cannot be filled: say so in the field instead of leaving it blank.
+      document.querySelectorAll('#res-purok').forEach(select => {
+        select.innerHTML = '';
+        const option = document.createElement('option');
+        option.value = '';
+        option.disabled = true;
+        option.selected = true;
+        option.textContent = adminText('Puroks could not be loaded. Close and reopen this form to try again.');
+        select.appendChild(option);
+      });
+    }
+    showToast(requestErrorMessage(error, 'Unable to load demographics.'), 'red');
     return false;
   }
+}
+
+/** The resident form needs the purok list; retry loading it when an earlier load failed. */
+async function ensurePuroksLoaded(selected = '') {
+  if (PUROK_DATA.length > 0) return true;
+  const loaded = await loadPuroks();
+  if (loaded) syncPurokSelects(selected);
+  return loaded;
 }
 
 async function refreshDemographics() {
@@ -1497,6 +1540,22 @@ function filterIssuedCertificates() {
   issuedCertificatesSearchTimer = setTimeout(() => refreshIssuedCertificates(1), 250);
 }
 
+/**
+ * Error text for a failed list or panel load. A network failure surfaces in the browser as a bare
+ * "Failed to fetch" TypeError, which means nothing to staff; server messages (validation, permission) are kept.
+ */
+function requestErrorMessage(error, fallback = 'The records could not be loaded. Please try again.') {
+  if (error instanceof TypeError || /failed to fetch|networkerror|load failed/i.test(String(error?.message || ''))) {
+    return adminText('Could not reach the server. Check your connection, then try again.');
+  }
+  return adminText(error?.message || fallback);
+}
+
+/** A list error message with a Retry button that re-runs the given loader call (a trusted, fixed string). */
+function listErrorMarkup(error, retryCall, fallback) {
+  return `<span>${escapeText(requestErrorMessage(error, fallback))}</span> <button type="button" class="btn btn-sm list-retry" onclick="${retryCall}">${escapeText(adminText('Try again'))}</button>`;
+}
+
 async function refreshIssuedCertificates(page = issuedCertificatesPage) {
   if (!hasStaffPermission('documents.view')) return;
   const tbody = document.getElementById('issued-certificates-tbody');
@@ -1520,7 +1579,7 @@ async function refreshIssuedCertificates(page = issuedCertificatesPage) {
     renderIssuedCertificates(payload.data, payload);
   } catch (error) {
     if (version !== issuedCertificatesRequestVersion) return;
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#EF4444;">${escapeText(error.message || 'Unable to load issued certificates.')}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="resident-table-message resident-table-error">${listErrorMarkup(error, 'refreshIssuedCertificates()', 'Unable to load issued certificates.')}</td></tr>`;
   }
 }
 
@@ -3057,7 +3116,7 @@ async function reloadAuditLog() {
     LIVE_AUDIT_LOGS.splice(0, LIVE_AUDIT_LOGS.length, ...payload.events);
     renderAuditLog();
   } catch (error) {
-    document.getElementById('audit-log-list').textContent = error.message;
+    document.getElementById('audit-log-list').innerHTML = `<div class="resident-table-message resident-table-error">${listErrorMarkup(error, 'reloadAuditLog()')}</div>`;
     showToast(error.message, 'red');
   }
 }
@@ -3104,8 +3163,7 @@ async function reloadUsers() {
     USERS.splice(0, USERS.length, ...payload.users);
     renderUsers();
   } catch (error) {
-    if (container) container.textContent = error.message;
-    showToast(error.message, 'red');
+    if (container) container.innerHTML = `<div class="card civic-empty resident-table-error">${listErrorMarkup(error, 'reloadUsers()')}</div>`;
   }
 }
 
@@ -3164,6 +3222,16 @@ function renderUsers() {
       </div>
     </article>`;
   }).join('') : '<div class="card civic-empty">No accounts match your filters.</div>';
+}
+
+/** User KPI cards count every personnel account, so search and role are cleared before the status filter is applied. */
+function showUserKpi(status) {
+  const set = (id, value) => { const element = document.getElementById(id); if (element) element.value = value; };
+  set('user-search', '');
+  set('user-role-filter', 'all');
+  set('user-status-filter', status);
+  filterUsers();
+  revealKpiResults(document.querySelector('#screen-users .user-directory'));
 }
 
 function filterUsers() {
@@ -3759,7 +3827,7 @@ async function loadIncidents(page = 1) {
     renderIncidents(payload.total || 0);
     updateIncidentSummary(payload.summary || {});
   } catch (error) {
-    tbody.innerHTML = `<tr><td colspan="8" class="resident-table-message resident-table-error">${escapeText(error.message)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="resident-table-message resident-table-error">${listErrorMarkup(error, 'loadIncidents(incidentCurrentPage)')}</td></tr>`;
   }
 }
 
@@ -3827,6 +3895,26 @@ function updateIncidentSummary(summary) {
   set('inc-stat-pending', summary.pending);
   set('inc-stat-resolved', summary.resolved_this_month);
   set('inc-stat-high', summary.high);
+}
+
+/** Bring a KPI's result list into view without animating when the user prefers reduced motion. */
+function revealKpiResults(element) {
+  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  element?.scrollIntoView?.({ block: 'start', behavior: reduce ? 'auto' : 'smooth' });
+}
+
+/**
+ * Incident KPI cards: the counts are over every report the user may see, so other filters are cleared and the
+ * card's own status (and severity) filter is applied. "active" is the same status set the counts use.
+ */
+function showIncidentKpi(status, severity) {
+  const set = (id, value) => { const element = document.getElementById(id); if (element) element.value = value; };
+  ['incident-search', 'incident-date-from', 'incident-date-to', 'incident-assignee-filter'].forEach(id => set(id, ''));
+  set('incident-status-filter', status);
+  set('incident-severity-filter', severity);
+  clearTimeout(incidentSearchTimer);
+  loadIncidents(1);
+  revealKpiResults(document.querySelector('#screen-incidents .incident-filter-bar'));
 }
 
 function filterIncidents() {
@@ -3962,7 +4050,7 @@ async function saveIncident() {
       headers: { 'Accept': 'application/json', ...csrfRequestHeaders() },
       body: formData
     });
-    const result = await response.json();
+    const result = await response.json().catch(() => ({}));
     if (!response.ok) {
       const message = result?.errors ? Object.values(result.errors).flat()[0] : result?.message;
       throw new Error(message || 'Hindi ma-save ang incident report.');
@@ -4027,7 +4115,7 @@ async function loadRequestRecords(page = 1) {
     set('rr-blocked', summary.blocked);
     set('rr-review', summary.needs_review);
   } catch (error) {
-    if (version === requestRecordLoadVersion) container.innerHTML = `<div class="card rr-list-card"><div class="resident-table-message resident-table-error">${escapeText(error.message)}</div></div>`;
+    if (version === requestRecordLoadVersion) container.innerHTML = `<div class="card rr-list-card"><div class="resident-table-message resident-table-error">${listErrorMarkup(error, 'loadRequestRecords(rrCurrentPage || 1)')}</div></div>`;
   }
 }
 
@@ -4312,7 +4400,7 @@ async function loadResidents(page = 1) {
     renderDashPurokBreakdown();
     populateEligResidentDropdown(null);
   } catch (error) {
-    if (tbody && version === residentLoadVersion) tbody.innerHTML = `<tr><td colspan="9" class="resident-table-message resident-table-error">${escapeText(error.message)}</td></tr>`;
+    if (tbody && version === residentLoadVersion) tbody.innerHTML = `<tr><td colspan="9" class="resident-table-message resident-table-error">${listErrorMarkup(error, 'loadResidents(residentCurrentPage || 1)')}</td></tr>`;
   }
 }
 
@@ -4437,6 +4525,7 @@ function openSpecialGroupRecords(group) {
 
 function openAddResident() {
   syncPurokSelects();
+  void ensurePuroksLoaded();
   document.querySelector('#modal-resident-title span').textContent = 'Register New Resident';
   ['res-lastname', 'res-name', 'res-middlename', 'res-suffix', 'res-dob', 'res-contact', 'res-address', 'res-edit-id', 'res-nationality', 'res-photo'].forEach(id => {
     const element = document.getElementById(id);
@@ -4456,6 +4545,7 @@ function openEditResident(residentNumber) {
   const resident = RESIDENTS.find(item => item.id === residentNumber);
   if (!resident) return showToast('Resident not found.', 'red');
   syncPurokSelects(resident.purok);
+  void ensurePuroksLoaded(resident.purok);
   document.querySelector('#modal-resident-title span').textContent = 'Edit Resident Record';
   const values = {
     'res-lastname': resident.lastName, 'res-name': resident.firstName,
@@ -4538,6 +4628,10 @@ function validateResidentPhoto(input) {
 }
 
 async function saveResident(confirmDuplicate = false) {
+  return runSubmitOnce('resident', 'resident-save-button', () => saveResidentRecord(confirmDuplicate));
+}
+
+async function saveResidentRecord(confirmDuplicate = false) {
   if (!validateResidentPhoto(document.getElementById('res-photo'))) return;
   const contactError = residentContactError(document.getElementById('res-contact')?.value);
   if (contactError) {
@@ -4557,9 +4651,10 @@ async function saveResident(confirmDuplicate = false) {
       headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', ...csrfRequestHeaders() },
       body: JSON.stringify(residentFormPayload(confirmDuplicate))
     });
-    const payload = await response.json();
+    // An expired session or server error returns HTML, not JSON; fall back to the status-based message below.
+    const payload = await response.json().catch(() => ({}));
     if (response.status === 422 && payload?.errors?.duplicate && !confirmDuplicate) {
-      if (await confirmAction(`${payload.errors.duplicate[0]} Save as a separate resident anyway?`, { title: 'Possible duplicate resident', confirmLabel: 'Save as separate resident' })) return saveResident(true);
+      if (await confirmAction(`${payload.errors.duplicate[0]} Save as a separate resident anyway?`, { title: 'Possible duplicate resident', confirmLabel: 'Save as separate resident' })) return saveResidentRecord(true);
       return;
     }
     if (!response.ok) {
@@ -4589,7 +4684,7 @@ async function saveResident(confirmDuplicate = false) {
       offerDashboardFeature('records', 'Resident registered', 'The resident record was saved. Open Resident Records to view the new entry.');
     }
   } catch (error) {
-    showToast(error.message, 'red');
+    showToast(requestErrorMessage(error, 'Unable to save the resident record.'), 'red');
   }
 }
 
@@ -5186,7 +5281,7 @@ async function loadVoterRegistry(page = 1) {
     renderVoterRegistry(payload.total || 0);
     updateVoterSummary(payload.summary || {});
   } catch (error) {
-    if (version === voterLoadVersion) tbody.innerHTML = `<tr><td colspan="${columns}" class="resident-table-message resident-table-error">${escapeText(error.message)}</td></tr>`;
+    if (version === voterLoadVersion) tbody.innerHTML = `<tr><td colspan="${columns}" class="resident-table-message resident-table-error">${listErrorMarkup(error, 'loadVoterRegistry(voterCurrentPage || 1)')}</td></tr>`;
   }
 }
 
@@ -5245,6 +5340,20 @@ function filterVoterEligibility(eligibility, element) {
   element?.setAttribute?.('aria-pressed', 'true');
   voterEligibilityFilter = eligibility;
   loadVoterRegistry(1);
+}
+
+/** Voter KPI cards count every active registration, so search and purok are cleared before the age group is applied. */
+function showVoterKpi(eligibility) {
+  const search = document.getElementById('voter-search');
+  if (search) search.value = '';
+  const purok = document.getElementById('voter-purok-filter');
+  if (purok) purok.value = '';
+  voterPurokFilter = '';
+  clearTimeout(voterSearchTimer);
+  const pill = [...document.querySelectorAll('#screen-voters .voter-filter-pills .status-pill')]
+    .find(button => (button.getAttribute('onclick') || '').includes(`'${eligibility}'`));
+  filterVoterEligibility(eligibility, pill);
+  revealKpiResults(document.querySelector('#screen-voters .voter-search-row'));
 }
 
 function filterVoterPurok(purok) {

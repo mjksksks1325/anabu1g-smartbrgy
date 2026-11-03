@@ -1661,5 +1661,18 @@
     "New from the public portal": "New from the public portal",
     "Reason for rejection *": "Reason for rejection *",
     "Lift restriction": "Lift restriction",
-    "Reason for lifting": "Reason for lifting"
+    "Reason for lifting": "Reason for lifting",
+    "Show all voters": "Show all voters",
+    "Show SK only": "Show SK only",
+    "Show SK and regular": "Show SK and regular",
+    "Show regular only": "Show regular only",
+    "Show active reports": "Show active reports",
+    "Show active high-severity reports": "Show active high-severity reports",
+    "Show all accounts": "Show all accounts",
+    "Show active accounts": "Show active accounts",
+    "Show suspended accounts": "Show suspended accounts",
+    "Active (open, under review, referred)": "Active (open, under review, referred)",
+    "The records could not be loaded. Please try again.": "The records could not be loaded. Please try again.",
+    "Could not reach the server. Check your connection, then try again.": "Could not reach the server. Check your connection, then try again.",
+    "Puroks could not be loaded. Close and reopen this form to try again.": "Puroks could not be loaded. Close and reopen this form to try again."
 }

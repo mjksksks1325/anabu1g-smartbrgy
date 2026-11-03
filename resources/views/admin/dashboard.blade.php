@@ -317,10 +317,10 @@
       </div>
 
       <div class="stats-grid stats-grid-4 voter-stats" id="voter-stats-grid">
-        <div class="stat-card demo-kpi demo-kpi-blue"><div class="stat-label">Lahat ng Botante</div><div class="stat-value" id="voter-stat-total">0</div><div class="stat-sub">Aktibong rehistrado</div><div class="stat-icon"><x-staff-icon name="people" /></div></div>
-        <div class="stat-card demo-kpi demo-kpi-yellow"><div class="stat-label">SK Lamang</div><div class="stat-value" id="voter-stat-sk-only">0</div><div class="stat-sub">Edad 15–17</div><div class="stat-icon"><x-staff-icon name="people" /></div></div>
-        <div class="stat-card demo-kpi demo-kpi-purple"><div class="stat-label">SK at Regular</div><div class="stat-value" id="voter-stat-sk-regular">0</div><div class="stat-sub">Edad 18–30</div><div class="stat-icon"><x-staff-icon name="people" /></div></div>
-        <div class="stat-card demo-kpi demo-kpi-green"><div class="stat-label">Regular Lamang</div><div class="stat-value" id="voter-stat-regular-only">0</div><div class="stat-sub">Edad 31 pataas</div><div class="stat-icon"><x-staff-icon name="people" /></div></div>
+        <div class="stat-card demo-kpi demo-kpi-blue"><div class="stat-label">Lahat ng Botante</div><div class="stat-value" id="voter-stat-total">0</div><div class="stat-sub">Aktibong rehistrado</div><div class="stat-icon"><x-staff-icon name="people" /></div><button type="button" class="stat-link" onclick="showVoterKpi('')">Show all voters</button></div>
+        <div class="stat-card demo-kpi demo-kpi-yellow"><div class="stat-label">SK Lamang</div><div class="stat-value" id="voter-stat-sk-only">0</div><div class="stat-sub">Edad 15–17</div><div class="stat-icon"><x-staff-icon name="people" /></div><button type="button" class="stat-link" onclick="showVoterKpi('sk_only')">Show SK only</button></div>
+        <div class="stat-card demo-kpi demo-kpi-purple"><div class="stat-label">SK at Regular</div><div class="stat-value" id="voter-stat-sk-regular">0</div><div class="stat-sub">Edad 18–30</div><div class="stat-icon"><x-staff-icon name="people" /></div><button type="button" class="stat-link" onclick="showVoterKpi('sk_and_regular')">Show SK and regular</button></div>
+        <div class="stat-card demo-kpi demo-kpi-green"><div class="stat-label">Regular Lamang</div><div class="stat-value" id="voter-stat-regular-only">0</div><div class="stat-sub">Edad 31 pataas</div><div class="stat-icon"><x-staff-icon name="people" /></div><button type="button" class="stat-link" onclick="showVoterKpi('regular_only')">Show regular only</button></div>
       </div>
 
       <div class="search-row voter-search-row">
@@ -423,13 +423,13 @@
         <button data-action-permission="incidents.submit|vawc.submit" class="btn btn-primary" onclick="openAddIncident()" @if(!auth()->user()->hasAnyPermission(['incidents.submit', 'vawc.submit'])) hidden style="display:none;" @endif> File Incident</button>
       </div>
       <div class="stats-grid stats-grid-3">
-        <div class="stat-card red"><div class="stat-label">Open / Under Review</div><div class="stat-value" id="inc-stat-pending">0</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div></div>
+        <div class="stat-card red"><div class="stat-label">Open / Under Review</div><div class="stat-value" id="inc-stat-pending">0</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><button type="button" class="stat-link" onclick="showIncidentKpi('active', '')">Show active reports</button></div>
         <div class="stat-card green"><div class="stat-label">Resolved This Month</div><div class="stat-value" id="inc-stat-resolved">0</div><div class="stat-icon"><x-staff-icon name="check" /></div></div>
-        <div class="stat-card amber"><div class="stat-label">High Severity</div><div class="stat-value" id="inc-stat-high">0</div><div class="stat-icon"><x-staff-icon name="alert" /></div></div>
+        <div class="stat-card amber"><div class="stat-label">High Severity</div><div class="stat-value" id="inc-stat-high">0</div><div class="stat-icon"><x-staff-icon name="alert" /></div><button type="button" class="stat-link" onclick="showIncidentKpi('active', 'high')">Show active high-severity reports</button></div>
       </div>
       <div class="incident-filter-bar" role="search" aria-label="Filter incident reports">
         <div class="search-wrap incident-filter-search"><span class="si"></span><input class="search-input" id="incident-search" type="search" autocomplete="off" aria-label="Search incident reports" placeholder="Search ID, type, location, or name..." oninput="filterIncidents()"/></div>
-        <select class="form-input" id="incident-status-filter" aria-label="Incident status" onchange="filterIncidents()"><option value="">Lahat ng Status</option><option value="open">Open</option><option value="under_review">Under Review</option><option value="referred">Referred</option><option value="resolved">Resolved</option><option value="closed">Closed</option><option value="pending">Pending (legacy)</option><option value="under_investigation">Under Investigation (legacy)</option><option value="dismissed">Dismissed (legacy)</option></select>
+        <select class="form-input" id="incident-status-filter" aria-label="Incident status" onchange="filterIncidents()"><option value="">Lahat ng Status</option><option value="active">Active (open, under review, referred)</option><option value="open">Open</option><option value="under_review">Under Review</option><option value="referred">Referred</option><option value="resolved">Resolved</option><option value="closed">Closed</option><option value="pending">Pending (legacy)</option><option value="under_investigation">Under Investigation (legacy)</option><option value="dismissed">Dismissed (legacy)</option></select>
         <select class="form-input" id="incident-severity-filter" aria-label="Incident severity" onchange="filterIncidents()"><option value="">Lahat ng Severity</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select>
         <label class="incident-date-filter"><span>From</span><input class="form-input" type="date" id="incident-date-from" aria-label="Incident date from" onchange="filterIncidents()"/></label>
         <label class="incident-date-filter"><span>To</span><input class="form-input" type="date" id="incident-date-to" aria-label="Incident date to" onchange="filterIncidents()"/></label>
@@ -556,9 +556,9 @@
       </div>
 
       <div class="stats-grid user-management-kpis">
-        <div class="stat-card user-kpi user-kpi-total"><div class="stat-label">Total accounts</div><div class="stat-value" id="usr-total">0</div><div class="stat-sub">Personnel accounts on record</div><div class="stat-icon"><x-staff-icon name="people" /></div></div>
-        <div class="stat-card user-kpi user-kpi-active"><div class="stat-label">Active users</div><div class="stat-value" id="usr-active">0</div><div class="stat-sub">Can sign in to the workspace</div><div class="stat-icon"><x-staff-icon name="check" /></div></div>
-        <div class="stat-card user-kpi user-kpi-suspended"><div class="stat-label">Suspended users</div><div class="stat-value" id="usr-suspended">0</div><div class="stat-sub">Access revoked, history kept</div><div class="stat-icon"><x-staff-icon name="key" /></div></div>
+        <div class="stat-card user-kpi user-kpi-total"><div class="stat-label">Total accounts</div><div class="stat-value" id="usr-total">0</div><div class="stat-sub">Personnel accounts on record</div><div class="stat-icon"><x-staff-icon name="people" /></div><button type="button" class="stat-link" onclick="showUserKpi('all')">Show all accounts</button></div>
+        <div class="stat-card user-kpi user-kpi-active"><div class="stat-label">Active users</div><div class="stat-value" id="usr-active">0</div><div class="stat-sub">Can sign in to the workspace</div><div class="stat-icon"><x-staff-icon name="check" /></div><button type="button" class="stat-link" onclick="showUserKpi('active')">Show active accounts</button></div>
+        <div class="stat-card user-kpi user-kpi-suspended"><div class="stat-label">Suspended users</div><div class="stat-value" id="usr-suspended">0</div><div class="stat-sub">Access revoked, history kept</div><div class="stat-icon"><x-staff-icon name="key" /></div><button type="button" class="stat-link" onclick="showUserKpi('suspended')">Show suspended accounts</button></div>
         <div class="stat-card user-kpi user-kpi-2fa"><div class="stat-label">Active without 2FA</div><div class="stat-value" id="usr-no-2fa">0</div><div class="stat-sub">Should set up two-factor sign-in</div><div class="stat-icon"><x-staff-icon name="shield" /></div></div>
       </div>
       <section class="card user-directory" aria-labelledby="user-directory-title">
@@ -655,7 +655,7 @@
     <div class="form-group"><label class="form-label" for="purok-label">Purok name *</label><input class="form-input" id="purok-label" name="name" maxlength="100" required autocomplete="off" placeholder="Example: Purok 1 - Sampaguita"/></div>
     <div class="form-group"><label class="form-label" for="purok-color">Display color</label><input class="form-input" type="color" id="purok-color" name="color" value="#22C55E"/></div>
     <div class="modal-footer">
-      <button class="btn btn-green" onclick="savePurok()"> Save Purok</button>
+      <button class="btn btn-green" id="purok-save-button" onclick="savePurok()"> Save Purok</button>
     </div>
   </div>
 </div>
@@ -811,7 +811,7 @@
       <div class="form-group"><label class="form-label" for="res-household-purok">Household Purok (optional)</label><select class="form-input" id="res-household-purok"><option value="">None</option></select></div>
     </details>
     <div class="modal-footer">
-      <button class="btn btn-green" onclick="saveResident()"> Save Record</button>
+      <button class="btn btn-green" id="resident-save-button" onclick="saveResident()"> Save Record</button>
     </div>
   </div>
 </div>

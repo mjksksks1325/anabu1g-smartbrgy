@@ -1846,5 +1846,18 @@
     "New from the public portal": "Bago mula sa pampublikong portal",
     "Reason for rejection *": "Dahilan ng pagtanggi *",
     "Lift restriction": "Alisin ang restriction",
-    "Reason for lifting": "Dahilan ng pag-alis"
+    "Reason for lifting": "Dahilan ng pag-alis",
+    "Show all voters": "Ipakita ang lahat ng botante",
+    "Show SK only": "Ipakita ang SK lamang",
+    "Show SK and regular": "Ipakita ang SK at regular",
+    "Show regular only": "Ipakita ang regular lamang",
+    "Show active reports": "Ipakita ang mga aktibong ulat",
+    "Show active high-severity reports": "Ipakita ang mga aktibong ulat na mataas ang severity",
+    "Show all accounts": "Ipakita ang lahat ng account",
+    "Show active accounts": "Ipakita ang mga aktibong account",
+    "Show suspended accounts": "Ipakita ang mga suspendidong account",
+    "Active (open, under review, referred)": "Aktibo (open, under review, referred)",
+    "The records could not be loaded. Please try again.": "Hindi ma-load ang mga rekord. Pakisubukan ulit.",
+    "Could not reach the server. Check your connection, then try again.": "Hindi makakonekta sa server. Tingnan ang iyong koneksyon, pagkatapos ay subukan ulit.",
+    "Puroks could not be loaded. Close and reopen this form to try again.": "Hindi ma-load ang mga purok. Isara at buksan ulit ang form para subukan ulit."
 }

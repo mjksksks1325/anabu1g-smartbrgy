@@ -131,6 +131,31 @@ test('online release displays the voter certification fee without a custom expir
   assert.equal(fields.get('print-amount-paid').value, 'PHP 25.00');
 });
 
+test('a double-clicked Save Record sends one request and keeps the button busy until it finishes', async () => {
+  const { context, fields } = await client();
+  fields.set('res-edit-id', { value: '' });
+  fields.set('res-photo', { files: [] });
+  const button = { disabled: false, setAttribute() {}, removeAttribute() {} };
+  fields.set('resident-save-button', button);
+  let release;
+  const requests = [];
+  context.fetch = (url, options) => {
+    requests.push({ url, options });
+    return new Promise(resolve => { release = () => resolve({ ok: false, status: 422, json: async () => ({ errors: { first_name: ['The first name field is required.'] } }) }); });
+  };
+
+  const first = context.saveResident();
+  const second = context.saveResident();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(button.disabled, true);
+  release();
+  await Promise.all([first, second]);
+
+  assert.equal(requests.length, 1);
+  assert.equal(button.disabled, false);
+  assert.equal(context.messages.at(-1).message, 'The first name field is required.');
+});
+
 test('a failed photo upload retries the saved resident instead of creating a duplicate', async () => {
   const { context, fields } = await client();
   fields.set('res-edit-id', { value: '' });
@@ -815,6 +840,21 @@ test('a confirmation whose opener was disabled before opening still returns focu
   context.closeModal('modal-confirm-action');
 
   assert.equal(suspendButton.focused, true);
+});
+
+test('list load failures explain network errors in plain words, keep server messages, and offer a retry', async () => {
+  const { context, fields } = await client();
+  assert.equal(context.requestErrorMessage(new TypeError('Failed to fetch')), 'Could not reach the server. Check your connection, then try again.');
+  assert.equal(context.requestErrorMessage(new Error('You do not have permission to view incident reports.')), 'You do not have permission to view incident reports.');
+
+  const tbody = { innerHTML: '' };
+  fields.set('incidents-tbody', tbody);
+  context.fetch = async () => { throw new TypeError('Failed to fetch'); };
+  await context.loadIncidents(1);
+
+  assert.match(tbody.innerHTML, /Could not reach the server/);
+  assert.match(tbody.innerHTML, /onclick="loadIncidents\(incidentCurrentPage\)">Try again<\/button>/);
+  assert.doesNotMatch(tbody.innerHTML, /Failed to fetch/);
 });
 
 test('dialogs open on their first usable field and keep a single dialog role', async () => {

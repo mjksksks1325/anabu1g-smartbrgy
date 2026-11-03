@@ -663,10 +663,10 @@ body.light-mode #app.admin-interface.admin-interface .sidebar .nav-item.active .
   .staff-auth-page .civic-auth-aside h1 { font-size: 28px; }
 }
 /* Summary cards open their module; the link stretches over the card so the whole card is a target. */
-body #app.admin-interface.admin-interface .dashboard-stats-grid .stat-card { position: relative; }
-body #app.admin-interface.admin-interface .stat-link { order: 4; margin-top: 10px; color: var(--staff-accent); font-size: 13px; font-weight: 700; text-decoration: none; }
+body #app.admin-interface.admin-interface .stat-card:has(.stat-link) { position: relative; cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease; }
+body #app.admin-interface.admin-interface .stat-link { order: 4; align-self: flex-start; margin-top: 10px; padding: 0; border: 0; background: none; color: var(--staff-accent); font: inherit; font-size: 13px; font-weight: 700; text-align: left; text-decoration: none; cursor: pointer; }
 body #app.admin-interface.admin-interface .stat-link::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
-body #app.admin-interface.admin-interface .dashboard-stats-grid .stat-card:has(.stat-link):hover { border-color: var(--staff-accent); box-shadow: 0 2px 4px rgba(16, 32, 24, .08), 0 10px 24px rgba(16, 32, 24, .1); }
+body #app.admin-interface.admin-interface .stat-card:has(.stat-link):hover { border-color: var(--staff-accent); box-shadow: 0 2px 4px rgba(16, 32, 24, .08), 0 10px 24px rgba(16, 32, 24, .1); }
 body #app.admin-interface.admin-interface .stat-link:hover { text-decoration: underline; }
 body #app.admin-interface.admin-interface .stat-card:has(.stat-link:focus-visible) { outline: 3px solid var(--staff-focus); outline-offset: 2px; }
 body #app.admin-interface.admin-interface .stat-link:focus-visible { outline: none; }
@@ -830,3 +830,8 @@ body[data-personnel-layout="iot"] .announcement-form .field-feedback-message { m
 body[data-personnel-layout="iot"] .announcement-form [aria-invalid="true"] { border-color: var(--staff-danger); }
 /* ── Dialog layers: admin.js (syncModalLayers) orders open dialogs by z-index; the page behind them does not scroll ── */
 body[data-personnel-layout="admin"].modal-open { overflow: hidden; }
+@media (prefers-reduced-motion: reduce) {
+  body #app.admin-interface.admin-interface .stat-card:has(.stat-link) { transition: none; }
+}
+/* List load failures: plain-language message with a Retry button (admin.js listErrorMarkup). */
+body #app.admin-interface.admin-interface .resident-table-error .list-retry { margin-left: 10px; vertical-align: middle; }
