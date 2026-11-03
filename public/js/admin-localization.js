@@ -87,14 +87,16 @@
                 if (!element.hasAttribute(name)) continue;
 
                 let message = messages.get(name);
-                if (!message) {
-                    const source = element.getAttribute(name) ?? '';
-                    if (!source.trim()) continue;
-                    message = adminMessage(source);
+                const current = element.getAttribute(name) ?? '';
+                // A script may have replaced the attribute since the last pass (e.g. an unread count): translate the new text instead of restoring the old one.
+                if (!message || current !== message.rendered) {
+                    if (!current.trim()) continue;
+                    message = adminMessage(current);
                     messages.set(name, message);
                 }
 
-                element.setAttribute(name, adminTranslate(message.source, message.replacements));
+                message.rendered = adminTranslate(message.source, message.replacements);
+                if (current !== message.rendered) element.setAttribute(name, message.rendered);
             }
         }
     }

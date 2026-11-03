@@ -274,6 +274,8 @@ body #app.admin-interface.admin-interface .btn-danger:hover, body[data-personnel
 :is(body #app.admin-interface.admin-interface, body[data-personnel-layout="iot"], .staff-settings-topbar-actions) .admin-locale-toggle:not(.admin-language-inline) button[aria-pressed="true"],
 html[data-theme=dark] .admin-locale-toggle:not(.admin-language-inline) button[aria-pressed="true"] { background: var(--staff-accent-fill); color: #fff; }
 :is(body #app.admin-interface.admin-interface, body[data-personnel-layout="iot"], .staff-settings-topbar-actions) .admin-language-inline button[aria-pressed="true"] { color: var(--staff-accent); }
+/* The settings top bar gives its buttons a quiet outline; the inline English | Filipino links keep none in either theme. */
+:is(.staff-settings-topbar-actions, .dark .staff-settings-topbar-actions) .admin-language-inline button { border: 0; background: transparent; }
 body #app.admin-interface.admin-interface .rr-filter-btn.active, body #app.admin-interface.admin-interface .tab.active, body #app.admin-interface.admin-interface [role="tab"][aria-selected="true"] {
   border-color: var(--staff-accent-fill); background: var(--staff-active-bg); color: var(--staff-active-ink);
 }
@@ -672,3 +674,135 @@ body #app.admin-interface.admin-interface .stat-link:focus-visible { outline: no
 .staff-auth-page .civic-auth-form [data-flux-checkbox-indicator] { border: 1px solid #7a8981; background: #fff; }
 .staff-auth-page .civic-auth-form [data-flux-checkbox][data-checked] [data-flux-checkbox-indicator] { border-color: #17663a; background: #17663a; color: #fff; }
 .staff-auth-page .civic-auth-form .opacity-50 { color: #4f5e56; opacity: 1; }
+/* ── User Management: KPI meaning, one directory card, compact account rows ── */
+body #app.admin-interface.admin-interface .user-management-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+body #app.admin-interface.admin-interface .user-kpi { min-height: 0; border-top: 4px solid var(--user-kpi-color) !important; }
+body #app.admin-interface.admin-interface .user-kpi-total { --user-kpi-color: #2f6f9f; }
+body #app.admin-interface.admin-interface .user-kpi-2fa { --user-kpi-color: #a16207; }
+body #app.admin-interface.admin-interface .user-kpi .stat-value { color: var(--user-kpi-color); }
+body #app.admin-interface.admin-interface .user-kpi .stat-sub { color: var(--staff-muted); font-size: 12px; }
+/* Zero suspended accounts or zero accounts without 2FA needs no attention: the card drops to a neutral tone. */
+body #app.admin-interface.admin-interface :is(.user-kpi-suspended, .user-kpi-2fa).is-zero { --user-kpi-color: #5c6b63; }
+:is(html[data-theme=dark], html.dark) body #app.admin-interface.admin-interface .user-kpi-total { --user-kpi-color: #7cb6e3; }
+:is(html[data-theme=dark], html.dark) body #app.admin-interface.admin-interface .user-kpi-active { --user-kpi-color: #5fd396; }
+:is(html[data-theme=dark], html.dark) body #app.admin-interface.admin-interface .user-kpi-suspended { --user-kpi-color: #f08a80; }
+:is(html[data-theme=dark], html.dark) body #app.admin-interface.admin-interface .user-kpi-2fa { --user-kpi-color: #f2c14e; }
+:is(html[data-theme=dark], html.dark) body #app.admin-interface.admin-interface :is(.user-kpi-suspended, .user-kpi-2fa).is-zero { --user-kpi-color: #a3b3aa; }
+body #app.admin-interface.admin-interface .user-directory { padding: 20px; }
+body #app.admin-interface.admin-interface .user-directory-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px 20px; margin-bottom: 14px; }
+body #app.admin-interface.admin-interface .user-directory-head .card-title { margin: 0 0 4px; font-size: 17px; }
+body #app.admin-interface.admin-interface .user-directory-head .card-sub { margin: 0; }
+body #app.admin-interface.admin-interface .user-directory-count { flex: 0 0 auto; padding: 4px 10px; border: 1px solid var(--staff-border); border-radius: 999px; background: var(--staff-soft); color: var(--staff-muted); font-size: 12px; font-weight: 700; white-space: nowrap; }
+body #app.admin-interface.admin-interface .user-filter-row { grid-template-columns: minmax(220px, 1fr) repeat(2, minmax(160px, 200px)); align-items: end; margin: 0 0 14px; padding-bottom: 14px; border-bottom: 1px solid var(--staff-row); }
+body #app.admin-interface.admin-interface .user-filter-control > span { color: var(--staff-muted); font-size: 12px; }
+body #app.admin-interface.admin-interface .user-list { display: grid; gap: 8px; }
+body #app.admin-interface.admin-interface #users-list-container .user-card { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; min-height: 0; margin: 0; padding: 14px 16px; border: 1px solid var(--staff-border); border-radius: 10px; background: var(--staff-card); box-shadow: none; cursor: default; opacity: 1; }
+body #app.admin-interface.admin-interface #users-list-container .user-card:hover { border-color: var(--staff-accent); background: var(--staff-hover-bg); box-shadow: none; }
+body #app.admin-interface.admin-interface #users-list-container .user-card:has(.user-card-open:focus-visible) { outline: 3px solid var(--staff-focus); outline-offset: 2px; }
+/* Suspended rows stay fully readable; a red edge and the status badge carry the state. */
+body #app.admin-interface.admin-interface #users-list-container .user-card.suspended { box-shadow: inset 4px 0 0 var(--staff-danger); }
+body #app.admin-interface.admin-interface #users-list-container .user-card.suspended .user-avatar-lg { filter: grayscale(1); opacity: .75; }
+body #app.admin-interface.admin-interface .user-avatar-lg { width: 44px; height: 44px; border: 0; background: var(--staff-active-bg); color: var(--staff-active-ink); font-size: 14px; }
+body #app.admin-interface.admin-interface :is(.user-avatar-super_admin, .user-avatar-captain) { background: #17663a; color: #fff; }
+body #app.admin-interface.admin-interface .user-info { min-width: 0; }
+body #app.admin-interface.admin-interface .user-name { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; font-size: 15px; font-weight: 700; line-height: 1.3; }
+body #app.admin-interface.admin-interface .user-card-open { padding: 0; border: 0; background: none; color: var(--staff-ink); font: inherit; text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+/* The name button stretches over the row, so the whole row opens the details; the action buttons sit above it. */
+body #app.admin-interface.admin-interface .user-card-open::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+body #app.admin-interface.admin-interface .user-card-open:hover { color: var(--staff-accent); text-decoration: underline; }
+body #app.admin-interface.admin-interface .user-card-open:focus-visible { outline: none; }
+body #app.admin-interface.admin-interface .user-self-tag { padding: 1px 7px; border-radius: 999px; background: var(--staff-soft); color: var(--staff-muted); font-size: 11px; font-weight: 700; }
+body #app.admin-interface.admin-interface .user-role-tag { margin-top: 2px; color: var(--staff-muted); font-size: 13px; overflow-wrap: anywhere; }
+body #app.admin-interface.admin-interface .user-badges { gap: 6px; margin-top: 8px; }
+body #app.admin-interface.admin-interface .user-badges .badge { font-size: 11px; letter-spacing: 0; text-transform: none; }
+body #app.admin-interface.admin-interface .user-role-badge { border: 1px solid #b8cfe2; background: #eaf2f9; color: #1f4f75; }
+body #app.admin-interface.admin-interface :is(.user-role-super_admin, .user-role-captain) { border-color: #9fc9ae; background: #e3f0e7; color: #0f5130; }
+body #app.admin-interface.admin-interface .user-role-viewer { border-color: var(--staff-border); background: var(--staff-soft); color: var(--staff-muted); }
+:is(html[data-theme=dark], html.dark) body #app.admin-interface.admin-interface .user-role-badge { border-color: #35546d; background: #1b2c3a; color: #b7d6ef; }
+:is(html[data-theme=dark], html.dark) body #app.admin-interface.admin-interface :is(.user-role-super_admin, .user-role-captain) { border-color: #2f6b45; background: #183424; color: #a9e2bd; }
+:is(html[data-theme=dark], html.dark) body #app.admin-interface.admin-interface .user-role-viewer { border-color: var(--staff-border); background: var(--staff-soft); color: var(--staff-muted); }
+body #app.admin-interface.admin-interface .user-actions { position: relative; z-index: 1; display: flex; flex-direction: row; flex-wrap: wrap; justify-content: flex-end; gap: 6px; width: auto; margin: 0; }
+body #app.admin-interface.admin-interface .user-actions .btn { width: auto; min-width: 84px; min-height: 38px; white-space: nowrap; }
+body #app.admin-interface.admin-interface .user-actions .user-action-suspend { border-color: #b45309; color: #92400e; }
+body #app.admin-interface.admin-interface .user-actions .user-action-suspend:hover { background: #fef3e2; }
+:is(html[data-theme=dark], html.dark) body #app.admin-interface.admin-interface .user-actions .user-action-suspend { border-color: #d99a3d; color: #f2c37a; }
+:is(html[data-theme=dark], html.dark) body #app.admin-interface.admin-interface .user-actions .user-action-suspend:hover { background: #3a2a12; }
+@media (max-width: 1100px) {
+  body #app.admin-interface.admin-interface .user-management-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  body #app.admin-interface.admin-interface .user-directory { padding: 14px; }
+  body #app.admin-interface.admin-interface .user-directory-head { flex-direction: column; }
+  body #app.admin-interface.admin-interface .user-filter-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body #app.admin-interface.admin-interface .user-filter-row .search-wrap { grid-column: 1 / -1; }
+  body #app.admin-interface.admin-interface #users-list-container .user-card { grid-template-columns: auto minmax(0, 1fr); }
+  body #app.admin-interface.admin-interface .user-actions { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); }
+  body #app.admin-interface.admin-interface .user-actions .btn { width: 100%; min-width: 0; min-height: 44px; }
+}
+@media (max-width: 560px) {
+  body #app.admin-interface.admin-interface .user-management-kpis { gap: 10px; }
+  body #app.admin-interface.admin-interface .user-kpi { padding: 14px; }
+  body #app.admin-interface.admin-interface .user-kpi .stat-value { font-size: 26px; }
+  body #app.admin-interface.admin-interface .user-kpi .stat-icon { display: none; }
+}
+/* Account details dialog: grouped sections instead of one long grid. */
+body[data-personnel-layout="admin"] #modal-user-details .user-details-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+body[data-personnel-layout="admin"] #modal-user-details .user-detail-section h3 { margin: 0 0 8px; color: var(--staff-muted); font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+body[data-personnel-layout="admin"] #modal-user-details .user-detail-section-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; }
+body[data-personnel-layout="admin"] #modal-user-details .user-detail-field { padding: 10px 12px; border: 1px solid var(--staff-border); border-radius: 8px; background: var(--staff-soft); }
+body[data-personnel-layout="admin"] #modal-user-details .user-detail-field.is-wide { grid-column: 1 / -1; }
+body[data-personnel-layout="admin"] #modal-user-details .user-detail-field.is-wide dd { font-weight: 500; white-space: pre-line; }
+body[data-personnel-layout="admin"] #modal-user-details .user-detail-field dt { margin-bottom: 4px; color: var(--staff-muted); font-size: 11px; font-weight: 700; letter-spacing: 0; text-transform: none; }
+body[data-personnel-layout="admin"] #modal-user-details .user-detail-field dd { color: var(--staff-ink); font-size: 14px; font-weight: 600; line-height: 1.45; }
+@media (max-width: 560px) {
+  body[data-personnel-layout="admin"] #modal-user-details .user-detail-section-grid { grid-template-columns: minmax(0, 1fr); }
+}
+/* ── Notifications: a bounded panel with a category line, one unread marker, real buttons ── */
+body #app.admin-interface.admin-interface .notif-panel { display: none; flex-direction: column; width: min(400px, calc(100vw - 24px)); max-height: min(640px, calc(100vh - 88px)); overflow: hidden; border: 1px solid var(--staff-border); border-radius: 12px; background: var(--staff-card); box-shadow: var(--staff-shadow-raised); }
+body #app.admin-interface.admin-interface .notif-panel.open { display: flex; }
+body #app.admin-interface.admin-interface .notif-panel-header { align-items: flex-start; gap: 12px; padding: 14px 14px 12px 16px; border-color: var(--staff-row); }
+body #app.admin-interface.admin-interface .notif-panel-title { margin: 0; color: var(--staff-ink); font-size: 15px; font-weight: 700; }
+body #app.admin-interface.admin-interface .notif-panel-sub { margin: 2px 0 0; color: var(--staff-muted); font-size: 12px; line-height: 1.4; }
+body #app.admin-interface.admin-interface .notif-panel-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 4px; }
+body #app.admin-interface.admin-interface #notif-mark-all:disabled { opacity: .55; cursor: default; }
+body #app.admin-interface.admin-interface #notif-list { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
+body #app.admin-interface.admin-interface .notif-item { display: flex; align-items: flex-start; gap: 11px; width: 100%; padding: 12px 16px; border: 0; border-bottom: 1px solid var(--staff-row); background: transparent; color: inherit; font: inherit; text-align: left; }
+body #app.admin-interface.admin-interface .notif-item:hover { background: var(--staff-hover-bg); }
+body #app.admin-interface.admin-interface .notif-item.unread { background: color-mix(in srgb, var(--staff-accent) 6%, var(--staff-card)); }
+body #app.admin-interface.admin-interface .notif-item.unread:hover { background: var(--staff-hover-bg); }
+body #app.admin-interface.admin-interface .notif-item .notif-dot { width: 10px; height: 10px; margin-top: 4px; border-radius: 3px; background: #2f6f9f; }
+body #app.admin-interface.admin-interface .notif-type-incident .notif-dot { background: #b45309; }
+body #app.admin-interface.admin-interface .notif-type-application .notif-dot { background: #17663a; }
+body #app.admin-interface.admin-interface .notif-content { display: grid; flex: 1 1 auto; gap: 1px; min-width: 0; }
+body #app.admin-interface.admin-interface .notif-category { color: var(--staff-muted); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+body #app.admin-interface.admin-interface .notif-item .notif-body { color: var(--staff-muted); font-size: 13px; overflow-wrap: anywhere; }
+body #app.admin-interface.admin-interface .notif-item .notif-body strong { color: var(--staff-ink); font-weight: 600; }
+body #app.admin-interface.admin-interface .notif-item.unread .notif-body strong { font-weight: 700; }
+body #app.admin-interface.admin-interface .notif-item .notif-time { margin-top: 2px; color: var(--staff-muted); font-family: inherit; font-size: 12px; }
+body #app.admin-interface.admin-interface .notif-unread-dot { flex: 0 0 auto; width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; background: var(--staff-accent); }
+body #app.admin-interface.admin-interface #notif-list .civic-empty { padding: 28px 16px; color: var(--staff-muted); text-align: center; }
+:is(html[data-theme=dark], html.dark) body #app.admin-interface.admin-interface .notif-item .notif-dot { background: #7cb6e3; }
+:is(html[data-theme=dark], html.dark) body #app.admin-interface.admin-interface .notif-type-incident .notif-dot { background: #f2c14e; }
+:is(html[data-theme=dark], html.dark) body #app.admin-interface.admin-interface .notif-type-application .notif-dot { background: #5fd396; }
+@media (max-width: 760px) {
+  body #app.admin-interface.admin-interface .notif-panel { position: fixed; top: 72px; right: 12px; left: 12px; width: auto; }
+}
+.sr-only { position: absolute !important; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+/* ── Account & Settings hub ── */
+body #app.admin-interface.admin-interface .settings-hub { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 18px; }
+body #app.admin-interface.admin-interface .settings-hub-card { padding: 20px; }
+body #app.admin-interface.admin-interface .settings-hub-card .card-title { margin: 0; font-size: 17px; }
+body #app.admin-interface.admin-interface .settings-identity { display: flex; align-items: center; gap: 14px; padding-bottom: 16px; border-bottom: 1px solid var(--staff-row); }
+body #app.admin-interface.admin-interface .settings-identity .card-sub { margin: 2px 0 0; overflow-wrap: anywhere; }
+body #app.admin-interface.admin-interface .settings-identity-avatar { display: inline-grid; flex: 0 0 auto; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: #17663a; color: #fff; font-weight: 700; }
+body #app.admin-interface.admin-interface .settings-hub-card .setting-row { gap: 16px; padding: 14px 0; border-color: var(--staff-row); }
+body #app.admin-interface.admin-interface .settings-hub-card .setting-row:last-child { border-bottom: 0; padding-bottom: 0; }
+body #app.admin-interface.admin-interface .settings-hub-card .setting-row > .btn { flex: 0 0 auto; min-width: 132px; }
+body #app.admin-interface.admin-interface .settings-hub-card .setting-sub { max-width: 52ch; line-height: 1.45; }
+@media (max-width: 1100px) {
+  body #app.admin-interface.admin-interface .settings-hub { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 560px) {
+  body #app.admin-interface.admin-interface .settings-hub-card .setting-row { flex-direction: column; align-items: stretch; }
+  body #app.admin-interface.admin-interface .settings-hub-card .setting-row > .btn { width: 100%; }
+}

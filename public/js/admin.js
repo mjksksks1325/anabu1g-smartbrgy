@@ -138,12 +138,16 @@ async function refreshDashboardStats() {
     renderDashboardActivity();
     renderDashboardCertificateChart(payload.certificate_requests || {});
     const previous = new Map(NOTIFICATIONS.map(item => [item.id, item.read]));
-    NOTIFICATIONS.splice(0, NOTIFICATIONS.length, ...activity.map((item, activityIndex) => ({
-      id: item.detail + item.occurred_at, title: item.title, detail: item.detail, time: item.time,
-      read: previous.get(item.detail + item.occurred_at) || false, dot: 'var(--blue-400)',
-      screen: item.type === 'incident' ? 'incidents' : item.type === 'application' ? 'records' : 'certificates',
-      activityIndex,
-    })));
+    const storedRead = readNotificationState();
+    NOTIFICATIONS.splice(0, NOTIFICATIONS.length, ...activity.map((item, activityIndex) => {
+      const id = notificationKey(`${item.type}|${item.record_id ?? ''}|${item.title}|${item.occurred_at}`);
+      return {
+        id, type: item.type, title: item.title, detail: item.detail, time: item.time,
+        read: previous.get(id) || storedRead.has(id),
+        screen: item.type === 'incident' ? 'incidents' : item.type === 'application' ? 'records' : 'certificates',
+        activityIndex,
+      };
+    }));
     renderNotifications(); updateNotifBadge();
     return true;
 
@@ -919,10 +923,8 @@ applyAccessControl(currentUserAccess);
 
 // Update user display in sidebar if element exists
 const userNameEl = document.getElementById('sidebar-user-name');
-const userRoleEl = document.getElementById('sidebar-user-role');
 
 if (userNameEl) userNameEl.textContent = name || 'Staff';
-if (userRoleEl) userRoleEl.textContent = role || '';
 
 startClock();
 
@@ -1706,6 +1708,7 @@ function confirmAction(message, { title = 'Please confirm', confirmLabel = 'Conf
     };
     openModal('modal-confirm-action');
     if (requireSupervisorPassword) passwordInput?.focus();
+    else if (danger) modal.querySelector('.modal-close')?.focus?.();
     else button.focus?.();
   });
 }
@@ -2135,39 +2138,70 @@ window.addEventListener('DOMContentLoaded', () => { console.log('SmartBrgy Anabu
 // NOTIFICATIONS SYSTEM
 // ═══════════════════════════════════════
 const NOTIFICATIONS = [];
+const NOTIFICATION_CATEGORIES = {
+  incident: 'Incident report',
+  application: 'Resident application',
+  request: 'Document request',
+};
+
+/** Short non-reversible key, so browser storage never holds request names or incident details. */
+function notificationKey(text) {
+  let hash = 0x811c9dc5;
+  for (const character of String(text)) {
+    hash ^= character.codePointAt(0);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash.toString(36);
+}
+
+function notificationStorageKey() {
+  return `smartbrgy.notifications.read.${window.AUTHENTICATED_USER?.id ?? 'staff'}`;
+}
+
+/** Read state is a per-browser convenience only; it is not shared between staff or devices. */
+function readNotificationState() {
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(notificationStorageKey()) || '[]');
+    return new Set(Array.isArray(stored) ? stored.map(String) : []);
+  } catch (_) {
+    return new Set();
+  }
+}
+
+function saveNotificationState() {
+  try {
+    const read = NOTIFICATIONS.filter(item => item.read).map(item => item.id).slice(0, 200);
+    window.localStorage.setItem(notificationStorageKey(), JSON.stringify(read));
+  } catch (_) {}
+}
 
 function renderNotifications() {
   const list = document.getElementById('notif-list');
   if (!list) return;
-  list.innerHTML = NOTIFICATIONS.length ? '' : '<div class="civic-empty">No recent notifications.</div>';
+  list.innerHTML = NOTIFICATIONS.length ? '' : `<div class="civic-empty">${escapeText(adminText('No recent notifications.'))}</div>`;
   NOTIFICATIONS.forEach(n => {
-    const div = document.createElement('div');
-    div.className = 'notif-item' + (n.read ? '' : ' unread');
-    div.setAttribute('role', 'button');
-    div.setAttribute('tabindex', '0');
-    const openTarget = () => {
+    const category = NOTIFICATION_CATEGORIES[n.type] || NOTIFICATION_CATEGORIES.request;
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = `notif-item notif-type-${n.type || 'request'}${n.read ? '' : ' unread'}`;
+    item.onclick = () => {
       n.read = true;
+      saveNotificationState();
       updateNotifBadge();
       renderNotifications();
-      toggleNotifPanel();
+      toggleNotifPanel(false);
       void openDashboardActivity(n.activityIndex);
     };
-    div.onclick = openTarget;
-    div.onkeydown = event => {
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        openTarget();
-      }
-    };
-    div.innerHTML = `
-      <div class="notif-dot" style="background:${n.dot};margin-top:5px;flex-shrink:0;"></div>
-      <div style="flex:1;">
-        <div class="notif-body"><strong>${escapeText(n.title)}</strong></div>
-        <div class="notif-body" style="margin-top:2px;">${escapeText(n.detail)}</div>
-        <div class="notif-time">${escapeText(n.time)}</div>
-      </div>
-      ${!n.read ? '<div style="width:7px;height:7px;border-radius:50%;background:var(--blue-400);flex-shrink:0;margin-top:4px;"></div>' : ''}`;
-    list.appendChild(div);
+    item.innerHTML = `
+      <span class="notif-dot" aria-hidden="true"></span>
+      <span class="notif-content">
+        <span class="notif-category">${escapeText(adminText(category))}</span>
+        <span class="notif-body"><strong>${escapeText(n.title)}</strong></span>
+        <span class="notif-body notif-detail">${escapeText(n.detail)}</span>
+        <span class="notif-time">${escapeText(n.time)}</span>
+      </span>
+      ${n.read ? '' : `<span class="notif-unread-dot"><span class="sr-only">${escapeText(adminText('Unread'))}</span></span>`}`;
+    list.appendChild(item);
   });
 }
 
@@ -2175,17 +2209,30 @@ function updateNotifBadge() {
   const unread = NOTIFICATIONS.filter(n => !n.read).length;
   const badge = document.getElementById('notif-count');
   if (badge) { badge.textContent = unread; badge.style.display = unread ? 'flex' : 'none'; }
+  document.getElementById('notif-chip')?.setAttribute('aria-label', unread
+    ? adminText('Notifications, :count unread', { count: unread })
+    : adminText('Notifications'));
+  const markAll = document.getElementById('notif-mark-all');
+  if (markAll) markAll.disabled = unread === 0;
 }
 
-function toggleNotifPanel() {
+function toggleNotifPanel(force) {
   const panel = document.getElementById('notif-panel');
   if (!panel) return;
-  panel.classList.toggle('open');
-  if (panel.classList.contains('open')) { renderNotifications(); }
+  const open = typeof force === 'boolean' ? force : !panel.classList.contains('open');
+  panel.classList.toggle('open', open);
+  const chip = document.getElementById('notif-chip');
+  chip?.setAttribute('aria-expanded', String(open));
+  if (open) {
+    renderNotifications();
+    panel.querySelector('.notif-panel-close')?.focus?.();
+  }
 }
 
 function markAllNotifsRead() {
+  if (!NOTIFICATIONS.some(n => !n.read)) return;
   NOTIFICATIONS.forEach(n => n.read = true);
+  saveNotificationState();
   updateNotifBadge(); renderNotifications();
   showToast('All notifications marked as read.', 'green');
 }
@@ -2194,8 +2241,15 @@ document.addEventListener('click', function(e) {
   const panel = document.getElementById('notif-panel');
   const chip = document.getElementById('notif-chip');
   if (panel && panel.classList.contains('open') && !panel.contains(e.target) && !chip.contains(e.target)) {
-    panel.classList.remove('open');
+    toggleNotifPanel(false);
   }
+});
+
+document.addEventListener('keydown', event => {
+  const panel = document.getElementById('notif-panel');
+  if (event.key !== 'Escape' || !panel?.classList.contains('open') || topOpenModal()) return;
+  toggleNotifPanel(false);
+  document.getElementById('notif-chip')?.focus?.();
 });
 
 // ═══════════════════════════════════════
@@ -3020,45 +3074,61 @@ async function reloadUsers() {
   }
 }
 
+/** Role names as personnel see them elsewhere in the workspace (account menu, exports). */
+function staffRoleLabel(user) {
+  if (user.is_super_admin) return 'Super Admin';
+  return { captain: 'Barangay Captain', admin: 'Barangay Admin', staff: 'Barangay Staff', viewer: 'View only' }[user.role] || user.role;
+}
+
+function staffRoleKey(user) {
+  return user.is_super_admin ? 'super_admin' : user.role;
+}
+
+function setUserStat(id, value) {
+  const element = document.getElementById(id);
+  if (!element) return;
+  element.textContent = value;
+  element.closest?.('.user-kpi')?.classList.toggle('is-zero', value === 0);
+}
+
 function renderUsers() {
   const container = document.getElementById('users-list-container');
   if (!container) return;
   const users = USERS.filter(user =>
-    (userRoleFilter === 'all' || user.role === userRoleFilter) &&
+    (userRoleFilter === 'all' || staffRoleKey(user) === userRoleFilter) &&
     (userStatusFilter === 'all' || (userStatusFilter === 'active' ? user.is_active : !user.is_active)) &&
-    (!userSearch || `${user.name} ${user.email} ${user.role} ${user.role === 'captain' ? 'barangay captain' : ''}`.toLowerCase().includes(userSearch))
+    (!userSearch || `${user.name} ${user.email} ${user.role} ${staffRoleLabel(user)} ${adminText(staffRoleLabel(user))}`.toLowerCase().includes(userSearch))
   );
-  const totalElement = document.getElementById('usr-total');
-  if (totalElement) totalElement.textContent = USERS.length;
-  document.getElementById('usr-active').textContent = USERS.filter(user => user.is_active).length;
-  document.getElementById('usr-suspended').textContent = USERS.filter(user => !user.is_active).length;
-  container.innerHTML = users.length ? users.map(user => `
-    <div class="user-card ${user.is_active ? '' : 'suspended'}" data-user-card-id="${Number(user.id)}" role="button" tabindex="0" aria-label="View details for ${escapeText(user.name)}">
-      <div class="user-avatar-lg">${escapeText(initials(user.name))}</div>
+  setUserStat('usr-total', USERS.length);
+  setUserStat('usr-active', USERS.filter(user => user.is_active).length);
+  setUserStat('usr-suspended', USERS.filter(user => !user.is_active).length);
+  setUserStat('usr-no-2fa', USERS.filter(user => user.is_active && !user.two_factor_confirmed_at).length);
+  const summary = document.getElementById('users-result-count');
+  if (summary) summary.textContent = adminText(users.length === 1 ? ':count account shown' : ':count accounts shown', { count: users.length });
+  const currentUserId = Number(window.AUTHENTICATED_USER?.id);
+  container.innerHTML = users.length ? users.map(user => {
+    const id = Number(user.id);
+    const name = escapeText(user.name);
+    const isSelf = id === currentUserId;
+    const canChangeAccess = !isSelf && !user.is_super_admin;
+    return `
+    <article class="user-card ${user.is_active ? '' : 'suspended'}" data-user-card-id="${id}">
+      <div class="user-avatar-lg user-avatar-${escapeText(staffRoleKey(user))}" aria-hidden="true">${escapeText(initials(user.name))}</div>
       <div class="user-info">
-        <div class="user-name">${escapeText(user.name)}</div>
+        <h3 class="user-name"><button type="button" class="user-card-open" onclick="openUserDetails(${id})" aria-label="${escapeText(adminText('View account details for :name', { name: user.name }))}">${name}</button>${isSelf ? `<span class="user-self-tag">${escapeText(adminText('You'))}</span>` : ''}</h3>
         <div class="user-role-tag">${escapeText(user.email)}</div>
-        <div class="user-badges"><span class="badge badge-blue">${escapeText(user.role === 'captain' ? 'Barangay Captain' : user.role)}</span>
-          ${user.is_super_admin ? '<span class="badge badge-green">Super Admin</span>' : ''}
+        <div class="user-badges">
+          <span class="badge user-role-badge user-role-${escapeText(staffRoleKey(user))}">${escapeText(adminText(staffRoleLabel(user)))}</span>
           <span class="badge ${user.is_active ? 'badge-green' : 'badge-red'}">${user.is_active ? 'Active' : 'Suspended'}</span>
-          <span class="badge badge-gray">${user.two_factor_confirmed_at ? '2FA enabled' : '2FA not configured'}</span>
+          <span class="badge ${user.two_factor_confirmed_at ? 'badge-gray' : 'badge-amber'}">${user.two_factor_confirmed_at ? '2FA enabled' : '2FA not configured'}</span>
         </div>
       </div>
-      <div class="user-actions"><button class="btn btn-primary" onclick="event.stopPropagation();openEditUser(${Number(user.id)})">Edit account</button>
-      ${Number(user.id) !== Number(window.AUTHENTICATED_USER.id) && !user.is_super_admin ? `<button class="btn" onclick="event.stopPropagation();setUserActive(${Number(user.id)}, ${!user.is_active})">${user.is_active ? 'Suspend' : 'Activate'}</button><button class="btn btn-danger" onclick="event.stopPropagation();deleteUser(${Number(user.id)})">Delete</button>` : ''}</div>
-    </div>`).join('') : '<div class="card civic-empty">No accounts match your filters.</div>';
-  container.querySelectorAll('[data-user-card-id]').forEach(card => {
-    card.addEventListener('click', event => {
-      if (!event.target.closest('button, a, input, select')) openUserDetails(Number(card.dataset.userCardId));
-    });
-    card.addEventListener('keydown', event => {
-      if (event.target !== card) return;
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        openUserDetails(Number(card.dataset.userCardId));
-      }
-    });
-  });
+      <div class="user-actions">
+        <button type="button" class="btn" onclick="event.stopPropagation();openEditUser(${id})" aria-label="${escapeText(adminText('Edit account of :name', { name: user.name }))}">Edit</button>
+        ${canChangeAccess ? `<button type="button" class="btn ${user.is_active ? 'user-action-suspend' : 'user-action-activate'}" onclick="event.stopPropagation();setUserActive(${id}, ${!user.is_active})" aria-label="${escapeText(adminText(user.is_active ? 'Suspend :name' : 'Activate :name', { name: user.name }))}">${user.is_active ? 'Suspend' : 'Activate'}</button><button type="button" class="btn btn-danger" onclick="event.stopPropagation();deleteUser(${id})" aria-label="${escapeText(adminText('Delete account of :name', { name: user.name }))}">Delete</button>` : ''}
+      </div>
+    </article>`;
+  }).join('') : '<div class="card civic-empty">No accounts match your filters.</div>';
 }
 
 function filterUsers() {
@@ -3075,29 +3145,48 @@ function openUserDetails(id) {
 
   const cabinet = user.cabinet_access || null;
   const drawerAccessLabels = { none: 'No drawers assigned', drawer_1: 'Drawer 1', drawer_2: 'Drawer 2', all: 'All drawers' };
+  const enrollmentLabels = { enrolled: 'Enrolled', pending: 'Pending', not_started: 'Not started' };
+  const enrollment = status => (status ? enrollmentLabels[status] || String(status).replaceAll('_', ' ') : 'Not assigned');
+  const permissionLabels = new Map([...document.querySelectorAll('[data-staff-permission]')].map(input => [input.dataset.staffPermission, {
+    module: input.closest('fieldset')?.querySelector('legend')?.textContent.trim() || input.dataset.staffPermission.split('.')[0],
+    action: input.closest('label')?.textContent.trim() || input.dataset.staffPermission,
+  }]));
   const permissions = user.staff_permissions;
+  const groupedPermissions = new Map();
+  if (Array.isArray(permissions)) {
+    permissions.filter(item => typeof item === 'string').forEach(item => {
+      const { module, action } = permissionLabels.get(item) || { module: item.split('.')[0], action: item.split('.').slice(1).join('.') || item };
+      groupedPermissions.set(module, [...(groupedPermissions.get(module) || []), adminText(action)]);
+    });
+  }
   const permissionText = Array.isArray(permissions)
-    ? permissions.map(item => typeof item === 'string' ? item : item.label || item.name || '').filter(Boolean).join(', ')
+    ? [...groupedPermissions].map(([module, actions]) => `${adminText(module)}: ${actions.join(', ')}`).join('\n')
     : permissions && typeof permissions === 'object'
       ? Object.entries(permissions).filter(([, enabled]) => Boolean(enabled)).map(([name]) => name.replaceAll('_', ' ')).join(', ')
       : '';
-  const values = [
-    ['Name', user.name],
-    ['Email', user.email],
-    ['Role', user.is_super_admin ? 'Super Admin' : (user.role === 'captain' ? 'Barangay Captain' : user.role)],
-    ['Account status', user.is_active ? 'Active' : 'Suspended'],
-    ['Two-factor authentication', user.two_factor_confirmed_at ? 'Enabled' : 'Not configured'],
-    ['Created', user.created_at ? new Date(user.created_at).toLocaleString() : 'Not available'],
-    ['Staff access', permissionText || 'Role defaults'],
-    ['Cabinet access', cabinet ? (cabinet.is_active ? 'Enabled' : 'Disabled') : 'Not assigned'],
-    ['RFID enrollment', cabinet?.rfid_enrollment_status || 'Not assigned'],
-    ['Face enrollment', cabinet?.face_enrollment_status || 'Not assigned'],
-    ['Drawer access', drawerAccessLabels[cabinet?.drawer_access] || 'Not assigned'],
-    ['Raspberry Pi employee ID', cabinet?.rpi_employee_id || 'Not linked'],
+  const sections = [
+    ['Account', [
+      ['Role', staffRoleLabel(user)],
+      ['Account status', user.is_active ? 'Active' : 'Suspended'],
+      ['Two-factor authentication', user.two_factor_confirmed_at ? 'Enabled' : 'Not configured'],
+      ['Created', user.created_at ? new Date(user.created_at).toLocaleString() : 'Not available'],
+    ]],
+    ['Staff access', [
+      ['Assigned operations', user.role === 'staff' || user.is_super_admin ? (permissionText || 'No operations assigned') : 'Role defaults'],
+    ]],
+    ['Smart cabinet', [
+      ['Cabinet access', cabinet ? (cabinet.is_active ? 'Enabled' : 'Disabled') : 'Not assigned'],
+      ['Drawer access', drawerAccessLabels[cabinet?.drawer_access] || 'Not assigned'],
+      ['RFID enrollment', enrollment(cabinet?.rfid_enrollment_status)],
+      ['Face enrollment', enrollment(cabinet?.face_enrollment_status)],
+      ['Raspberry Pi employee ID', cabinet?.rpi_employee_id || 'Not linked'],
+    ]],
   ];
   document.getElementById('user-details-title').textContent = user.name;
   document.getElementById('user-details-subtitle').textContent = user.email;
-  fields.innerHTML = values.map(([label, value]) => `<div class="user-detail-field"><dt>${escapeText(label)}</dt><dd>${escapeText(String(value ?? 'Not available'))}</dd></div>`).join('');
+  fields.innerHTML = sections.map(([heading, values]) => `<section class="user-detail-section"><h3>${escapeText(adminText(heading))}</h3><dl class="user-detail-section-grid">${values.map(([label, value]) => `<div class="user-detail-field${label === 'Assigned operations' ? ' is-wide' : ''}"><dt>${escapeText(adminText(label))}</dt><dd>${escapeText(adminText(String(value ?? 'Not available')))}</dd></div>`).join('')}</dl></section>`).join('');
+  const editButton = document.getElementById('user-details-edit');
+  if (editButton) editButton.onclick = () => { closeModal('modal-user-details'); openEditUser(Number(user.id)); };
   openModal('modal-user-details');
 }
 
@@ -3229,7 +3318,9 @@ async function setUserActive(id, active) {
 
   if (
     !user ||
-    !(await confirmAction(`${active ? 'Activate' : 'Suspend'} ${user.name}'s account?`, { title: `${active ? 'Activate' : 'Suspend'} account`, confirmLabel: active ? 'Activate' : 'Suspend', danger: !active }))
+    !(await confirmAction(active
+      ? adminText('Reactivate :name? They can sign in again with their existing role and access.', { name: user.name })
+      : adminText('Suspend :name? They will be signed out and cannot sign in until an administrator reactivates the account. Their records and history are kept.', { name: user.name }), { title: active ? 'Reactivate account' : 'Suspend account', confirmLabel: active ? 'Reactivate' : 'Suspend', danger: !active }))
   ) {
     return;
   }
@@ -3376,11 +3467,9 @@ function launchApp(name = 'Staff', role = 'Staff') {
   app.classList.add('visible');
   applyAccessControl(currentUserAccess);
   const userNameEl = document.getElementById('sidebar-user-name');
-  const userRoleEl = document.getElementById('sidebar-user-role');
   const userAvatarEl = document.getElementById('sidebar-user-avatar');
   const topAvatarEl = document.querySelector('.topbar-avatar');
   if (userNameEl) userNameEl.textContent = currentUserName;
-  if (userRoleEl) userRoleEl.textContent = currentUserRole;
   if (userAvatarEl) userAvatarEl.textContent = initials(currentUserName);
   if (topAvatarEl) topAvatarEl.textContent = initials(currentUserName);
   const dashboardRefreshButton = document.querySelector('#screen-dashboard .dashboard-refresh-actions > .btn');

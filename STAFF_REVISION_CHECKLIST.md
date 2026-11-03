@@ -17,19 +17,22 @@ Update it at the end of every session. Statuses come from the source code, not f
 - Tests: Pest and Node (`node --test tests/Unit/*.test.js`). The full Pest suite needs more memory than the default: `php -d memory_limit=1G vendor/pestphp/pest/bin/pest --compact`. Destructive-route tests send `supervisorApproval()` (see `tests/Pest.php`).
 - Browser checks: run the app against a **copy** of `database/database.sqlite` (set `DB_DATABASE` and start `php -S 127.0.0.1:8010 ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php` from `public/`; `artisan serve` drops the override) and sign in with a seeded local staff account. Never seed test data into the real local database.
 
-## Test status (2026-11-03, after `d791e49`)
+## Test status (2026-11-03, work group 5)
 
-- Node: 185 pass, 0 fail.
-- Pest: 991 pass, 14 fail, 2 skipped. All 14 are in account settings, profile and navigation (Work Group 5). They need a decision on the intended design, not a quick assertion change:
-  - `GovernmentPagesTest`: expects the removed top-bar `IoT status` chip and a `My profile` menu item; sidebar icon count 15 vs 16; account role shown as `Super Admin` where the test expects `admin` (×4 settings/IoT pages); sidebar scroll container.
-  - `Settings/ProfileUpdateTest`: settings sidebar icon count 15 vs 16 (×2); `Account security` link order; **account deletion now asks for the active Super Admin password** (`DeleteUserForm`, changed in `e7f1aa7`), and the test still sends the user's own password.
-  - `PasswordVisibilityTest` and `PersonnelPasswordConfirmationTest`: expected password toggles and security links not found on the dashboard.
+- Node: 189 pass, 0 fail.
+- Pest: 1011 pass, 0 fail, 2 skipped.
+- The 14 earlier failures were resolved as follows:
+  - **Outdated tests (11):** they expected UI a teammate removed on purpose (`8e4e1a0`, `e7f1aa7`): the IoT status chip, the "My profile" and "Account security" items, 16 menu icons, and the raw role `admin` instead of `Super Admin`. One test also checked for `wire:navigate` where the link now uses `wire:navigate.hover`. These tests now assert the consolidated design.
+  - **Real bugs (2):**
+    - The supervisor-password field had no show/hide toggle (`PasswordVisibilityTest`).
+    - The dashboard had no link to Password & security (`PersonnelPasswordConfirmationTest`). It now has one in the account menu.
+  - **Security mismatch (1):** the account-deletion test sent the user's own password, but deletion requires an active Captain or Super Admin password. The test now uses a captain's password, and a new test checks that the user's own password is refused. Requirement unchanged.
 
 ## 1. General
 
 | Item | Status | Notes |
 |---|---|---|
-| English/Filipino consistency | `NEW` / `PARTIAL` | 79 staff JS messages and about 70 Demographics/Resident Records labels catalogued; hard-coded Filipino source text replaced; placeholder fill order fixed (`:to` no longer breaks `:total`, seen as "2tal" in the browser). `TODO`: remaining screens (Certificates, Incidents, IoT, Users, Settings) need the same browser audit. |
+| English/Filipino consistency | `NEW` | 79 staff JS messages and about 70 Demographics/Resident Records labels catalogued; hard-coded Filipino source text replaced; placeholder fill order fixed (`:to` no longer breaks `:total`, seen as "2tal" in the browser). Certificates, Incidents, IoT, Users, Settings and notifications audited in Filipino in work groups 3–5. |
 | Printable reports and exports | `PARTIAL` | Resident and voter exports are branded `.xlsx` files (`WriteRecordsSpreadsheet`), verified in the browser. The buttons say "Export Excel" / "Export List". Printable reports not yet reviewed. |
 | Import duplicate detection | `NEW` | Browser-verified end to end; see Decisions → Import. |
 | Lists ignore stale responses | `NEW` | Resident and voter lists render only the newest request (a slow earlier search used to be able to replace newer results) and keep their rows while refreshing. |
@@ -120,7 +123,7 @@ Update it at the end of every session. Statuses come from the source code, not f
 | Bug: wrong filter URL | `NEW` (fixed) | The script read `form.action`, which the "action" filter field shadows; fixed and covered by `IotFilters.test.js`. |
 | Pagination | `NEW` | Shared pager partial (`partials/staff-pager`), same layout as the workspace pager. |
 | Table | `NEW` | Date over time, current status as a pill, monospace tag; no sideways scroll at desktop width. |
-| Trust banner ("Physical files, digitally accountable.") | kept / `APPROVAL` | Decorative and repeats the notice, but a teammate added it with a test (`963fb3a`). Remove only if you agree. |
+| Trust banner ("Physical files, digitally accountable.") | `NEW` (removed, approved) | Its tags repeated the notice below it ("No simulated scans") and the heading ("Read-only event log"). Banner and its CSS were removed. The teammate test now checks it is gone and that the notice stays. |
 | Tracking logic, permissions | unchanged | Secretary and Kagawad (rfid.view) 200; Tanod 403. |
 
 ## 9. Employee Cabinet Access — `NEW` (browser-verified; `d791e49`)
@@ -146,11 +149,46 @@ Update it at the end of every session. Statuses come from the source code, not f
 | Access | unchanged | Administrators only; Secretary, Kagawad, Tanod get 403 from the audit API. |
 
 
-## 11. User Management — `TODO`: role filter vs stored roles (admin / captain / staff / viewer options), nested buttons in cards, suspension confirmation.
+## 11. User Management — `NEW` (browser-verified light, dark, Filipino, 390 px)
 
-## 12–14. Account, Settings, My Profile, Security — `TODO` audit together with the 14 failing tests above. Destinations: workspace Settings (`/admin/settings`), account settings (`/staff/settings/profile`, `appearance`, `security`), user-menu "Settings", sidebar "Resident Portal" (opens the portal in a new tab). Never remove password, session, 2FA or recovery-code features.
+| Item | Status | Notes |
+|---|---|---|
+| Clickable cards without nested buttons | `BUG` → `NEW` | The card was `role="button"` and held the Edit, Suspend and Delete buttons. Now the name is the button and stretches over the row, so a click anywhere on the row still opens the details. Actions sit above it and carry the user's name in their labels. |
+| KPI colours | `NEW` | Total is blue, Active green, Suspended red and the new "Active without 2FA" card amber. Suspended and 2FA cards turn neutral at zero, so colour means "needs attention". |
+| Toolbar and role filter | `BUG` → `NEW` | The filter had no Super Admin option, and "Admins" mixed super admins with ordinary admins. It now lists Super Admin, Barangay Captain, Barangay Admin, Barangay Staff and View only, plus status and a live result count. Search also matches role labels. |
+| Readable account rows | `NEW` | Role labels match the account menu: before, it showed raw `staff`/`admin`, and super admins carried two role chips. Suspended rows no longer fade to 65 % opacity; a red edge marks them instead. A "You" tag marks your own row. |
+| Details dialog | `NEW` | Grouped into Account, Staff access and Smart cabinet. Assigned operations show module and action labels instead of permission keys. Enrollment states are readable, and the dialog has an Edit account button. |
+| Suspend / reactivate confirmation | `NEW` | Explains the effect: the person is signed out, cannot sign in until reactivated, and keeps their records. Destructive confirmations open with focus on the X, so Enter does not confirm. Dialogs still close only through the X (teammate rule, `e7f1aa7`). |
+| Field errors in the account form | `NEW` | Server errors on the Raspberry Pi ID and status now appear on those fields. |
+| Bug: sidebar role | `BUG` → `NEW` | On workspace screens, JS overwrote the account footer's role with the raw role (`captain`). The server label is kept now. |
+| Permissions, eligibility, authorization | unchanged | Secretary, Kagawad and Tanod get 403 on `/admin/users` and `/admin/settings`. |
 
-## 15. Notifications — `PARTIAL` (client-side only; see proposal below).
+## 12–14. Account & Settings, My Profile, Account Security — `NEW` (browser-verified)
+
+| Item | Status | Notes |
+|---|---|---|
+| Settings hub (`/admin/settings`) | `NEW` | Has two cards. "Your account" shows identity, profile (dialog), password and 2FA (says you will confirm your password first) and theme. "Workspace" shows the barangay and hardware status. |
+| "Open Portal" / Resident Portal | investigated | The link opens the public portal (`/portal`) in a new tab. Residents use a separate guard, so the staff session is not used there. It stays in the sidebar only, so no second Settings link was added. On settings pages it was hard-coded in Filipino; now it is "Resident Portal" with a "(opens in a new tab)" hint in all three layouts. |
+| Redundant controls | checked | The hardware-status dialog is also used by the dashboard's System Status card, so it stays. The theme row stays: it is the discoverable place, and the hint points to the top-bar button. |
+| Navigation consolidation | `NEW` | The teammate's consolidation (`e7f1aa7`) left no Settings item in the sidebar for non-admin staff. They now get "Settings" → their own profile settings in every layout. Admins keep Settings → hub. Routes are unchanged. |
+| Bug: current section | `BUG` → `NEW` | Security and Appearance pages highlighted no sidebar item and no in-page section. Both now show the current section, and tests cover it. |
+| Password & security link | `NEW` | The account menu links to Password & security with a full page load, so the password-confirmation popup still guards it. Browser-verified: popup, then Security page with password and 2FA. |
+| Supervisor password field | `BUG` → `NEW` | It was the only password field without a show/hide toggle; it now has one and an English label. |
+| Delete-account wording | `NEW` | The label said "Super Admin password", but the rule also accepts an active Barangay Captain. The wording now names both. The rule itself is unchanged. |
+| Self-deletion path | `APPROVAL` | See Decisions: settings self-deletion hard-deletes without RPi revocation or an audit entry. |
+| Dark-mode language links on settings pages | `BUG` → `NEW` | A boxed outline appeared around English / Filipino; removed. |
+| Translator | `BUG` → `NEW` | `admin-localization.js` restored a script-updated `aria-label`/`title`/`placeholder` to its first value (seen on the bell's unread count). It now re-reads changed attributes; test added. |
+
+## 15. Notifications — `NEW` / `APPROVAL` for saved notifications
+
+| Item | Status | Notes |
+|---|---|---|
+| Sources | `DONE` | Dashboard recent activity, filtered on the server by permission (`documents.view`, `Incident::visibleTo`, `records.review`). Kagawad sees only what they may see; Tanod has no dashboard and no bell. |
+| Panel | `NEW` | Heading and scope line; one category line per item (Document request / Incident report / Resident application) with a colour mark; one unread dot; bounded height with its own scroll; full width on phones. |
+| Accessibility | `NEW` | Items are real buttons; the bell has `aria-expanded` and an unread count in its label. Esc closes the panel and returns focus to the bell. Mark all read is disabled when nothing is unread. |
+| Read state | `NEW` (interim) | Kept per user in this browser, so a reload no longer marks everything unread. Only hashed keys are stored, never names, references or incident details. It is not shared between devices or staff; see the proposal. |
+| Record links | `DONE` | Items open the existing record (request, incident, application); the target screens authorize again. |
+| "View all in Audit Log" | n/a | No longer in the code. Notifications and the audit log stay separate. |
 
 ## Decisions and proposals
 
@@ -179,15 +217,27 @@ Update it at the end of every session. Statuses come from the source code, not f
 
 ### Saved notifications — `APPROVAL` (design only)
 
-- **Today:** the bell lists the dashboard's recent activity (document requests, incidents the user may see via `Incident::visibleTo`, pending resident applications). Read state lives in the browser and resets on reload. Audit logs are separate and stay separate.
+- **Today:** the bell lists the dashboard's recent activity (document requests, incidents the user may see via `Incident::visibleTo`, pending resident applications). Since work group 5, read state is kept per user in the browser as hashed keys. It survives reloads but not a change of device. Audit logs are separate and stay separate.
 - **Events (existing data only):** new online document request; document request status change (processing, ready for release, released, rejected); new incident report; incident status change; incident assigned to a user; new resident registration application.
 - **Recipients by existing permission:** document events → `documents.view` (status changes that need action → `documents.process`); ordinary incidents → `incidents.view`; sensitive/VAWC incidents → `vawc.view` only; assignment → the assigned user only; applications → `records.review`. No new permissions.
 - **Read state:** Laravel's database notifications (`notifications` table: uuid, type, notifiable, data JSON, `read_at`). "Mark all read" becomes a PATCH that sets `read_at`.
 - **Links:** store record type + id + reference and open the existing screen; the target endpoints already authorize, and the list hides items whose record the user can no longer see.
 - **Sensitive data:** store only the reference number and a generic title ("Sensitive case updated") for VAWC/sensitive incidents; never names, narratives or incident types. Resident names appear only for document requests and applications, which their recipients can already see.
 - **Duplicates:** one notification per user per (event, record, new status); repeated saves without a status change send nothing.
-- **Database changes:** the standard `notifications` table (`php artisan make:notifications-table`) plus an index on (`notifiable_id`, `read_at`). No changes to existing tables. Optional pruning of read items after 90 days.
-- **Needs approval:** the event list, recipient rules, and retention.
+- **Database changes:** the standard `notifications` table (`php artisan make:notifications-table`) plus an index on (`notifiable_id`, `read_at`). No changes to existing tables.
+- **Retention:** prune read items after 90 days and unread items after 180 days (scheduled `model:prune`). Delete a user's notifications when the account is deleted.
+- **Losing access:** when a user loses a permission, items they can no longer open are hidden at read time; nothing is copied into the payload that the record endpoint would not show.
+- **Needs approval:** the event list, recipient rules, retention periods, and the migration.
+
+### Self-deletion from account settings — `APPROVAL` (security finding, not changed)
+
+- `DeleteUserForm` (Settings → Profile → Delete account) requires the password of an active Barangay Captain or Super Admin, then calls `forceDelete()` directly.
+- User Management deletion uses `DeleteStaffUser`. That path soft-deletes, queues the cabinet RPi revocation for face and RFID credentials, writes an audit entry, and refuses to delete super admins.
+- Settings self-deletion skips all of that. A cabinet user who deletes their own account keeps their face and RFID credentials on the Raspberry Pi until someone removes them by hand. No audit entry is written, and a Super Admin can delete their own account there.
+- **Options:**
+  - (a) Route self-deletion through `DeleteStaffUser`, after allowing self-deletion in it.
+  - (b) Remove self-deletion from settings, so administrators delete accounts in User Management. This is recommended: one audited path.
+- Either option changes account behaviour, so nothing was changed.
 
 ## Session log
 
@@ -196,3 +246,18 @@ Update it at the end of every session. Statuses come from the source code, not f
 - **Session 3 (2026-11-03)** — Work group 2 finished: Voters edit action, validation and language; stale-response guard on resident and voter lists; import summary, lasting result and clearer errors; profiling and voter imports browser-tested on an isolated copy (`4339f7b`). Work group 3 started: Eligibility Checker bug reproduced and fixed, plus resident search beyond 100 (`e56efce`). Next: Request Eligibility layout (KPI cards top, filters below), then Certificates Request Board and Incident Reports.
 - **Session 4 (2026-11-03)** — Work group 3 finished: Request Eligibility, Certificates & Clearances and Incident Reports reworked and browser-verified on an isolated copy (captain, kagawad and secretary accounts; light, dark, Filipino, 390 px) (`e877a4b`). Bugs fixed: incident table clipped at desktop width, broken "Public Portal" button with fake-request code, invisible process-step icons, incident errors that only reached a toast, restriction-list pager error hidden by its test harness. Next: work group 4 (RFID File Tracking, Employee Cabinet Access, Audit Log).
 - **Session 5 (2026-11-03)** — Work group 4 finished: RFID File Tracking, Employee Cabinet Access and Audit Log reworked and browser-verified on an isolated copy (captain, secretary, kagawad, tanod; light, dark, Filipino, 390 px) (`d791e49`). Bugs fixed: shadowed form.action in the in-place filter, mislabelled audit summary card, missing login category, unreadable dark-mode pills on IoT pages. Next: work group 5 (User Management, Account and Settings, My Profile, Account Security, Notifications) together with the 14 failing settings tests.
+- **Session 6 (2026-11-03)** — Work group 5 finished.
+  - **Modules:** User Management, Account & Settings, profile and security pages, and notifications were reworked and browser-verified on an isolated copy. Accounts: captain, secretary, kagawad and tanod. Checked in light and dark mode, English and Filipino, and at 390 px.
+  - **Bugs fixed:**
+    - Nested buttons in user cards.
+    - Missing Super Admin role filter.
+    - Raw role in the sidebar footer.
+    - No current section on the Security and Appearance pages.
+    - No Settings link for non-admin staff.
+    - Missing password toggle on the supervisor-password field.
+    - Translator reverting script-updated labels.
+    - Dark-mode boxes on the language links.
+    - Notification read state lost on reload.
+  - **Other changes:** RFID trust banner removed (approved). All 14 failing tests resolved.
+  - **Open for approval:** settings self-deletion path, saved notifications.
+  - **Next:** final full-system review.

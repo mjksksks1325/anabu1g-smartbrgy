@@ -12,6 +12,8 @@
         <div class="personnel-account-options">
             <div class="personnel-account-identity"><strong>{{ auth()->user()->name }}</strong><span>{{ auth()->user()->email }}</span></div>
             <a href="{{ route('profile.edit') }}" wire:navigate><x-staff-icon name="settings" />Settings</a>
+            {{-- Full page load, not wire:navigate, so the password confirmation popup stays mounted. --}}
+            <a href="{{ route('security.edit') }}"><x-staff-icon name="shield" />Password &amp; security</a>
             <form method="POST" action="{{ route('logout') }}" data-personnel-logout>
                 @csrf
                 <button type="submit" data-test="logout-button" aria-haspopup="dialog" aria-controls="logout-dialog">

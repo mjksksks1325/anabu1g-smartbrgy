@@ -28,7 +28,6 @@ it('renders account links and a labeled mobile navigation in the workspace', fun
     $this->actingAs(User::factory()->assignedOperations()->create())->get(route('staff.dashboard'))
         ->assertOk()->assertSee('aria-controls="admin-navigation"', false)
         ->assertSee('css/figma-admin.css')
-        ->assertSee('IoT status')
         ->assertDontSee('IoT Not Connected')
         ->assertDontSee('RFID, smart cabinet, and facial recognition are not connected.')
         ->assertSee('aria-controls="logout-dialog"', false)
@@ -49,7 +48,7 @@ it('keeps super admin navigation and vector symbols across workspace pages', fun
     foreach (['admin.dashboard', 'admin.smart-cabinet.index', 'admin.cabinet-access.index', 'profile.edit'] as $route) {
         $response = $this->actingAs($superAdmin)->get(route($route))->assertOk();
         $response->assertSee('Dashboard')->assertSee('Smart Cabinet')->assertSee('Employee Cabinet Access')
-            ->assertSee('My profile')->assertSee('<svg', false);
+            ->assertSee('Settings')->assertSee('<svg', false);
     }
 
     $this->actingAs(User::factory()->assignedOperations()->create(['role' => 'staff']))->get(route('staff.dashboard'))
@@ -65,7 +64,7 @@ it('scrolls the dashboard menu inside the sidebar while keeping the account foot
 
     expect($xpath->query('//nav[@id="admin-navigation"]/div[contains(@class, "sidebar-scroll")]')->length)->toBe(1)
         ->and($xpath->query('//nav[@id="admin-navigation"]/div[contains(@class, "sidebar-footer")]')->length)->toBe(1)
-        ->and($xpath->query('//nav[@id="admin-navigation"]/div[contains(@class, "sidebar-scroll")]//a[contains(normalize-space(.), "My profile")]')->length)->toBe(1);
+        ->and($xpath->query('//nav[@id="admin-navigation"]/div[contains(@class, "sidebar-scroll")]//a[contains(normalize-space(.), "Settings")]')->length)->toBe(1);
 });
 
 it('renders a paginated request list and rejection reason on its detail page', function () {
@@ -164,7 +163,6 @@ it('keeps every personnel menu icon identical to the RFID sidebar', function () 
             expect($icon)->not->toBeNull();
             $label = trim(preg_replace('/\s+/', ' ', $link->textContent));
             $label = trim(preg_replace('/\s+0$/', '', $label));
-            $label = str_replace('Portal ng Residente', 'Resident Portal', $label);
             $icons[$label] = preg_replace('/>\s+</', '><', $document->saveXML($icon));
         }
 
@@ -172,7 +170,7 @@ it('keeps every personnel menu icon identical to the RFID sidebar', function () 
     };
 
     $reference = $menuIcons('staff.rfid-files.index');
-    expect($reference)->toHaveCount(16);
+    expect($reference)->toHaveCount(15);
 
     foreach (['staff.dashboard', 'staff.demographics', 'staff.residents.index', 'staff.voters',
         'staff.document-requests.index', 'staff.request-eligibility', 'staff.incidents.index',
@@ -195,7 +193,7 @@ it('shows the workspace account identity in settings without the alternate Flux 
 
     expect($xpath->query($footer.'//span[@class="staff-settings-user-avatar"]')->item(0)->textContent)->toBe('SA');
     expect($xpath->query($footer.'//span[@class="staff-settings-user-name"]')->item(0)->textContent)->toBe('Super Admin');
-    expect($xpath->query($footer.'//span[@class="staff-settings-user-role"]')->item(0)->textContent)->toBe('admin');
+    expect($xpath->query($footer.'//span[@class="staff-settings-user-role"]')->item(0)->textContent)->toBe('Super Admin');
     expect($xpath->query($footer.'//summary[@data-test="sidebar-menu-button"]')->length)->toBe(1);
     expect($xpath->query($footer.'//*[@data-flux-sidebar-profile]')->length)->toBe(0);
     expect($xpath->query($footer.'//form[@method="POST" and @action="'.route('logout').'"]//button[@data-test="logout-button"]')->length)->toBe(1);
@@ -210,7 +208,7 @@ it('shows the same account initials and role in the IoT workspace', function () 
     $xpath = new DOMXPath($document);
 
     expect($xpath->query('//div[@class="side-nav-user"]//span[@class="staff-settings-user-avatar"]')->item(0)->textContent)->toBe('SA');
-    expect($xpath->query('//div[@class="side-nav-user"]//span[@class="staff-settings-user-role"]')->item(0)->textContent)->toBe('admin');
+    expect($xpath->query('//div[@class="side-nav-user"]//span[@class="staff-settings-user-role"]')->item(0)->textContent)->toBe('Super Admin');
 });
 
 it('places logout in the bottom account menu with a CSRF protected confirmation on every personnel layout', function (string $route) {

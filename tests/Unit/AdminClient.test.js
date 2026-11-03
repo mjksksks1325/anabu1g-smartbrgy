@@ -730,6 +730,78 @@ test('user management offers delete only for other non-super-admin accounts', as
   assert.doesNotMatch(html, /deleteUser\(1\)|deleteUser\(3\)/);
 });
 
+test('user cards open details from a name button instead of nesting buttons in a button card', async () => {
+  const { context, fields } = await client();
+  fields.set('users-list-container', { innerHTML: '' });
+  fields.set('user-search', { value: '' });
+  fields.set('user-role-filter', { value: 'super_admin' });
+  fields.set('user-status-filter', { value: 'all' });
+  vm.runInContext(`USERS.splice(0, USERS.length,
+    { id: 1, name: 'Captain', email: 'captain@example.test', role: 'captain', is_active: true },
+    { id: 2, name: 'Owner', email: 'owner@example.test', role: 'admin', is_active: true, is_super_admin: true },
+    { id: 3, name: 'Clerk', email: 'clerk@example.test', role: 'staff', is_active: false }
+  );`, context);
+
+  context.renderUsers();
+  let html = fields.get('users-list-container').innerHTML;
+  assert.doesNotMatch(html, /role="button"/);
+  assert.match(html, /<button type="button" class="user-card-open" onclick="openUserDetails\(1\)"/);
+  assert.match(html, /Barangay Captain/);
+  assert.match(html, /aria-label="Suspend Clerk"|aria-label="Activate Clerk"/);
+
+  context.filterUsers();
+  html = fields.get('users-list-container').innerHTML;
+  assert.match(html, /openUserDetails\(2\)/);
+  assert.doesNotMatch(html, /openUserDetails\([13]\)/);
+  assert.match(html, />Super Admin</);
+});
+
+test('destructive confirmations start on the close button so Enter does not confirm them', async () => {
+  const { context, fields } = await client();
+  const focused = [];
+  const close = { focus() { focused.push('close'); } };
+  fields.set('modal-confirm-action', { classList: { add() {}, remove() {} }, setAttribute() {}, querySelector: selector => (selector === '.modal-close' ? close : null) });
+  fields.set('confirm-action-button', { textContent: '', className: '', onclick: null, focus() { focused.push('confirm'); } });
+  fields.set('confirm-action-title', { textContent: '' });
+  fields.set('confirm-action-message', { textContent: '' });
+
+  context.confirmAction('Suspend Clerk?', { danger: true });
+  context.confirmAction('Reactivate Clerk?');
+
+  assert.deepEqual(focused, ['close', 'confirm']);
+});
+
+test('notification read state survives a refresh without storing request or incident details', async () => {
+  const { context, fields } = await client();
+  const stored = new Map();
+  context.window.localStorage = { getItem: key => stored.get(key) ?? null, setItem: (key, value) => stored.set(key, value) };
+  fields.set('notif-list', { innerHTML: '', appendChild() {} });
+  context.document.createElement = () => ({});
+  fields.set('notif-count', { textContent: '', style: {} });
+  const activity = [
+    { type: 'incident', record_id: 7, title: 'Incident filed', detail: 'INC-2026-0007 — Maria Santos', time: 'now', occurred_at: '2026-11-03T08:00:00Z' },
+    { type: 'request', record_id: 9, title: 'Document request pending', detail: 'REQ-2026-ABC — Barangay Clearance', time: 'now', occurred_at: '2026-11-03T07:00:00Z' },
+  ];
+  context.hasStaffPermission = () => true;
+  context.renderDashboardActivity = () => {};
+  context.renderDashboardCertificateChart = () => {};
+  context.fetch = async () => ({ ok: true, json: async () => ({ summary: {}, recent_activity: activity }) });
+  fields.set('dash-sub-pending', { textContent: '' });
+  fields.set('dash-sub-incidents', { textContent: '' });
+
+  const refreshed = await context.refreshDashboardStats();
+  assert.deepEqual([refreshed, context.messages], [true, []]);
+  assert.equal(fields.get('notif-count').textContent, 2);
+  context.markAllNotifsRead();
+  assert.equal(fields.get('notif-count').textContent, 0);
+  const saved = [...stored.values()].join(' ');
+  assert.doesNotMatch(saved, /Maria|INC-2026|REQ-2026|Clearance/);
+
+  vm.runInContext('NOTIFICATIONS.splice(0)', context);
+  await context.refreshDashboardStats();
+  assert.equal(fields.get('notif-count').textContent, 0);
+});
+
 test('deleting a user requires confirmation and sends the delete request', async () => {
   const { context, fields } = await client();
   fields.set('users-list-container', { innerHTML: '', querySelectorAll: () => [] });

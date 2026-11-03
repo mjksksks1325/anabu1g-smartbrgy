@@ -14,7 +14,8 @@ it('separates employee RFID access from super admin pages', function () {
     $this->actingAs($staff)->get(route('staff.rfid-files.index'))->assertOk()->assertSee('No file movements recorded')
         ->assertSee('css/figma-iot.css')
         ->assertSee('Staff workspace')
-        ->assertSee('Physical files, digitally accountable.')
+        ->assertDontSee('Physical files, digitally accountable.')
+        ->assertSee('No scan can be simulated from this page.')
         ->assertSee('Request Eligibility');
     $this->get(route('admin.smart-cabinet.index'))->assertForbidden();
     $this->get(route('admin.cabinet-access.index'))->assertForbidden();

@@ -77,7 +77,10 @@
             </div>
         @endif
             <div class="sidebar-sec">
-                <a class="nav-item portal-link staff-settings-portal" href="{{ route('home') }}" target="_blank" rel="noopener"><x-staff-icon name="globe" />Resident Portal</a>
+                @unless(auth()->user()->hasAdministrativeAccess())
+                    <a wire:navigate.hover class="nav-item" aria-current="false" href="{{ route('profile.edit') }}"><x-staff-icon name="settings" />Settings</a>
+                @endunless
+                <a class="nav-item portal-link staff-settings-portal" href="{{ route('home') }}" target="_blank" rel="noopener" title="Opens the public Resident Portal in a new tab"><x-staff-icon name="globe" />Resident Portal<span class="sr-only"> (opens in a new tab)</span></a>
             </div>
 
         </div>

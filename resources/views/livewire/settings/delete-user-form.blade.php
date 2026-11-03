@@ -16,11 +16,11 @@
                 <flux:heading size="lg">{{ __('Are you sure you want to delete your account?') }}</flux:heading>
 
                 <flux:subheading>
-                    {{ __('Once your account is deleted, all of its resources and data will be permanently deleted. Enter the password of an active Super Admin to approve this deletion.') }}
+                    {{ __('Once your account is deleted, all of its resources and data will be permanently deleted. Enter the password of an active Barangay Captain or Super Admin to approve this deletion.') }}
                 </flux:subheading>
             </div>
 
-            <flux:input wire:model="password" :label="__('Super Admin password')" type="password" autocomplete="new-password" viewable />
+            <flux:input wire:model="password" :label="__('Barangay Captain or Super Admin password')" type="password" autocomplete="new-password" viewable />
 
             <div class="flex justify-end space-x-2 rtl:space-x-reverse">
                 <flux:modal.close>

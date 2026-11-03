@@ -51,7 +51,7 @@
         <svg class="staff-theme-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
         <span id="theme-label" class="sr-only">Dark Mode</span>
       </button>
-      <button type="button" class="topbar-chip notif-badge-wrap" onclick="toggleNotifPanel()" id="notif-chip" aria-label="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></svg><span class="notif-count" id="notif-count">0</span></button>
+      <button type="button" class="topbar-chip notif-badge-wrap" onclick="toggleNotifPanel()" id="notif-chip" aria-label="Notifications" aria-expanded="false" aria-controls="notif-panel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></svg><span class="notif-count" id="notif-count">0</span></button>
       <div class="topbar-chip" id="clock-display" hidden>--:--:--</div>
       <span class="topbar-avatar">{{ auth()->user()->initials() }}</span>
     </div>
@@ -137,9 +137,15 @@
       </div>
       @endif
       <div class="sidebar-sec">
-        <a class="nav-item staff-settings-portal" href="{{ route('home') }}" target="_blank" rel="noopener">
+        @unless(auth()->user()->hasAdministrativeAccess())
+        <a class="nav-item" aria-current="false" href="{{ route('profile.edit') }}">
+          <x-staff-icon name="settings" />
+          Settings
+        </a>
+        @endunless
+        <a class="nav-item staff-settings-portal" href="{{ route('home') }}" target="_blank" rel="noopener" title="Opens the public Resident Portal in a new tab">
           <x-staff-icon name="globe" />
-          {{ __('Resident Portal') }}
+          {{ __('Resident Portal') }}<span class="sr-only"> (opens in a new tab)</span>
         </a>
       </div>
       </div>
@@ -542,55 +548,62 @@
     <!-- USER MANAGEMENT -->
     <div class="content{{ $activeScreen === 'users' ? ' active' : '' }}" id="screen-users">
       <div class="page-header-row">
-        <div class="page-header"><h1>User <span>Management</span></h1><p>Manage authorized accounts and access to barangay records.</p></div>
+        <div class="page-header"><h1>User Management</h1><p>Manage authorized accounts and access to barangay records.</p></div>
         <div style="display:flex;gap:8px;">
           <button class="btn btn-primary btn-sm" onclick="exportUsers()"><x-staff-icon name="download" />Export</button>
           <button class="btn btn-green" onclick="openAddUser()"><x-staff-icon name="plus" />Add New User</button>
         </div>
       </div>
 
-      <div class="card"><div class="card-title">Authorized personnel only</div><p class="card-sub">Administrators manage accounts. Staff can manage records and services. View-only accounts have no access to administrative records. Suspend an account to revoke access while preserving its history. Select a user card to view account details.</p></div>
       <div class="stats-grid user-management-kpis">
-        <div class="stat-card blue user-kpi user-kpi-total"><div class="stat-label">Total accounts</div><div class="stat-value" id="usr-total">0</div><div class="stat-icon"><x-staff-icon name="people" /></div></div>
-        <div class="stat-card green user-kpi user-kpi-active"><div class="stat-label">Active users</div><div class="stat-value" id="usr-active">0</div><div class="stat-icon"><x-staff-icon name="check" /></div></div>
-        <div class="stat-card red user-kpi user-kpi-suspended"><div class="stat-label">Suspended users</div><div class="stat-value" id="usr-suspended">0</div><div class="stat-icon"><x-staff-icon name="shield" /></div></div>
+        <div class="stat-card user-kpi user-kpi-total"><div class="stat-label">Total accounts</div><div class="stat-value" id="usr-total">0</div><div class="stat-sub">Personnel accounts on record</div><div class="stat-icon"><x-staff-icon name="people" /></div></div>
+        <div class="stat-card user-kpi user-kpi-active"><div class="stat-label">Active users</div><div class="stat-value" id="usr-active">0</div><div class="stat-sub">Can sign in to the workspace</div><div class="stat-icon"><x-staff-icon name="check" /></div></div>
+        <div class="stat-card user-kpi user-kpi-suspended"><div class="stat-label">Suspended users</div><div class="stat-value" id="usr-suspended">0</div><div class="stat-sub">Access revoked, history kept</div><div class="stat-icon"><x-staff-icon name="key" /></div></div>
+        <div class="stat-card user-kpi user-kpi-2fa"><div class="stat-label">Active without 2FA</div><div class="stat-value" id="usr-no-2fa">0</div><div class="stat-sub">Should set up two-factor sign-in</div><div class="stat-icon"><x-staff-icon name="shield" /></div></div>
       </div>
-      <!-- Search & Filter -->
-      <div class="user-filter-row">
-        <div class="search-wrap"><span class="si"></span><input class="search-input" id="user-search" autocomplete="off" placeholder="Search users by name, email, or role..." oninput="filterUsers()"/></div>
-        <label class="user-filter-control"><span>Role</span><select class="form-input" id="user-role-filter" onchange="filterUsers()"><option value="all">All roles</option><option value="admin">Admins</option><option value="captain">Barangay Captain</option><option value="staff">Staff</option><option value="viewer">View only</option></select></label>
-        <label class="user-filter-control"><span>Status</span><select class="form-input" id="user-status-filter" onchange="filterUsers()"><option value="all">All statuses</option><option value="active">Active</option><option value="suspended">Suspended</option></select></label>
-      </div>
-
-      <!-- Users List -->
-      <div id="users-list-container"></div>
-
+      <section class="card user-directory" aria-labelledby="user-directory-title">
+        <div class="user-directory-head">
+          <div><h2 class="card-title" id="user-directory-title">Personnel accounts</h2><p class="card-sub">Select a name to view account details. Suspending an account revokes sign-in but keeps its records and history.</p></div>
+          <span class="user-directory-count" id="users-result-count" aria-live="polite"></span>
+        </div>
+        <div class="user-filter-row" role="search" aria-label="Filter personnel accounts">
+          <div class="search-wrap"><span class="si"></span><input class="search-input" id="user-search" type="search" autocomplete="off" placeholder="Search users by name, email, or role..." aria-label="Search users by name, email, or role" oninput="filterUsers()"/></div>
+          <label class="user-filter-control"><span>Role</span><select class="form-input" id="user-role-filter" onchange="filterUsers()"><option value="all">All roles</option><option value="super_admin">Super Admin</option><option value="captain">Barangay Captain</option><option value="admin">Barangay Admin</option><option value="staff">Barangay Staff</option><option value="viewer">View only</option></select></label>
+          <label class="user-filter-control"><span>Status</span><select class="form-input" id="user-status-filter" onchange="filterUsers()"><option value="all">All statuses</option><option value="active">Active</option><option value="suspended">Suspended</option></select></label>
+        </div>
+        <div id="users-list-container" class="user-list"></div>
+      </section>
     </div>
 
     <!-- SETTINGS -->
     <div class="content{{ $activeScreen === 'settings' ? ' active' : '' }}" id="screen-settings">
-      <div class="page-header"><h1>Account &amp; <span>Settings</span></h1><p>Manage your account, security, and display preferences.</p></div>
-      <div class="two-col">
-        <div class="card"><div class="card-header"><div class="card-title">Account and security</div></div>
+      <div class="page-header"><h1>Account &amp; Settings</h1><p>Manage your account, security, and display preferences.</p></div>
+      <div class="settings-hub">
+        <section class="card settings-hub-card" aria-labelledby="settings-account-title">
+          <div class="settings-identity">
+            <span class="settings-identity-avatar" aria-hidden="true">{{ auth()->user()->initials() }}</span>
+            <div><h2 class="card-title" id="settings-account-title">{{ auth()->user()->name }}</h2><p class="card-sub">{{ auth()->user()->email }}</p></div>
+          </div>
           <div class="setting-row"><div><div class="setting-label">Profile information</div><div class="setting-sub">Update your name and email address.</div></div><button class="btn btn-primary" type="button" onclick="openModal('modal-edit-profile')">Edit profile</button></div>
-          <div class="setting-row"><div><div class="setting-label">Password and two-factor authentication</div><div class="setting-sub">Manage your password, authenticator, and recovery codes.</div></div><a class="btn" href="{{ route('security.edit') }}">Security</a></div>
-          <div class="setting-row"><div><div class="setting-label">Display theme</div><div class="setting-sub">Saved on this browser.</div></div><button class="btn" onclick="toggleTheme()">Change theme</button></div>
-        </div>
-        <div class="card"><div class="card-header"><div class="card-title">Barangay services</div></div>
+          <div class="setting-row"><div><div class="setting-label">Password and two-factor authentication</div><div class="setting-sub">Change your password, set up an authenticator, view recovery codes and sign out other sessions. You will confirm your password first.</div></div><a class="btn" href="{{ route('security.edit') }}">Open security</a></div>
+          <div class="setting-row"><div><div class="setting-label">Display theme</div><div class="setting-sub">Saved on this browser. The moon button in the top bar does the same.</div></div><button class="btn" type="button" onclick="toggleTheme()">Change theme</button></div>
+        </section>
+        <section class="card settings-hub-card" aria-labelledby="settings-workspace-title">
+          <div class="card-header"><h2 class="card-title" id="settings-workspace-title">Workspace</h2></div>
           <div class="setting-row"><div><div class="setting-label">Barangay Anabu I-G</div><div class="setting-sub">City of Imus, Cavite</div></div></div>
           <div class="setting-row"><div><div class="setting-label">Hardware integrations</div><div class="setting-sub">Review verified RFID activity and cabinet reports.</div></div><button class="btn" type="button" onclick="openModal('modal-hardware-status')">View status</button></div>
-        </div>
+        </section>
       </div>
     </div>
     @endif
 
   <!-- NOTIFICATION PANEL -->
-  <div class="notif-panel" id="notif-panel">
+  <div class="notif-panel" id="notif-panel" role="region" aria-labelledby="notif-panel-title">
     <div class="notif-panel-header">
-      <div class="notif-panel-title"> Notifications</div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <button class="btn btn-xs btn-green" onclick="markAllNotifsRead()">Mark all read</button>
-        <button type="button" class="notif-panel-close" onclick="toggleNotifPanel()" aria-label="Close notifications">&times;</button>
+      <div><h2 class="notif-panel-title" id="notif-panel-title">Notifications</h2><p class="notif-panel-sub">Recent requests, incidents and applications you can access.</p></div>
+      <div class="notif-panel-actions">
+        <button type="button" class="btn btn-xs" id="notif-mark-all" onclick="markAllNotifsRead()">Mark all read</button>
+        <button type="button" class="notif-panel-close" onclick="toggleNotifPanel(false)" aria-label="Close notifications">&times;</button>
       </div>
     </div>
     <div id="notif-list"></div>
@@ -621,7 +634,8 @@
 <div class="modal-overlay" id="modal-user-details" onclick="if(event.target===this)closeModal('modal-user-details')">
   <div class="modal user-details-modal" role="dialog" aria-modal="true" aria-labelledby="user-details-title">
     <div class="modal-header"><div><div class="modal-title" id="user-details-title">User details</div><div class="modal-sub" id="user-details-subtitle"></div></div><button type="button" class="modal-close" onclick="closeModal('modal-user-details')" aria-label="Close">&times;</button></div>
-    <dl class="user-details-grid" id="user-details-fields"></dl>
+    <div class="user-details-grid" id="user-details-fields"></div>
+    <div class="modal-footer"><button type="button" class="btn btn-primary" id="user-details-edit">Edit account</button></div>
   </div>
 </div>
 @endif
@@ -809,8 +823,8 @@
     <div id="confirm-action-password-group" hidden>
       <form id="confirm-action-password-form" autocomplete="off" onsubmit="return false">
         <input class="credential-username-sink" id="confirm-action-username" name="username" type="text" autocomplete="username" tabindex="-1" aria-hidden="true" style="position:fixed!important;left:-10000px!important;top:0!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important;clip-path:inset(50%)!important">
-        <label class="form-label" for="confirm-action-super-admin-password">Password ng Kapitan o Super Admin</label>
-        <input class="form-input" id="confirm-action-super-admin-password" name="password" type="password" autocomplete="current-password" inputmode="text">
+        <label class="form-label" for="confirm-action-super-admin-password">Password of the Barangay Captain or Super Admin</label>
+        <span class="password-visibility-field"><input class="form-input" id="confirm-action-super-admin-password" name="password" type="password" autocomplete="current-password" inputmode="text"><x-password-toggle target="confirm-action-super-admin-password" /></span>
       </form>
       <p class="form-error" id="confirm-action-password-error" role="alert" hidden></p>
     </div>
@@ -1157,7 +1171,7 @@
 
     <div class="form-group">
       <label for="adduser-status" class="form-label">Account status</label>
-      <select class="form-input" id="adduser-status">
+      <select class="form-input" id="adduser-status" data-field="is_active">
         <option value="active">Active</option>
         <option value="suspended">Suspended</option>
       </select>
@@ -1223,6 +1237,7 @@
           <input
             class="form-input"
             id="adduser-rpi-id"
+            name="rpi_employee_id"
             maxlength="32"
             placeholder="Example: EMP005"
             autocomplete="off"

@@ -30,9 +30,8 @@ test('staff settings returns to the admin dashboard through consistent Livewire 
         'Employee Cabinet Access',
         'Audit Log',
         'User Management',
-        'My profile',
-        'Account security',
-        'Portal ng Residente',
+        'Settings',
+        'Resident Portal',
     ], false)->assertSee(route('admin.users.index'), false)
         ->assertSee('class="staff-settings-topbar"', false);
     $document = new DOMDocument;
@@ -40,7 +39,7 @@ test('staff settings returns to the admin dashboard through consistent Livewire 
     $dashboardLinks = (new DOMXPath($document))->query('//a[@href="'.route('admin.dashboard').'"]');
     expect($dashboardLinks->length)->toBeGreaterThan(0);
     foreach ($dashboardLinks as $dashboardLink) {
-        expect($dashboardLink->hasAttribute('wire:navigate'))->toBeTrue();
+        expect($dashboardLink->hasAttribute('wire:navigate') || $dashboardLink->hasAttribute('wire:navigate.hover'))->toBeTrue();
     }
 });
 
@@ -55,7 +54,7 @@ test('profile and security use the dashboard style sidebar with the same navigat
     $links = $xpath->query('.//a[contains(concat(" ", normalize-space(@class), " "), " nav-item ")]', $navigation->item(0));
 
     expect($navigation->length)->toBe(1)
-        ->and($links->length)->toBe(16);
+        ->and($links->length)->toBe(15);
 
     foreach ($links as $link) {
         expect($xpath->query('./svg/*', $link)->length)->toBeGreaterThan(0);
@@ -64,9 +63,42 @@ test('profile and security use the dashboard style sidebar with the same navigat
     $activeLink = $xpath->query('.//a[@aria-current="page"]', $navigation->item(0))->item(0);
     expect(trim($activeLink->textContent))->toBe($activeLabel);
 })->with([
-    ['profile.edit', 'My profile'],
-    ['security.edit', 'Account security'],
+    ['profile.edit', 'Settings'],
+    ['security.edit', 'Settings'],
+    ['appearance.edit', 'Settings'],
 ]);
+
+test('employees without administrative access reach their own settings from every sidebar', function () {
+    $staff = User::factory()->assignedOperations()->create();
+    $settingsLink = '//nav//a[contains(concat(" ", normalize-space(@class), " "), " nav-item ") and @href="'.route('profile.edit').'"]';
+
+    foreach (['staff.dashboard', 'staff.rfid-files.index', 'profile.edit', 'security.edit'] as $route) {
+        $response = $this->actingAs($staff)->withSession(['auth.password_confirmed_at' => time()])->get(route($route))->assertOk();
+        $document = new DOMDocument;
+        $document->loadHTML($response->getContent(), LIBXML_NOERROR | LIBXML_NOWARNING);
+        $links = (new DOMXPath($document))->query($settingsLink);
+
+        expect($links->length)->toBe(1, $route)
+            ->and(trim($links->item(0)->textContent))->toBe('Settings');
+        if (in_array($route, ['profile.edit', 'security.edit'], true)) {
+            expect($links->item(0)->getAttribute('aria-current'))->toBe('page', $route);
+        }
+    }
+
+    $this->actingAs($staff)->get(route('admin.settings'))->assertForbidden();
+});
+
+test('each settings page marks its own section in the settings menu', function (string $route) {
+    $response = $this->actingAs(User::factory()->assignedOperations()->create())
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->get(route($route))->assertOk();
+    $document = new DOMDocument;
+    $document->loadHTML($response->getContent(), LIBXML_NOERROR | LIBXML_NOWARNING);
+    $current = (new DOMXPath($document))->query('//*[@aria-label="Settings" and @data-flux-navlist]//a[@data-current]');
+
+    expect($current->length)->toBe(1)
+        ->and($current->item(0)->getAttribute('href'))->toBe(route($route));
+})->with(['profile.edit', 'security.edit', 'appearance.edit']);
 
 test('staff appearance offers explicit light and dark choices', function () {
     $admin = User::factory()->superAdmin()->create();
@@ -123,13 +155,14 @@ test('email verification status is unchanged when email address is unchanged', f
     expect($user->refresh()->email_verified_at)->not->toBeNull();
 });
 
-test('user can delete their account', function () {
-    $user = User::factory()->assignedOperations()->create();
+test('user can delete their account with the approval of an active captain', function () {
+    $user = User::factory()->assignedOperations()->create(['password' => 'own-password-123']);
+    User::factory()->create(['role' => 'captain', 'is_active' => true, 'password' => 'captain-password-123']);
 
     $this->actingAs($user);
 
     $response = Livewire::test('settings.delete-user-form')
-        ->set('password', 'password')
+        ->set('password', 'captain-password-123')
         ->call('deleteUser');
 
     $response
@@ -138,6 +171,20 @@ test('user can delete their account', function () {
 
     expect($user->fresh())->toBeNull();
     expect(auth()->check())->toBeFalse();
+});
+
+test('the account owner cannot approve deleting their own account with their own password', function () {
+    $user = User::factory()->assignedOperations()->create(['password' => 'own-password-123']);
+    User::factory()->create(['role' => 'captain', 'is_active' => true, 'password' => 'captain-password-123']);
+
+    $this->actingAs($user);
+
+    Livewire::test('settings.delete-user-form')
+        ->set('password', 'own-password-123')
+        ->call('deleteUser')
+        ->assertHasErrors(['password']);
+
+    expect($user->fresh())->not->toBeNull();
 });
 
 test('correct password must be provided to delete account', function () {

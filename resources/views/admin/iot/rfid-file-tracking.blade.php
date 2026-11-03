@@ -3,7 +3,6 @@
 @section('content')
 <div class="eyebrow">IoT Security / File Movement</div>
 <div class="page-heading"><div><h1>RFID File Tracking</h1><p>Recorded movements of physical files. Each event shows who removed or returned a file, when, and where.</p></div></div>
-<section class="iot-trust-panel iot-rfid-trust-panel" aria-labelledby="iot-trust-title"><span>Hardware trust layer</span><h2 id="iot-trust-title">Physical files, digitally accountable.</h2><p>Every verified movement is linked to a staff identity and preserved in the audit trail.</p><div class="iot-trust-tags"><span>Read-only event log</span><span>No simulated scans</span></div></section>
 <div class="notice">RFID scans and cabinet events will appear here after trusted Raspberry Pi integration is connected. No scan can be simulated from this page.</div>
 <div class="iot-rfid-content">
     <section class="panel" data-filter-results aria-busy="false">

@@ -33,7 +33,7 @@ class DeleteUserForm extends Component
         if (! $supervisorPasswordVerifier->passes($validated['password'])) {
             RateLimiter::hit($rateLimitKey, 60);
             $this->password = '';
-            $this->addError('password', 'Hindi tama ang password ng active Super Admin.');
+            $this->addError('password', 'Hindi tama ang password ng active Barangay Captain o Super Admin.');
 
             return;
         }

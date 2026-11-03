@@ -34,3 +34,30 @@ test('the shared pager phrases translate with their numbers, even when one place
   window.ADMIN_I18N.locale = 'en';
   assert.equal(window.adminTranslate('Showing :from–:to of :total', { from: 1, to: 2, total: 2 }), 'Showing 1–2 of 2');
 });
+
+test('a label that a script changes after translation is translated again instead of being restored', () => {
+  const handlers = {};
+  const attributes = new Map([['aria-label', 'Notifications']]);
+  const chip = {
+    matches: () => false,
+    hasAttribute: name => attributes.has(name),
+    getAttribute: name => attributes.get(name) ?? null,
+    setAttribute: (name, value) => attributes.set(name, value),
+  };
+  const document = {
+    body: { hasAttribute: () => true },
+    nodeType: 9,
+    addEventListener: (type, handler) => { handlers[type] = handler; },
+    createTreeWalker: () => ({ nextNode: () => null }),
+    querySelectorAll: () => [chip],
+  };
+  const window = { ADMIN_I18N: { locale: 'fil', catalogs: { en: english, fil: filipino } } };
+  vm.runInContext(read('public/js/admin-localization.js'), vm.createContext({ window, document, Node: { ELEMENT_NODE: 1, TEXT_NODE: 3 }, NodeFilter: { SHOW_TEXT: 4 } }));
+
+  handlers['admin:locale-changed']();
+  assert.equal(attributes.get('aria-label'), 'Mga abiso');
+
+  attributes.set('aria-label', 'Notifications, 3 unread');
+  handlers['admin:locale-changed']();
+  assert.equal(attributes.get('aria-label'), 'Mga abiso, 3 ang hindi pa nababasa');
+});

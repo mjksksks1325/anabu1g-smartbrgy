@@ -65,11 +65,14 @@
                         <a wire:navigate.hover @class(['nav-item', 'current active' => request()->routeIs('admin.cabinet-access.*')]) aria-current="{{ request()->routeIs('admin.cabinet-access.*') ? 'page' : 'false' }}" href="{{ route('admin.cabinet-access.index') }}"><x-staff-icon name="key" />Employee Cabinet Access</a>
                         <a wire:navigate.hover @class(['nav-item', 'current active' => request()->routeIs('admin.audit', 'admin.audit.*')]) aria-current="{{ request()->routeIs('admin.audit', 'admin.audit.*') ? 'page' : 'false' }}" href="{{ route('admin.audit') }}"><x-staff-icon name="audit" />Audit Log</a>
                         <a wire:navigate.hover @class(['nav-item', 'current active' => request()->routeIs('admin.users.*')]) aria-current="{{ request()->routeIs('admin.users.*') ? 'page' : 'false' }}" href="{{ route('admin.users.index') }}"><x-staff-icon name="user" />User Management</a>
-                        <a wire:navigate.hover @class(['nav-item', 'current active' => request()->routeIs('admin.settings', 'profile.*', 'settings.*')]) aria-current="{{ request()->routeIs('admin.settings', 'profile.*', 'settings.*') ? 'page' : 'false' }}" href="{{ route('admin.settings') }}"><x-staff-icon name="settings" />Settings</a>
+                        <a wire:navigate.hover @class(['nav-item', 'current active' => request()->routeIs('admin.settings', 'profile.*', 'security.*', 'appearance.*', 'settings.*')]) aria-current="{{ request()->routeIs('admin.settings', 'profile.*', 'security.*', 'appearance.*', 'settings.*') ? 'page' : 'false' }}" href="{{ route('admin.settings') }}"><x-staff-icon name="settings" />Settings</a>
                     </div>
                 @endif
                 <div class="sidebar-sec staff-settings-account-links">
-                    <a class="nav-item staff-settings-portal" href="{{ route('home') }}" target="_blank" rel="noopener"><x-staff-icon name="globe" />Portal ng Residente</a>
+                    @unless(auth()->user()->hasAdministrativeAccess())
+                        <a wire:navigate.hover @class(['nav-item', 'current active' => request()->routeIs('profile.*', 'security.*', 'appearance.*', 'settings.*')]) aria-current="{{ request()->routeIs('profile.*', 'security.*', 'appearance.*', 'settings.*') ? 'page' : 'false' }}" href="{{ route('profile.edit') }}"><x-staff-icon name="settings" />Settings</a>
+                    @endunless
+                    <a class="nav-item staff-settings-portal" href="{{ route('home') }}" target="_blank" rel="noopener" title="Opens the public Resident Portal in a new tab"><x-staff-icon name="globe" />Resident Portal<span class="sr-only"> (opens in a new tab)</span></a>
                 </div>
 
 </nav>
