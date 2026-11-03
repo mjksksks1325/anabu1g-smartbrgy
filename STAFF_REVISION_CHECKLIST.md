@@ -17,10 +17,10 @@ Update it at the end of every session. Statuses come from the source code, not f
 - Tests: Pest and Node (`node --test tests/Unit/*.test.js`). The full Pest suite needs more memory than the default: `php -d memory_limit=1G vendor/pestphp/pest/bin/pest --compact`. Destructive-route tests send `supervisorApproval()` (see `tests/Pest.php`).
 - Browser checks: run the app against a **copy** of `database/database.sqlite` (set `DB_DATABASE` and start `php -S 127.0.0.1:8010 ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php` from `public/`; `artisan serve` drops the override) and sign in with a seeded local staff account. Never seed test data into the real local database.
 
-## Test status (2026-11-03, after `e56efce`)
+## Test status (2026-11-03, after `e877a4b`)
 
-- Node: 182 pass, 0 fail.
-- Pest: 988 pass, 14 fail, 2 skipped. All 14 are in account settings, profile and navigation (Work Group 5). They need a decision on the intended design, not a quick assertion change:
+- Node: 183 pass, 0 fail.
+- Pest: 989 pass, 14 fail, 2 skipped. All 14 are in account settings, profile and navigation (Work Group 5). They need a decision on the intended design, not a quick assertion change:
   - `GovernmentPagesTest`: expects the removed top-bar `IoT status` chip and a `My profile` menu item; sidebar icon count 15 vs 16; account role shown as `Super Admin` where the test expects `admin` (×4 settings/IoT pages); sidebar scroll container.
   - `Settings/ProfileUpdateTest`: settings sidebar icon count 15 vs 16 (×2); `Account security` link order; **account deletion now asks for the active Super Admin password** (`DeleteUserForm`, changed in `e7f1aa7`), and the test still sends the user's own password.
   - `PasswordVisibilityTest` and `PersonnelPasswordConfirmationTest`: expected password toggles and security links not found on the dashboard.
@@ -77,19 +77,38 @@ Update it at the end of every session. Statuses come from the source code, not f
 | CSV import / export | `DONE` | Browser-verified: 2 imported + 1 skipped as already registered; a file with an unknown resident number is rejected whole with the row named (existing all-or-nothing rule). Export downloads `.xlsx`. |
 | Phones | `PARTIAL` | No page overflow; the table scrolls inside its card. A card layout for phones could come later. |
 
-## 5. Certificates and Clearances
-
-Process flow (5 steps), KPI colours, paged/filtered issued history and a single "Certificates & Fees" entry (fees inside the issue dialog) are `DONE`. `TODO`: Request Board layout and heading sizes.
-
-## 6. Request Eligibility
+## 5. Certificates and Clearances — `NEW` (browser-verified light, dark, Filipino, 390 px; `e877a4b`)
 
 | Item | Status | Notes |
 |---|---|---|
+| Process flow | `DONE` / `NEW` | 5-step flow existed; step icons were invisible (icon colour overridden) and are now soft tiles with coloured icons, readable in dark mode. |
+| KPI colours | `DONE` | |
+| Request Board | `NEW` | Lane titles in dark text with colour dots matching the summary cards (Ready and Released were both green before); first lane renamed "New online requests" (it differed from the "Online Requests" KPI, which counts every online submission); taller lanes; card actions in two rows, labels never wrap. Pending walk-in requests appear under Processing by design (staff enter them at the counter); unchanged. |
+| Issued history | `DONE` / `NEW` | Paging and filters existed; Reprint is neutral, dates show date and time on two lines, cells no longer wrap mid-number, date filters labelled From/To. |
+| Certificates & Fees entry | `DONE` | Already one entry point (fees inside the issue dialog); not recreated. |
+| Header "Public Portal" button | `BUG` → `NEW` (removed) | Its overlay no longer existed, so the click threw an error; the leftover code created fake requests in the browser only. The sidebar "Resident Portal" link remains. |
+| Fees, templates, QR, issuance rules | unchanged | |
+
+## 6. Request Eligibility — `NEW` (browser-verified; `e56efce`, `e877a4b`)
+
+| Item | Status | Notes |
+|---|---|---|
+| Layout | `DONE` / `NEW` | KPI cards were already above search; now one toolbar (search + standing filters), and residents are compact rows in a single card instead of tall separate cards. Check is neutral; "N requests" replaces "N req"; the history toggle is a button with `aria-expanded`; Export is secondary. Two KPI cards per row on phones. |
+| Loading / empty / error | `NEW` | Loading row only on first load; older searches cannot overwrite newer results. |
+| Restrictions card | `NEW` | Search is a form with a normal button; uses the shared pager. |
 | Checker rejects valid input | `NEW` (fixed `e56efce`) | Reproduced in the browser: any resident data reload while the checker is open (workspace start-up, resident saves, imports, Resident Records filters) rebuilt the list and dropped the chosen resident, so Check showed "Select a resident." The list now keeps the current choice. Certificate labels, resident-number keys and the request-record path were tested and were not the cause. |
 | Residents beyond the first 100 | `NEW` (fixed `e56efce`) | Verified with 117 residents: the list comes from a lookup capped at 100 by surname, so later residents could not be chosen at all. A search field queries the same endpoint by name or resident ID. Eligibility rules unchanged. |
-| KPI cards top, filters below | `TODO` | |
+## 7. Incident Reports — `NEW` (browser-verified light, dark, Filipino, 390 px; `e877a4b`)
 
-## 7. Incident Reports — `TODO` (one search, filter alignment, record view; keep VAWC permissions). Search already covers incident type; the exact-category filter was removed on purpose (`e7f1aa7`).
+| Item | Status | Notes |
+|---|---|---|
+| Table | `BUG` → `NEW` | An old `min-width: 1120px` made the table scroll sideways at desktop width and cut off Archive. Now 8 columns (type + number together, date over time) fit without scrolling; headers were Filipino in English mode and are now English source text. |
+| Search and filters | `NEW` | One search (there was only one; the exact-category field was removed earlier on purpose), on its own row; status, severity, labelled From/To dates and assigned staff below. |
+| Status presentation | `NEW` | Colours by meaning in the table and the detail dialog (which had fixed amber/green pills). |
+| Record navigation | `NEW` | Clicking or pressing Enter on a row opens the record; row buttons keep their own actions. |
+| Actions | `NEW` | View and Edit neutral, Archive red outline; File Incident and File Report are primary (were red). Archive keeps the existing supervisor-password dialog. |
+| Form validation | `NEW` | Fields carry request names, so type, date, location, details and complainant errors appear on the field (several only reached a toast); messages say "incident date" instead of "occurred date". |
+| Confidentiality | unchanged | Verified: Kagawad (`vawc.view`) sees VAWC cases; Secretary gets 403 from the incidents API and has no Incidents menu. |
 
 ## 8. RFID File Tracking — pagination `DONE`; `TODO`: search above Movement History, inline filters, drop the redundant Recorded Events KPI and Filter Events button.
 
@@ -145,3 +164,4 @@ Process flow (5 steps), KPI colours, paged/filtered issued history and a single 
 - **Session 1 (2026-11-03)** — Work group 1: dialog stack, shared pager, catalogue coverage and guard test, Add Purok fixes, toast and notification-close fixes (`fd10c70`).
 - **Session 2 (2026-11-03)** — Browser verification of work group 1 against a scratch database copy (found and fixed the "2tal" translation bug, `2c6655d`). Repaired outdated tests and a real navigation stylesheet regression; destructive-route tests now send a valid supervisor password (`0d611b4`). Resident-number import matching (`f10b9be`). Work group 2: Demographics, Resident Records and Voters layouts, contact-number storage, Filipino coverage (`c8034f5`). Next: remaining work group 2 items (Voters table, import/export in the browser), then work group 3 (Eligibility bug first).
 - **Session 3 (2026-11-03)** — Work group 2 finished: Voters edit action, validation and language; stale-response guard on resident and voter lists; import summary, lasting result and clearer errors; profiling and voter imports browser-tested on an isolated copy (`4339f7b`). Work group 3 started: Eligibility Checker bug reproduced and fixed, plus resident search beyond 100 (`e56efce`). Next: Request Eligibility layout (KPI cards top, filters below), then Certificates Request Board and Incident Reports.
+- **Session 4 (2026-11-03)** — Work group 3 finished: Request Eligibility, Certificates & Clearances and Incident Reports reworked and browser-verified on an isolated copy (captain, kagawad and secretary accounts; light, dark, Filipino, 390 px) (`e877a4b`). Bugs fixed: incident table clipped at desktop width, broken "Public Portal" button with fake-request code, invisible process-step icons, incident errors that only reached a toast, restriction-list pager error hidden by its test harness. Next: work group 4 (RFID File Tracking, Employee Cabinet Access, Audit Log).
