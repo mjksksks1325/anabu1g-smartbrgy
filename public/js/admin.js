@@ -1662,11 +1662,17 @@ function openModal(id) {
   modalStack.push({ id, trigger: document.activeElement });
   window.PasswordVisibility?.hide(element);
   element.classList.add('show');
-  element.setAttribute('role', 'dialog');
-  element.setAttribute('aria-modal', 'true');
-  const title = element.querySelector('.modal-title');
-  if (title) { if (!title.id) title.id = id + '-title'; element.setAttribute('aria-labelledby', title.id); }
-  element.querySelector('input:not([type="hidden"]), select, textarea, button, [tabindex="0"]')?.focus();
+  // A dialog that already declares its own role (e.g. the confirmation alertdialog) must not be wrapped in a second one.
+  if (!element.querySelector('[role="dialog"], [role="alertdialog"]')) {
+    element.setAttribute('role', 'dialog');
+    element.setAttribute('aria-modal', 'true');
+    const title = element.querySelector('.modal-title');
+    if (title) { if (!title.id) title.id = id + '-title'; element.setAttribute('aria-labelledby', title.id); }
+  }
+  // Start on the first usable field; only fall back to buttons (the X comes first in the markup) when there is none.
+  const usable = control => !control.disabled && control.tabIndex >= 0 && control.getClientRects?.().length;
+  const firstField = [...(element.querySelectorAll?.('input:not([type="hidden"]), select, textarea') ?? [])].find(usable);
+  (firstField || element.querySelector('button, [tabindex="0"]'))?.focus();
 }
 let confirmActionResolver = null;
 
@@ -1708,7 +1714,7 @@ function confirmAction(message, { title = 'Please confirm', confirmLabel = 'Conf
     };
     openModal('modal-confirm-action');
     if (requireSupervisorPassword) passwordInput?.focus();
-    else if (danger) modal.querySelector('.modal-close')?.focus?.();
+    else if (danger) document.getElementById('confirm-action-cancel')?.focus?.();
     else button.focus?.();
   });
 }
@@ -2782,35 +2788,13 @@ function renderCertKanban(filter = '') {
 
   };
 
-  setCount(
-    'cert-today',
-    CERT_REQUESTS.filter(
-      r => r.status === 'Completed'
-    ).length
-  );
-
-  setCount(
-    'cert-pending',
-    CERT_REQUESTS.filter(
-      r => r.status === 'In Progress'
-    ).length
-  );
-
-  setCount(
-    'cert-ready',
-    CERT_REQUESTS.filter(
-      r => r.status === 'Ready to Print'
-    ).length
-  );
-
-  setCount(
-    'cert-online',
-    CERT_REQUESTS.filter(
-      r =>
-        r.via === 'Online' &&
-        !r.hidden
-    ).length
-  );
+  // Each card counts one board lane, so the cards and the lanes below them always agree.
+  const laneCounts = { online: 0, processing: 0, ready: 0, completed: 0 };
+  CERT_REQUESTS.filter(r => !r.hidden).forEach(r => { laneCounts[getLane(r.status, r.via)]++; });
+  setCount('cert-today', laneCounts.completed);
+  setCount('cert-pending', laneCounts.processing);
+  setCount('cert-ready', laneCounts.ready);
+  setCount('cert-online', laneCounts.online);
 
 }
 
@@ -5347,7 +5331,13 @@ async function confirmRejectRequest() {
   const requestId = document.getElementById('reject-request-id')?.value;
   const reason = document.getElementById('reject-request-reason')?.value.trim();
   if (!requestId || !reason || reason.length < 10) {
-    showToast('Enter a clear rejection reason of at least 10 characters.', 'red');
+    const field = document.getElementById('reject-request-reason');
+    if (field && window.FormFeedback) {
+      window.FormFeedback.markInvalid(field, adminText('Enter a clear rejection reason of at least 10 characters.'));
+      field.focus();
+    } else {
+      showToast('Enter a clear rejection reason of at least 10 characters.', 'red');
+    }
     return;
   }
 

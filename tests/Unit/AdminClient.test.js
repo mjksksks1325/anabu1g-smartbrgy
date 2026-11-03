@@ -756,19 +756,45 @@ test('user cards open details from a name button instead of nesting buttons in a
   assert.match(html, />Super Admin</);
 });
 
-test('destructive confirmations start on the close button so Enter does not confirm them', async () => {
+test('dialogs open on their first usable field and keep a single dialog role', async () => {
   const { context, fields } = await client();
   const focused = [];
   const close = { focus() { focused.push('close'); } };
-  fields.set('modal-confirm-action', { classList: { add() {}, remove() {} }, setAttribute() {}, querySelector: selector => (selector === '.modal-close' ? close : null) });
+  const hidden = { disabled: false, tabIndex: -1, getClientRects: () => [], focus() { focused.push('hidden'); } };
+  const reason = { disabled: false, tabIndex: 0, getClientRects: () => [{}], focus() { focused.push('reason'); } };
+  const formAttributes = {};
+  fields.set('modal-reject-request', {
+    classList: { add() {} }, setAttribute: (name, value) => { formAttributes[name] = value; },
+    querySelector: selector => (selector.includes('role=') ? null : selector === '.modal-title' ? { id: 'reject-title' } : close),
+    querySelectorAll: () => [hidden, reason],
+  });
+  const confirmAttributes = {};
+  fields.set('modal-confirm-action', {
+    classList: { add() {} }, setAttribute: (name, value) => { confirmAttributes[name] = value; },
+    querySelector: selector => (selector.includes('role=') ? {} : close), querySelectorAll: () => [],
+  });
+
+  context.openModal('modal-reject-request');
+  context.openModal('modal-confirm-action');
+
+  assert.deepEqual(focused, ['reason', 'close']);
+  assert.equal(formAttributes.role, 'dialog');
+  assert.equal(confirmAttributes.role, undefined);
+});
+
+test('destructive confirmations start on Cancel so Enter does not confirm them', async () => {
+  const { context, fields } = await client();
+  const focused = [];
+  fields.set('modal-confirm-action', { classList: { add() {}, remove() {} }, setAttribute() {}, querySelector: () => null });
   fields.set('confirm-action-button', { textContent: '', className: '', onclick: null, focus() { focused.push('confirm'); } });
+  fields.set('confirm-action-cancel', { focus() { focused.push('cancel'); } });
   fields.set('confirm-action-title', { textContent: '' });
   fields.set('confirm-action-message', { textContent: '' });
 
   context.confirmAction('Suspend Clerk?', { danger: true });
   context.confirmAction('Reactivate Clerk?');
 
-  assert.deepEqual(focused, ['close', 'confirm']);
+  assert.deepEqual(focused, ['cancel', 'confirm']);
 });
 
 test('notification read state survives a refresh without storing request or incident details', async () => {

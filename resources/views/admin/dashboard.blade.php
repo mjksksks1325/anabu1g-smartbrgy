@@ -369,10 +369,10 @@
 
       <!-- Summary Stats -->
       <div class="stats-grid stats-grid-4" id="cert-stats-grid" style="margin-bottom:16px;" role="region" aria-label="Document request summary" tabindex="0">
-        <div class="stat-card demo-kpi demo-kpi-green"><div class="stat-label">Released Requests</div><div class="stat-value" id="cert-today">0</div><div class="stat-sub">Released / Completed</div><div class="stat-icon"><x-staff-icon name="check" /></div></div>
-        <div class="stat-card demo-kpi demo-kpi-yellow"><div class="stat-label">Pending / Processing</div><div class="stat-value" id="cert-pending">0</div><div class="stat-sub">In progress</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div></div>
+        <div class="stat-card demo-kpi demo-kpi-purple"><div class="stat-label">Online Requests</div><div class="stat-value" id="cert-online">0</div><div class="stat-sub">New from the public portal</div><div class="stat-icon"><x-staff-icon name="globe" /></div></div>
+        <div class="stat-card demo-kpi demo-kpi-yellow"><div class="stat-label">Pending / Processing</div><div class="stat-value" id="cert-pending">0</div><div class="stat-sub">Walk-in and in progress</div><div class="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div></div>
         <div class="stat-card demo-kpi demo-kpi-blue"><div class="stat-label">Ready to Print</div><div class="stat-value" id="cert-ready">0</div><div class="stat-sub">Awaiting release</div><div class="stat-icon"><x-staff-icon name="document" /></div></div>
-        <div class="stat-card demo-kpi demo-kpi-purple"><div class="stat-label">Online Requests</div><div class="stat-value" id="cert-online">0</div><div class="stat-sub">Via public portal</div><div class="stat-icon"><x-staff-icon name="globe" /></div></div>
+        <div class="stat-card demo-kpi demo-kpi-green"><div class="stat-label">Released Requests</div><div class="stat-value" id="cert-today">0</div><div class="stat-sub">Released / Completed</div><div class="stat-icon"><x-staff-icon name="check" /></div></div>
       </div>
 
       <!-- Kanban Board -->
@@ -828,7 +828,7 @@
       </form>
       <p class="form-error" id="confirm-action-password-error" role="alert" hidden></p>
     </div>
-    <div class="modal-footer"><button type="button" class="btn btn-primary" id="confirm-action-button">Confirm</button></div>
+    <div class="modal-footer confirm-dialog-actions"><button type="button" class="btn" id="confirm-action-cancel" onclick="closeModal('modal-confirm-action')">Cancel</button><button type="button" class="btn btn-primary" id="confirm-action-button">Confirm</button></div>
   </div>
 </div>
 
@@ -957,9 +957,10 @@
       <div><div class="modal-title">Reject Online Request</div><div class="modal-sub" id="reject-request-code">The reason will be saved in the request audit record.</div></div>
       <button type="button" class="modal-close" onclick="closeModal('modal-reject-request')" aria-label="Close">&times;</button>
     </div>
-    <div class="form-group"><div class="form-label">Reason for rejection *</div><textarea class="form-input" id="reject-request-reason" rows="5" minlength="10" maxlength="1000" placeholder="Explain clearly why this request cannot be processed..."></textarea><div class="field-help">Minimum 10 characters. The resident can use this reason to correct their application.</div></div>
+    <div class="form-group"><label class="form-label" for="reject-request-reason">Reason for rejection *</label><textarea class="form-input" id="reject-request-reason" rows="5" minlength="10" maxlength="1000" required aria-describedby="reject-request-reason-help" placeholder="Explain clearly why this request cannot be processed..."></textarea><div class="field-help" id="reject-request-reason-help">Minimum 10 characters. The resident can use this reason to correct their application.</div></div>
     <input type="hidden" id="reject-request-id"/>
-    <div class="modal-footer">
+    <div class="modal-footer confirm-dialog-actions">
+      <button type="button" class="btn" onclick="closeModal('modal-reject-request')">Cancel</button>
       <button type="button" class="btn btn-danger" id="reject-request-submit" onclick="confirmRejectRequest()">Reject Request</button>
     </div>
   </div>

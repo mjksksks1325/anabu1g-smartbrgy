@@ -17,10 +17,10 @@ Update it at the end of every session. Statuses come from the source code, not f
 - Tests: Pest and Node (`node --test tests/Unit/*.test.js`). The full Pest suite needs more memory than the default: `php -d memory_limit=1G vendor/pestphp/pest/bin/pest --compact`. Destructive-route tests send `supervisorApproval()` (see `tests/Pest.php`).
 - Browser checks: run the app against a **copy** of `database/database.sqlite` (set `DB_DATABASE` and start `php -S 127.0.0.1:8010 ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php` from `public/`; `artisan serve` drops the override) and sign in with a seeded local staff account. Never seed test data into the real local database.
 
-## Test status (2026-11-03, work group 5)
+## Test status (2026-11-04, final review)
 
-- Node: 189 pass, 0 fail.
-- Pest: 1011 pass, 0 fail, 2 skipped.
+- Node: 190 pass, 0 fail.
+- Pest: 1014 pass, 0 fail, 2 skipped. The skipped tests are the starter kit's open staff registration tests, intentionally off; see Final review.
 - The 14 earlier failures were resolved as follows:
   - **Outdated tests (11):** they expected UI a teammate removed on purpose (`8e4e1a0`, `e7f1aa7`): the IoT status chip, the "My profile" and "Account security" items, 16 menu icons, and the raw role `admin` instead of `Super Admin`. One test also checked for `wire:navigate` where the link now uses `wire:navigate.hover`. These tests now assert the consolidated design.
   - **Real bugs (2):**
@@ -37,7 +37,7 @@ Update it at the end of every session. Statuses come from the source code, not f
 | Import duplicate detection | `NEW` | Browser-verified end to end; see Decisions → Import. |
 | Lists ignore stale responses | `NEW` | Resident and voter lists render only the newest request (a slow earlier search used to be able to replace newer results) and keep their rows while refreshing. |
 | Inline form validation | `DONE` / `NEW` | Existing `form-feedback.js`; errors target the top dialog when dialogs are stacked. |
-| Dialogs and confirmations | `DONE` / `NEW` | Dialog stack: Esc closes the top dialog and focus returns to its opener (browser-verified). Hardware-status and user-details dialogs now close only through the X like every other dialog. |
+| Dialogs and confirmations | `NEW` | Dialog stack: Esc closes the top dialog, Tab stays inside it, and focus returns to its opener. Information and form dialogs close through the labelled X. Confirmations (shared confirmation, Reject request, Lift restriction, and the native archive, deactivation and logout dialogs) have a labelled Cancel next to a coloured action. Destructive confirmations open on Cancel; supervisor-password confirmations open on the password field. |
 | Pagination | `NEW` / `PARTIAL` | Shared `renderPager` on residents, voters, incidents, request records, issued certificates, households, household residents and the senior register (browser-verified, both languages). `TODO`: audit and dashboard-activity pagers; IoT Blade pages use Laravel `links()`. |
 | Buttons | `NEW` | One primary per toolbar on Resident Records and Voters; Archive shows the intended red outline. |
 
@@ -158,7 +158,7 @@ Update it at the end of every session. Statuses come from the source code, not f
 | Toolbar and role filter | `BUG` → `NEW` | The filter had no Super Admin option, and "Admins" mixed super admins with ordinary admins. It now lists Super Admin, Barangay Captain, Barangay Admin, Barangay Staff and View only, plus status and a live result count. Search also matches role labels. |
 | Readable account rows | `NEW` | Role labels match the account menu: before, it showed raw `staff`/`admin`, and super admins carried two role chips. Suspended rows no longer fade to 65 % opacity; a red edge marks them instead. A "You" tag marks your own row. |
 | Details dialog | `NEW` | Grouped into Account, Staff access and Smart cabinet. Assigned operations show module and action labels instead of permission keys. Enrollment states are readable, and the dialog has an Edit account button. |
-| Suspend / reactivate confirmation | `NEW` | Explains the effect: the person is signed out, cannot sign in until reactivated, and keeps their records. Destructive confirmations open with focus on the X, so Enter does not confirm. Dialogs still close only through the X (teammate rule, `e7f1aa7`). |
+| Suspend / reactivate confirmation | `NEW` | Explains the effect: the person is signed out, cannot sign in until reactivated, and keeps their records. It has Cancel and Suspend buttons and opens on Cancel, so Enter does not confirm (session 7 replaced the X-only rule for confirmations). |
 | Field errors in the account form | `NEW` | Server errors on the Raspberry Pi ID and status now appear on those fields. |
 | Bug: sidebar role | `BUG` → `NEW` | On workspace screens, JS overwrote the account footer's role with the raw role (`captain`). The server label is kept now. |
 | Permissions, eligibility, authorization | unchanged | Secretary, Kagawad and Tanod get 403 on `/admin/users` and `/admin/settings`. |
@@ -190,6 +190,28 @@ Update it at the end of every session. Statuses come from the source code, not f
 | Record links | `DONE` | Items open the existing record (request, incident, application); the target screens authorize again. |
 | "View all in Audit Log" | n/a | No longer in the code. Notifications and the audit log stay separate. |
 
+## Final review (session 7, 2026-11-04) — browser-verified on an isolated, seeded copy
+
+The copy had 50 residents, 30 voters, 14 incidents and 12 file movements.
+
+**Coverage:**
+- **Staff:** every page as captain; Secretary, Kagawad and Tanod for permission boundaries in work group 5.
+- **Resident Portal:** public pages, plus a resident account.
+- **Views:** desktop 1440 px, tablet 768/1024 px, phone 390 px; light and dark; English and Filipino.
+
+| Area | Status | Notes |
+|---|---|---|
+| Confirmation dialogs | `NEW` | Cancel added to the shared confirmation, Reject request and Lift restriction dialogs. Dialogs now open on their first usable field instead of the X. The confirmation alertdialog is no longer wrapped in a second dialog role. The dialog test now requires the X everywhere and Cancel on confirmations. |
+| Reject request validation | `NEW` | The reason field has a real label. A reason under 10 characters is now shown on the field, which gets focus; before, it only showed a toast. |
+| Certificates KPIs | `BUG` → `NEW` | "Pending / Processing" showed 0 while 11 requests waited. The four cards now count the four board lanes in the same order (New online, Processing, Ready to Print, Released). Verified: processing one request moved the counts from 11/0/3/1 to 10/1/3/1. |
+| Announcements | `NEW` | Each record shows its text with Publish and Archive. Editing sits behind an "Edit announcement" disclosure instead of an always-open form per record. File inputs are styled and helper text is muted. A failed edit reopens that record with its field errors and no longer fills the create form. The archive password label was in Filipino only. Full lifecycle verified with audit entries: create, edit, failed edit, publish, archive with supervisor password. |
+| IoT top bar, dark mode | `BUG` → `NEW` | A grey box appeared behind English / Filipino; removed. |
+| Filipino coverage | `NEW` | 33 Announcements and dialog strings added. |
+| Resident Portal | checked | Home, announcements, officials, help, login, registration, new-resident application, request wizard, My requests, profile and QR verification are consistent in all checked modes. No changes needed. |
+| Resident Records "Loading…" | not a bug | Rows appear after a few seconds on the single-threaded PHP dev server, which queues the page's parallel requests. Production servers handle them in parallel. |
+| Skipped tests (2) | checked | `Auth/RegistrationTest` (starter-kit open staff sign-up) skips because Fortify registration is intentionally off. New `StaffRegistrationDisabledTest` asserts it stays off (no route, POST `/register` returns 404, no user created). |
+| Hardware | not verified | Cabinet, RFID and face behaviour were checked only as server data and pages. No Raspberry Pi or reader was exercised. |
+
 ## Decisions and proposals
 
 ### Import (approved 2026-11-03) — `NEW`
@@ -205,7 +227,9 @@ Update it at the end of every session. Statuses come from the source code, not f
 - **Browser test** (isolated copy, 7-row file): 2 valid new rows ready; resident-number match skipped automatically; same name + birth date with a different middle name required a decision; duplicate inside the file flagged; invalid row listed with reasons; unknown number flagged; Save blocked until all were resolved. After saving, 4 residents were created, the matched resident was linked as household head with address and contact unchanged, the possible-duplicate's existing record was untouched, and contact numbers were stored as `09…`.
 - No decision remains open for import matching.
 
-### Purok name uniqueness at the database level — `APPROVAL`
+### Purok name uniqueness at the database level — decided (2026-11-04): keep as is
+
+- The application-level check and the MySQL unique index (case-insensitive collation) stay. The optional SQLite migration is not added: no test or development need for it was found.
 
 - Findings: app-level check (case- and space-insensitive) is in place. Local data: 5 puroks, no collisions, all names normalised. Production uses MySQL with `utf8mb4_unicode_ci`, so the existing `unique(name)` index is **already case-insensitive there**. The gap is SQLite (local development and tests), where `unique` is case-sensitive.
 - Proposed migration (not created):
@@ -218,26 +242,81 @@ Update it at the end of every session. Statuses come from the source code, not f
 ### Saved notifications — `APPROVAL` (design only)
 
 - **Today:** the bell lists the dashboard's recent activity (document requests, incidents the user may see via `Incident::visibleTo`, pending resident applications). Since work group 5, read state is kept per user in the browser as hashed keys. It survives reloads but not a change of device. Audit logs are separate and stay separate.
-- **Events (existing data only):** new online document request; document request status change (processing, ready for release, released, rejected); new incident report; incident status change; incident assigned to a user; new resident registration application.
-- **Recipients by existing permission:** document events → `documents.view` (status changes that need action → `documents.process`); ordinary incidents → `incidents.view`; sensitive/VAWC incidents → `vawc.view` only; assignment → the assigned user only; applications → `records.review`. No new permissions.
+- **Essential events**, each for staff who must act on it:
+
+  | Event | Recipients |
+  |---|---|
+  | New online document request | Staff with `documents.view` |
+  | Resident registration application submitted | Staff with `records.review` |
+  | New ordinary incident report | Staff with `incidents.view` |
+  | New sensitive or VAWC incident | Staff with `vawc.view` only |
+  | Incident assigned to you | The assigned user only |
+
+- **Optional events** (useful, but extra volume):
+  - document request status changes (processing, ready for release, released, rejected), to `documents.view`;
+  - incident status changes, to the same audience as the incident;
+  - announcement published, to `announcements.view`.
+- **Permission checks:** recipients are chosen from existing permissions when the event fires, and checked again when the list is read, so someone who has since lost the permission no longer sees the item. No new permissions are needed.
 - **Read state:** Laravel's database notifications (`notifications` table: uuid, type, notifiable, data JSON, `read_at`). "Mark all read" becomes a PATCH that sets `read_at`.
 - **Links:** store record type + id + reference and open the existing screen; the target endpoints already authorize, and the list hides items whose record the user can no longer see.
 - **Sensitive data:** store only the reference number and a generic title ("Sensitive case updated") for VAWC/sensitive incidents; never names, narratives or incident types. Resident names appear only for document requests and applications, which their recipients can already see.
 - **Duplicates:** one notification per user per (event, record, new status); repeated saves without a status change send nothing.
 - **Database changes:** the standard `notifications` table (`php artisan make:notifications-table`) plus an index on (`notifiable_id`, `read_at`). No changes to existing tables.
+- **Migration and rollback:** it only adds a table. `down()` drops it, and the bell falls back to today's dashboard-activity list, so rolling back loses only notification history. On MySQL, create the table during a quiet period; it holds no existing data. Do not backfill old events.
 - **Retention:** prune read items after 90 days and unread items after 180 days (scheduled `model:prune`). Delete a user's notifications when the account is deleted.
 - **Losing access:** when a user loses a permission, items they can no longer open are hidden at read time; nothing is copied into the payload that the record endpoint would not show.
 - **Needs approval:** the event list, recipient rules, retention periods, and the migration.
 
-### Self-deletion from account settings — `APPROVAL` (security finding, not changed)
+### Self-deletion from account settings — `APPROVAL` (high-priority security finding, not changed)
 
-- `DeleteUserForm` (Settings → Profile → Delete account) requires the password of an active Barangay Captain or Super Admin, then calls `forceDelete()` directly.
-- User Management deletion uses `DeleteStaffUser`. That path soft-deletes, queues the cabinet RPi revocation for face and RFID credentials, writes an audit entry, and refuses to delete super admins.
-- Settings self-deletion skips all of that. A cabinet user who deletes their own account keeps their face and RFID credentials on the Raspberry Pi until someone removes them by hand. No audit entry is written, and a Super Admin can delete their own account there.
-- **Options:**
-  - (a) Route self-deletion through `DeleteStaffUser`, after allowing self-deletion in it.
-  - (b) Remove self-deletion from settings, so administrators delete accounts in User Management. This is recommended: one audited path.
-- Either option changes account behaviour, so nothing was changed.
+**How it works today (verified in code and with a throwaway probe test on the in-memory test database; the probe was not kept):**
+
+- **Entry point:** Settings → Profile → Delete account (`livewire/settings/delete-user-form`, `App\Livewire\Settings\DeleteUserForm::deleteUser`).
+  - The page needs `can:access-employee-settings` (admin, captain, staff, viewer).
+  - The action itself needs `canLoginAsPersonnel()` (admin, captain, staff). Viewers get 403.
+  - The form shows only when the email address is verified.
+- **Approval:** the password of any active Barangay Captain or Super Admin (`VerifySupervisorPassword`), rate-limited to 5 tries per minute.
+  - A captain or Super Admin can approve their own deletion with their own password. For them the supervisor step is self-approval.
+- **What happens:** the user is logged out first, then the row is `forceDelete()`d (a hard delete, no soft delete).
+
+**Outcomes per case:**
+
+| Case | Result |
+|---|---|
+| Ordinary staff, no cabinet record and no restricting history | Hard-deleted. **No audit entry.** Links in other tables are set to null (audit `user_id`, `rejected_by`, voter `created_by`/`updated_by`, incident `assigned_to`/`updated_by`). |
+| Staff with a cabinet access record or file movements | The foreign key `restrictOnDelete` blocks the delete. The user is already logged out, then gets a 500 error. The account stays active, and its cabinet access is unchanged. |
+| Staff who reported incidents, created BPOs, or created, reviewed or lifted restrictions | Blocked the same way (restricting foreign keys). |
+| Super Admin approving with their own password | Hard-deleted. `DeleteStaffUser` would refuse this. |
+| Barangay Captain approving with their own password | Hard-deleted. |
+| Viewer | 403. |
+
+**Effects on access:**
+
+- **Sessions:** the current session ends. Other sessions can no longer resolve the deleted user, so they fail to authenticate.
+- **Two-factor data:** removed with the row.
+- **Smart cabinet:**
+  - The server's authorization list (`accessAuthorizations`) only includes active, non-deleted users with an active, enrolled cabinet record.
+  - A user who still has cabinet access cannot be hard-deleted at all, so no orphaned credential is created.
+  - No RPi revocation is queued on this path either, unlike `DeleteStaffUser`.
+  - Whether a Raspberry Pi keeps honouring a cached credential between syncs depends on the Pi software. Browser tests cannot verify that.
+- **Residents:** no resident self-deletion exists. Staff activate and deactivate portal accounts (`ResidentPortalAccountController`), so the proposal below does not affect residents.
+
+**Risk:** this is not an unauthorized-access hole, because every case needs a valid captain or Super Admin password. The risks are:
+- loss of accountability: a hard delete with no audit entry, and attribution in other records nulled;
+- self-approval by captains and super admins, including the last Super Admin;
+- a broken, already-logged-out 500 error for cabinet users.
+
+**Proposed change (needs approval; reversible; no migration):**
+
+1. Remove the "Delete account" section from staff settings. In `profile.blade.php`, render `<livewire:settings.delete-user-form />` only for non-personnel accounts; since residents never use these pages, that means never.
+2. In `DeleteUserForm::deleteUser`, return 403 for every personnel account, so the endpoint cannot be called directly either.
+3. Staff accounts are deleted only in User Management through `DeleteStaffUser`. That path stays unchanged: soft delete, credentials scrubbed, RPi revocation queued, audit entry, Super Admin and self-deletion refused, supervisor password required.
+4. Tests:
+   - Replace "user can delete their account with the approval of an active captain" with "personnel cannot delete their own account from settings" for staff, captain and Super Admin.
+   - Keep the User Management deletion tests.
+5. To roll back, revert the commit. No data is touched.
+
+**Interim mitigation:** none applied, because the issue is not exploitable without a supervisor password. If you want it closed before you decide, step 2 alone is a one-line, reversible guard.
 
 ## Session log
 
@@ -261,3 +340,10 @@ Update it at the end of every session. Statuses come from the source code, not f
   - **Other changes:** RFID trust banner removed (approved). All 14 failing tests resolved.
   - **Open for approval:** settings self-deletion path, saved notifications.
   - **Next:** final full-system review.
+- **Session 7 (2026-11-04)** — Final security and UI/UX review.
+  - **Self-deletion:** investigated and documented with an exact proposal. Nothing changed; awaiting approval.
+  - **Dialogs:** confirmations now have Cancel, dialogs open on the right field, and the duplicate dialog role is gone.
+  - **Fixes:** Certificates KPIs now match the board lanes; Announcements reworked; reject-reason validation shows on the field; IoT dark-mode language links; 33 Filipino strings.
+  - **Tests:** a guard test keeps open staff registration off.
+  - **Verification:** Resident Portal and all staff pages reviewed in the browser on a seeded isolated copy.
+  - **Open for approval:** self-deletion change, saved notifications.

@@ -104,16 +104,20 @@ test('personnel tables center cells and audit headers share the four column row 
         ->not->toContain('grid-template-columns:50px 130px 1fr 200px 90px');
 });
 
-test('every workspace modal closes only through the upper-right X button', function (string $view) {
+test('every workspace modal has the upper-right X, and only confirmations add a Cancel button', function (string $view, array $confirmations) {
     $markup = file_get_contents(dirname(__DIR__, 2).'/resources/views/'.$view);
     preg_match_all('/<div class="modal-overlay[^"]*"[^>]*id="([\w-]+)"/', $markup, $modals);
 
     expect($modals[1])->not->toBeEmpty();
     foreach ($modals[1] as $modal) {
         expect(substr_count($markup, 'class="modal-close" onclick="closeModal(\''.$modal.'\')" aria-label="Close">&times;</button>'))->toBe(1, $modal);
-        expect(preg_match('/<button(?=[^>]*class="btn")[^>]*onclick="closeModal\(\''.preg_quote($modal, '/').'\'\)"[^>]*>\s*(Close|Cancel|Isara)\s*<\/button>/', $markup))->toBe(0, $modal);
+        $cancelButtons = preg_match_all('/<button(?=[^>]*class="btn")[^>]*onclick="closeModal\(\''.preg_quote($modal, '/').'\'\)"[^>]*>\s*(Close|Cancel|Isara)\s*<\/button>/', $markup);
+        expect($cancelButtons)->toBe(in_array($modal, $confirmations, true) ? 1 : 0, $modal);
     }
-})->with(['admin/dashboard.blade.php', 'admin/partials/case-management.blade.php']);
+})->with([
+    'workspace' => ['admin/dashboard.blade.php', ['modal-confirm-action', 'modal-reject-request']],
+    'case management' => ['admin/partials/case-management.blade.php', ['modal-lift-restriction']],
+]);
 
 test('demographics, voters and certificates KPI cards each use their own color', function (string $grid, int $count, array $expected) {
     $markup = file_get_contents(dirname(__DIR__, 2).'/resources/views/admin/dashboard.blade.php');

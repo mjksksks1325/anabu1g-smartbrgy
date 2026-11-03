@@ -18,7 +18,7 @@
 </div>
 <div class="modal-overlay" id="modal-lift-restriction"><div class="modal">
   <div class="modal-header"><div class="modal-title">Lift restriction</div><button type="button" class="modal-close" onclick="closeModal('modal-lift-restriction')" aria-label="Close">&times;</button></div>
-  <form onsubmit="liftRestriction(event)"><input type="hidden" id="lift-restriction-id"/><div class="form-group"><label class="form-label" for="lift-restriction-reason">Reason for lifting</label><textarea class="form-input" id="lift-restriction-reason" maxlength="5000" required></textarea></div><div class="modal-footer"><button class="btn btn-primary" type="submit">Lift restriction</button></div></form>
+  <form onsubmit="liftRestriction(event)"><input type="hidden" id="lift-restriction-id"/><div class="form-group"><label class="form-label" for="lift-restriction-reason">Reason for lifting</label><textarea class="form-input" id="lift-restriction-reason" maxlength="5000" required></textarea></div><div class="modal-footer confirm-dialog-actions"><button type="button" class="btn" onclick="closeModal('modal-lift-restriction')">Cancel</button><button class="btn btn-primary" type="submit">Lift restriction</button></div></form>
 </div></div>
 @endcan
 @if(auth()->user()->hasAnyPermission(['vawc.submit', 'vawc.update']))
