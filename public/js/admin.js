@@ -2833,16 +2833,12 @@ function renderAuditLog() {
   setEl('astat-records', LIVE_AUDIT_LOGS.filter(l => l.type === 'record').length);
   setEl('astat-certs', LIVE_AUDIT_LOGS.filter(l => l.type === 'cert').length);
   setEl('astat-security', LIVE_AUDIT_LOGS.filter(l => l.type === 'security' || l.type === 'cabinet').length);
-  const showCount = document.getElementById('audit-showing-count');
   const pageCount = Math.max(1, Math.ceil(logs.length / AUDIT_PAGE_SIZE));
   auditCurrentPage = Math.min(auditCurrentPage, pageCount);
-  const firstItem = logs.length ? ((auditCurrentPage - 1) * AUDIT_PAGE_SIZE) + 1 : 0;
-  const lastItem = Math.min(auditCurrentPage * AUDIT_PAGE_SIZE, logs.length);
-  if (showCount) showCount.textContent = `Showing ${firstItem}–${lastItem} of ${logs.length} filtered events`;
   container.innerHTML = '';
-  renderAuditPagination(logs.length, pageCount);
+  renderPager('audit-pagination', { page: auditCurrentPage, lastPage: pageCount, total: logs.length, perPage: AUDIT_PAGE_SIZE, noun: ['event', 'events'], loader: 'goToAuditPage' });
   if (logs.length === 0) {
-    container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:32px 0;">No events match the current filter.</div>';
+    container.innerHTML = `<div class="resident-table-message">${LIVE_AUDIT_LOGS.length ? 'No events match the current filter.' : 'No audit events recorded yet.'}</div>`;
     return;
   }
   const pageLogs = logs.slice((auditCurrentPage - 1) * AUDIT_PAGE_SIZE, auditCurrentPage * AUDIT_PAGE_SIZE);
@@ -2893,31 +2889,20 @@ function auditCategoryLabel(type) {
   return ({ auth: 'Account', cert: 'Certificates', rfid: 'RFID', cabinet: 'Cabinet access', record: 'Records', incident: 'Incidents', security: 'Security' })[type] || 'Other';
 }
 
-function renderAuditPagination(total, pageCount) {
-  const container = document.getElementById('audit-pagination');
-  if (!container) return;
-  container.replaceChildren();
-  if (total <= AUDIT_PAGE_SIZE) return;
+function goToAuditPage(page) {
+  auditCurrentPage = page;
+  renderAuditLog();
+  const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  document.getElementById('screen-audit')?.scrollIntoView({ block: 'start', behavior: reduceMotion ? 'auto' : 'smooth' });
+}
 
-  const createButton = (label, page, disabled = false) => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'btn btn-sm';
-    button.textContent = label;
-    button.disabled = disabled;
-    button.addEventListener('click', () => {
-      auditCurrentPage = page;
-      renderAuditLog();
-      document.getElementById('screen-audit')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
-    });
-    return button;
-  };
-
-  container.append(createButton('Previous', auditCurrentPage - 1, auditCurrentPage === 1));
-  const pageLabel = document.createElement('span');
-  pageLabel.textContent = `Page ${auditCurrentPage} of ${pageCount}`;
-  pageLabel.setAttribute('aria-live', 'polite');
-  container.append(pageLabel, createButton('Next', auditCurrentPage + 1, auditCurrentPage === pageCount));
+/** Permission lists from a staff permission change, as readable text rather than raw JSON. */
+function auditAssignmentText(assignments) {
+  if (Array.isArray(assignments)) return assignments.length ? assignments.join(', ') : 'No permissions';
+  if (assignments && typeof assignments === 'object') {
+    return Object.entries(assignments).map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') || 'none' : value}`).join('\n');
+  }
+  return String(assignments ?? '');
 }
 
 function openAuditDetail(log) {
@@ -2925,19 +2910,19 @@ function openAuditDetail(log) {
   const subtitle = document.getElementById('audit-detail-subtitle');
   if (!fields || !subtitle) return;
 
+  const affected = log.target_staff_id ? `Staff account #${log.target_staff_id}` : (String(log.detail || '').match(/Record ID: ([^·]+)/)?.[1]?.trim() ?? 'Not recorded');
   const rows = [
     ['Category', auditCategoryLabel(log.type)],
-    ['Timestamp', log.time || 'Not recorded'],
+    ['Date and time', log.time || 'Not recorded'],
     ['Action', log.action || 'Not recorded'],
-    ['User / Source', log.user || 'System'],
-    ['Actor ID', log.actor_id ?? 'Not recorded'],
-    ['Target staff ID', log.target_staff_id ?? 'Not applicable'],
+    ['Performed by', log.user ? `${log.user}${log.actor_id ? ` (user #${log.actor_id})` : ''}` : 'System'],
+    ['Affected record', affected],
     ['Details', log.detail || 'No additional details recorded'],
   ];
-  if (log.before_assignments) rows.push(['Before', JSON.stringify(log.before_assignments, null, 2)]);
-  if (log.after_assignments) rows.push(['After', JSON.stringify(log.after_assignments, null, 2)]);
+  if (log.before_assignments) rows.push(['Permissions before', auditAssignmentText(log.before_assignments)]);
+  if (log.after_assignments) rows.push(['Permissions after', auditAssignmentText(log.after_assignments)]);
 
-  subtitle.textContent = `Audit event #${log.id}`;
+  subtitle.textContent = `Audit event #${log.id} · read-only record`;
   fields.replaceChildren();
   rows.forEach(([label, value]) => {
     const wrapper = document.createElement('div');
@@ -2951,10 +2936,10 @@ function openAuditDetail(log) {
   openModal('modal-audit-detail');
 }
 
-function filterAuditType(type, el) {
-  document.querySelectorAll('.audit-type-btn').forEach(b => b.classList.remove('active'));
-  if (el) el.classList.add('active');
-  auditCurrentType = type;
+function filterAuditType(type) {
+  auditCurrentType = type || 'all';
+  const select = document.getElementById('audit-category-filter');
+  if (select) select.value = auditCurrentType;
   auditCurrentPage = 1;
   renderAuditLog();
 }
@@ -2973,8 +2958,7 @@ function clearAuditFilter() {
   auditCurrentPage = 1;
   const s = document.getElementById('audit-search'); if (s) s.value = '';
   const d = document.getElementById('audit-date-filter'); if (d) d.value = '';
-  document.querySelectorAll('.audit-type-btn').forEach(b => b.classList.remove('active'));
-  document.querySelector('.audit-type-btn')?.classList.add('active');
+  const c = document.getElementById('audit-category-filter'); if (c) c.value = 'all';
   renderAuditLog();
 }
 

@@ -1129,3 +1129,41 @@ test('incident rows use status colours by meaning, split date and time, and open
   assert.equal(context.incidentStatusBadge('open'), 'badge-blue');
   assert.equal(context.incidentStatusBadge('referred'), 'badge-purple');
 });
+
+test('the audit log filters by category, pages with the shared pager, and shows permission changes as text', async () => {
+  const { context, fields } = await client();
+  const list = { children: [], appendChild(row) { this.children.push(row); } };
+  Object.defineProperty(list, 'innerHTML', { get: () => '', set() { list.children = []; } });
+  const pager = { innerHTML: '' };
+  const category = { value: 'all' };
+  fields.set('audit-log-list', list);
+  fields.set('audit-pagination', pager);
+  fields.set('audit-category-filter', category);
+  fields.set('audit-date-filter', { value: '' });
+  context.document.createElement = () => {
+    const element = { children: [], textContent: '', innerHTML: '', style: {}, className: '', setAttribute() {}, addEventListener() {}, append(...nodes) { this.children.push(...nodes); } };
+    return element;
+  };
+  vm.runInContext(`LIVE_AUDIT_LOGS.splice(0, LIVE_AUDIT_LOGS.length,
+    ...Array.from({ length: 25 }, (_, index) => ({ id: index + 1, type: index < 22 ? 'record' : 'auth', action: 'residents update', detail: 'Record ID: ' + index, user: 'Clerk', time: 'Nov 01, 2026 10:00', date: '2026-11-01' })));`, context);
+
+  context.renderAuditLog();
+  assert.match(pager.innerHTML, /Showing 1–20 of 25 <span>events<\/span>/);
+  assert.match(pager.innerHTML, /onclick="goToAuditPage\(2\)">Next/);
+
+  context.filterAuditType('auth');
+  assert.equal(category.value, 'auth');
+  assert.match(pager.innerHTML, /Showing 1–3 of 3 <span>events<\/span>/);
+  assert.equal(list.children.length, 3);
+
+  const detailFields = { children: [], replaceChildren() { this.children = []; }, append(node) { this.children.push(node); } };
+  fields.set('audit-detail-fields', detailFields);
+  fields.set('audit-detail-subtitle', { textContent: '' });
+  vm.runInContext('openModal = () => {};', context);
+  context.openAuditDetail({ id: 9, type: 'security', action: 'users permissions changed', detail: 'Staff #4', user: 'Super Admin', actor_id: 1, target_staff_id: 4, time: 'Nov 01, 2026 10:00',
+    before_assignments: ['records.view'], after_assignments: ['records.view', 'records.update'] });
+  const values = detailFields.children.map(wrapper => `${wrapper.children[0].textContent}=${wrapper.children[1].textContent}`);
+  assert.ok(values.includes('Performed by=Super Admin (user #1)'));
+  assert.ok(values.includes('Affected record=Staff account #4'));
+  assert.ok(values.includes('Permissions after=records.view, records.update'));
+});

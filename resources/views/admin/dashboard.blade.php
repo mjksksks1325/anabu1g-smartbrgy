@@ -493,9 +493,9 @@
     <!-- AUDIT LOG -->
     <div class="content{{ $activeScreen === 'audit' ? ' active' : '' }}" id="screen-audit">
       <div class="page-header-row">
-        <div class="page-header"><h1>Audit <span>Log</span></h1><p>Latest 500 successful administrative changes. Actions before audit activation are not included.</p></div>
+        <div class="page-header"><h1>Audit Log</h1><p>Latest 500 successful administrative changes. Actions before audit activation are not included.</p></div>
         <div style="display:flex;gap:8px;align-items:center;">
-          <span class="live-badge"><span class="pulse-dot"></span>Live Feed</span>
+          <span class="live-badge" title="Auto-refreshes every 15 seconds"><span class="pulse-dot" aria-hidden="true"></span>Live · updates every 15 seconds</span>
         </div>
       </div>
 
@@ -504,23 +504,22 @@
         <div class="audit-stat"><div class="audit-stat-val" id="astat-total">0</div><div class="audit-stat-label">Total Events</div></div>
         <div class="audit-stat"><div class="audit-stat-val" style="color:var(--blue-400);" id="astat-records">0</div><div class="audit-stat-label">Record Changes</div></div>
         <div class="audit-stat"><div class="audit-stat-val" style="color:#F59E0B;" id="astat-certs">0</div><div class="audit-stat-label">Certificates</div></div>
-        <div class="audit-stat"><div class="audit-stat-val" style="color:#EF4444;" id="astat-security">0</div><div class="audit-stat-label">Account Changes</div></div>
+        <div class="audit-stat"><div class="audit-stat-val" style="color:#EF4444;" id="astat-security">0</div><div class="audit-stat-label">Security &amp; cabinet</div></div>
       </div>
 
       <div class="card">
-        <div class="card-header">
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <input class="form-input" type="date" id="audit-date-filter" aria-label="Filter audit events by date" onchange="filterAuditDate()" style="width:165px;">
-            <div class="search-wrap" style="width:220px;"><span class="si"></span><input class="search-input" id="audit-search" autocomplete="off" placeholder="Search logs..." oninput="filterAuditLog()"/></div>
-            <div class="audit-filter-bar" style="margin-bottom:0;">
-              <button class="audit-type-btn active" onclick="filterAuditType('all',this)">All</button>
-              <button class="audit-type-btn" onclick="filterAuditType('cert',this)"> Certificates</button>
-              <button class="audit-type-btn" onclick="filterAuditType('record',this)"> Records</button>
-              <button class="audit-type-btn" onclick="filterAuditType('incident',this)"> Incidents</button>
-              <button class="audit-type-btn" onclick="filterAuditType('security',this)"> Security</button>
-              <button class="audit-type-btn" onclick="filterAuditType('cabinet',this)"> Cabinet Access</button>
-            </div>
-          </div>
+        <div class="audit-toolbar" role="search" aria-label="Filter audit events">
+          <div class="search-wrap"><span class="si"></span><input class="search-input" id="audit-search" type="search" autocomplete="off" aria-label="Search audit events" placeholder="Search action, details or user..." oninput="filterAuditLog()"/></div>
+          <label class="incident-date-filter"><span>Category</span><select class="form-input" id="audit-category-filter" onchange="filterAuditType(this.value)">
+            <option value="all">All categories</option>
+            <option value="auth">Accounts and sign-ins</option>
+            <option value="record">Records</option>
+            <option value="cert">Certificates</option>
+            <option value="incident">Incidents</option>
+            <option value="security">Security</option>
+            <option value="cabinet">Cabinet access</option>
+          </select></label>
+          <label class="incident-date-filter"><span>Date</span><input class="form-input" type="date" id="audit-date-filter" aria-label="Filter audit events by date" onchange="filterAuditDate()"></label>
         </div>
         <!-- Log Table Header -->
         <div class="audit-log-table-scroll">
@@ -529,11 +528,7 @@
         </div>
         <div id="audit-log-list"></div>
         </div>
-        <div id="audit-pagination" class="audit-pagination" aria-label="Audit log pagination"></div>
-        <div style="padding:10px 14px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted);display:flex;justify-content:space-between;">
-          <span id="audit-showing-count">Showing all events</span>
-          <span> Auto-refreshes every 15 seconds</span>
-        </div>
+        <div id="audit-pagination" class="resident-pagination audit-list-pagination"></div>
       </div>
     </div>
 
