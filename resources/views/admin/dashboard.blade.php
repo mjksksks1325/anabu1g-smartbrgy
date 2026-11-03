@@ -623,14 +623,13 @@
   <div class="modal settings-status-modal" role="dialog" aria-modal="true" aria-labelledby="hardware-status-title">
     <div class="modal-header"><div class="modal-title" id="hardware-status-title">Hardware integration status</div><button type="button" class="modal-close" onclick="closeModal('modal-hardware-status')" aria-label="Close">&times;</button></div>
     <div class="settings-status-callout"><strong>Read-only status</strong><p>A cabinet is shown as online only after a recent verified report from the Raspberry Pi. Open Smart Cabinet to review last contact and component health.</p></div>
-    <div class="modal-footer"><button type="button" class="btn" onclick="closeModal('modal-hardware-status')">Close</button><a class="btn btn-primary" href="{{ route('admin.smart-cabinet.index') }}">Open Smart Cabinet</a></div>
+    <div class="modal-footer"><a class="btn btn-primary" href="{{ route('admin.smart-cabinet.index') }}">Open Smart Cabinet</a></div>
   </div>
 </div>
 <div class="modal-overlay" id="modal-user-details" onclick="if(event.target===this)closeModal('modal-user-details')">
   <div class="modal user-details-modal" role="dialog" aria-modal="true" aria-labelledby="user-details-title">
     <div class="modal-header"><div><div class="modal-title" id="user-details-title">User details</div><div class="modal-sub" id="user-details-subtitle"></div></div><button type="button" class="modal-close" onclick="closeModal('modal-user-details')" aria-label="Close">&times;</button></div>
     <dl class="user-details-grid" id="user-details-fields"></dl>
-    <div class="modal-footer"><button type="button" class="btn" onclick="closeModal('modal-user-details')">Close</button></div>
   </div>
 </div>
 @endif

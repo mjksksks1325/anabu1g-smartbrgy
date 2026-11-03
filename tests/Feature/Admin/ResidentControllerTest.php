@@ -251,7 +251,15 @@ it('archives and restores a resident without deleting linked request history', f
         'status' => 'pending',
     ]);
 
-    $this->actingAs($staff)->deleteJson(route('staff.residents.destroy', $resident))->assertOk();
+    $this->actingAs($staff)->deleteJson(route('staff.residents.destroy', $resident))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('super_admin_password');
+    $this->actingAs($staff)->deleteJson(route('staff.residents.destroy', $resident), ['super_admin_password' => 'wrong-password'])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('super_admin_password');
+    expect($resident->fresh()->trashed())->toBeFalse();
+
+    $this->actingAs($staff)->deleteJson(route('staff.residents.destroy', $resident), supervisorApproval())->assertOk();
 
     $this->assertSoftDeleted($resident);
     expect($request->fresh()->resident_id)->toBe($resident->id);

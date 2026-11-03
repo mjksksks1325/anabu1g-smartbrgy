@@ -39,7 +39,7 @@ it('removes a staff account while preserving history and queuing RPi credential 
     $history = FileMovementEvent::factory()->create(['user_id' => $target->id]);
     $incident = Incident::factory()->create(['reported_by' => $target->id]);
 
-    $this->actingAs($admin)->deleteJson(route('admin.users.destroy', $target))
+    $this->actingAs($admin)->deleteJson(route('admin.users.destroy', $target), supervisorApproval())
         ->assertOk()
         ->assertJsonPath('pending_rpi_revocations', 1)
         ->assertJsonPath('rpi_mapping_missing', false)
@@ -82,7 +82,7 @@ it('prevents self deletion and deletion of super admin accounts', function (stri
         ? $admin
         : User::factory()->superAdmin()->create(['role' => 'admin']);
 
-    $this->actingAs($admin)->deleteJson(route('admin.users.destroy', $target))
+    $this->actingAs($admin)->deleteJson(route('admin.users.destroy', $target), supervisorApproval())
         ->assertUnprocessable()
         ->assertJsonValidationErrors('user');
 

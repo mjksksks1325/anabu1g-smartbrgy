@@ -9,18 +9,20 @@ function navigation() {
   const events = new Map();
   const classes = new Set();
   const styles = ['admin.css', 'figma-admin.css', 'admin-iot.css', 'figma-iot.css', 'government.css', 'app.css']
-    .map(name => ({ href: `http://localhost/${name === 'app.css' ? 'build/assets' : 'css'}/${name}`, disabled: false }));
+    // Already parsed stylesheets, so the script switches layouts immediately instead of waiting for their load events.
+    .map(name => ({ href: `http://localhost/${name === 'app.css' ? 'build/assets' : 'css'}/${name}`, disabled: false, sheet: { cssRules: [{}] }, addEventListener() {} }));
   const context = vm.createContext({
     URL,
-    window: { location: { href: 'http://localhost/admin' } },
-    localStorage: { getItem: () => 'dark' },
+    window: { location: { href: 'http://localhost/admin' }, setTimeout: () => 1, clearTimeout() {} },
+    localStorage: { getItem: () => 'dark', setItem() {} },
     document: {
       body: { dataset: { personnelLayout: 'admin' }, classList: { toggle() {} } },
       documentElement: { dataset: {}, classList: {
         contains: name => classes.has(name),
         toggle(name, enabled) { enabled ? classes.add(name) : classes.delete(name); },
       } },
-      querySelectorAll: () => styles,
+      getElementById: () => null,
+      querySelectorAll: selector => (selector.includes('stylesheet') ? styles : []),
       addEventListener: (type, handler) => events.set(type, handler),
     },
   });

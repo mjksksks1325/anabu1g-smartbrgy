@@ -344,7 +344,7 @@ test('module actions permit ordinary case management only when explicitly assign
     $this->patchJson(route('staff.incidents.update', $incident), submissionPayload(['status' => 'closed']))->assertForbidden();
     $manager = assignedStaff(['incidents.view', 'incidents.update', 'incidents.archive']);
     $this->actingAs($manager)->patchJson(route('staff.incidents.update', $incident), submissionPayload(['status' => 'closed']))->assertOk();
-    $this->deleteJson(route('staff.incidents.destroy', $incident))->assertOk();
+    $this->deleteJson(route('staff.incidents.destroy', $incident), supervisorApproval())->assertOk();
     $this->assertSoftDeleted($incident);
 });
 

@@ -19,7 +19,7 @@ it('delivers employee face and RFID revocations until each cabinet acknowledges 
     $firstCabinet = CabinetDevice::factory()->create(['api_token_hash' => hash('sha256', 'first-token')]);
     $secondCabinet = CabinetDevice::factory()->create(['api_token_hash' => hash('sha256', 'second-token')]);
 
-    $this->actingAs($admin)->deleteJson(route('admin.users.destroy', $employee))->assertOk();
+    $this->actingAs($admin)->deleteJson(route('admin.users.destroy', $employee), supervisorApproval())->assertOk();
     $firstCommand = CabinetCredentialRevocation::query()->where('cabinet_device_id', $firstCabinet->id)->firstOrFail();
     $secondCommand = CabinetCredentialRevocation::query()->where('cabinet_device_id', $secondCabinet->id)->firstOrFail();
 

@@ -242,7 +242,7 @@ it('keeps the audit header and rows inside one scroll container in data order', 
         $labels[] = $header->textContent;
     }
 
-    expect($labels)->toBe(['Type', 'Timestamp', 'Action & Detail', 'User / Source', 'Category']);
+    expect($labels)->toBe(['Category', 'Timestamp', 'Action & Detail', 'User / Source']);
     expect($xpath->query('//div[@class="audit-log-table-scroll"]/div[@id="audit-log-list"]')->length)->toBe(1);
 });
 

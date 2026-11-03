@@ -291,7 +291,7 @@ it('archives and restores the head without automatically assigning a replacement
     $manager->assign($other, $household->id, 'Child', false);
     $this->actingAs(User::factory()->assignedOperations()->create());
 
-    $this->deleteJson(route('staff.residents.destroy', $head))->assertOk();
+    $this->deleteJson(route('staff.residents.destroy', $head), supervisorApproval())->assertOk();
     $this->getJson(route('staff.households.show', $household))->assertJsonPath('head', null)->assertJsonCount(1, 'members');
     $this->patchJson(route('staff.residents.restore', $head->id))->assertOk();
 
@@ -323,7 +323,7 @@ it('removes membership without deleting the resident or request and certificate 
         'issued_by' => 'Staff', 'issued_at' => now(), 'verification_code' => 'HH-VERIFY',
     ]);
 
-    $this->actingAs(User::factory()->assignedOperations()->create())->deleteJson(route('staff.households.members.destroy', [$household, $resident]))->assertOk();
+    $this->actingAs(User::factory()->assignedOperations()->create())->deleteJson(route('staff.households.members.destroy', [$household, $resident]), supervisorApproval())->assertOk();
 
     $this->assertModelExists($resident);
     $this->assertNotSoftDeleted($resident);
@@ -342,7 +342,7 @@ it('returns 404 when removing a resident from a different household', function (
     $resident = Resident::factory()->create();
     app(ManageHouseholds::class)->assign($resident, $other->id, null, false);
 
-    $this->actingAs(User::factory()->assignedOperations()->create())->deleteJson(route('staff.households.members.destroy', [$household, $resident]))->assertNotFound();
+    $this->actingAs(User::factory()->assignedOperations()->create())->deleteJson(route('staff.households.members.destroy', [$household, $resident]), supervisorApproval())->assertNotFound();
     expect($resident->fresh()->household_id)->toBe($other->id);
 });
 

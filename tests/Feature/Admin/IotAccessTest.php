@@ -59,7 +59,7 @@ it('shows a compact cabinet access list without empty pagination', function () {
     $response->assertSee('3 employees')
         ->assertSee('Details')
         ->assertDontSee('<div class="pagination">', false);
-    expect(substr_count($response->getContent(), '<details class="employee-card">'))->toBe(3);
+    expect(substr_count($response->getContent(), '<article class="employee-card">'))->toBe(3);
 });
 
 it('keeps pagination for a cabinet access list with more than one page', function () {
@@ -70,7 +70,7 @@ it('keeps pagination for a cabinet access list with more than one page', functio
 
     $response->assertSee('16 employees')
         ->assertSee('<div class="pagination">', false);
-    expect(substr_count($response->getContent(), '<details class="employee-card">'))->toBe(15);
+    expect(substr_count($response->getContent(), '<article class="employee-card">'))->toBe(15);
 });
 
 it('uses saved file movements and filters instead of browser simulation', function () {

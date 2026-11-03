@@ -82,8 +82,6 @@
 
   function syncStyles() {
     const layout = document.body.dataset.personnelLayout;
-    if (!layout) return true;
-
     const stylesByLayout = {
       'admin.css': 'admin',
       'figma-admin.css': 'admin',
@@ -99,6 +97,15 @@
 
       return { link, owner };
     });
+
+    // Ordinary pages reached by in-app navigation: switch the workspace-only sheets off and the app bundle back on.
+    if (!layout) {
+      ownedStylesheets.forEach(({ link, owner }) => {
+        if (owner) link.disabled = owner !== 'settings';
+      });
+      activeStylesLayout = null;
+      return true;
+    }
 
     const targetStylesheets = ownedStylesheets.filter(item => item.owner === layout);
     const pendingStylesheets = targetStylesheets.filter(({ link }) => !loadedStylesheets.has(link));

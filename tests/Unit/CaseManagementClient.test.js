@@ -96,10 +96,10 @@ test('restriction review disables duplicate actions and uses the authorized revi
   assert.equal(button.disabled, false);
 });
 
-test('incident filters send server-side category date and assignment criteria', async () => {
+test('incident filters send server-side search date and assignment criteria', async () => {
   let url;
   const fields = new Map([
-    ['incidents-tbody', { innerHTML: '' }], ['incident-category-filter', { value: 'Noise Complaint' }],
+    ['incidents-tbody', { innerHTML: '' }], ['incident-search', { value: ' Noise Complaint ' }],
     ['incident-date-from', { value: '2026-10-01' }], ['incident-date-to', { value: '2026-10-04' }], ['incident-assignee-filter', { value: '7' }],
   ]);
   const context = vm.createContext({ document: { getElementById: id => fields.get(id) }, URLSearchParams, INCIDENTS: [],
@@ -108,7 +108,8 @@ test('incident filters send server-side category date and assignment criteria', 
   vm.runInContext('let incidentCurrentPage = 1; let incidentLastPage = 1;\n' + adminSource.slice(adminSource.indexOf('async function loadIncidents('), adminSource.indexOf('function renderIncidents(')), context);
   await context.loadIncidents(2);
   const params = new URL(url, 'https://example.test').searchParams;
-  assert.equal(params.get('incident_type'), 'Noise Complaint');
+  assert.equal(params.get('search'), 'Noise Complaint');
+  assert.equal(params.has('incident_type'), false);
   assert.equal(params.get('date_from'), '2026-10-01');
   assert.equal(params.get('date_to'), '2026-10-04');
   assert.equal(params.get('assigned_to'), '7');

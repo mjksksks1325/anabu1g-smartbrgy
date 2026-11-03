@@ -440,7 +440,7 @@ test('archive and restore retain linked accounts and history while enforcing cur
     $resident = $account->resident;
     portalRequestFor($resident, 'REQ-RETAINED');
     $staff = User::factory()->assignedOperations()->create(['role' => 'staff']);
-    $this->actingAs($staff)->deleteJson(route('staff.residents.destroy', $resident))->assertOk();
+    $this->actingAs($staff)->deleteJson(route('staff.residents.destroy', $resident), supervisorApproval())->assertOk();
     $this->getJson(route('staff.residents.index'))->assertJsonCount(0, 'data');
     $this->getJson(route('staff.residents.index', ['status' => 'archived']))->assertJsonPath('data.0.id', $resident->id);
     $this->actingAs($account->fresh(), 'resident')->get(route('portal.account'))->assertForbidden()->assertSee('Please visit Barangay');

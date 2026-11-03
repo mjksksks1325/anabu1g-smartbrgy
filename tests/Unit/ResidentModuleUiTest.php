@@ -15,7 +15,7 @@ test('resident dashboard uses the persistent API and recoverable archive control
     expect($adminScript)
         ->toContain('fetch(`/staff/residents?${query}`')
         ->toContain("method = resident ? 'PATCH' : 'POST'")
-        ->toContain("changeResidentArchiveState(`/staff/residents/\${resident.databaseId}`, 'DELETE')")
+        ->toContain("changeResidentArchiveState(`/staff/residents/\${resident.databaseId}`, 'DELETE', supervisorPassword)")
         ->toContain('async function refreshDemographics()')
         ->toContain("if (id === 'demographics') void loadPuroks();")
         ->toContain("await loadResidents(resident ? residentCurrentPage : 1);\n    await loadPuroks();")

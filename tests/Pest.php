@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
@@ -48,6 +49,19 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+/**
+ * The JSON field an archive or delete request needs to pass RequireSupervisorPassword: the password of an
+ * active Barangay Captain created for the test.
+ *
+ * @return array{super_admin_password: string}
+ */
+function supervisorApproval(): array
+{
+    User::factory()->create(['role' => 'captain', 'is_active' => true]);
+
+    return ['super_admin_password' => 'password'];
 }
 
 /**

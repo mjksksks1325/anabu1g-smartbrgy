@@ -147,8 +147,8 @@ it('allows only administrators to archive incidents', function () {
     $admin = User::factory()->superAdmin()->create();
     $incident = Incident::factory()->for($staff, 'reporter')->create();
 
-    $this->actingAs($staff)->deleteJson(route('staff.incidents.destroy', $incident))->assertForbidden();
-    $this->actingAs($admin)->deleteJson(route('staff.incidents.destroy', $incident))->assertOk();
+    $this->actingAs($staff)->deleteJson(route('staff.incidents.destroy', $incident), supervisorApproval())->assertForbidden();
+    $this->actingAs($admin)->deleteJson(route('staff.incidents.destroy', $incident), supervisorApproval())->assertOk();
 
     $this->assertSoftDeleted($incident);
 });
