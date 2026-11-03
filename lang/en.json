@@ -1697,5 +1697,6 @@
     "Eligibility": "Eligibility",
     "Release": "Release",
     "Required field": "Required field",
-    "Optional. An image file up to 5 MB.": "Optional. An image file up to 5 MB."
+    "Optional. An image file up to 5 MB.": "Optional. An image file up to 5 MB.",
+    "Not available": "Not available"
 }

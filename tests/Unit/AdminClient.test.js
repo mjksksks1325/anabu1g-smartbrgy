@@ -849,12 +849,14 @@ test('list load failures explain network errors in plain words, keep server mess
 
   const tbody = { innerHTML: '' };
   fields.set('incidents-tbody', tbody);
+  fields.set('inc-stat-pending', { textContent: '0', setAttribute() {} });
   context.fetch = async () => { throw new TypeError('Failed to fetch'); };
   await context.loadIncidents(1);
 
   assert.match(tbody.innerHTML, /Could not reach the server/);
   assert.match(tbody.innerHTML, /onclick="loadIncidents\(incidentCurrentPage\)">Try again<\/button>/);
   assert.doesNotMatch(tbody.innerHTML, /Failed to fetch/);
+  assert.equal(fields.get('inc-stat-pending').textContent, '—');
 });
 
 test('purok panels say loading, failed with a retry, or genuinely empty instead of "no data"', async () => {
@@ -867,6 +869,12 @@ test('purok panels say loading, failed with a retry, or genuinely empty instead 
   assert.match(context.purokPanelState(), /No puroks have been added yet/);
   vm.runInContext("PUROK_DATA.push({ key: 'Purok 1', label: 'Purok 1' });", context);
   assert.equal(context.purokPanelState(), null);
+});
+
+test('incident numbers break once after the year and keep the identifier itself unbroken', async () => {
+  const { context } = await client();
+  assert.equal(context.incidentReferenceMarkup('INC-2026-01M6GZXFF42W6PJD3YRZ1CN2E1'), 'INC-2026-<wbr><span class="incident-ref-id">01M6GZXFF42W6PJD3YRZ1CN2E1</span>');
+  assert.equal(context.incidentReferenceMarkup('<b>legacy</b>'), '&lt;b&gt;legacy&lt;/b&gt;');
 });
 
 test('dialogs open on their first usable field and keep a single dialog role', async () => {

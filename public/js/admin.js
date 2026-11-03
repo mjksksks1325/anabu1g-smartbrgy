@@ -1580,6 +1580,17 @@ function requestErrorMessage(error, fallback = 'The records could not be loaded.
   return adminText(error?.message || fallback);
 }
 
+/** After a failed load, show "—" instead of a 0 the server never reported (counts already loaded are kept). */
+function markStatsUnavailable(ids) {
+  ids.forEach(id => {
+    const element = document.getElementById(id);
+    if (element && (element.textContent.trim() === '0' || element.textContent.trim() === '')) {
+      element.textContent = '—';
+      element.setAttribute?.('aria-label', adminText('Not available'));
+    }
+  });
+}
+
 /** A list error message with a Retry button that re-runs the given loader call (a trusted, fixed string). */
 function listErrorMarkup(error, retryCall, fallback) {
   return `<span>${escapeText(requestErrorMessage(error, fallback))}</span> <button type="button" class="btn btn-sm list-retry" onclick="${retryCall}">${escapeText(adminText('Try again'))}</button>`;
@@ -3178,6 +3189,7 @@ async function reloadUsers() {
     renderUsers();
   } catch (error) {
     if (container) container.innerHTML = `<div class="card civic-empty resident-table-error">${listErrorMarkup(error, 'reloadUsers()')}</div>`;
+    markStatsUnavailable(['usr-total', 'usr-active', 'usr-suspended', 'usr-no-2fa']);
   }
 }
 
@@ -3842,6 +3854,7 @@ async function loadIncidents(page = 1) {
     updateIncidentSummary(payload.summary || {});
   } catch (error) {
     tbody.innerHTML = `<tr><td colspan="8" class="resident-table-message resident-table-error">${listErrorMarkup(error, 'loadIncidents(incidentCurrentPage)')}</td></tr>`;
+    markStatsUnavailable(['inc-stat-pending', 'inc-stat-resolved', 'inc-stat-high']);
   }
 }
 
@@ -3866,7 +3879,7 @@ function renderIncidents(total = 0) {
     row.tabIndex = 0;
     row.setAttribute('aria-label', `${incident.incident_number}, ${incident.incident_type}. Open incident details`);
     row.innerHTML = `
-      <td class="incident-cell-main"><strong>${escapeText(incident.incident_type)}</strong><span class="resident-number">${escapeText(incident.incident_number)}</span></td>
+      <td class="incident-cell-main"><strong>${escapeText(incident.incident_type)}</strong><span class="resident-number incident-ref" title="${escapeText(incident.incident_number)}">${incidentReferenceMarkup(incident.incident_number)}</span></td>
       <td class="incident-cell-date"><span>${escapeText(occurredDate)}</span><small>${escapeText(occurredTime)}</small></td>
       <td>${escapeText(incident.location)}</td>
       <td>${escapeText(incident.complainant_name)}</td>
@@ -3935,6 +3948,17 @@ function showIncidentKpi(status, severity) {
 async function openDashboardIncidents() {
   await showScreen('incidents', findNavItem('incidents'));
   showIncidentKpi('active', '');
+}
+
+/**
+ * Incident numbers are INC-YYYY- plus a 26-character ULID. Allow one line break after the year and keep the
+ * ULID on a single line, instead of breaking anywhere; the copied text stays the full number.
+ */
+function incidentReferenceMarkup(number) {
+  const value = String(number ?? '');
+  const match = value.match(/^([A-Z]+-\d{4}-)(.+)$/);
+  if (!match) return escapeText(value);
+  return `${escapeText(match[1])}<wbr><span class="incident-ref-id">${escapeText(match[2])}</span>`;
 }
 
 function filterIncidents() {
@@ -5301,7 +5325,10 @@ async function loadVoterRegistry(page = 1) {
     renderVoterRegistry(payload.total || 0);
     updateVoterSummary(payload.summary || {});
   } catch (error) {
-    if (version === voterLoadVersion) tbody.innerHTML = `<tr><td colspan="${columns}" class="resident-table-message resident-table-error">${listErrorMarkup(error, 'loadVoterRegistry(voterCurrentPage || 1)')}</td></tr>`;
+    if (version === voterLoadVersion) {
+      tbody.innerHTML = `<tr><td colspan="${columns}" class="resident-table-message resident-table-error">${listErrorMarkup(error, 'loadVoterRegistry(voterCurrentPage || 1)')}</td></tr>`;
+      markStatsUnavailable(['voter-stat-total', 'voter-stat-sk-only', 'voter-stat-sk-regular', 'voter-stat-regular-only']);
+    }
   }
 }
 

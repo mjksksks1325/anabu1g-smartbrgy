@@ -294,3 +294,14 @@ it('uses the same sidebar icons as the staff dashboard on super admin pages', fu
         ->assertSee('<rect x="2" y="3" width="20" height="14" rx="2"/>', false)
         ->assertSee('<rect x="9" y="3" width="6" height="4" rx="1"/>', false);
 });
+
+it('shows the reported cabinet state as readable labels instead of raw JSON', function () {
+    CabinetDevice::factory()->create(['cabinet_state' => ['door' => 'closed', 'drawer_1_locked' => true]]);
+
+    $this->actingAs(User::factory()->superAdmin()->create())
+        ->get(route('admin.smart-cabinet.index'))
+        ->assertOk()
+        ->assertSee('<ul class="cabinet-state-list">', false)
+        ->assertSeeInOrder(['Door', 'closed', 'Drawer 1 Locked', 'Yes'])
+        ->assertDontSee('{"door":"closed"', false);
+});

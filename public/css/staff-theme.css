@@ -879,3 +879,22 @@ body[data-personnel-layout="admin"] .modal fieldset.resident-special-groups > le
 body[data-personnel-layout="admin"] .modal #res-photo-hint { margin: -2px 0 6px; color: var(--staff-muted); font-size: 12px; }
 body[data-personnel-layout="admin"] .modal input[type="file"].form-input { padding: 8px; border-style: dashed; color: var(--staff-muted); font-size: 13px; }
 body[data-personnel-layout="admin"] .modal input[type="file"].form-input::file-selector-button { margin-right: 12px; padding: 7px 14px; border: 1px solid var(--staff-quiet-border); border-radius: 6px; background: var(--staff-quiet-bg); color: var(--staff-quiet-ink); font: 600 13px var(--civic-font-body, inherit); cursor: pointer; }
+/* ── IoT pages: one card level. Panels are the cards; what sits inside them is flat, divided by rules. ── */
+body[data-personnel-layout="iot"] .notice, html[data-theme=dark] body[data-personnel-layout="iot"] .notice { padding: 12px 16px; font-size: 14px; line-height: 1.5; }
+body[data-personnel-layout="iot"] .panel :is(.device-card, .cabinet-reader-card), html[data-theme=dark] body[data-personnel-layout="iot"] .panel :is(.device-card, .cabinet-reader-card) {
+  margin: 0; padding: 18px 22px; border: 0; border-bottom: 1px solid var(--staff-row); border-radius: 0; background: transparent; box-shadow: none;
+}
+body[data-personnel-layout="iot"] .panel :is(.device-card, .cabinet-reader-card):last-of-type { border-bottom: 0; }
+body[data-personnel-layout="iot"] .panel .filter-panel.cabinet-reader-form, body[data-personnel-layout="iot"] .panel .filter-panel.cabinet-folder-create,
+html[data-theme=dark] body[data-personnel-layout="iot"] .panel .filter-panel:is(.cabinet-reader-form, .cabinet-folder-create) { border: 1px solid var(--staff-row); border-radius: 8px; background: var(--staff-soft); box-shadow: none; }
+body[data-personnel-layout="iot"] .device-card .detail-grid { gap: 0; border: 1px solid var(--staff-row); border-radius: 8px; overflow: hidden; }
+body[data-personnel-layout="iot"] .device-card .detail-grid > div { padding: 10px 14px; border: 0; border-bottom: 1px solid var(--staff-row); border-radius: 0; background: transparent; box-shadow: none; }
+body[data-personnel-layout="iot"] .device-card .detail-grid dt { font-size: 11px; letter-spacing: .04em; }
+body[data-personnel-layout="iot"] .device-card .detail-grid dd { font-size: 14px; }
+body[data-personnel-layout="iot"] .cabinet-state-list { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+body[data-personnel-layout="iot"] .cabinet-state-list li { display: flex; justify-content: space-between; gap: 12px; }
+body[data-personnel-layout="iot"] .cabinet-state-list span { color: var(--staff-muted); }
+/* Incident numbers: one break after the year at most; the ULID part never splits. */
+body #app.admin-interface.admin-interface .incident-ref { display: block; font-size: 11.5px; line-height: 1.45; overflow-wrap: normal; word-break: normal; }
+body #app.admin-interface.admin-interface .incident-ref-id { white-space: nowrap; }
+body #app.admin-interface.admin-interface .incident-table th:first-child, body #app.admin-interface.admin-interface .incident-table td.incident-cell-main { min-width: 215px; }
