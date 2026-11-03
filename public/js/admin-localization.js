@@ -38,7 +38,8 @@
     function adminTranslate(source, replacements = {}) {
         const catalogs = window.ADMIN_I18N?.catalogs;
         let text = catalogs?.[window.ADMIN_I18N?.locale]?.[source] ?? catalogs?.en?.[source] ?? source;
-        for (const [name, value] of Object.entries(replacements)) {
+        // Longest names first, so :to never replaces the start of :total.
+        for (const [name, value] of Object.entries(replacements).sort(([first], [second]) => second.length - first.length)) {
             text = text.replaceAll(':' + name, String(value));
         }
 
