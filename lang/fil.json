@@ -1878,5 +1878,7 @@
     "Go to Processing": "Pumunta sa Pinoproseso",
     "Go to Ready to Print": "Pumunta sa Handa nang i-print",
     "Go to Released": "Pumunta sa Nailabas na",
-    "Hide steps": "Itago ang mga hakbang"
+    "Hide steps": "Itago ang mga hakbang",
+    "Required field": "Kailangang punan",
+    "Optional. An image file up to 5 MB.": "Opsyonal. Larawan na hanggang 5 MB."
 }

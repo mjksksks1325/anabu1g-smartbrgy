@@ -742,38 +742,39 @@
 <div class="modal-overlay" id="modal-resident">
   <div class="modal">
     <div class="modal-header"><div class="modal-title" id="modal-resident-title"> <span>I-register ang Bagong Resident</span></div><button type="button" class="modal-close" onclick="closeModal('modal-resident')" aria-label="Close">&times;</button></div>
+    <p class="form-required-note"><span class="required-mark" aria-hidden="true">*</span> Required field</p>
     <h3 class="form-section-heading">Personal information</h3>
     <div class="form-row">
-      <div class="form-group"><div class="form-label">Last Name *</div><input class="form-input" id="res-lastname" placeholder="Santos"/></div>
-      <div class="form-group"><div class="form-label">First Name *</div><input class="form-input" id="res-name" placeholder="Maria"/></div>
+      <div class="form-group"><label class="form-label" for="res-lastname">Last Name <span class="required-mark" aria-hidden="true">*</span></label><input class="form-input" id="res-lastname" name="last_name" placeholder="Santos" required aria-required="true" autocomplete="family-name"/></div>
+      <div class="form-group"><label class="form-label" for="res-name">First Name <span class="required-mark" aria-hidden="true">*</span></label><input class="form-input" id="res-name" name="first_name" placeholder="Maria" required aria-required="true" autocomplete="given-name"/></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><div class="form-label">Middle Name</div><input class="form-input" id="res-middlename" placeholder="Reyes"/></div>
-      <div class="form-group"><div class="form-label">Suffix</div><input class="form-input" id="res-suffix" placeholder="Jr."/></div>
+      <div class="form-group"><label class="form-label" for="res-middlename">Middle Name</label><input class="form-input" id="res-middlename" name="middle_name" placeholder="Reyes" autocomplete="additional-name"/></div>
+      <div class="form-group"><label class="form-label" for="res-suffix">Suffix</label><input class="form-input" id="res-suffix" name="suffix" placeholder="Jr."/></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label class="form-label" for="res-dob">Date of Birth *</label><input class="form-input" type="date" id="res-dob" max="{{ today()->toDateString() }}"/></div>
-      <div class="form-group"><div class="form-label">Gender *</div><select class="form-input" id="res-gender"><option>Male</option><option>Female</option></select></div>
+      <div class="form-group"><label class="form-label" for="res-dob">Date of Birth <span class="required-mark" aria-hidden="true">*</span></label><input class="form-input" type="date" id="res-dob" name="date_of_birth" max="{{ today()->toDateString() }}" required aria-required="true"/></div>
+      <div class="form-group"><label class="form-label" for="res-gender">Gender <span class="required-mark" aria-hidden="true">*</span></label><select class="form-input" id="res-gender" name="gender" required aria-required="true"><option>Male</option><option>Female</option></select></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><div class="form-label">Civil Status</div><select class="form-input" id="res-civil"><option>Single</option><option>Married</option><option>Widowed</option><option>Separated</option></select></div>
-      <div class="form-group"><label class="form-label" for="res-nationality">Nationality</label><input class="form-input" id="res-nationality" maxlength="100" placeholder="Not provided"></div>
+      <div class="form-group"><label class="form-label" for="res-civil">Civil Status <span class="required-mark" aria-hidden="true">*</span></label><select class="form-input" id="res-civil" name="civil_status" required aria-required="true"><option>Single</option><option>Married</option><option>Widowed</option><option>Separated</option></select></div>
+      <div class="form-group"><label class="form-label" for="res-nationality">Nationality</label><input class="form-input" id="res-nationality" name="nationality" maxlength="100" placeholder="Not provided"></div>
     </div>
-    <div class="form-group"><label class="form-label" for="res-photo">Resident photo (supported image files; up to 5 MB)</label><input class="form-input" type="file" id="res-photo" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.avif,.heic,.heif,image/jpeg,image/png,image/gif,image/bmp,image/webp,image/avif,image/heic,image/heif" onchange="validateResidentPhoto(this)"><img id="res-photo-preview" alt="Current resident photo" style="max-width:90px;max-height:100px;display:none"></div>
+    <div class="form-group"><label class="form-label" for="res-photo">Resident photo</label><p class="form-hint" id="res-photo-hint">Optional. An image file up to 5 MB.</p><input class="form-input" type="file" id="res-photo" aria-describedby="res-photo-hint" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.avif,.heic,.heif,image/jpeg,image/png,image/gif,image/bmp,image/webp,image/avif,image/heic,image/heif" onchange="validateResidentPhoto(this)"><img id="res-photo-preview" alt="Current resident photo" style="max-width:90px;max-height:100px;display:none"></div>
 
     <h3 class="form-section-heading">Address and contact</h3>
     <div class="form-row">
-      <div class="form-group"><div class="form-label">Purok / Zone *</div><select class="form-input" id="res-purok"><option>Purok 1 - Sampaguita</option><option>Purok 2 - Rosal</option><option>Purok 3 - Camia</option><option>Purok 4 - Ilang-Ilang</option><option>Purok 5 - Mabini</option></select></div>
-      <div class="form-group"><div class="form-label">Detailed Address</div><input class="form-input" id="res-address" placeholder="Block, Lot, Street"/></div>
+      <div class="form-group"><label class="form-label" for="res-purok">Purok / Zone <span class="required-mark" aria-hidden="true">*</span></label><select class="form-input" id="res-purok" name="purok" required aria-required="true"><option>Purok 1 - Sampaguita</option><option>Purok 2 - Rosal</option><option>Purok 3 - Camia</option><option>Purok 4 - Ilang-Ilang</option><option>Purok 5 - Mabini</option></select></div>
+      <div class="form-group"><label class="form-label" for="res-address">Detailed Address <span class="required-mark" aria-hidden="true">*</span></label><input class="form-input" id="res-address" name="address" placeholder="Block, Lot, Street" required aria-required="true" autocomplete="street-address"/></div>
     </div>
     <div class="form-row">
-      <div class="form-group"><label class="form-label" for="res-contact">Contact Number</label><input class="form-input" id="res-contact" type="tel" inputmode="tel" autocomplete="tel" maxlength="13" placeholder="09XXXXXXXXX or +639XXXXXXXXX" oninput="formatResidentContact(this)"/><div class="form-hint">11 digits starting with 09, or +639 followed by 9 digits. Saved as 09XXXXXXXXX.</div></div>
-      <div class="form-group"><div class="form-label">Type of Residency</div><select class="form-input" id="res-type"><option>Homeowner</option><option>Renter</option><option>Boarder</option></select></div>
+      <div class="form-group"><label class="form-label" for="res-contact">Contact Number</label><input class="form-input" id="res-contact" type="tel" inputmode="tel" autocomplete="tel" maxlength="13" name="contact_number" placeholder="09XXXXXXXXX or +639XXXXXXXXX" oninput="formatResidentContact(this)"/><div class="form-hint">11 digits starting with 09, or +639 followed by 9 digits. Saved as 09XXXXXXXXX.</div></div>
+      <div class="form-group"><label class="form-label" for="res-type">Type of Residency <span class="required-mark" aria-hidden="true">*</span></label><select class="form-input" id="res-type" name="residency_type" required aria-required="true"><option>Homeowner</option><option>Renter</option><option>Boarder</option></select></div>
     </div>
 
     <h3 class="form-section-heading">Sectors and record status</h3>
-    <div class="form-group">
-      <div class="form-label">Special Groups</div>
+    <fieldset class="form-group resident-special-groups">
+      <legend class="form-label">Special Groups</legend>
       <div class="special-check-grid">
         <label><input type="checkbox" class="res-special-group" value="PWD"/> PWD</label>
         <label><input type="checkbox" class="res-special-group" value="Solo Parent"/> Solo Parent</label>
@@ -784,15 +785,15 @@
         <label><input type="checkbox" class="res-special-group" value="Unemployed Adult"/> Unemployed Adult</label>
         <label><input type="checkbox" class="res-special-group" value="Malnourished Child"/> Malnourished Child</label>
       </div>
-    </div>
+    </fieldset>
     <div class="form-group"><label><input type="checkbox" id="res-verified-indigent"> Indigency verified by barangay staff</label></div>
     <div class="form-row resident-admin-fields">
-      <div class="form-group"><div class="form-label">Record Status</div><select class="form-input" id="res-status"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
+      <div class="form-group"><label class="form-label" for="res-status">Record Status</label><select class="form-input" id="res-status"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
       <label class="resident-standing"><input type="checkbox" id="res-good-standing" checked/> Resident is in good standing</label>
     </div>
     <input type="hidden" id="res-edit-id" value=""/>
 
-    <h3 class="form-section-heading">Household</h3>
+    <h3 class="form-section-heading">Household <span class="form-section-optional">Optional</span></h3>
     <div class="form-group">
       <label class="form-label" for="res-household-search">Find household by number, head or address</label>
       <input class="form-input" id="res-household-search" autocomplete="off" maxlength="100" oninput="searchResidentHouseholds()" placeholder="HH-000001, name or address"/>
