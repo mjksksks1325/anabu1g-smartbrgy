@@ -17,7 +17,13 @@ class EmployeeCabinetAccessController extends Controller
 {
     public function index(Request $request): View
     {
-        $search = $request->validate(['search' => ['nullable', 'string', 'max:100']])['search'] ?? null;
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'access' => ['nullable', Rule::in(['effective', 'pending', 'disabled'])],
+        ]);
+        $search = $filters['search'] ?? null;
+        $accessFilter = $filters['access'] ?? null;
+        $enrolled = fn ($query) => $query->where('rfid_enrollment_status', EmployeeCabinetAccess::ENROLLED)->where('face_enrollment_status', EmployeeCabinetAccess::ENROLLED);
         $employees = User::query()
             ->whereNull('resident_id')
             ->whereIn('role', ['admin', 'captain', 'staff', 'viewer'])
@@ -25,6 +31,13 @@ class EmployeeCabinetAccessController extends Controller
             ->when($search, fn ($query) => $query->where(fn ($query) => $query
                 ->where('name', 'like', '%'.trim($search).'%')
                 ->orWhere('email', 'like', '%'.trim($search).'%')))
+            // Display filter only; the same conditions as EmployeeCabinetAccess::isEffective() decide real access.
+            ->when($accessFilter === 'effective', fn ($query) => $query->where('is_active', true)
+                ->whereHas('cabinetAccess', fn ($cabinet) => $enrolled($cabinet->where('is_active', true))))
+            ->when($accessFilter === 'pending', fn ($query) => $query->whereHas('cabinetAccess', fn ($cabinet) => $cabinet->where('is_active', true))
+                ->where(fn ($query) => $query->where('is_active', false)
+                    ->orWhereDoesntHave('cabinetAccess', fn ($cabinet) => $enrolled($cabinet))))
+            ->when($accessFilter === 'disabled', fn ($query) => $query->whereDoesntHave('cabinetAccess', fn ($cabinet) => $cabinet->where('is_active', true)))
             ->orderBy('name')
             ->paginate(15)
             ->withQueryString();
@@ -33,7 +46,7 @@ class EmployeeCabinetAccessController extends Controller
             ->where('face_enrollment_status', EmployeeCabinetAccess::ENROLLED)
             ->exists();
 
-        return view('admin.iot.employee-cabinet-access', compact('employees', 'search', 'hasCompletedEnrollment'));
+        return view('admin.iot.employee-cabinet-access', compact('employees', 'search', 'accessFilter', 'hasCompletedEnrollment'));
     }
 
     public function update(Request $request, User $user): RedirectResponse

@@ -5,7 +5,11 @@ use App\Models\EmployeeCabinetAccess;
 use App\Models\FileMovementEvent;
 use App\Models\Incident;
 use App\Models\User;
+use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password;
 
 it('requires authentication and administrator access to account management', function () {
     $this->getJson(route('admin.users.index'))->assertUnauthorized();
@@ -39,7 +43,7 @@ it('removes a staff account while preserving history and queuing RPi credential 
     $history = FileMovementEvent::factory()->create(['user_id' => $target->id]);
     $incident = Incident::factory()->create(['reported_by' => $target->id]);
 
-    $this->actingAs($admin)->deleteJson(route('admin.users.destroy', $target))
+    $this->actingAs($admin)->deleteJson(route('admin.users.destroy', $target), supervisorApproval())
         ->assertOk()
         ->assertJsonPath('pending_rpi_revocations', 1)
         ->assertJsonPath('rpi_mapping_missing', false)
@@ -82,7 +86,7 @@ it('prevents self deletion and deletion of super admin accounts', function (stri
         ? $admin
         : User::factory()->superAdmin()->create(['role' => 'admin']);
 
-    $this->actingAs($admin)->deleteJson(route('admin.users.destroy', $target))
+    $this->actingAs($admin)->deleteJson(route('admin.users.destroy', $target), supervisorApproval())
         ->assertUnprocessable()
         ->assertJsonValidationErrors('user');
 
@@ -137,6 +141,62 @@ it('updates accounts without replacing a blank password', function () {
     expect($target->fresh())->name->toBe('Updated Clerk')->is_active->toBeFalse()->password->toBe($password);
 });
 
+it('refuses a Captain any change to a Super Admin account and records the attempt', function (array $changes) {
+    $superAdmin = User::factory()->superAdmin()->create(['role' => 'admin', 'email' => 'owner@example.test']);
+    $captain = User::factory()->create(['role' => 'captain']);
+    $original = $superAdmin->only(['name', 'email', 'password']);
+
+    $this->actingAs($captain)->patchJson(route('admin.users.update', $superAdmin), [
+        'name' => $superAdmin->name, 'email' => $superAdmin->email, 'role' => 'admin', 'is_active' => true, ...$changes,
+    ])->assertForbidden();
+
+    expect($superAdmin->fresh()->only(['name', 'email', 'password']))->toBe($original);
+    $this->assertDatabaseHas('administrative_audits', ['action' => 'security.super-admin-account.change-denied', 'user_id' => $captain->id, 'record' => (string) $superAdmin->id]);
+    $this->assertDatabaseMissing('administrative_audits', ['action' => 'admin.users.update']);
+})->with([
+    'email and password' => [['email' => 'taken-over@example.test', 'password' => 'Takeover-Password-2026']],
+    'password only' => [['password' => 'Takeover-Password-2026']],
+    'name only' => [['name' => 'Renamed by captain']],
+]);
+
+it('lets a Super Admin manage their own account but not another Super Admin credentials', function () {
+    $superAdmin = User::factory()->superAdmin()->create(['role' => 'admin', 'email' => 'owner@example.test']);
+    $other = User::factory()->superAdmin()->create(['role' => 'admin', 'email' => 'second@example.test']);
+
+    $this->actingAs($superAdmin)->patchJson(route('admin.users.update', $superAdmin), [
+        'name' => 'Owner Renamed', 'email' => 'owner.new@example.test', 'role' => 'admin', 'is_active' => true, 'password' => 'Owner-New-Password-2026',
+    ])->assertOk();
+    expect($superAdmin->fresh())->email->toBe('owner.new@example.test')
+        ->and(Hash::check('Owner-New-Password-2026', $superAdmin->fresh()->password))->toBeTrue();
+
+    $before = $other->only(['email', 'password']);
+    $this->patchJson(route('admin.users.update', $other), [
+        'name' => $other->name, 'email' => 'hijack@example.test', 'role' => 'admin', 'is_active' => true, 'password' => 'Hijack-Password-2026',
+    ])->assertUnprocessable()->assertJsonValidationErrors(['email', 'password']);
+    expect($other->fresh()->only(['email', 'password']))->toBe($before);
+
+    $this->patchJson(route('admin.users.update', $other), [
+        'name' => 'Second Admin', 'email' => $other->email, 'role' => 'admin', 'is_active' => true,
+    ])->assertOk();
+    expect($other->fresh()->name)->toBe('Second Admin');
+});
+
+it('still lets a Captain manage ordinary staff accounts and keeps staff out', function () {
+    $captain = User::factory()->create(['role' => 'captain']);
+    $staff = User::factory()->create(['role' => 'staff']);
+    $superAdmin = User::factory()->superAdmin()->create(['role' => 'admin']);
+
+    $this->actingAs($captain)->patchJson(route('admin.users.update', $staff), [
+        'name' => 'Clerk Updated', 'email' => $staff->email, 'role' => 'staff', 'is_active' => true,
+    ])->assertOk();
+    expect($staff->fresh()->name)->toBe('Clerk Updated');
+
+    $this->actingAs($staff)->patchJson(route('admin.users.update', $superAdmin), [
+        'name' => $superAdmin->name, 'email' => 'staff-takeover@example.test', 'role' => 'admin', 'is_active' => true, 'password' => 'Takeover-Password-2026',
+    ])->assertForbidden();
+    expect($superAdmin->fresh()->email)->not->toBe('staff-takeover@example.test');
+});
+
 it('prevents administrators from removing their own access', function (array $changes) {
     $admin = User::factory()->superAdmin()->create(['role' => 'admin']);
 
@@ -181,4 +241,65 @@ it('exports personnel accounts as a branded excel file for administrators only',
         ->assertDownload('barangay-users-'.today()->toDateString().'.xlsx');
 
     expect(spreadsheetSheetXml($response))->toContain('Barangay Users')->toContain('Export Staff')->toContain($staff->email);
+});
+
+it('records suspension, reactivation, a password set by an administrator and cabinet access as separate security events without secrets', function () {
+    $captain = User::factory()->create(['role' => 'captain']);
+    $staff = User::factory()->create(['role' => 'staff', 'staff_permissions' => ['dashboard.view']]);
+    $payload = fn (array $changes = []) => ['name' => $staff->name, 'email' => $staff->email, 'role' => 'staff', 'is_active' => true, 'staff_permissions' => ['dashboard.view'], ...$changes];
+    $this->actingAs($captain);
+
+    $this->patchJson(route('admin.users.update', $staff), $payload(['is_active' => false]))->assertOk();
+    $this->patchJson(route('admin.users.update', $staff), $payload(['password' => 'Changed-By-Admin-2026']))->assertOk();
+    $this->patchJson(route('admin.users.update', $staff), $payload(['smart_cabinet_access' => true, 'rpi_employee_id' => 'EMP-77']))->assertOk();
+    $this->patchJson(route('admin.users.update', $staff), $payload(['smart_cabinet_access' => false]))->assertOk();
+    $this->patchJson(route('admin.users.update', $staff), $payload(['name' => 'Renamed Only']))->assertOk();
+
+    $events = DB::table('administrative_audits')->where('target_user_id', $staff->id)->where('user_id', $captain->id)->orderBy('id')->pluck('action')->all();
+    expect($events)->toBe(['admin.users.suspended', 'admin.users.reactivated', 'admin.users.password-set', 'admin.users.cabinet-access-enabled', 'admin.users.cabinet-access-disabled']);
+    expect(DB::table('administrative_audits')->get()->toJson())->not->toContain('Changed-By-Admin-2026');
+});
+
+it('emails the owner a reset link the administrator never sees, refuses the wrong targets and audits it', function () {
+    Notification::fake();
+    $captain = User::factory()->create(['role' => 'captain']);
+    $staff = User::factory()->create(['role' => 'staff', 'staff_permissions' => ['dashboard.view']]);
+
+    $this->actingAs($captain)->postJson(route('admin.users.password-reset-link', $staff))->assertOk()
+        ->assertJsonPath('message', 'A password reset link was sent to the account owner\'s email address. It expires in 60 minutes.')
+        ->assertJsonMissingPath('token');
+    Notification::assertSentTo($staff, ResetPassword::class);
+    $this->assertDatabaseHas('administrative_audits', ['action' => 'admin.users.password-reset-link', 'user_id' => $captain->id, 'record' => (string) $staff->id]);
+    expect(DB::table('administrative_audits')->get()->toJson())->not->toContain(DB::table('password_reset_tokens')->value('token'));
+    expect(Hash::check('password', $staff->fresh()->password))->toBeTrue();
+
+    $this->postJson(route('admin.users.password-reset-link', $staff))->assertUnprocessable()
+        ->assertJsonPath('errors.user.0', 'A reset link was sent to this account recently. Wait a minute before sending another.');
+    $this->postJson(route('admin.users.password-reset-link', User::factory()->superAdmin()->create()))->assertForbidden();
+    $this->postJson(route('admin.users.password-reset-link', User::factory()->resident()->create()))->assertForbidden();
+    $this->postJson(route('admin.users.password-reset-link', User::factory()->create(['role' => 'staff', 'is_active' => false])))->assertUnprocessable()
+        ->assertJsonPath('errors.user.0', 'Reactivate this account before sending a password reset link.');
+    $this->actingAs($staff)->postJson(route('admin.users.password-reset-link', $captain))->assertForbidden();
+});
+
+it('lets a Super Admin send a reset link only to their own Super Admin account', function () {
+    Notification::fake();
+    $super = User::factory()->superAdmin()->create();
+
+    $this->actingAs($super)->postJson(route('admin.users.password-reset-link', $super))->assertOk();
+    $this->postJson(route('admin.users.password-reset-link', User::factory()->superAdmin()->create()))->assertForbidden();
+    Notification::assertSentToTimes($super, ResetPassword::class, 1);
+});
+
+it('records a completed reset and keeps two-factor authentication in place', function () {
+    $staff = User::factory()->withTwoFactor()->create(['role' => 'staff', 'staff_permissions' => ['dashboard.view']]);
+    $secret = $staff->two_factor_secret;
+    $token = Password::broker()->createToken($staff);
+
+    $this->post(route('password.update'), ['token' => $token, 'email' => $staff->email, 'password' => 'Owner-Chosen-2026!', 'password_confirmation' => 'Owner-Chosen-2026!'])->assertSessionHasNoErrors();
+
+    expect(Hash::check('Owner-Chosen-2026!', $staff->fresh()->password))->toBeTrue()
+        ->and($staff->fresh()->two_factor_secret)->toBe($secret);
+    $this->assertDatabaseHas('administrative_audits', ['action' => 'auth.password-reset-completed', 'user_id' => $staff->id]);
+    expect(DB::table('administrative_audits')->get()->toJson())->not->toContain('Owner-Chosen-2026!')->not->toContain($token);
 });

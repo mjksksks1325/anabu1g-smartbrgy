@@ -141,6 +141,57 @@ it('automatically skips residents that already exist and imports the rest', func
     $this->assertDatabaseHas('residents', ['first_name' => 'Pedro', 'last_name' => 'Santos']);
 });
 
+it('treats a matching resident number as the same resident even when the middle name is written differently', function () {
+    $existing = Resident::factory()->create(['first_name' => 'Juan', 'middle_name' => 'Reyes', 'last_name' => 'Dela Cruz', 'suffix' => null, 'date_of_birth' => '1980-05-14']);
+    $this->actingAs(User::factory()->assignedOperations()->create());
+    $file = profilingFile([profilingRow(['resident_number' => $existing->resident_number, 'middle_name' => 'R.']), profilingRow(['household_group' => 'Family 2', 'first_name' => 'Pedro', 'last_name' => 'Santos', 'date_of_birth' => '1985-02-03'])]);
+
+    $preview = $this->postJson(route('staff.resident-profiling-imports.preview'), ['file' => $file])
+        ->assertOk()
+        ->assertJsonPath('mapping.resident_number', count(profilingRow()))
+        ->assertJsonPath('rows.0.action', 'skip')
+        ->assertJsonPath('rows.0.already_exists', true)
+        ->assertJsonPath('summary.existing', 1)
+        ->assertJsonPath('summary.invalid', 0);
+
+    $this->postJson(route('staff.resident-profiling-imports.store'), profilingPayload($preview->json()))->assertCreated()->assertJsonPath('result.created', 1)->assertJsonPath('result.skipped', 1);
+    $this->assertDatabaseCount('residents', 2);
+    expect($existing->fresh()->middle_name)->toBe('Reyes');
+});
+
+it('flags a resident number that is unknown or belongs to someone else instead of guessing', function () {
+    $other = Resident::factory()->create(['first_name' => 'Maria', 'last_name' => 'Garcia', 'date_of_birth' => '1979-01-01']);
+    $this->actingAs(User::factory()->assignedOperations()->create());
+    $file = profilingFile([
+        profilingRow(['resident_number' => $other->resident_number]),
+        profilingRow(['household_group' => 'Family 2', 'first_name' => 'Pedro', 'last_name' => 'Santos', 'date_of_birth' => '1985-02-03', 'resident_number' => 'ANB-2026-NOTREAL000']),
+    ]);
+
+    $preview = $this->postJson(route('staff.resident-profiling-imports.preview'), ['file' => $file])
+        ->assertOk()
+        ->assertJsonPath('rows.0.action', 'create')
+        ->assertJsonPath('rows.0.errors.0', "Resident number {$other->resident_number} belongs to {$other->full_name}. Check the name and date of birth in this row.")
+        ->assertJsonPath('rows.1.errors.0', 'No resident has the resident number ANB-2026-NOTREAL000. Correct it, or clear it for a new resident.')
+        ->assertJsonPath('summary.invalid', 2);
+
+    $this->postJson(route('staff.resident-profiling-imports.store'), profilingPayload($preview->json()))->assertUnprocessable();
+    $this->assertDatabaseCount('residents', 1);
+});
+
+it('keeps an unreadable birth date for correction and explains invalid contact numbers like the resident form', function () {
+    $this->actingAs(User::factory()->assignedOperations()->create());
+
+    $this->postJson(route('staff.resident-profiling-imports.preview'), ['file' => profilingFile([profilingRow(['date_of_birth' => '31/31/2020', 'contact_number' => '12345'])])])
+        ->assertOk()
+        ->assertJsonPath('rows.0.fields.date_of_birth', '31/31/2020')
+        ->assertJsonPath('rows.0.errors', [
+            'The date of birth field must be a valid date.',
+            'Enter 11 digits starting with 09 (09XXXXXXXXX) or +639 followed by 9 digits (+639XXXXXXXXX).',
+        ])
+        ->assertJsonPath('summary.invalid', 1);
+    $this->assertDatabaseCount('residents', 0);
+});
+
 it('links an existing resident without overwriting verified fields or request history', function () {
     $existing = Resident::factory()->create(['first_name' => 'Juan', 'middle_name' => null, 'last_name' => 'Dela Cruz', 'suffix' => null, 'date_of_birth' => '1980-05-14', 'address' => 'Verified address', 'contact_number' => '09170000000']);
     $request = DocumentRequest::query()->create(['resident_id' => $existing->id, 'reference_code' => 'REQ-PROFILE-LINK', 'document_type' => 'Barangay Clearance', 'full_name' => $existing->full_name, 'address' => $existing->address, 'status' => 'pending']);

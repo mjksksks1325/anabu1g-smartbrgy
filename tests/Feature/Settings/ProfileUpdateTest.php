@@ -30,9 +30,8 @@ test('staff settings returns to the admin dashboard through consistent Livewire 
         'Employee Cabinet Access',
         'Audit Log',
         'User Management',
-        'My profile',
-        'Account security',
-        'Portal ng Residente',
+        'Settings',
+        'Resident Portal',
     ], false)->assertSee(route('admin.users.index'), false)
         ->assertSee('class="staff-settings-topbar"', false);
     $document = new DOMDocument;
@@ -40,7 +39,7 @@ test('staff settings returns to the admin dashboard through consistent Livewire 
     $dashboardLinks = (new DOMXPath($document))->query('//a[@href="'.route('admin.dashboard').'"]');
     expect($dashboardLinks->length)->toBeGreaterThan(0);
     foreach ($dashboardLinks as $dashboardLink) {
-        expect($dashboardLink->hasAttribute('wire:navigate'))->toBeTrue();
+        expect($dashboardLink->hasAttribute('wire:navigate') || $dashboardLink->hasAttribute('wire:navigate.hover'))->toBeTrue();
     }
 });
 
@@ -55,7 +54,7 @@ test('profile and security use the dashboard style sidebar with the same navigat
     $links = $xpath->query('.//a[contains(concat(" ", normalize-space(@class), " "), " nav-item ")]', $navigation->item(0));
 
     expect($navigation->length)->toBe(1)
-        ->and($links->length)->toBe(16);
+        ->and($links->length)->toBe(15);
 
     foreach ($links as $link) {
         expect($xpath->query('./svg/*', $link)->length)->toBeGreaterThan(0);
@@ -64,9 +63,42 @@ test('profile and security use the dashboard style sidebar with the same navigat
     $activeLink = $xpath->query('.//a[@aria-current="page"]', $navigation->item(0))->item(0);
     expect(trim($activeLink->textContent))->toBe($activeLabel);
 })->with([
-    ['profile.edit', 'My profile'],
-    ['security.edit', 'Account security'],
+    ['profile.edit', 'Settings'],
+    ['security.edit', 'Settings'],
+    ['appearance.edit', 'Settings'],
 ]);
+
+test('employees without administrative access reach their own settings from every sidebar', function () {
+    $staff = User::factory()->assignedOperations()->create();
+    $settingsLink = '//nav//a[contains(concat(" ", normalize-space(@class), " "), " nav-item ") and @href="'.route('profile.edit').'"]';
+
+    foreach (['staff.dashboard', 'staff.rfid-files.index', 'profile.edit', 'security.edit'] as $route) {
+        $response = $this->actingAs($staff)->withSession(['auth.password_confirmed_at' => time()])->get(route($route))->assertOk();
+        $document = new DOMDocument;
+        $document->loadHTML($response->getContent(), LIBXML_NOERROR | LIBXML_NOWARNING);
+        $links = (new DOMXPath($document))->query($settingsLink);
+
+        expect($links->length)->toBe(1, $route)
+            ->and(trim($links->item(0)->textContent))->toBe('Settings');
+        if (in_array($route, ['profile.edit', 'security.edit'], true)) {
+            expect($links->item(0)->getAttribute('aria-current'))->toBe('page', $route);
+        }
+    }
+
+    $this->actingAs($staff)->get(route('admin.settings'))->assertForbidden();
+});
+
+test('each settings page marks its own section in the settings menu', function (string $route) {
+    $response = $this->actingAs(User::factory()->assignedOperations()->create())
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->get(route($route))->assertOk();
+    $document = new DOMDocument;
+    $document->loadHTML($response->getContent(), LIBXML_NOERROR | LIBXML_NOWARNING);
+    $current = (new DOMXPath($document))->query('//*[@aria-label="Settings" and @data-flux-navlist]//a[@data-current]');
+
+    expect($current->length)->toBe(1)
+        ->and($current->item(0)->getAttribute('href'))->toBe(route($route));
+})->with(['profile.edit', 'security.edit', 'appearance.edit']);
 
 test('staff appearance offers explicit light and dark choices', function () {
     $admin = User::factory()->superAdmin()->create();
@@ -123,33 +155,33 @@ test('email verification status is unchanged when email address is unchanged', f
     expect($user->refresh()->email_verified_at)->not->toBeNull();
 });
 
-test('user can delete their account', function () {
-    $user = User::factory()->assignedOperations()->create();
+test('staff settings no longer offer account deletion to any personnel role', function (string $role) {
+    $user = match ($role) {
+        'super admin' => User::factory()->superAdmin()->create(),
+        'captain' => User::factory()->create(['role' => 'captain', 'is_active' => true]),
+        default => User::factory()->assignedOperations()->create(['role' => 'staff']),
+    };
+
+    $this->actingAs($user)->get(route('profile.edit'))
+        ->assertOk()
+        ->assertDontSee('Delete account')
+        ->assertDontSee('confirm-user-deletion')
+        ->assertSee('Staff accounts are removed in User Management');
+
+    expect($user->fresh())->not->toBeNull()->and($user->fresh()->trashed())->toBeFalse();
+})->with(['staff', 'captain', 'super admin']);
+
+test('the self-deletion endpoint no longer exists, so a direct Livewire call cannot delete an account', function (string $role) {
+    $user = $role === 'super admin'
+        ? User::factory()->superAdmin()->create(['password' => 'own-password-123'])
+        : User::factory()->create(['role' => $role, 'is_active' => true, 'password' => 'own-password-123']);
+    User::factory()->create(['role' => 'captain', 'is_active' => true, 'password' => 'captain-password-123']);
 
     $this->actingAs($user);
 
-    $response = Livewire::test('settings.delete-user-form')
-        ->set('password', 'password')
-        ->call('deleteUser');
-
-    $response
-        ->assertHasNoErrors()
-        ->assertRedirect('/');
-
-    expect($user->fresh())->toBeNull();
-    expect(auth()->check())->toBeFalse();
-});
-
-test('correct password must be provided to delete account', function () {
-    $user = User::factory()->assignedOperations()->create();
-
-    $this->actingAs($user);
-
-    $response = Livewire::test('settings.delete-user-form')
-        ->set('password', 'wrong-password')
-        ->call('deleteUser');
-
-    $response->assertHasErrors(['password']);
-
-    expect($user->fresh())->not->toBeNull();
-});
+    expect(fn () => Livewire::test('settings.delete-user-form')->set('password', 'captain-password-123')->call('deleteUser'))
+        ->toThrow(\Livewire\Exceptions\ComponentNotFoundException::class);
+    expect(class_exists('App\Livewire\Settings\DeleteUserForm'))->toBeFalse()
+        ->and($user->fresh())->not->toBeNull()
+        ->and(auth()->check())->toBeTrue();
+})->with(['staff', 'captain', 'super admin']);

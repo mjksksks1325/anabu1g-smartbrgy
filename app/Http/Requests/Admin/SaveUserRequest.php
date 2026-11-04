@@ -6,6 +6,7 @@ use App\Models\User;
 use App\StaffPermissions;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\Validator;
@@ -20,7 +21,25 @@ class SaveUserRequest extends FormRequest
         $target = $this->route('user');
 
         return ($this->user()?->hasAdministrativeAccess() ?? false)
-            && (! $target instanceof User || (! $target->isResidentAccount() && $target->resident_id === null));
+            && (! $target instanceof User || (! $target->isResidentAccount() && $target->resident_id === null))
+            && (! $target instanceof User || ! $target->is_super_admin || $this->user()->isSuperAdmin());
+    }
+
+    /**
+     * A refused attempt to change a Super Admin account by a non–Super Admin is a security event: record it,
+     * then refuse as usual. Captains and other administrators cannot change Super Admin accounts.
+     */
+    protected function failedAuthorization(): void
+    {
+        $target = $this->route('user');
+        if ($target instanceof User && $target->is_super_admin && ($this->user()?->hasAdministrativeAccess() ?? false)) {
+            DB::table('administrative_audits')->insert([
+                'user_id' => $this->user()->id, 'actor' => $this->user()->name, 'action' => 'security.super-admin-account.change-denied',
+                'type' => 'security', 'record' => (string) $target->id, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+
+        parent::failedAuthorization();
     }
 
     /**
@@ -80,6 +99,15 @@ class SaveUserRequest extends FormRequest
         return [function (Validator $validator): void {
             $permissions = $this->input('staff_permissions', []);
             $target = $this->route('user');
+            // A Super Admin's sign-in credentials change only through that Super Admin, the password reset link or the server command.
+            if ($target instanceof User && $target->is_super_admin && ! $this->user()->is($target)) {
+                if ($this->filled('password')) {
+                    $validator->errors()->add('password', 'Only this Super Admin can change their own password. Use the password reset link or the server command.');
+                }
+                if (strtolower(trim((string) $this->input('email'))) !== strtolower($target->email)) {
+                    $validator->errors()->add('email', 'Only this Super Admin can change their own email address.');
+                }
+            }
             if ($this->input('role') === 'captain' && $this->boolean('is_active')) {
                 $captainExists = User::query()
                     ->where('role', 'captain')
@@ -89,7 +117,7 @@ class SaveUserRequest extends FormRequest
                     ->exists();
 
                 if ($captainExists) {
-                    $validator->errors()->add('role', 'May active na Barangay Captain. Ilipat muna ang designation bago magtalaga ng iba.');
+                    $validator->errors()->add('role', 'There is already an active Barangay Captain. Move that designation first before assigning another.');
                 }
             }
 
@@ -98,7 +126,21 @@ class SaveUserRequest extends FormRequest
             }
             $mayAssignSuperAdmin = $target instanceof User && $target->is_super_admin && $this->input('role') === 'admin';
             if ($permissions !== [] && $this->input('role') !== 'staff' && ! $mayAssignSuperAdmin) {
-                $validator->errors()->add('staff_permissions', 'Custom assignments are only available for Barangay Staff accounts.');
+                // A Captain already holds every other module; only VAWC/BPO access can be recorded on a Captain account.
+                $otherThanVawc = array_filter($permissions, fn (mixed $permission): bool => ! is_string($permission) || ! str_starts_with($permission, 'vawc.'));
+                if ($this->input('role') !== 'captain' || $otherThanVawc !== []) {
+                    $validator->errors()->add('staff_permissions', $this->input('role') === 'captain'
+                        ? 'A Captain account already has every other module; only VAWC/BPO access can be assigned to it.'
+                        : 'Custom assignments are only available for Barangay Staff accounts.');
+                }
+            }
+            if ($this->has('staff_permissions') && self::vawcKeys($target instanceof User ? ($target->staff_permissions ?? []) : []) !== self::vawcKeys($permissions)) {
+                // Confidential case access is granted only by the Super Admin, and never to themselves.
+                if (! $this->user()->isSuperAdmin()) {
+                    $validator->errors()->add('staff_permissions', 'Only the Super Admin can grant or remove VAWC/BPO access.');
+                } elseif ($target instanceof User && $this->user()->is($target)) {
+                    $validator->errors()->add('staff_permissions', 'You cannot change your own VAWC/BPO access.');
+                }
             }
             foreach ($permissions as $permission) {
                 if (! is_string($permission) || ! str_contains($permission, '.')) {
@@ -110,6 +152,18 @@ class SaveUserRequest extends FormRequest
                 }
             }
         }];
+    }
+
+    /**
+     * @param  array<mixed>  $permissions
+     * @return list<string>
+     */
+    public static function vawcKeys(array $permissions): array
+    {
+        $keys = array_values(array_unique(array_filter($permissions, fn (mixed $permission): bool => is_string($permission) && str_starts_with($permission, 'vawc.'))));
+        sort($keys);
+
+        return $keys;
     }
 
     protected function prepareForValidation(): void

@@ -45,6 +45,17 @@ test('issued certificate history supports reprinting and verification after issu
         ->toContain("row.querySelector('.issued-verify')");
 });
 
+test('the request board loads lanes from the paginated list instead of every request', function () {
+    $adminScript = file_get_contents(dirname(__DIR__, 2).'/public/js/admin.js');
+
+    expect($adminScript)
+        ->toContain('fetch(`/staff/document-requests/list?${query}`')
+        ->toContain("query.set('with_counts', '1')")
+        ->toContain('function showMoreCertLane(laneId)')
+        ->not->toContain('LARAVEL_DOCUMENT_REQUESTS')
+        ->not->toContain("fetch('/staff/document-requests-live'");
+});
+
 test('certificate processing uses the current csrf cookie for authenticated requests', function () {
     $adminScript = file_get_contents(dirname(__DIR__, 2).'/public/js/admin.js');
 

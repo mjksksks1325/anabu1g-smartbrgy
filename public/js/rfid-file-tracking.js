@@ -74,27 +74,106 @@
         }
     });
 
+    let filterVersion = 0;
+
+    /**
+     * Load filtered results and swap only the results region, so the search field keeps its focus and cursor.
+     * Falls back to an ordinary page load if the request fails.
+     */
+    async function loadFilteredResults(url, section) {
+        const version = ++filterVersion;
+        section.setAttribute('aria-busy', 'true');
+        try {
+            const response = await fetch(url, { credentials: 'same-origin', headers: { Accept: 'text/html' } });
+            if (!response.ok) {
+                throw new Error('filter');
+            }
+            const page = new DOMParser().parseFromString(await response.text(), 'text/html');
+            if (version !== filterVersion) {
+                return;
+            }
+            const region = page.querySelector('[data-filter-region]');
+            if (!region) {
+                throw new Error('filter');
+            }
+            section.querySelector('[data-filter-region]')?.replaceWith(region);
+            const count = page.querySelector('[data-filter-count]');
+            const currentCount = section.querySelector('[data-filter-count]');
+            if (count && currentCount) {
+                currentCount.textContent = count.textContent;
+            }
+            window.history.replaceState(window.history.state, '', url);
+        } catch {
+            window.location.href = url;
+        } finally {
+            if (version === filterVersion) {
+                section.setAttribute('aria-busy', 'false');
+            }
+        }
+    }
+
+    function filterUrl(form) {
+        // getAttribute, not form.action: the RFID form has a field named "action" that would shadow it.
+        const url = new URL(form.getAttribute('action') || window.location.href, window.location.href);
+        new FormData(form).forEach((value, key) => {
+            if (String(value).trim() !== '') {
+                url.searchParams.set(key, String(value).trim());
+            }
+        });
+
+        return url.toString();
+    }
+
+    function applyFilters(form) {
+        const section = form.closest('[data-filter-results]');
+        if (!section) {
+            form.requestSubmit();
+            return;
+        }
+        void loadFilteredResults(filterUrl(form), section);
+    }
+
+    document.addEventListener('submit', (event) => {
+        const form = event.target.closest?.('[data-auto-filter]');
+        if (!form || !form.closest('[data-filter-results]')) {
+            return;
+        }
+        event.preventDefault();
+        window.clearTimeout(searchTimer);
+        applyFilters(form);
+    });
+
     document.addEventListener('input', (event) => {
         const input = event.target;
-        const form = input.closest?.('[data-rfid-auto-filter]');
+        const form = input.closest?.('[data-auto-filter]');
 
         if (!form || input.type !== 'search') {
             return;
         }
 
         window.clearTimeout(searchTimer);
-        searchTimer = window.setTimeout(() => form.requestSubmit(), 350);
+        searchTimer = window.setTimeout(() => applyFilters(form), 350);
     });
 
     document.addEventListener('change', (event) => {
         const input = event.target;
-        const form = input.closest?.('[data-rfid-auto-filter]');
+        const form = input.closest?.('[data-auto-filter]');
 
         if (!form || !(input.matches('select') || input.type === 'date')) {
             return;
         }
 
         window.clearTimeout(searchTimer);
-        form.requestSubmit();
+        applyFilters(form);
+    });
+
+    // Pager links inside a filtered region load in place too.
+    document.addEventListener('click', (event) => {
+        const link = event.target.closest?.('[data-filter-results] [data-filter-region] .staff-pager a[href]');
+        if (!link || event.ctrlKey || event.metaKey || event.shiftKey) {
+            return;
+        }
+        event.preventDefault();
+        void loadFilteredResults(link.href, link.closest('[data-filter-results]'));
     });
 })();

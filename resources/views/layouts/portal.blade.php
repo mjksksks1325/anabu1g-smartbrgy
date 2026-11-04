@@ -11,6 +11,8 @@
 <link rel="stylesheet" href="{{ asset('css/portal.css') }}?v={{ filemtime(public_path('css/portal.css')) }}">
 <link rel="stylesheet" href="{{ asset('css/figma-portal.css') }}?v={{ filemtime(public_path('css/figma-portal.css')) }}">
 <link rel="stylesheet" href="{{ asset('css/portal-localization.css') }}?v={{ filemtime(public_path('css/portal-localization.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/portal-v2.css') }}?v={{ filemtime(public_path('css/portal-v2.css')) }}">
+<link rel="stylesheet" href="{{ asset('css/portal-resident.css') }}?v={{ filemtime(public_path('css/portal-resident.css')) }}">
 <script>window.PORTAL_I18N = {{ Illuminate\Support\Js::from(['locale' => app()->getLocale(), 'url' => route('portal.locale'), 'csrfUrl' => route('portal.csrf-token')]) }};</script>
 <script src="{{ route('portal.translations') }}"></script>
 <script src="{{ asset('js/portal-localization.js') }}?v={{ filemtime(public_path('js/portal-localization.js')) }}"></script>
@@ -30,7 +32,7 @@
 </div>
 <header class="site-header">
     <div class="site-header-inner">
-        <a class="site-brand" href="{{ route('home') }}">
+        <a class="site-brand" href="{{ auth('resident')->check() ? route('portal.dashboard') : route('home') }}">
             <img src="{{ asset('images/anabu-logo.jpg') }}" width="537" height="465" alt="{{ __('Opisyal na seal ng Barangay Anabu I-G') }}" data-portal-i18n-alt="Opisyal na seal ng Barangay Anabu I-G">
             <span class="site-brand-text"><span class="site-brand-portal"><span data-portal-i18n="Official website">{{ __('Official website') }}</span></span><strong><span data-portal-i18n="Barangay Anabu I-G">{{ __('Barangay Anabu I-G') }}</span></strong><span><span data-portal-i18n="City of Imus · Province of Cavite">{{ __('City of Imus · Province of Cavite') }}</span></span></span>
         </a>
@@ -44,41 +46,51 @@
 <main id="resident-main" class="site-main" tabindex="-1">
 @yield('band')
 <div class="container">
-@if(session('status'))<p class="alert alert-green" role="status"><span data-portal-message>{{ __(session('status')) }}</span></p>@endif
+@if(session('status'))<p class="alert alert-green rp-flash" role="status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.6 2.6L16 9.5"/></svg><span data-portal-message>{{ __(session('status')) }}</span></p>@endif
 @if($errors->any())
-<div class="alert alert-red" role="alert"><strong><span data-portal-i18n="May kailangang ayusin:">{{ __('May kailangang ayusin:') }}</span></strong><ul>@foreach($errors->all() as $error)<li data-portal-message>{{ $error }}</li>@endforeach</ul></div>
+<div class="alert alert-red rp-error-summary" role="alert" tabindex="-1" data-error-summary>
+    <h2><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5h.01"/></svg><span data-portal-i18n="May kailangang ayusin:">{{ __('May kailangang ayusin:') }}</span></h2>
+    <ul>@foreach($errors->getMessages() as $field => $messages)@foreach($messages as $error)<li><a href="#resident-main" data-error-field="{{ $field }}" data-portal-message>{{ $error }}</a></li>@endforeach @endforeach</ul>
+</div>
 @endif
 @yield('content')
 </div>
 </main>
 <footer class="site-footer">
     <div class="site-footer-inner">
-        <div class="site-footer-brand">
+        <section class="site-footer-brand" aria-labelledby="footer-brand-title">
             <img src="{{ asset('images/anabu-logo.jpg') }}" width="537" height="465" alt="">
             <div>
-                <strong><span data-portal-i18n="Barangay Anabu I-G">{{ __('Barangay Anabu I-G') }}</span></strong>
+                <h2 id="footer-brand-title"><span data-portal-i18n="Barangay Anabu I-G">{{ __('Barangay Anabu I-G') }}</span></h2>
                 <p><span data-portal-i18n="Lungsod ng Imus, Cavite">{{ __('Lungsod ng Imus, Cavite') }}</span></p>
                 <p class="site-footer-note"><span data-portal-i18n="Resident Portal para sa document request at status ng request.">{{ __('Resident Portal para sa document request at status ng request.') }}</span></p>
             </div>
-        </div>
-        <nav class="site-footer-col" aria-labelledby="footer-services-title">
-            <h2 id="footer-services-title"><span data-portal-i18n="Serbisyo">{{ __('Serbisyo') }}</span></h2>
+        </section>
+        <section class="site-footer-col" id="footer-contact" aria-labelledby="footer-contact-title">
+            <h2 id="footer-contact-title"><span data-portal-i18n="Contact at lokasyon">{{ __('Contact at lokasyon') }}</span></h2>
+            <dl class="site-footer-facts">
+                <div><dt><span data-portal-i18n="Barangay Hall">{{ __('Barangay Hall') }}</span></dt><dd><span data-portal-i18n="Barangay Anabu I-G, Lungsod ng Imus, Cavite">{{ __('Barangay Anabu I-G, Lungsod ng Imus, Cavite') }}</span></dd></div>
+                <div><dt><span data-portal-i18n="Telepono">{{ __('Telepono') }}</span></dt><dd><span class="tag-unconfirmed"><span data-portal-i18n="Hindi pa kumpirmado">{{ __('Hindi pa kumpirmado') }}</span></span></dd></div>
+                <div><dt><span data-portal-i18n="Office hours">{{ __('Office hours') }}</span></dt><dd><span class="tag-unconfirmed"><span data-portal-i18n="Hindi pa kumpirmado">{{ __('Hindi pa kumpirmado') }}</span></span></dd></div>
+                <div><dt><span data-portal-i18n="Emergency">{{ __('Emergency') }}</span></dt><dd><a href="tel:911">911</a> · <span data-portal-i18n="Lungsod ng Imus">{{ __('Lungsod ng Imus') }}</span> <a href="tel:+63468889911">(046) 888 9911</a></dd></div>
+            </dl>
+            <p><a href="https://www.google.com/maps/search/?api=1&amp;query=Barangay+Anabu+I-G%2C+Imus%2C+Cavite" target="_blank" rel="noopener noreferrer"><span data-portal-i18n="Buksan sa Google Maps">{{ __('Buksan sa Google Maps') }}</span></a></p>
+        </section>
+        <nav class="site-footer-col" id="quick-links" aria-labelledby="quick-links-title">
+            <h2 id="quick-links-title"><span data-portal-i18n="Mabilis na link">{{ __('Mabilis na link') }}</span></h2>
             <ul>
                 <li><a href="{{ route('portal.request.create') }}"><span data-portal-i18n="Request a document">{{ __('Request a document') }}</span></a></li>
-                <li><a href="{{ auth('resident')->check() ? route('portal.account') : route('portal.login') }}"><span data-portal-i18n="My requests">{{ __('My requests') }}</span></a></li>
                 <li><a href="{{ route('portal.information') }}#requirements"><span data-portal-i18n="Requirements and fees">{{ __('Requirements and fees') }}</span></a></li>
+                <li><a href="{{ route('portal.announcements.index') }}" @if(request()->routeIs('portal.announcements.index')) aria-current="page" @endif><span data-portal-i18n="Announcements">{{ __('Announcements') }}</span></a></li>
+                <li><a href="{{ route('portal.officials') }}" @if(request()->routeIs('portal.officials')) aria-current="page" @endif><span data-portal-i18n="Barangay officials">{{ __('Barangay officials') }}</span></a></li>
+                <li><a href="{{ route('home') }}#contacts"><span data-portal-i18n="Emergency hotlines">{{ __('Emergency hotlines') }}</span></a></li>
                 <li><a href="{{ route('portal.information') }}#help"><span data-portal-i18n="Get help">{{ __('Get help') }}</span></a></li>
             </ul>
         </nav>
-        <section class="site-footer-col" aria-labelledby="footer-help-title">
-            <h2 id="footer-help-title"><span data-portal-i18n="Tulong">{{ __('Tulong') }}</span></h2>
-            <p><span data-portal-i18n="Para sa problema sa account o record, pumunta sa Barangay Hall at dalhin ang valid ID.">{{ __('Para sa problema sa account o record, pumunta sa Barangay Hall at dalhin ang valid ID.') }}</span></p>
-            <p><a href="{{ route('home') }}#office"><span data-portal-i18n="Address at detalye ng Barangay Hall">{{ __('Address at detalye ng Barangay Hall') }}</span></a></p>
-            <p><span data-portal-i18n="Emergency:">{{ __('Emergency:') }}</span> <a href="tel:911">911</a></p>
-        </section>
-        <nav class="site-footer-col" id="quick-links" aria-labelledby="quick-links-title">
-            <h2 id="quick-links-title"><span data-portal-i18n="Government websites">{{ __('Government websites') }}</span></h2>
+        <nav class="site-footer-col" id="government-links" aria-labelledby="government-links-title">
+            <h2 id="government-links-title"><span data-portal-i18n="Government websites">{{ __('Government websites') }}</span></h2>
             <ul>
+                <li><a href="https://www.gov.ph/" target="_blank" rel="noopener noreferrer">GOV.PH</a></li>
                 <li><a href="https://cityofimus.gov.ph/" target="_blank" rel="noopener noreferrer"><span data-portal-i18n="City Government of Imus">{{ __('City Government of Imus') }}</span></a></li>
                 <li><a href="https://cavite.gov.ph/" target="_blank" rel="noopener noreferrer"><span data-portal-i18n="Provincial Government of Cavite">{{ __('Provincial Government of Cavite') }}</span></a></li>
                 <li><a href="https://psa.gov.ph/" target="_blank" rel="noopener noreferrer"><span data-portal-i18n="Philippine Statistics Authority">{{ __('Philippine Statistics Authority') }}</span></a></li>
@@ -87,8 +99,8 @@
         </nav>
     </div>
     <div class="site-footer-base">
-        <p><span data-portal-i18n="Pinangangalagaan ang personal na impormasyon alinsunod sa Republic Act 10173 (Data Privacy Act of 2012).">{{ __('Pinangangalagaan ang personal na impormasyon alinsunod sa Republic Act 10173 (Data Privacy Act of 2012).') }}</span></p>
         <p><span data-portal-i18n="Republika ng Pilipinas · Barangay Anabu I-G, Lungsod ng Imus, Cavite">{{ __('Republika ng Pilipinas · Barangay Anabu I-G, Lungsod ng Imus, Cavite') }}</span></p>
+        <p><span data-portal-i18n="Pinangangalagaan ang personal na impormasyon alinsunod sa Republic Act 10173 (Data Privacy Act of 2012).">{{ __('Pinangangalagaan ang personal na impormasyon alinsunod sa Republic Act 10173 (Data Privacy Act of 2012).') }}</span></p>
     </div>
 </footer>
 @hasSection('hero-header')
@@ -97,5 +109,8 @@
 @stack('scripts')
 <script src="{{ asset('js/resident-account.js') }}?v={{ filemtime(public_path('js/resident-account.js')) }}"></script>
 <script src="{{ asset('js/resident-photo-input.js') }}?v={{ filemtime(public_path('js/resident-photo-input.js')) }}"></script>
+<script src="{{ asset('js/portal-errors.js') }}?v={{ filemtime(public_path('js/portal-errors.js')) }}"></script>
+<script src="{{ asset('js/account-menu.js') }}?v={{ filemtime(public_path('js/account-menu.js')) }}"></script>
+<script src="{{ asset('js/photo-preview.js') }}?v={{ filemtime(public_path('js/photo-preview.js')) }}"></script>
 </body>
 </html>

@@ -19,18 +19,43 @@ function caseClient(api) {
     escapeText: value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character])),
   });
   vm.runInContext(source, context);
+  vm.runInContext(adminSource.slice(adminSource.indexOf('function renderPager('), adminSource.indexOf('function renderIssuedCertificatesPagination(')), context);
   return { context, field };
 }
 
 test('restriction list escapes internal decision text and shows explicit review actions only to admins', async () => {
   const { context, field } = caseClient(async () => ({ data: [{ id: 1, resident: { full_name: '<script>name</script>' }, status: 'pending_review', reason_category: '<img src=x>', internal_reason: '<svg onload=alert(1)>' }], total: 1, current_page: 1, last_page: 1 }));
   await context.loadRestrictions();
+  assert.match(field('restrictions-pagination').innerHTML, /Showing 1–1 of 1 <span>restriction<\/span>/);
   assert.match(field('restrictions-tbody').innerHTML, /Review &amp; Activate/);
   assert.match(field('restrictions-tbody').innerHTML, /&lt;script&gt;/);
   assert.ok(!field('restrictions-tbody').innerHTML.includes('<svg'));
   context.window.AUTHENTICATED_USER.role = 'staff';
   await context.loadRestrictions();
   assert.ok(!field('restrictions-tbody').innerHTML.includes('reviewRestriction('));
+});
+
+test('a new restriction sends the optional message to the resident, and reviewers see what the resident will read', async () => {
+  const calls = [];
+  const { context, field } = caseClient(async (url, method, body) => {
+    calls.push({ url, method, body });
+    return method === 'POST'
+      ? { message: 'Restriction saved as Pending Review.' }
+      : { data: [{ id: 3, resident: { full_name: 'Maria Santos' }, status: 'pending_review', reason_category: 'Review', internal_reason: 'Internal note', resident_visible_reason: '<b>Visit the hall</b>' }, { id: 4, resident: { full_name: 'Juan Cruz' }, status: 'active', reason_category: 'Review', internal_reason: 'Internal note', resident_visible_reason: null }], total: 2, current_page: 1, last_page: 1 };
+  });
+  field('restriction-person-resident').value = '12';
+  field('restriction-category').value = 'Review';
+  field('restriction-reason').value = 'Internal note';
+  field('restriction-resident-message').value = '  Visit the hall  ';
+  field('restriction-start').value = '2026-11-04T09:00';
+
+  await context.saveRestriction({ preventDefault() {}, target: { querySelector: () => ({ disabled: false }) } });
+
+  assert.equal(calls[0].body.resident_visible_reason, 'Visit the hall');
+  assert.equal(calls[0].body.internal_reason, 'Internal note');
+  const rows = field('restrictions-tbody').innerHTML;
+  assert.match(rows, /Message to the resident: &lt;b&gt;Visit the hall&lt;\/b&gt;/);
+  assert.match(rows, /Message to the resident: None \(the resident sees the standard on-hold notice\)/);
 });
 
 test('case history escapes narrative and a slower previous case does not replace the selected case', async () => {
@@ -96,19 +121,20 @@ test('restriction review disables duplicate actions and uses the authorized revi
   assert.equal(button.disabled, false);
 });
 
-test('incident filters send server-side category date and assignment criteria', async () => {
+test('incident filters send server-side search date and assignment criteria', async () => {
   let url;
   const fields = new Map([
-    ['incidents-tbody', { innerHTML: '' }], ['incident-category-filter', { value: 'Noise Complaint' }],
+    ['incidents-tbody', { innerHTML: '' }], ['incident-search', { value: ' Noise Complaint ' }],
     ['incident-date-from', { value: '2026-10-01' }], ['incident-date-to', { value: '2026-10-04' }], ['incident-assignee-filter', { value: '7' }],
   ]);
   const context = vm.createContext({ document: { getElementById: id => fields.get(id) }, URLSearchParams, INCIDENTS: [],
     fetch: async requested => { url = requested; return { ok: true, json: async () => ({ data: [], current_page: 1, last_page: 1 }) }; }, renderIncidents() {}, updateIncidentSummary() {}, escapeText: value => value,
   });
-  vm.runInContext('let incidentCurrentPage = 1; let incidentLastPage = 1;\n' + adminSource.slice(adminSource.indexOf('async function loadIncidents('), adminSource.indexOf('function renderIncidents(')), context);
+  vm.runInContext('let incidentCurrentPage = 1; let incidentLastPage = 1; let incidentLoadVersion = 0; let incidentProtectionOrderFilter = false;\n' + adminSource.slice(adminSource.indexOf('async function loadIncidents('), adminSource.indexOf('function renderIncidents(')), context);
   await context.loadIncidents(2);
   const params = new URL(url, 'https://example.test').searchParams;
-  assert.equal(params.get('incident_type'), 'Noise Complaint');
+  assert.equal(params.get('search'), 'Noise Complaint');
+  assert.equal(params.has('incident_type'), false);
   assert.equal(params.get('date_from'), '2026-10-01');
   assert.equal(params.get('date_to'), '2026-10-04');
   assert.equal(params.get('assigned_to'), '7');
@@ -148,4 +174,48 @@ test('authorized editing retains a custom submitted category which is absent fro
   assert.equal(select.options[1].text, category);
   await context.openEditIncident(1);
   assert.equal(select.options.length, 2);
+});
+
+test('staff without incident access never request the incident staff list', async () => {
+  const calls = [];
+  const api = async url => { calls.push(url); return { staff: [] }; };
+  const select = { value: '', innerHTML: '', replaceChildren() {} };
+  const load = permissions => {
+    calls.length = 0;
+    const context = vm.createContext({
+      document: { getElementById: id => (id === 'inc-assigned-to' ? select : null) },
+      window: { PERSONNEL_PERMISSIONS: permissions },
+      URLSearchParams, setTimeout, clearTimeout, householdApi: api, showToast() {}, Option: class { constructor(text, value) { this.text = text; this.value = value; } },
+      escapeText: value => String(value ?? ''),
+    });
+    vm.runInContext(source, context);
+    return context;
+  };
+
+  const secretary = load(['dashboard.view', 'records.view', 'documents.view']);
+  await new Promise(resolve => setTimeout(resolve));
+  assert.deepEqual(calls, []);
+  assert.equal(await secretary.loadCaseStaff(), false);
+  assert.deepEqual(calls, []);
+
+  load(['incidents.view']);
+  await new Promise(resolve => setTimeout(resolve));
+  assert.deepEqual(calls, ['/staff/incident-options']);
+});
+
+test('the administrator who created a pending restriction sees that another administrator must review it', async () => {
+  const { context, field } = caseClient(async () => ({ data: [
+    { id: 7, created_by: 3, created_at: '2026-11-05T08:00:00Z', resident: { full_name: 'Maria Santos' }, status: 'pending_review', reason_category: 'Review', internal_reason: 'Note' },
+    { id: 8, created_by: 9, resident: { full_name: 'Juan Cruz' }, status: 'pending_review', reason_category: 'Review', internal_reason: 'Note' },
+  ], total: 2, current_page: 1, last_page: 1 }));
+  context.window.AUTHENTICATED_USER = { id: 3, role: 'captain', is_administrator: true };
+
+  await context.loadRestrictions();
+  const [own, other] = field('restrictions-tbody').innerHTML.split('</tr>');
+
+  assert.ok(!own.includes('reviewRestriction('));
+  assert.match(own, /Needs another administrator to review/);
+  assert.match(own, /Created by staff #3/);
+  assert.match(own, /openLiftRestriction\(7\)/);
+  assert.match(other, /reviewRestriction\(8,this\)/);
 });

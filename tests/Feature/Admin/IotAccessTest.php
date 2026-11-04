@@ -14,7 +14,8 @@ it('separates employee RFID access from super admin pages', function () {
     $this->actingAs($staff)->get(route('staff.rfid-files.index'))->assertOk()->assertSee('No file movements recorded')
         ->assertSee('css/figma-iot.css')
         ->assertSee('Staff workspace')
-        ->assertSee('Physical files, digitally accountable.')
+        ->assertDontSee('Physical files, digitally accountable.')
+        ->assertSee('No scan can be simulated from this page.')
         ->assertSee('Request Eligibility');
     $this->get(route('admin.smart-cabinet.index'))->assertForbidden();
     $this->get(route('admin.cabinet-access.index'))->assertForbidden();
@@ -59,7 +60,7 @@ it('shows a compact cabinet access list without empty pagination', function () {
     $response->assertSee('3 employees')
         ->assertSee('Details')
         ->assertDontSee('<div class="pagination">', false);
-    expect(substr_count($response->getContent(), '<details class="employee-card">'))->toBe(3);
+    expect(substr_count($response->getContent(), '<article class="employee-card">'))->toBe(3);
 });
 
 it('keeps pagination for a cabinet access list with more than one page', function () {
@@ -70,7 +71,7 @@ it('keeps pagination for a cabinet access list with more than one page', functio
 
     $response->assertSee('16 employees')
         ->assertSee('<div class="pagination">', false);
-    expect(substr_count($response->getContent(), '<details class="employee-card">'))->toBe(15);
+    expect(substr_count($response->getContent(), '<article class="employee-card">'))->toBe(15);
 });
 
 it('uses saved file movements and filters instead of browser simulation', function () {
@@ -179,9 +180,40 @@ it('denies resident accounts access to all employee IoT pages', function () {
 it('paginates file movements without discarding their history', function () {
     $employee = User::factory()->assignedOperations()->create(['role' => 'staff']);
     FileMovementEvent::factory()->count(21)->create(['user_id' => $employee->id]);
-    $this->actingAs($employee)->get(route('staff.rfid-files.index'))->assertOk()->assertSee('21 recorded events');
-    $this->get(route('staff.rfid-files.index', ['page' => 2]))->assertOk()->assertSee('Movement history');
+    $this->actingAs($employee)->get(route('staff.rfid-files.index'))->assertOk()->assertSee('21 recorded events')
+        ->assertSee('Showing 1–20 of 21 <span>events</span>', false)
+        ->assertSee('Page 1 of 2');
+    $this->get(route('staff.rfid-files.index', ['page' => 2]))->assertOk()->assertSee('Movement history')
+        ->assertSee('Showing 21–21 of 21 <span>events</span>', false)
+        ->assertSee('rel="prev"', false);
     $this->assertDatabaseCount('file_movement_events', 21);
+});
+
+it('explains an empty filtered movement history differently from an empty log', function () {
+    $employee = User::factory()->assignedOperations()->create(['role' => 'staff']);
+    FileMovementEvent::factory()->create(['user_id' => $employee->id, 'file_reference' => 'FILE-ALPHA']);
+
+    $this->actingAs($employee)->get(route('staff.rfid-files.index', ['search' => 'no-such-file']))
+        ->assertOk()->assertSee('No movements match these filters')->assertDontSee('No file movements recorded');
+});
+
+it('filters cabinet access by effective, pending and disabled status without changing access', function () {
+    $superAdmin = User::factory()->superAdmin()->create(['name' => 'Zed Admin']);
+    $effective = User::factory()->create(['role' => 'staff', 'name' => 'Effective Employee']);
+    EmployeeCabinetAccess::factory()->for($effective)->create(['is_active' => true, 'rfid_enrollment_status' => EmployeeCabinetAccess::ENROLLED, 'face_enrollment_status' => EmployeeCabinetAccess::ENROLLED]);
+    $pending = User::factory()->create(['role' => 'staff', 'name' => 'Pending Employee']);
+    EmployeeCabinetAccess::factory()->for($pending)->create(['is_active' => true, 'rfid_enrollment_status' => EmployeeCabinetAccess::ENROLLED]);
+    $disabled = User::factory()->create(['role' => 'staff', 'name' => 'Disabled Employee']);
+
+    $this->actingAs($superAdmin);
+    $this->get(route('admin.cabinet-access.index', ['access' => 'effective']))->assertOk()
+        ->assertSee('Effective Employee')->assertDontSee('Pending Employee')->assertDontSee('Disabled Employee');
+    $this->get(route('admin.cabinet-access.index', ['access' => 'pending']))->assertOk()
+        ->assertSee('Pending Employee')->assertDontSee('Effective Employee')->assertDontSee('Disabled Employee');
+    $this->get(route('admin.cabinet-access.index', ['access' => 'disabled']))->assertOk()
+        ->assertSee('Disabled Employee')->assertSee('Zed Admin')->assertDontSee('Effective Employee')->assertDontSee('Pending Employee');
+    $this->get(route('admin.cabinet-access.index', ['access' => 'everyone']))->assertSessionHasErrors('access');
+    expect($disabled->fresh()->cabinetAccess)->toBeNull();
 });
 
 it('keeps historical movements after cabinet access is deactivated', function () {
@@ -261,4 +293,15 @@ it('uses the same sidebar icons as the staff dashboard on super admin pages', fu
         ->assertSee('<path d="M9 11l3 3L22 4"/>', false)
         ->assertSee('<rect x="2" y="3" width="20" height="14" rx="2"/>', false)
         ->assertSee('<rect x="9" y="3" width="6" height="4" rx="1"/>', false);
+});
+
+it('shows the reported cabinet state as readable labels instead of raw JSON', function () {
+    CabinetDevice::factory()->create(['cabinet_state' => ['door' => 'closed', 'drawer_1_locked' => true]]);
+
+    $this->actingAs(User::factory()->superAdmin()->create())
+        ->get(route('admin.smart-cabinet.index'))
+        ->assertOk()
+        ->assertSee('<ul class="cabinet-state-list">', false)
+        ->assertSeeInOrder(['Door', 'closed', 'Drawer 1 Locked', 'Yes'])
+        ->assertDontSee('{"door":"closed"', false);
 });

@@ -13,9 +13,16 @@ use Illuminate\Validation\ValidationException;
 
 class ResidentPortalAccountController extends Controller
 {
-    public function store(Resident $resident): JsonResponse
+    /**
+     * Issue a single-use, 24-hour activation code. This is the only way an existing resident can activate a
+     * portal account, so staff must confirm that they checked the resident's identity in person.
+     */
+    public function store(Request $request, Resident $resident): JsonResponse
     {
         Gate::authorize('records.activate');
+        $request->validate(['identity_checked' => ['accepted']], [
+            'identity_checked.accepted' => 'Confirm that you checked the resident\'s valid ID in person before issuing a code.',
+        ]);
 
         return DB::transaction(function () use ($resident): JsonResponse {
             $resident = Resident::query()->lockForUpdate()->findOrFail($resident->id);

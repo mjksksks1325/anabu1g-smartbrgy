@@ -32,7 +32,7 @@ class ResidentRegistrationReviewedNotification extends Notification implements S
     public function toMail(object $notifiable): MailMessage
     {
         [$statusLabel, $instructions, $actionLabel, $actionUrl] = match ($this->decision) {
-            'approved' => ['Approved', 'Your resident registration is approved. Complete your portal account registration to receive an activation code.', 'Continue Registration', route('portal.register')],
+            'approved' => ['Approved', 'Your resident registration is approved. To open your portal account, visit the Barangay Hall with a valid ID. Staff will verify your identity and give you an activation code to enter on the registration page.', 'How to activate your account', route('portal.register')],
             'declined' => ['Declined', 'Your registration application was declined. Read the reason below. Contact barangay staff if you need clarification.', 'Get help', route('portal.information').'#help'],
             'needs_correction' => ['Needs correction', 'Please correct your application using the remarks below, then submit it again for review. Open it in the browser where you originally submitted it.', 'Open my application', route('portal.new-resident.status')],
             default => throw new InvalidArgumentException('Unsupported registration review decision.'),

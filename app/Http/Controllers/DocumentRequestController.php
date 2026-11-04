@@ -7,7 +7,6 @@ use App\CertificateType;
 use App\Http\Middleware\EnsureResidentAccount;
 use App\Models\DocumentRequest;
 use App\Models\Resident;
-use App\Models\ResidentRequestRestriction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -36,8 +35,9 @@ class DocumentRequestController extends Controller
 
         return DB::transaction(function () use ($request, $validated): JsonResponse {
             $resident = Resident::query()->whereKey($request->user()->resident_id)->lockForUpdate()->firstOrFail();
-            if (app(CheckRequestRestrictions::class)->active($resident, CertificateType::from($validated['document_type'])) !== null) {
-                throw ValidationException::withMessages(['document_type' => __(ResidentRequestRestriction::MESSAGE)]);
+            $hold = app(CheckRequestRestrictions::class)->active($resident, CertificateType::from($validated['document_type']));
+            if ($hold !== null) {
+                throw ValidationException::withMessages(['document_type' => $hold->residentExplanation()]);
             }
             $referenceCode = 'REQ-'.now()->format('Y').'-'.strtoupper(Str::random(6));
             $attachmentPath = $request->file('attachment')?->store(

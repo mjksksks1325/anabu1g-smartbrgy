@@ -36,8 +36,8 @@ a{color:inherit}
 .panel-heading{padding:22px 25px;border-bottom:1px solid #e3ecec;display:flex;justify-content:space-between;align-items:center;gap:12px}
 .panel-heading h2{margin:0;font-size:18px}
 .panel-heading span{font-size:13px;color:#62767a}
-.empty-state{text-align:center;padding:65px 20px}
-.empty-state strong{font-size:19px}
+.empty-state{text-align:center;padding:32px 20px}
+.empty-state strong{font-size:16px}
 .empty-state p{color:#657a7e}
 .table-scroll{overflow-x:auto}
 table{border-collapse:collapse;width:100%;font-size:13px}

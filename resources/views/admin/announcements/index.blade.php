@@ -4,15 +4,23 @@
 <div class="eyebrow">Public Information</div>
 <div class="page-heading">
     <div><h1>Announcements</h1><p>Create barangay updates for residents. Drafts stay staff-only; published announcements appear on the resident portal.</p></div>
+    @can('announcements.create')<button class="button" type="button" data-announcement-create-open aria-haspopup="dialog">New announcement</button>@endcan
 </div>
 
 @can('announcements.create')
-<section class="panel announcement-create-panel" aria-labelledby="announcement-create-title">
-    <div class="panel-heading"><h2 id="announcement-create-title">Create an announcement</h2><span>Optional image · up to 5 MB</span></div>
+@php($creating = old('_announcement') === null)
+{{-- Creating is an occasional, focused task, so the form lives in a dialog; it reopens with the typed values after a validation error. --}}
+<dialog class="announcement-dialog announcement-create-dialog" data-announcement-create-dialog aria-labelledby="announcement-create-title" @if($creating && $errors->hasAny(['title', 'body', 'image', 'status'])) data-open-on-load @endif>
+    <div class="announcement-dialog-header">
+        <div><h2 id="announcement-create-title">New announcement</h2><p>Optional image · up to 5 MB. Drafts stay staff-only until published.</p></div>
+        <button class="announcement-dialog-close" type="button" data-announcement-create-close aria-label="Close">&times;</button>
+    </div>
     <form class="announcement-form" method="POST" enctype="multipart/form-data" action="{{ route('staff.announcements.store') }}">
         @csrf
-        <label>Title<input name="title" maxlength="180" required value="{{ old('title') }}" placeholder="Announcement title"></label>
-        <label>Announcement<textarea name="body" maxlength="12000" rows="6" required placeholder="Write the details residents need to know.">{{ old('body') }}</textarea></label>
+        <label>Title<input name="title" maxlength="180" required value="{{ $creating ? old('title') : '' }}" placeholder="Announcement title" @if($creating && $errors->has('title')) aria-invalid="true" @endif></label>
+        @if($creating)@error('title')<span class="field-feedback-message">{{ $message }}</span>@enderror @endif
+        <label>Announcement<textarea name="body" maxlength="12000" rows="6" required placeholder="Write the details residents need to know." @if($creating && $errors->has('body')) aria-invalid="true" @endif>{{ $creating ? old('body') : '' }}</textarea></label>
+        @if($creating)@error('body')<span class="field-feedback-message">{{ $message }}</span>@enderror @endif
         <label>Image (optional)<input type="file" name="image" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.avif,.heic,.heif,image/jpeg,image/png,image/gif,image/bmp,image/webp,image/avif,image/heic,image/heif"><small>Images only; the original image format is kept. PDF and document files are not accepted.</small></label>
         <div class="announcement-form-actions">
             <label>Save as
@@ -21,10 +29,11 @@
                     @can('announcements.publish')<option value="published" @selected(old('status') === 'published')>Publish now</option>@endcan
                 </select>
             </label>
+            <button class="button quiet" type="button" data-announcement-create-close>Cancel</button>
             <button class="button" type="submit">Save announcement</button>
         </div>
     </form>
-</section>
+</dialog>
 @endcan
 
 <section class="panel announcement-list-panel" aria-labelledby="announcement-list-title">
@@ -41,43 +50,52 @@
                 <span class="pill {{ $announcement->status === 'published' ? 'success' : ($announcement->status === 'draft' ? 'warning' : 'neutral') }}">{{ ucfirst($announcement->status) }}</span>
             </div>
             @if($announcement->image_path)<img class="announcement-record-image" src="{{ $announcement->imageUrl() }}" alt="{{ $announcement->title }}" loading="lazy">@endif
-            @if($announcement->status === 'archived')
-                <div class="announcement-record-body">{{ $announcement->body }}</div>
-                @can('announcements.archive')
-                    <form method="POST" action="{{ route('staff.announcements.restore', $announcement) }}">@csrf<button class="button quiet" type="submit">Restore as draft</button></form>
-                @endcan
-            @else
-                @can('announcements.update')
-                <form class="announcement-form announcement-edit-form" method="POST" enctype="multipart/form-data" action="{{ route('staff.announcements.update', $announcement) }}">
-                    @csrf
-                    @method('PATCH')
-                    <label>Title<input name="title" maxlength="180" required value="{{ $announcement->title }}"></label>
-                    <label>Announcement<textarea name="body" maxlength="12000" rows="5" required>{{ $announcement->body }}</textarea></label>
-                    @if($announcement->image_path)<img class="announcement-record-image" src="{{ $announcement->imageUrl() }}" alt="{{ $announcement->title }}" loading="lazy"><label class="announcement-remove-image"><input type="checkbox" name="remove_image" value="1"> Remove current image</label>@endif
-                    <label>Replace image (optional)<input type="file" name="image" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.avif,.heic,.heif,image/jpeg,image/png,image/gif,image/bmp,image/webp,image/avif,image/heic,image/heif"><small>Images only; the original image format is kept. PDF and document files are not accepted.</small></label>
-                    <div class="announcement-form-actions">
-                        <button class="button" type="submit">Save changes</button>
-                    </div>
-                </form>
+            <div class="announcement-record-body">{{ $announcement->body }}</div>
+            <div class="announcement-record-actions">
+                @if($announcement->status === 'archived')
+                    @can('announcements.archive')
+                        <form method="POST" action="{{ route('staff.announcements.restore', $announcement) }}">@csrf<button class="button quiet" type="submit">Restore as draft</button></form>
+                    @endcan
                 @else
-                    <div class="announcement-record-body">{{ $announcement->body }}</div>
+                    @can('announcements.publish')<form class="announcement-record-publish" method="POST" action="{{ route('staff.announcements.publish', $announcement) }}">@csrf<button class="button {{ $announcement->status === 'published' ? 'quiet' : '' }}" type="submit">{{ $announcement->status === 'published' ? 'Unpublish' : 'Publish' }}</button></form>@endcan
+                    @can('announcements.archive')<button class="button danger-outline announcement-record-archive" type="button" data-announcement-archive data-archive-url="{{ route('staff.announcements.archive', $announcement) }}" data-announcement-title="{{ $announcement->title }}">Archive</button>@endcan
+                @endif
+            </div>
+            @if($announcement->status !== 'archived')
+                @can('announcements.update')
+                <details class="announcement-edit" @if($errors->any() && (string) old('_announcement') === (string) $announcement->id) open @endif>
+                    <summary>Edit announcement</summary>
+                    <form class="announcement-form announcement-edit-form" method="POST" enctype="multipart/form-data" action="{{ route('staff.announcements.update', $announcement) }}">
+                        @csrf
+                        @method('PATCH')
+                        <input type="hidden" name="_announcement" value="{{ $announcement->id }}">
+                        @php($editingThis = (string) old('_announcement') === (string) $announcement->id)
+                        <label>Title<input name="title" maxlength="180" required value="{{ $editingThis ? old('title') : $announcement->title }}" @if($editingThis && $errors->has('title')) aria-invalid="true" @endif></label>
+                        @if($editingThis)@error('title')<span class="field-feedback-message">{{ $message }}</span>@enderror @endif
+                        <label>Announcement<textarea name="body" maxlength="12000" rows="5" required @if($editingThis && $errors->has('body')) aria-invalid="true" @endif>{{ $editingThis ? old('body') : $announcement->body }}</textarea></label>
+                        @if($editingThis)@error('body')<span class="field-feedback-message">{{ $message }}</span>@enderror @if($errors->has('image'))<span class="field-feedback-message">{{ $errors->first('image') }}</span>@endif @endif
+                        @if($announcement->image_path)<label class="announcement-remove-image"><input type="checkbox" name="remove_image" value="1"> Remove current image</label>@endif
+                        <label>Replace image (optional)<input type="file" name="image" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.avif,.heic,.heif,image/jpeg,image/png,image/gif,image/bmp,image/webp,image/avif,image/heic,image/heif"><small>Images only; the original image format is kept. PDF and document files are not accepted.</small></label>
+                        <div class="announcement-form-actions">
+                            <button class="button" type="submit">Save changes</button>
+                        </div>
+                    </form>
+                </details>
                 @endcan
-                @can('announcements.publish')<form class="announcement-record-publish" method="POST" action="{{ route('staff.announcements.publish', $announcement) }}">@csrf<button class="button quiet" type="submit">{{ $announcement->status === 'published' ? 'Unpublish' : 'Publish' }}</button></form>@endcan
-                @can('announcements.archive')<button class="button danger announcement-record-archive" type="button" data-announcement-archive data-archive-url="{{ route('staff.announcements.archive', $announcement) }}" data-announcement-title="{{ $announcement->title }}">Archive</button>@endcan
             @endif
         </article>
     @empty
-        <div class="empty-state"><strong>No announcements here yet</strong><p>Create an announcement above. Published posts will appear in the resident portal.</p></div>
+        <div class="empty-state"><strong>No announcements here yet</strong><p>@can('announcements.create')Select New announcement to write one. @endcan Published announcements appear on the resident portal.</p></div>
     @endforelse
     @if($announcements->hasPages())<div class="announcement-pagination">{{ $announcements->links() }}</div>@endif
 </section>
 <div class="notice success announcement-feedback" data-announcement-feedback role="status" hidden></div>
-<dialog class="announcement-archive-dialog" data-announcement-archive-dialog aria-labelledby="announcement-archive-title" aria-describedby="announcement-archive-description">
+<dialog class="announcement-dialog announcement-archive-dialog" data-announcement-archive-dialog aria-labelledby="announcement-archive-title" aria-describedby="announcement-archive-description">
     <form data-announcement-archive-form>
         <h2 id="announcement-archive-title">Archive announcement</h2>
         <p id="announcement-archive-description">This removes the announcement from the resident portal while retaining its record. Confirm with the active Barangay Captain or Super Admin password.</p>
         <p class="announcement-archive-title" data-announcement-archive-title></p>
-        <label for="announcement-archive-password">Password ng Barangay Captain o Super Admin</label>
+        <label for="announcement-archive-password">Password of the Barangay Captain or Super Admin</label>
         <span class="password-visibility-field"><input id="announcement-archive-password" name="super_admin_password" type="password" autocomplete="current-password" required><x-password-toggle target="announcement-archive-password" /></span>
         <p class="announcement-archive-error" data-announcement-archive-error role="alert" hidden></p>
         <div class="announcement-archive-actions"><button class="button quiet" type="button" data-announcement-archive-cancel>Cancel</button><button class="button danger" type="submit" data-announcement-archive-submit>Confirm archive</button></div>

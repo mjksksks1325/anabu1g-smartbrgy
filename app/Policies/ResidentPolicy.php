@@ -8,19 +8,19 @@ use App\Models\User;
 class ResidentPolicy
 {
     /**
-     * Determine whether the user can view any models.
+     * Determine whether the user can list residents or households. Demographics-only staff see population statistics, not people.
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyPermission(['records.view', 'demographics.view', 'households.view']);
+        return $user->hasAnyPermission(['records.view', 'households.view']);
     }
 
     /**
-     * Determine whether the user can view the model.
+     * Determine whether the user can open one resident's record or photo.
      */
     public function view(User $user, Resident $resident): bool
     {
-        return $user->hasAnyPermission(['records.view', 'demographics.view']);
+        return $user->hasPermission('records.view');
     }
 
     /**

@@ -8,6 +8,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class ResidentSessionController extends Controller
@@ -33,7 +34,32 @@ class ResidentSessionController extends Controller
             return redirect()->route('portal.request.create', ['service' => $service]);
         }
 
-        return redirect()->route('portal.account');
+        return redirect()->to($this->residentDestination($request));
+    }
+
+    /**
+     * Return to the resident page that asked for sign-in, otherwise open the dashboard.
+     * Only resident portal pages are honoured; personnel URLs stay in the session for staff sign-in.
+     */
+    private function residentDestination(Request $request): string
+    {
+        $intended = $request->session()->get('url.intended');
+
+        if (is_string($intended) && $this->isResidentPortalPage($intended)) {
+            $request->session()->forget('url.intended');
+
+            return $intended;
+        }
+
+        return route('portal.dashboard');
+    }
+
+    private function isResidentPortalPage(string $url): bool
+    {
+        $path = (string) parse_url($url, PHP_URL_PATH);
+
+        return str_starts_with($url, url('/portal').'/')
+            && ! Str::startsWith($path, ['/portal/login', '/portal/register', '/portal/logout', '/portal/locale', '/portal/csrf-token', '/portal/translations.js']);
     }
 
     public function destroy(Request $request): RedirectResponse

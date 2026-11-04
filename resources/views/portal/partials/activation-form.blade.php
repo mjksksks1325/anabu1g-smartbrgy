@@ -4,7 +4,7 @@
         <label class="form-label" for="resident-number"><span data-portal-i18n="Resident number">{{ __('Resident number') }}</span></label>
         <input class="form-input" id="resident-number" name="resident_number" required maxlength="40" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="resident-number-help" @error('resident_number') aria-invalid="true" @enderror>
         @error('resident_number')<p class="field-error" data-portal-message>{{ $message }}</p>@enderror
-        <p class="form-note" id="resident-number-help"><span data-portal-i18n="Nasa email o ibinigay ng barangay staff.">{{ __('Nasa email o ibinigay ng barangay staff.') }}</span></p>
+        <p class="form-note" id="resident-number-help"><span data-portal-i18n="Ibinigay ng barangay staff, halimbawa ANB-2026-XXXXXXXXXX.">{{ __('Ibinigay ng barangay staff, halimbawa ANB-2026-XXXXXXXXXX.') }}</span></p>
     </div>
     <div class="form-group">
         <label class="form-label" for="activation-code"><span data-portal-i18n="Activation code">{{ __('Activation code') }}</span></label>

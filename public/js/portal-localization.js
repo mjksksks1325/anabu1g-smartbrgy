@@ -22,10 +22,17 @@ function portalMessage(source) {
                 return part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             }).join('');
             const match = source.match(new RegExp('^' + pattern + '$'));
-            if (match) return { source: key, replacements: Object.fromEntries(names.map((name, index) => [name, match[index + 1]])) };
+            if (match) return { source: key, replacements: Object.fromEntries(names.map((name, index) => [name, portalSourceValue(catalogs, locale, name, match[index + 1])])) };
         }
     }
     return { source, replacements: {} };
+}
+
+/* A Filipino message carries Filipino field names ("larawan"); map them back to their key so English shows "photo". */
+function portalSourceValue(catalogs, locale, name, value) {
+    if (locale === 'en' || !['attribute', 'other', 'document', 'fee'].includes(name)) return value;
+    const key = Object.keys(catalogs[locale]).find(candidate => catalogs[locale][candidate] === value);
+    return key ?? value;
 }
 
 function portalSetText(element, source, replacements = {}) {

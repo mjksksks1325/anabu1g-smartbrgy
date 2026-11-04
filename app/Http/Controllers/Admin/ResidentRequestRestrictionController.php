@@ -26,8 +26,9 @@ class ResidentRequestRestrictionController extends Controller
         return response()->json(ResidentRequestRestriction::query()->when(! $request->user()->hasAdministrativeAccess(), fn ($query) => $query->select(['id', 'resident_id', 'affected_document_type', 'status', 'starts_at', 'ends_at', 'reviewed_at', 'next_review_at']))->with('resident:id,first_name,middle_name,last_name,suffix,resident_number')
             ->when($data['resident_id'] ?? null, fn ($q, $id) => $q->where('resident_id', $id))
             ->when($data['status'] ?? null, fn ($q, $status) => $q->where('status', $status))
-            ->when($data['search'] ?? null, fn ($q, $term) => $q->whereHas('resident', fn ($r) => $r->where(fn ($r) => $r->where('last_name', 'like', '%'.$term.'%')->orWhere('first_name', 'like', '%'.$term.'%')->orWhere('resident_number', 'like', '%'.$term.'%'))))
-            ->latest()->paginate(15));
+            ->when($data['search'] ?? null, fn ($q, $term) => $q->whereHas('resident', fn ($r) => $r->matchingSearch($term)))
+            // Only the name columns are loaded, so the resident serializes its full name and nothing derived from other fields.
+            ->latest()->paginate(15)->through(fn (ResidentRequestRestriction $restriction): ResidentRequestRestriction => tap($restriction, fn () => $restriction->resident?->setAppends(['full_name']))));
     }
 
     public function store(StoreResidentRequestRestrictionRequest $request): JsonResponse
@@ -46,9 +47,18 @@ class ResidentRequestRestrictionController extends Controller
         });
     }
 
+    /**
+     * Activate a pending restriction. Two people are required: the administrator who created it cannot activate it,
+     * so it stays Pending Review until another administrator reviews it. A refused self-review is recorded.
+     */
     public function review(Request $request, ResidentRequestRestriction $restriction): JsonResponse
     {
         Gate::authorize('update', $restriction);
+        if ($restriction->created_by !== null && (int) $restriction->created_by === (int) $request->user()->id) {
+            app(RecordCaseActivity::class)->handle($request->user(), 'admin.request-restrictions.self-review-denied', (string) $restriction->id);
+
+            throw ValidationException::withMessages(['restriction' => 'You created this restriction, so another administrator (the Super Admin or the Barangay Captain) must review and activate it. It stays Pending Review until then.']);
+        }
 
         return DB::transaction(function () use ($request, $restriction): JsonResponse {
             Resident::withTrashed()->whereKey($restriction->resident_id)->lockForUpdate()->firstOrFail();

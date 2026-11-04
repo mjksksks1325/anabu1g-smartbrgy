@@ -59,6 +59,7 @@ class UpdateResidentRequest extends FormRequest
             'status' => ['required', Rule::in(['active', 'inactive'])],
             'is_in_good_standing' => ['sometimes', 'boolean'],
             'confirm_duplicate' => ['sometimes', 'boolean'],
+            'expected_updated_at' => ['sometimes', 'nullable', 'date'],
             'household_id' => ['sometimes', 'nullable', 'integer', Rule::exists('households', 'id')],
             'relationship_to_household_head' => ['nullable', 'string', 'max:100'],
             'is_household_head' => ['sometimes', 'boolean'],
@@ -85,7 +86,7 @@ class UpdateResidentRequest extends FormRequest
             'middle_name' => $this->normalizeName($this->input('middle_name')),
             'last_name' => $this->normalizeName($this->input('last_name')),
             'suffix' => $this->normalizeName($this->input('suffix')),
-            'contact_number' => preg_replace('/[\s-]+/', '', (string) $this->input('contact_number')) ?: null,
+            'contact_number' => Resident::normalizeContactNumber($this->input('contact_number')),
         ]);
     }
 

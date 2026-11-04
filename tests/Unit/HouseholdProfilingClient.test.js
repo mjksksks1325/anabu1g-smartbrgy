@@ -32,6 +32,22 @@ test('editing a reviewed row disables save until a successful validation', async
   assert.equal(field('profiling-save').disabled, false);
 });
 
+test('saving keeps the dialog open with a lasting summary of what was imported', async () => {
+  const { context, field } = profilingClient(async () => ({ ok: true, json: async () => ({ message: 'Household profiling imported successfully.', result: { created: 4, linked: 1, skipped: 2, households: 3 } }) }));
+  const closed = [];
+  const toasts = [];
+  context.closeModal = id => closed.push(id);
+  context.showToast = (message, type) => toasts.push({ message, type });
+  context.loadResidents = context.loadPuroks = context.populateManualResidentDropdown = async () => {};
+
+  await context.saveHouseholdProfiling();
+
+  assert.deepEqual(closed, []);
+  assert.equal(field('profiling-preview').hidden, true);
+  assert.match(field('profiling-status').innerHTML, /4 new residents created<\/span> · <span>1 linked to existing records<\/span> · <span>2 skipped<\/span> · <span>3 households saved/);
+  assert.equal(toasts[0].type, 'green');
+});
+
 test('a failed validation keeps save disabled and shows the server error', async () => {
   const { context, field } = profilingClient(async () => ({ ok: false, json: async () => ({ errors: { file: ['The preview expired.'] } }) }));
   context.updateProfilingRow(0, 'first_name', 'Changed');
@@ -224,14 +240,22 @@ test('clicking a household shows its family members in the detail modal', async 
 test('purok cards show household counts and support click and keyboard access without inline lists', () => {
   const { context, field } = profilingClient();
   context.syncPurokSelects = () => {};
+  context.purokPanelState = () => null;
   context.RESIDENTS = [];
   context.DEMOGRAPHIC_SUMMARY = { total: 0 };
   context.PUROK_DATA = [{ databaseId: 7, label: 'Purok 7', key: 'Purok 7', color: '#fff', householdsCount: 4 }];
   vm.runInContext(adminSource.slice(adminSource.indexOf('function renderPurokCards()'), adminSource.indexOf('function renderAgeDistribution()')), context);
+  // Demographics-only staff see the counts, but the card does not open the household list.
+  context.hasStaffPermission = permission => permission === 'demographics.view';
+  context.renderPurokCards();
+  assert.match(field('demo-purok-grid').innerHTML, />4 <span>households<\/span><\/div>/);
+  assert.ok(!field('demo-purok-grid').innerHTML.includes('openPurokHouseholds'));
+  assert.ok(!field('demo-purok-grid').innerHTML.includes('role="button"'));
+  context.hasStaffPermission = permission => permission === 'households.view';
   context.renderPurokCards();
   const html = field('demo-purok-grid').innerHTML;
-  assert.match(html, /4 households/);
-  assert.ok(html.indexOf('of total population</div>') < html.indexOf('>4 households</div>'));
+  assert.match(html, />4 <span>households<\/span><\/div>/);
+  assert.ok(html.indexOf('of total population</div>') < html.indexOf('>4 <span>households</span></div>'));
   assert.match(html, /openPurokHouseholds\(7\)/);
   assert.match(html, /tabindex="0"/);
   assert.ok(!html.includes('<details'));

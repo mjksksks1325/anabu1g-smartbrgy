@@ -125,7 +125,7 @@ function togglePortalTheme() {
     _portalDark = !_portalDark;
 
     document.body.classList.toggle('dark-mode', _portalDark);
-    document.querySelector('[data-resident-theme]')?.setAttribute('aria-pressed', String(_portalDark));
+    document.querySelectorAll('[data-resident-theme]').forEach(button => button.setAttribute('aria-pressed', String(_portalDark)));
 
     savePortalTheme();
 }

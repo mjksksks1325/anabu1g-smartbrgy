@@ -24,7 +24,7 @@ function createField({ id, name = '', label = '', value = '' }) {
   return field;
 }
 
-function load(fields, fetchResponse) {
+function load(fields, fetchResponse, { requestAnimationFrame = callback => callback() } = {}) {
   const listeners = {};
   const elements = {};
   const modal = {
@@ -43,7 +43,7 @@ function load(fields, fetchResponse) {
     },
   };
   const window = { fetch: async () => fetchResponse, matchMedia: () => ({ matches: false }) };
-  const context = vm.createContext({ window, document, CSS: { escape: value => value }, requestAnimationFrame: callback => callback(), console });
+  const context = vm.createContext({ window, document, CSS: { escape: value => value }, requestAnimationFrame, console });
   vm.runInContext(readFileSync('public/js/form-feedback.js', 'utf8'), context);
 
   return { window, listeners, elements };
@@ -108,4 +108,23 @@ test('an unrelated error notification still appears when every required field is
 
   assert.equal(window.FormFeedback.handledOnFields('Network error.'), false);
   assert.equal(label.classList.contains('field-invalid'), false);
+});
+
+test('an empty required staff field shows the required message in the chosen language, not the browser language', () => {
+  const missing = createField({ id: 'adduser-name', label: 'Full name *' });
+  missing.validity = { valueMissing: true, customError: false };
+  missing.validationMessage = 'Please fill out this field.';
+  const email = createField({ id: 'adduser-email', label: 'Email address *', value: 'not-an-email' });
+  email.validity = { valueMissing: false, typeMismatch: true, customError: false };
+  email.validationMessage = 'Please include an @ in the email address.';
+  const frames = [];
+  const { window, listeners, elements } = load([missing, email], null, { requestAnimationFrame: callback => frames.push(callback) });
+  window.adminTranslate = message => ({ 'This field is required.': 'Kailangan ang field na ito.' }[message] ?? message);
+
+  listeners.invalid.forEach(handler => handler({ target: missing }));
+  listeners.invalid.forEach(handler => handler({ target: email }));
+  frames.forEach(callback => callback());
+
+  assert.equal(elements['adduser-name-feedback'].textContent, 'Kailangan ang field na ito.');
+  assert.equal(elements['adduser-email-feedback'].textContent, 'Please include an @ in the email address.');
 });

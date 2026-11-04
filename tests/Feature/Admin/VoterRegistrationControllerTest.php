@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Household;
 use App\Models\Resident;
 use App\Models\User;
 use App\Models\VoterRegistration;
@@ -112,6 +113,18 @@ test('listing separates active voters by purok and age eligibility', function ()
         ->assertJsonMissing(['comelec_voter_number' => '9999-8888-7777']);
 });
 
+test('the voter list finds a voter by full name in any word order', function () {
+    $user = User::factory()->assignedOperations()->create();
+    $adult = ['date_of_birth' => '1990-01-01', 'status' => 'active', 'middle_name' => null];
+    $juan = VoterRegistration::factory()->for(Resident::factory()->create([...$adult, 'first_name' => 'Juan', 'last_name' => 'Dela Cruz']))->create();
+    VoterRegistration::factory()->for(Resident::factory()->create([...$adult, 'first_name' => 'Pedro', 'last_name' => 'Dela Cruz']))->create();
+
+    $this->actingAs($user)->getJson(route('staff.voter-registrations.index', ['search' => 'Dela Cruz, Juan']))
+        ->assertOk()
+        ->assertJsonPath('total', 1)
+        ->assertJsonPath('data.0.id', $juan->id);
+});
+
 test('a 15 year old resident can be registered as an sk voter', function () {
     $user = User::factory()->assignedOperations()->create();
     $resident = Resident::factory()->create(['date_of_birth' => '2011-05-12']);
@@ -172,6 +185,26 @@ test('updates use version checks and append an encrypted audit record', function
         ->assertJsonValidationErrors('version');
 });
 
+test('voter number formats explain which characters are accepted when adding or editing', function () {
+    $user = User::factory()->assignedOperations()->create();
+    $registration = VoterRegistration::factory()->create();
+    $resident = Resident::factory()->create(['date_of_birth' => now()->subYears(30)->toDateString()]);
+    $expected = [
+        'precinct_number' => 'Use letters, numbers, spaces and hyphens only, for example 0123A.',
+        'cluster_number' => 'Use letters, numbers, spaces and hyphens only, for example 0123A.',
+    ];
+
+    $this->actingAs($user)
+        ->postJson(route('staff.voter-registrations.store'), voterPayload($resident, ['comelec_voter_number' => '1234#5678', 'precinct_number' => '##', 'cluster_number' => '@@']))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors([...$expected, 'comelec_voter_number' => 'Use letters, numbers and hyphens only, for example 1234-5678-9012.']);
+
+    $this->patchJson(route('staff.voter-registrations.update', $registration), ['precinct_number' => '##', 'cluster_number' => '@@', 'registration_date' => '2026-05-15', 'status' => 'active', 'version' => 1])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors($expected);
+    expect($registration->fresh()->version)->toBe(1);
+});
+
 test('tamper detection blocks updates after an out of band database change', function () {
     $user = User::factory()->assignedOperations()->create();
     $registration = VoterRegistration::factory()->create();
@@ -224,4 +257,19 @@ test('voters page describes personnel recording existing voter information', fun
         ->assertSee('Para sa barangay personnel:')
         ->assertSee('hindi ito pagpaparehistro sa COMELEC')
         ->assertDontSee('Voter Registry');
+});
+
+test('demographics and the voter registry report the same registered-voter count', function () {
+    $staff = User::factory()->assignedOperations()->create();
+    $counted = Resident::factory()->create(['status' => 'active', 'date_of_birth' => now()->subYears(40)]);
+    $inactive = Resident::factory()->create(['status' => 'inactive', 'date_of_birth' => now()->subYears(40)]);
+    $tooYoung = Resident::factory()->create(['status' => 'active', 'date_of_birth' => now()->subYears(12)]);
+    foreach ([$counted, $inactive, $tooYoung] as $resident) {
+        VoterRegistration::factory()->create(['resident_id' => $resident->id, 'status' => 'active']);
+    }
+
+    $registry = $this->actingAs($staff)->getJson(route('staff.voter-registrations.index'))->assertOk();
+
+    expect($registry->json('summary.total'))->toBe(1)
+        ->and(Household::demographics()['registered_voters'])->toBe(1);
 });

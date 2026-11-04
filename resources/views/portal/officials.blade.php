@@ -1,7 +1,7 @@
 @extends('layouts.portal')
 @section('title', __('Barangay officials'))
 @section('band')
-<x-portal.page-band title="Barangay officials" title-id="officials-title" parent="Requirements and fees" :parent-url="route('portal.information')">
+<x-portal.page-band title="Barangay officials" title-id="officials-title" parent="Tulong" :parent-url="route('portal.information')">
     <p><span data-portal-i18n="Mga placeholder profile habang hinihintay ang opisyal na listahan mula sa barangay.">{{ __('Mga placeholder profile habang hinihintay ang opisyal na listahan mula sa barangay.') }}</span></p>
 </x-portal.page-band>
 @endsection

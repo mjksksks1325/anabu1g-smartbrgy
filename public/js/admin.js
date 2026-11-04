@@ -17,13 +17,34 @@ function toggleStaffAssignmentFields() {
   const section = document.getElementById('staff-assignment-fields');
   const editId = Number(document.getElementById('adduser-edit-id')?.value || 0);
   const editedUser = USERS.find(user => Number(user.id) === editId);
-  if (section) section.hidden = document.getElementById('adduser-role').value !== 'staff' && !editedUser?.is_super_admin;
+  const captainAccount = document.getElementById('adduser-role').value === 'captain';
+  if (!section) return;
+  section.hidden = document.getElementById('adduser-role').value !== 'staff' && !editedUser?.is_super_admin && !captainAccount;
+  // A Captain already holds every other module, so only the VAWC/BPO boxes are shown for a Captain account.
+  section.querySelectorAll('.staff-permission-module').forEach(module => { module.hidden = captainAccount && !module.querySelector('[data-staff-permission^="vawc."]'); });
+  section.querySelectorAll('.staff-permission-group').forEach(group => { group.hidden = [...group.querySelectorAll('.staff-permission-module')].every(module => module.hidden); });
+  section.querySelectorAll('.staff-preset-toolbar, .staff-preset-help').forEach(element => { element.hidden = captainAccount; });
+  // Confidential case access is granted only by the Super Admin, and never on their own account (the server enforces this).
+  const canChangeVawc = Boolean(window.AUTHENTICATED_USER?.is_super_admin) && Number(editedUser?.id) !== Number(window.AUTHENTICATED_USER?.id);
+  section.querySelectorAll('[data-staff-permission^="vawc."]').forEach(input => { input.disabled = !canChangeVawc; });
+  const lock = document.getElementById('vawc-permission-lock');
+  if (lock) lock.hidden = canChangeVawc;
 }
+/** Presets and "Clear all" leave locked boxes (VAWC for non–Super Admins) as they are. */
 function setStaffAssignments(keys) {
-  document.querySelectorAll('[data-staff-permission]').forEach(input => { input.checked = keys.includes(input.dataset.staffPermission); });
+  document.querySelectorAll('[data-staff-permission]').forEach(input => { if (!input.disabled) input.checked = keys.includes(input.dataset.staffPermission); });
 }
+/** Tick a preset's checkboxes and say what it covers; the administrator still reviews every box before saving. */
 function applyStaffPreset(name) {
   if (name && window.STAFF_PERMISSION_PRESETS?.[name]) setStaffAssignments(window.STAFF_PERMISSION_PRESETS[name]);
+  showStaffPresetDescription(name);
+}
+function showStaffPresetDescription(name) {
+  const help = document.getElementById('staff-preset-description');
+  if (!help) return;
+  const option = [...(document.getElementById('staff-access-preset')?.options || [])].find(item => item.value === name);
+  const description = name && option?.dataset.description ? option.dataset.description : '';
+  help.textContent = description ? `${adminText(description)} ${adminText('Adjust any selections before saving.')}` : adminText('Adjust any selections before saving.');
 }
 function changeStaffAssignment(input) {
   const [module, action] = input.dataset.staffPermission.split('.');
@@ -37,6 +58,7 @@ function changeStaffAssignment(input) {
     });
   }
   document.getElementById('staff-access-preset').value = '';
+  showStaffPresetDescription('');
 }
 'use strict';
 
@@ -83,13 +105,13 @@ const BASE_RESIDENT_SAMPLE_COUNT = RESIDENTS.length;
 const SPECIAL_GROUP_META = {
   'Senior Citizen': { icon: '', label: 'Senior Citizens', color: 'var(--senior-color)', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.2)', sub: '(60+)' },
   'PWD': { icon: '', label: 'Persons w/ Disability', color: '#A78BFA', bg: 'rgba(139,92,246,0.08)', border: 'rgba(139,92,246,0.2)', sub: 'PWD registered' },
-  'Solo Parent': { icon: '', label: 'Solo Parents', color: 'var(--blue-400)', bg: 'rgba(42,126,211,0.08)', border: 'rgba(42,126,211,0.2)', sub: 'With solo parent ID' },
-  'Indigenous People': { icon: '', label: 'Indigenous People', color: 'var(--green-500)', bg: 'rgba(0,255,106,0.06)', border: 'rgba(0,255,106,0.15)', sub: 'Registered IP' },
+  'Solo Parent': { icon: '', label: 'Solo Parents', color: '#2563eb', bg: 'rgba(42,126,211,0.08)', border: 'rgba(42,126,211,0.2)', sub: 'With solo parent ID' },
+  'Indigenous People': { icon: '', label: 'Indigenous People', color: '#0f8a8a', bg: 'rgba(0,255,106,0.06)', border: 'rgba(0,255,106,0.15)', sub: 'Registered IP' },
   '4Ps Beneficiary': { icon: '', label: '4Ps Beneficiaries', color: '#EF4444', bg: 'rgba(239,68,68,0.07)', border: 'rgba(239,68,68,0.18)', sub: 'DSWD-registered' },
   'Teenage Mother': { icon: '', label: 'Teenage Mothers', color: '#F472B6', bg: 'rgba(244,114,182,0.07)', border: 'rgba(244,114,182,0.2)', sub: 'Ages 13-19' },
   'Out-of-School Youth': { icon: '', label: 'Out-of-School Youth', color: '#34D399', bg: 'rgba(52,211,153,0.07)', border: 'rgba(52,211,153,0.18)', sub: 'Ages 15-30' },
   'Unemployed Adult': { icon: '', label: 'Unemployed Adults', color: '#FB923C', bg: 'rgba(251,146,60,0.07)', border: 'rgba(251,146,60,0.18)', sub: 'Ages 18-60' },
-  'Malnourished Child': { icon: '', label: 'Malnourished Children', color: '#F87171', bg: 'rgba(248,113,113,0.07)', border: 'rgba(248,113,113,0.2)', sub: 'Under 13 years old' },
+  'Malnourished Child': { icon: '', label: 'Malnourished Children', color: '#65a30d', bg: 'rgba(248,113,113,0.07)', border: 'rgba(248,113,113,0.2)', sub: 'Under 13 years old' },
 };
 
 function totalPopulation() {
@@ -125,12 +147,13 @@ async function refreshDashboardStats() {
     set('dash-stat-issued', summary.issued_certificates);
     set('dash-stat-pending', summary.pending_requests);
     set('dash-stat-incidents', summary.open_incidents);
+    // The number is already the headline; the subtitle says what it covers instead of repeating it.
     document.getElementById('dash-sub-pending').textContent = summary.pending_requests
-      ? adminText('Pending requests: :count', { count: summary.pending_requests })
+      ? adminText('Not yet released')
       : adminText('No pending requests');
     document.getElementById('dash-sub-incidents').textContent = summary.open_incidents
-      ? adminText('Open incident reports: :count', { count: summary.open_incidents })
-      : adminText('No incidents filed');
+      ? adminText('Open, under review or referred')
+      : adminText('No open incident reports');
 
     const activity = payload.recent_activity || [];
     dashboardActivityItems = activity;
@@ -138,12 +161,16 @@ async function refreshDashboardStats() {
     renderDashboardActivity();
     renderDashboardCertificateChart(payload.certificate_requests || {});
     const previous = new Map(NOTIFICATIONS.map(item => [item.id, item.read]));
-    NOTIFICATIONS.splice(0, NOTIFICATIONS.length, ...activity.map((item, activityIndex) => ({
-      id: item.detail + item.occurred_at, title: item.title, detail: item.detail, time: item.time,
-      read: previous.get(item.detail + item.occurred_at) || false, dot: 'var(--blue-400)',
-      screen: item.type === 'incident' ? 'incidents' : item.type === 'application' ? 'records' : 'certificates',
-      activityIndex,
-    })));
+    const storedRead = readNotificationState();
+    NOTIFICATIONS.splice(0, NOTIFICATIONS.length, ...activity.map((item, activityIndex) => {
+      const id = notificationKey(`${item.type}|${item.record_id ?? ''}|${item.title}|${item.occurred_at}`);
+      return {
+        id, type: item.type, title: item.title, detail: item.detail, time: item.time,
+        read: previous.get(id) || storedRead.has(id),
+        screen: item.type === 'incident' ? 'incidents' : item.type === 'application' ? 'records' : 'certificates',
+        activityIndex,
+      };
+    }));
     renderNotifications(); updateNotifBadge();
     return true;
 
@@ -385,21 +412,18 @@ async function openDashboardActivity(index) {
   showScreen('certificates', findNavItem('certificates'));
   const search = document.getElementById('cert-search');
   if (search) {
-    search.value = activity.reference || activity.detail.split(' ')[0];
-    filterCertBoard(search.value);
-    openViewCertReq(activity.reference || activity.detail.split(' ')[0]);
+    const reference = activity.reference || activity.detail.split(' ')[0];
+    search.value = reference;
+    await filterCertBoard(reference);
+    openViewCertReq(reference);
   }
 }
 
 function refreshPopulationStats() {
   const total = totalPopulation();
-  const households = Number(DEMOGRAPHIC_SUMMARY?.households?.total_households || 0);
   document.querySelectorAll('[data-target="4812"]').forEach(el => {
     el.dataset.target = total;
     el.textContent = total.toLocaleString();
-  });
-  document.querySelectorAll('.stat-sub').forEach(el => {
-    if (el.textContent.includes('Registered households')) el.textContent = `Registered households: ${households.toLocaleString()}`;
   });
 }
 
@@ -503,10 +527,8 @@ function syncPurokSelects(selectedValue = '') {
 function openAddPurok() {
   const modal = document.getElementById('modal-purok');
   if (modal) delete modal.dataset.editKey;
-  const nameEl = document.getElementById('purok-name');
   const labelEl = document.getElementById('purok-label');
   const colorEl = document.getElementById('purok-color');
-  if (nameEl) { nameEl.value = ''; nameEl.disabled = false; }
   if (labelEl) { labelEl.value = ''; labelEl.disabled = false; }
   if (colorEl) colorEl.value = '#22C55E';
   const title = modal?.querySelector('.modal-title');
@@ -516,16 +538,34 @@ function openAddPurok() {
   openModal('modal-purok');
 }
 
+const submitLocks = new Set();
+
+/**
+ * Run a save once at a time: a second click while the request is in flight does nothing, and the button
+ * shows it is busy. Prevents duplicate records from a double-click or a slow connection.
+ */
+async function runSubmitOnce(key, buttonId, task) {
+  if (submitLocks.has(key)) return undefined;
+  submitLocks.add(key);
+  const button = document.getElementById(buttonId);
+  if (button) { button.disabled = true; button.setAttribute?.('aria-busy', 'true'); }
+  try {
+    return await task();
+  } finally {
+    submitLocks.delete(key);
+    if (button) { button.disabled = false; button.removeAttribute?.('aria-busy'); }
+  }
+}
+
 async function savePurok() {
-  const key = document.getElementById('purok-name')?.value.trim();
+  return runSubmitOnce('purok', 'purok-save-button', savePurokRecord);
+}
+
+async function savePurokRecord() {
   const name = document.getElementById('purok-label')?.value.trim();
   const color = document.getElementById('purok-color')?.value || '#22C55E';
-  const errors = {};
-  if (!key) errors['purok-name'] = [adminText('Enter a purok ID / key.')];
-  if (!name) errors['purok-label'] = [adminText('Enter a purok display name.')];
-
-  if (Object.keys(errors).length) {
-    window.FormFeedback?.showErrors(errors);
+  if (!name) {
+    window.FormFeedback?.showErrors({ 'purok-label': [adminText('Enter a purok display name.')] });
     return;
   }
 
@@ -549,7 +589,23 @@ async function savePurok() {
   }
 }
 
+/** 'loading' | 'loaded' | 'failed': lets purok panels tell "still loading" and "could not load" apart from "no data". */
+let purokLoadState = 'loading';
+let purokLoadError = null;
+
+/**
+ * Message for a panel that depends on the purok list, or null when the list has data to show.
+ * Distinguishes loading, a failed load (with retry) and a barangay that has no puroks yet.
+ */
+function purokPanelState() {
+  if (PUROK_DATA.length > 0) return null;
+  if (purokLoadState === 'failed') return `<div class="dashboard-empty resident-table-error">${listErrorMarkup(purokLoadError, 'loadPuroks()', 'Purok data could not be loaded.')}</div>`;
+  if (purokLoadState === 'loading') return `<div class="dashboard-empty" role="status">${escapeText(adminText('Loading purok data…'))}</div>`;
+  return `<div class="dashboard-empty">${escapeText(adminText('No puroks have been added yet.'))}</div>`;
+}
+
 async function loadPuroks() {
+  purokLoadState = 'loading';
   try {
     const response = await fetch('/staff/puroks', {
       credentials: 'same-origin',
@@ -570,15 +626,41 @@ async function loadPuroks() {
       fourPsCount: Number(purok.four_ps_count || 0)
     })));
     DEMOGRAPHIC_SUMMARY = payload.demographics;
+    purokLoadState = 'loaded';
+    purokLoadError = null;
     syncPurokSelects();
     renderDemographics();
     renderDashPurokBreakdown();
     return true;
   } catch (error) {
     console.error('Purok loading failed:', error);
-    showToast(error.message || 'Unable to load demographics.', 'red');
+    purokLoadState = 'failed';
+    purokLoadError = error;
+    renderDashPurokBreakdown();
+    renderPurokCards();
+    if (PUROK_DATA.length === 0) {
+      // Without puroks the required Purok field cannot be filled: say so in the field instead of leaving it blank.
+      document.querySelectorAll('#res-purok').forEach(select => {
+        select.innerHTML = '';
+        const option = document.createElement('option');
+        option.value = '';
+        option.disabled = true;
+        option.selected = true;
+        option.textContent = adminText('Puroks could not be loaded. Close and reopen this form to try again.');
+        select.appendChild(option);
+      });
+    }
+    showToast(requestErrorMessage(error, 'Unable to load demographics.'), 'red');
     return false;
   }
+}
+
+/** The resident form needs the purok list; retry loading it when an earlier load failed. */
+async function ensurePuroksLoaded(selected = '') {
+  if (PUROK_DATA.length > 0) return true;
+  const loaded = await loadPuroks();
+  if (loaded) syncPurokSelects(selected);
+  return loaded;
 }
 
 async function refreshDemographics() {
@@ -594,15 +676,32 @@ loadCustomPuroks();
 // ═══════════════════════════════════════
 // CERTIFICATE TYPES
 // ═══════════════════════════════════════
+// Fees are not listed here: they come from the server (App\CertificateType, window.CERTIFICATE_FEES).
 const CERTIFICATE_TYPES = [
-  { id: 'RVC', label: 'Registered Voter Certification', icon: '', fee: 'PHP 25.00', days: 'Confirm with barangay' },
-  { id: 'BC',   label: 'Barangay Clearance',        icon: '', fee: 'PHP 25.00',  days: '1 day' },
-  { id: 'CR',   label: 'Certificate of Residency',  icon: '', fee: 'PHP 25.00',  days: '1 day' },
-  { id: 'CI',   label: 'Certificate of Indigency',  icon: '', fee: 'Free',       days: '1 day' },
-  { id: 'BID',  label: 'Barangay ID',               icon: '', fee: 'PHP 100.00', days: '3-5 days' },
-  { id: 'CTFJ', label: 'First Time Jobseeker',      icon: '', fee: 'Free',       days: '1 day' },
-  { id: 'BBC',  label: 'Business Clearance',        icon: '', fee: 'PHP 200.00+',days: '3-5 days' },
+  { id: 'RVC',  label: 'Registered Voter Certification', icon: '', days: 'Confirm with barangay' },
+  { id: 'BC',   label: 'Barangay Clearance',        icon: '', days: '1 day' },
+  { id: 'CR',   label: 'Certificate of Residency',  icon: '', days: '1 day' },
+  { id: 'CI',   label: 'Certificate of Indigency',  icon: '', days: '1 day' },
+  { id: 'BID',  label: 'Barangay ID',               icon: '', days: '3-5 days' },
+  { id: 'CTFJ', label: 'First Time Jobseeker',      icon: '', days: '1 day' },
+  { id: 'BBC',  label: 'Business Clearance',        icon: '', days: '3-5 days' },
 ];
+
+/** The server's fee entry for a certificate name; tolerant of case, spacing and "Job Seeker". */
+function certificateFee(type) {
+  const normalize = text => String(text || '').trim().toLowerCase().replace(/\s+/g, ' ').replace('job seeker', 'jobseeker');
+  const fees = window.CERTIFICATE_FEES || {};
+  const key = Object.keys(fees).find(name => normalize(name) === normalize(type));
+  return key ? fees[key] : null;
+}
+
+/** "PHP 25.00", "Free", or for a fee the barangay has not confirmed "PHP 200.00 (not yet confirmed)". */
+function certificateFeeText(type) {
+  const fee = certificateFee(type);
+  if (!fee) return '—';
+  const amount = Number(fee.amount) === 0 ? 'Free' : `PHP ${Number(fee.amount).toFixed(2)}`;
+  return fee.confirmed ? amount : `${amount} (${adminText('not yet confirmed')})`;
+}
 
 // ═══════════════════════════════════════
 // RFID TAGS — DOCUMENT/FOLDER TRACKING (no rfid in resident record)
@@ -657,7 +756,7 @@ function toggleTheme() {
   if (label) label.textContent = actionLabel;
   if (themeButton) { themeButton.setAttribute('aria-label', actionLabel); themeButton.title = actionLabel; }
   refreshDashboardPieTheme();
-  showToast(isLightMode ? 'Light mode na!' : 'Dark mode na!', 'green');
+  showToast(isLightMode ? 'Light mode is on.' : 'Dark mode is on.', 'green');
 }
 
 function changeFontSize(dir) {
@@ -725,6 +824,7 @@ function showScreen(id, el, updateHistory = true) {
   if (id === 'request-records' && typeof loadRestrictions === 'function') void loadRestrictions(1);
   if (id === 'certificates') {
     renderCertKanban();
+    void loadCertBoard({ poll: true });
     const badge = document.getElementById('cert-nav-badge');
     if (badge) { badge.textContent = '0'; badge.style.display = 'none'; }
   }
@@ -930,10 +1030,8 @@ applyAccessControl(currentUserAccess);
 
 // Update user display in sidebar if element exists
 const userNameEl = document.getElementById('sidebar-user-name');
-const userRoleEl = document.getElementById('sidebar-user-role');
 
 if (userNameEl) userNameEl.textContent = name || 'Staff';
-if (userRoleEl) userRoleEl.textContent = role || '';
 
 startClock();
 
@@ -1028,6 +1126,12 @@ let dashboardPurokDataSignature = null;
 function renderDashPurokBreakdown() {
   const container = document.getElementById('dash-purok-breakdown');
   if (!container) return;
+  const panelState = purokPanelState();
+  if (panelState) {
+    container.innerHTML = panelState;
+    dashboardPurokDataSignature = null;
+    return;
+  }
   syncPurokSelects();
   const countByPurok = {};
   RESIDENTS.forEach(r => { countByPurok[r.purok] = (countByPurok[r.purok] || 0) + 1; });
@@ -1067,8 +1171,8 @@ function renderDashPurokBreakdown() {
   const interpretation = document.getElementById('dash-purok-interpretation');
   if (interpretation) {
     interpretation.textContent = highest && total > 0
-      ? `${highest.label} has the largest registered population: ${highest.count.toLocaleString()} of ${total.toLocaleString()} residents (${Math.round(highest.count / total * 100)}%).`
-      : 'Purok interpretation will appear when resident records are available.';
+      ? adminText(':purok has the largest registered population: :count of :total residents (:percent%).', { purok: highest.label, count: highest.count.toLocaleString(), total: total.toLocaleString(), percent: Math.round(highest.count / total * 100) })
+      : adminText('Purok interpretation will appear when resident records are available.');
   }
 }
 
@@ -1371,54 +1475,18 @@ function printCert(code) {
   const req = CERT_REQUESTS.find(r => r.code === code);
   if (!req) return;
 
-  const priceMap = {
-    'registered voter certification': 25,
-    'barangay clearance': 25,
-    'certificate of residency': 25,
-    'certificate of indigency': 0,
-    'barangay id': 100,
-    'first time jobseeker': 0,
-    'business clearance': 200
-  };
-
-  const normalizeType = (text) =>
-    (text || '')
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, ' ')
-      .replace('job seeker', 'jobseeker');
-
-  const requestType = normalizeType(req.type);
-  const amount = priceMap[requestType] ?? 0;
-
   document.getElementById('print-document-request-id').value = req.id || '';
   document.getElementById('print-certificate-type').value = req.type || '';
   document.getElementById('print-resident-name').value = req.name || '';
   document.getElementById('print-purpose').value = req.purpose || '';
-  document.getElementById('print-amount-paid').value =
-    amount === 0 ? 'FREE' : `PHP ${amount.toFixed(2)}`;
+  document.getElementById('print-amount-paid').value = certificateFeeText(req.type);
 
   openModal('modal-print-release');
 }
 
-const MANUAL_CERTIFICATE_FEES = {
-  'Registered Voter Certification': 25,
-  'Barangay Clearance': 25,
-  'Certificate of Residency': 25,
-  'Certificate of Indigency': 0,
-  'Barangay ID': 100,
-  'First Time Jobseeker': 0,
-  'Business Clearance': 200
-};
-
 function updateManualCertificateFee() {
-  const certificateType = document.getElementById('manual-certificate-type')?.value;
   const feeInput = document.getElementById('manual-certificate-fee');
-  const amount = MANUAL_CERTIFICATE_FEES[certificateType] ?? 0;
-
-  if (feeInput) {
-    feeInput.value = amount === 0 ? 'FREE' : `PHP ${amount.toFixed(2)}`;
-  }
+  if (feeInput) feeInput.value = certificateFeeText(document.getElementById('manual-certificate-type')?.value);
 }
 
 async function issueManualCertificate(event) {
@@ -1506,6 +1574,33 @@ function filterIssuedCertificates() {
   issuedCertificatesSearchTimer = setTimeout(() => refreshIssuedCertificates(1), 250);
 }
 
+/**
+ * Error text for a failed list or panel load. A network failure surfaces in the browser as a bare
+ * "Failed to fetch" TypeError, which means nothing to staff; server messages (validation, permission) are kept.
+ */
+function requestErrorMessage(error, fallback = 'The records could not be loaded. Please try again.') {
+  if (error instanceof TypeError || /failed to fetch|networkerror|load failed/i.test(String(error?.message || ''))) {
+    return adminText('Could not reach the server. Check your connection, then try again.');
+  }
+  return adminText(error?.message || fallback);
+}
+
+/** After a failed load, show "—" instead of a 0 the server never reported (counts already loaded are kept). */
+function markStatsUnavailable(ids) {
+  ids.forEach(id => {
+    const element = document.getElementById(id);
+    if (element && (element.textContent.trim() === '0' || element.textContent.trim() === '')) {
+      element.textContent = '—';
+      element.setAttribute?.('aria-label', adminText('Not available'));
+    }
+  });
+}
+
+/** A list error message with a Retry button that re-runs the given loader call (a trusted, fixed string). */
+function listErrorMarkup(error, retryCall, fallback) {
+  return `<span>${escapeText(requestErrorMessage(error, fallback))}</span> <button type="button" class="btn btn-sm list-retry" onclick="${retryCall}">${escapeText(adminText('Try again'))}</button>`;
+}
+
 async function refreshIssuedCertificates(page = issuedCertificatesPage) {
   if (!hasStaffPermission('documents.view')) return;
   const tbody = document.getElementById('issued-certificates-tbody');
@@ -1529,21 +1624,43 @@ async function refreshIssuedCertificates(page = issuedCertificatesPage) {
     renderIssuedCertificates(payload.data, payload);
   } catch (error) {
     if (version !== issuedCertificatesRequestVersion) return;
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#EF4444;">${escapeText(error.message || 'Unable to load issued certificates.')}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="resident-table-message resident-table-error">${listErrorMarkup(error, 'refreshIssuedCertificates()', 'Unable to load issued certificates.')}</td></tr>`;
   }
 }
 
-function renderIssuedCertificatesPagination(meta) {
-  const container = document.getElementById('issued-certificates-pagination');
+/**
+ * Render the shared list pager: a "Showing a–b of N items" summary and Previous/Next buttons that call
+ * the named global page loader. Empty lists render nothing; single-page lists keep only the summary.
+ */
+function renderPager(containerId, { page = 1, lastPage = 1, total = 0, perPage = 15, noun = ['record', 'records'], loader }) {
+  const container = document.getElementById(containerId);
   if (!container) return;
-  const total = Number(meta?.total) || 0;
-  const current = Number(meta?.current_page) || 1;
-  const last = Number(meta?.last_page) || 1;
-  container.innerHTML = `
-    <span class="resident-page-summary">${total.toLocaleString()} certificate${total === 1 ? '' : 's'}</span>
-    <button class="btn btn-xs" type="button" ${current <= 1 ? 'disabled' : ''} onclick="refreshIssuedCertificates(${current - 1})">Previous</button>
-    <span>Page ${current} of ${last}</span>
-    <button class="btn btn-xs" type="button" ${current >= last ? 'disabled' : ''} onclick="refreshIssuedCertificates(${current + 1})">Next</button>`;
+  const count = Number(total) || 0;
+  const last = Math.max(1, Number(lastPage) || 1);
+  const current = Math.min(Math.max(1, Number(page) || 1), last);
+  container.setAttribute?.('role', 'navigation');
+  container.setAttribute?.('aria-label', 'Pagination');
+  if (count === 0) {
+    container.innerHTML = '';
+    return;
+  }
+  const from = (current - 1) * perPage + 1;
+  const to = Math.min(current * perPage, count);
+  const summary = `<span class="resident-page-summary">Showing ${from.toLocaleString()}–${to.toLocaleString()} of ${count.toLocaleString()} <span>${count === 1 ? noun[0] : noun[1]}</span></span>`;
+  if (last <= 1) {
+    container.innerHTML = summary;
+    return;
+  }
+  container.innerHTML = `${summary}
+    <span class="list-pager-controls">
+      <button class="btn btn-xs" type="button" ${current <= 1 ? 'disabled' : ''} onclick="${loader}(${current - 1})">Previous</button>
+      <span class="list-pager-status" aria-live="polite">Page ${current} of ${last}</span>
+      <button class="btn btn-xs" type="button" ${current >= last ? 'disabled' : ''} onclick="${loader}(${current + 1})">Next</button>
+    </span>`;
+}
+
+function renderIssuedCertificatesPagination(meta) {
+  renderPager('issued-certificates-pagination', { page: meta?.current_page, lastPage: meta?.last_page, total: meta?.total, perPage: Number(meta?.per_page) || 10, noun: ['certificate', 'certificates'], loader: 'refreshIssuedCertificates' });
 }
 
 function renderIssuedCertificates(certificates, meta = null) {
@@ -1560,13 +1677,13 @@ function renderIssuedCertificates(certificates, meta = null) {
   }
 
   certificates.forEach(certificate => {
-    const issuedDate = certificate.issued_at
-      ? new Date(certificate.issued_at).toLocaleString('en-PH')
-      : '—';
+    const issuedAt = certificate.issued_at ? new Date(certificate.issued_at) : null;
+    const issuedDate = issuedAt ? issuedAt.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+    const issuedTime = issuedAt ? issuedAt.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' }) : '';
     const fee = Number(certificate.amount_paid) > 0
       ? `PHP ${Number(certificate.amount_paid).toFixed(2)}`
-      : 'FREE';
-    const source = String(certificate.source || 'onsite').toLowerCase();
+      : 'Free';
+    const source =String(certificate.source || 'onsite').toLowerCase();
     const sourceBadgeClass = source === 'online' ? 'badge-purple' : 'badge-gray';
     const row = document.createElement('tr');
 
@@ -1576,9 +1693,9 @@ function renderIssuedCertificates(certificates, meta = null) {
       <td>${escapeText(certificate.certificate_type)}</td>
       <td><span class="badge ${sourceBadgeClass}">${escapeText(source.toUpperCase())}</span></td>
       <td>${escapeText(fee)}</td>
-      <td>${escapeText(issuedDate)}</td>
+      <td class="issued-date">${escapeText(issuedDate)}<small>${escapeText(issuedTime)}</small></td>
       <td>${escapeText(certificate.issued_by || 'Barangay Staff')}</td>
-      <td><div style="display:flex;gap:5px;"><button data-action-permission="documents.print" class="btn btn-xs btn-green issued-reprint"> Reprint</button><button class="btn btn-xs issued-verify"> Verify</button></div></td>`;
+      <td><div class="resident-actions"><button type="button" data-action-permission="documents.print" class="btn btn-xs issued-reprint">Reprint</button><button type="button" class="btn btn-xs issued-verify">Verify</button></div></td>`;
 
     row.querySelector('.issued-reprint')?.addEventListener('click', () => {
       window.open(certificate.print_url, '_blank');
@@ -1626,72 +1743,63 @@ function legacyRenderUsers() {
 }
 
 // ═══════════════════════════════════════
-// PUBLIC PORTAL
-// ═══════════════════════════════════════
-let selectedCertType = null;
-function showPublicPortal() {
-  document.getElementById('public-portal').classList.add('show');
-  document.getElementById('portal-confirm').classList.remove('show');
-  selectedCertType = null;
-  document.querySelectorAll('.cert-type-btn').forEach(b => b.classList.remove('selected'));
-  document.getElementById('portal-form').style.display = 'none';
-  document.getElementById('portal-cert-grid').style.display = 'grid';
-  document.getElementById('portal-btn-next').style.display = 'none';
-  const emailInput = document.getElementById('portal-email');
-  if (emailInput) emailInput.value = '';
-  const attInput = document.getElementById('portal-attachment');
-  if (attInput) attInput.value = '';
-  const attPreview = document.getElementById('portal-attachment-preview');
-  if (attPreview) { attPreview.style.display = 'none'; attPreview.innerHTML = ''; }
-}
-function hidePublicPortal() { document.getElementById('public-portal').classList.remove('show'); }
-function selectCertType(id) {
-  selectedCertType = id;
-  document.querySelectorAll('.cert-type-btn').forEach(b => b.classList.remove('selected'));
-  event.currentTarget.classList.add('selected');
-  document.getElementById('portal-btn-next').style.display = 'block';
-}
-function portalNext() {
-  if (!selectedCertType) { showToast(adminText('Pumili muna ng uri ng dokumento.'), 'red'); return; }
-  document.getElementById('portal-cert-grid').style.display = 'none';
-  document.getElementById('portal-btn-next').style.display = 'none';
-  document.getElementById('portal-form').style.display = 'block';
-  const ct = CERTIFICATE_TYPES.find(c => c.id === selectedCertType);
-  document.getElementById('portal-selected-cert').textContent = ct ? ct.label : '';
-}
-function submitPortalRequest() {
-  const name = document.getElementById('portal-name')?.value?.trim();
-  const addr = document.getElementById('portal-address')?.value?.trim();
-  const purpose = document.getElementById('portal-purpose')?.value?.trim();
-  if (!name || !addr || !purpose) { showToast(adminText('Kumpletuhin ang lahat ng required fields.'), 'red'); return; }
-  const code = 'REQ-' + (7743 + Math.floor(Math.random() * 100));
-  document.getElementById('portal-confirm-code').textContent = code;
-  document.getElementById('portal-form').style.display = 'none';
-  document.getElementById('portal-confirm').classList.add('show');
-  const ct = CERTIFICATE_TYPES.find(c => c.id === selectedCertType);
-  CERT_REQUESTS.unshift({ code, name, type: ct?.label || 'Certificate', requested: new Date().toLocaleString('en-PH'), status: 'Processing', via: 'Online' });
-  renderCertRequests();
-  const badge = document.getElementById('cert-nav-badge');
-  if (badge) { const n = (parseInt(badge.textContent) || 0) + 1; badge.textContent = n; badge.style.display = 'flex'; }
-  showToast(`Online request ${code} submitted!`, 'green');
-}
-
-// ═══════════════════════════════════════
 // MODALS
 // ═══════════════════════════════════════
-let modalTrigger = null;
+/** Open dialogs in the order they were opened, each with the control that opened it. */
+const modalStack = [];
+
+/** The dialog the user is looking at: the most recently opened one that is still shown. */
+function topOpenModal() {
+  for (let index = modalStack.length - 1; index >= 0; index--) {
+    const element = document.getElementById(modalStack[index].id);
+    if (element?.classList.contains('show')) return element;
+  }
+
+  return [...document.querySelectorAll('.modal-overlay.show')].pop() ?? null;
+}
+
 function openModal(id) {
   const element = document.getElementById(id);
   if (!element) return;
-  modalTrigger = document.activeElement;
+  const existing = modalStack.findIndex(entry => entry.id === id);
+  if (existing >= 0) modalStack.splice(existing, 1);
+  const active = document.activeElement;
+  // A handler may disable its button before opening a confirmation, which drops focus to <body>: fall back to that button.
+  modalStack.push({ id, trigger: active && active !== document.body ? active : lastFocusedControl });
   window.PasswordVisibility?.hide(element);
   element.classList.add('show');
-  element.setAttribute('role', 'dialog');
-  element.setAttribute('aria-modal', 'true');
-  const title = element.querySelector('.modal-title');
-  if (title) { if (!title.id) title.id = id + '-title'; element.setAttribute('aria-labelledby', title.id); }
-  element.querySelector('input:not([type="hidden"]), select, textarea, button, [tabindex="0"]')?.focus();
+  syncModalLayers();
+  // A dialog that already declares its own role (e.g. the confirmation alertdialog) must not be wrapped in a second one.
+  if (!element.querySelector('[role="dialog"], [role="alertdialog"]')) {
+    element.setAttribute('role', 'dialog');
+    element.setAttribute('aria-modal', 'true');
+    const title = element.querySelector('.modal-title');
+    if (title) { if (!title.id) title.id = id + '-title'; element.setAttribute('aria-labelledby', title.id); }
+  }
+  // Start on the first usable field; only fall back to buttons (the X comes first in the markup) when there is none.
+  const usable = control => !control.disabled && control.tabIndex >= 0 && control.getClientRects?.().length;
+  const firstField = [...(element.querySelectorAll?.('input:not([type="hidden"]), select, textarea') ?? [])].find(usable);
+  (firstField || element.querySelector('button, [tabindex="0"]'))?.focus();
 }
+
+/**
+ * Keep the open dialogs layered in the order they were opened, not in source order: the newest dialog sits on top,
+ * every dialog below it and the page behind them are inert (no clicks, no Tab focus), and the page does not scroll.
+ */
+const MODAL_BASE_LAYER = 800;
+let lastFocusedControl = null;
+document.addEventListener('focusin', event => { lastFocusedControl = event.target; }, true);
+function syncModalLayers() {
+  const open = modalStack.map(entry => document.getElementById(entry.id)).filter(element => element && (element.classList?.contains?.('show') ?? true));
+  open.forEach((element, index) => {
+    if (element.style) element.style.zIndex = String(MODAL_BASE_LAYER + index + 1);
+    element.inert = index !== open.length - 1;
+  });
+  const app = document.getElementById('app');
+  if (app) app.inert = open.length > 0;
+  document.body?.classList?.toggle('modal-open', open.length > 0);
+}
+
 let confirmActionResolver = null;
 
 /**
@@ -1721,7 +1829,7 @@ function confirmAction(message, { title = 'Please confirm', confirmLabel = 'Conf
     button.onclick = () => {
       if (requireSupervisorPassword && !passwordInput?.value) {
         if (passwordError) {
-          passwordError.textContent = 'Ilagay ang password ng active Barangay Captain o Super Admin para magpatuloy.';
+          passwordError.textContent = adminText('Enter the password of the active Barangay Captain or Super Admin to continue.');
           passwordError.hidden = false;
         }
         passwordInput?.focus();
@@ -1732,6 +1840,7 @@ function confirmAction(message, { title = 'Please confirm', confirmLabel = 'Conf
     };
     openModal('modal-confirm-action');
     if (requireSupervisorPassword) passwordInput?.focus();
+    else if (danger) document.getElementById('confirm-action-cancel')?.focus?.();
     else button.focus?.();
   });
 }
@@ -1746,7 +1855,43 @@ function settleConfirmAction(confirmed) {
   resolve?.(confirmed);
 }
 
-function closeModal(id) { if (id === 'modal-confirm-action') { settleConfirmAction(false); const passwordInput = document.getElementById('confirm-action-super-admin-password'); if (passwordInput) passwordInput.value = ''; const usernameInput = document.getElementById('confirm-action-username'); if (usernameInput) usernameInput.value = ''; const passwordError = document.getElementById('confirm-action-password-error'); if (passwordError) { passwordError.hidden = true; passwordError.textContent = ''; } } if (id === 'modal-view-resident') document.getElementById('resident-activation-result')?.replaceChildren(); if (id === 'modal-resident' || id === 'modal-incident') dashboardActionOrigin = false; const el = document.getElementById(id); if (el) { window.PasswordVisibility?.hide(el); el.classList.remove('show'); } modalTrigger?.focus(); }
+function closeModal(id) { if (id === 'modal-confirm-action') { settleConfirmAction(false); const passwordInput = document.getElementById('confirm-action-super-admin-password'); if (passwordInput) passwordInput.value = ''; const usernameInput = document.getElementById('confirm-action-username'); if (usernameInput) usernameInput.value = ''; const passwordError = document.getElementById('confirm-action-password-error'); if (passwordError) { passwordError.hidden = true; passwordError.textContent = ''; } } if (id === 'modal-view-resident') document.getElementById('resident-activation-result')?.replaceChildren(); if (id === 'modal-resident' || id === 'modal-incident') dashboardActionOrigin = false; const el = document.getElementById(id);
+  if (el) {
+    window.PasswordVisibility?.hide(el);
+    el.classList.remove('show');
+    if (el.style) el.style.zIndex = '';
+    el.inert = false;
+  }
+  const index = modalStack.findLastIndex(entry => entry.id === id);
+  const closed = index >= 0 ? modalStack.splice(index, 1)[0] : null;
+  // Re-enable the dialog underneath before returning focus to the control that opened this one.
+  syncModalLayers();
+  restoreModalFocus(closed?.trigger);
+}
+
+/**
+ * Return focus to the control that opened a dialog. Handlers that disable their button while awaiting a
+ * confirmation re-enable it a tick later, so a disabled opener is retried once before falling back to the
+ * dialog that is now on top.
+ */
+function restoreModalFocus(trigger, retried = false) {
+  if (trigger && trigger.isConnected !== false && !trigger.disabled) {
+    trigger.focus?.();
+    return;
+  }
+  if (trigger?.disabled && !retried) {
+    setTimeout(() => restoreModalFocus(trigger, true), 0);
+    return;
+  }
+  // A list that re-rendered while the dialog was open replaced the opener: focus its replacement (same id or action).
+  if (trigger && trigger.isConnected === false) {
+    const action = trigger.getAttribute?.('onclick');
+    const replacement = (trigger.id && document.getElementById(trigger.id))
+      || (action && [...document.querySelectorAll('[onclick]')].find(element => element.getAttribute('onclick') === action));
+    if (replacement && !topOpenModal()) { replacement.focus?.(); return; }
+  }
+  topOpenModal()?.querySelector('button:not([disabled]), input, select, textarea, [tabindex="0"]')?.focus?.();
+}
 document.addEventListener('click', function(e) { if (e.target.classList.contains('modal-overlay')) closeModal(e.target.id); });
 
 // ═══════════════════════════════════════
@@ -1768,8 +1913,7 @@ function showToast(msg, type) {
   const toast = document.createElement('div');
   toast.className = 'toast' + (type ? ' ' + type : '');
   toast.dataset.toastKey = toastKey;
-  const icons = { green: '', red: '', '': 'ℹ' };
-  toast.innerHTML = `<span style="font-size:15px;">${icons[type] || 'ℹ'}</span><span>${escapeText(msg)}</span>`;
+  toast.innerHTML = `${type === 'green' || type === 'red' ? '' : '<span style="font-size:15px;" aria-hidden="true">ℹ</span>'}<span>${escapeText(msg)}</span>`;
   wrap.appendChild(toast);
   setTimeout(() => {
     toast.style.opacity = '0';
@@ -1929,13 +2073,13 @@ function legacyRenderRequestRecords(nameFilter = '', statusFilter = '') {
   });
 }
 
-function toggleRRCard(header) {
-  const card = header.closest('.rr-resident-card');
-  const panelEl = card.querySelector('.rr-requests-panel');
-  const chevron = header.querySelector('.rr-chevron');
-  const isOpen = panelEl.style.display !== 'none';
-  panelEl.style.display = isOpen ? 'none' : 'block';
-  if (chevron) chevron.textContent = isOpen ? '▼' : '▲';
+/** Show or hide a resident's request history; the toggle button reports its state to assistive technology. */
+function toggleRRCard(toggle) {
+  const panel = document.getElementById(toggle.getAttribute('aria-controls'));
+  if (!panel) return;
+  const open = toggle.getAttribute('aria-expanded') !== 'true';
+  toggle.setAttribute('aria-expanded', String(open));
+  panel.hidden = !open;
 }
 
 function advanceRequestRecord(code, nextStatus) {
@@ -1976,26 +2120,63 @@ function elig_onResidentChange() {
   });
 }
 
+/** Residents found by the checker's search box, or null while the default list is shown. */
+let eligibilitySearchResults = null;
+let eligibilitySearchTimer = null;
+let eligibilitySearchVersion = 0;
+
+/**
+ * Rebuild the checker's resident list. Without an explicit preselection the current choice is kept,
+ * because the list is rebuilt whenever resident data reloads, including while the checker is open.
+ */
 function populateEligResidentDropdown(preselect) {
   const sel = document.getElementById('elig-resident-select');
   if (!sel) return;
+  const keep = preselect ?? sel.value;
   sel.innerHTML = '<option value="">— Pumili ng Residente —</option>';
-  const availableResidents = manualResidentsById.size > 0
+  const availableResidents = eligibilitySearchResults ?? (manualResidentsById.size > 0
     ? [...manualResidentsById.values()].map(residentFromApi)
-    : RESIDENTS;
+    : RESIDENTS);
   availableResidents.forEach(r => {
     const opt = document.createElement('option');
     opt.value = r.id;
     const age = calcAge(r.dob);
     opt.textContent = `${r.name} (${r.id}) — ${age} yrs${age >= 60 ? ' ' : ''}`;
-    if (preselect && r.id === preselect) opt.selected = true;
+    if (keep && r.id === keep) opt.selected = true;
     sel.appendChild(opt);
   });
+}
+
+/** Search all residents by name or resident ID, so the checker is not limited to the first 100 listed. */
+function searchEligibilityResidents() {
+  clearTimeout(eligibilitySearchTimer);
+  eligibilitySearchTimer = setTimeout(async () => {
+    const term = document.getElementById('elig-resident-search')?.value.trim() ?? '';
+    const version = ++eligibilitySearchVersion;
+    if (term === '') {
+      eligibilitySearchResults = null;
+      populateEligResidentDropdown();
+      return;
+    }
+    try {
+      const response = await fetch(`/staff/case-residents?${new URLSearchParams({ search: term, per_page: '100' })}`, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
+      const payload = await response.json();
+      if (version !== eligibilitySearchVersion) return;
+      if (!response.ok) throw new Error(payload?.message || 'Unable to search residents.');
+      eligibilitySearchResults = (payload.data || []).map(residentFromApi);
+      populateEligResidentDropdown();
+    } catch (error) {
+      if (version === eligibilitySearchVersion) showToast(error.message || 'Unable to search residents.', 'red');
+    }
+  }, 250);
 }
 
 function openEligibilityForResident(residentId) {
   closeModal('modal-view-resident');
   closeModal('modal-rr-detail');
+  const search = document.getElementById('elig-resident-search');
+  if (search) search.value = '';
+  eligibilitySearchResults = null;
   populateEligResidentDropdown(residentId);
   document.getElementById('elig-result').style.display = 'none';
   document.getElementById('elig-proceed-btn').style.display = 'none';
@@ -2003,6 +2184,8 @@ function openEligibilityForResident(residentId) {
 }
 
 function findEligibilityResident(residentNumber) {
+  const searched = eligibilitySearchResults?.find(item => item.id === residentNumber);
+  if (searched?.databaseId) return searched;
   const resident = RESIDENTS.find(item => item.id === residentNumber);
   if (resident?.databaseId) return resident;
 
@@ -2123,39 +2306,70 @@ window.addEventListener('DOMContentLoaded', () => { console.log('SmartBrgy Anabu
 // NOTIFICATIONS SYSTEM
 // ═══════════════════════════════════════
 const NOTIFICATIONS = [];
+const NOTIFICATION_CATEGORIES = {
+  incident: 'Incident report',
+  application: 'Resident application',
+  request: 'Document request',
+};
+
+/** Short non-reversible key, so browser storage never holds request names or incident details. */
+function notificationKey(text) {
+  let hash = 0x811c9dc5;
+  for (const character of String(text)) {
+    hash ^= character.codePointAt(0);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash.toString(36);
+}
+
+function notificationStorageKey() {
+  return `smartbrgy.notifications.read.${window.AUTHENTICATED_USER?.id ?? 'staff'}`;
+}
+
+/** Read state is a per-browser convenience only; it is not shared between staff or devices. */
+function readNotificationState() {
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(notificationStorageKey()) || '[]');
+    return new Set(Array.isArray(stored) ? stored.map(String) : []);
+  } catch (_) {
+    return new Set();
+  }
+}
+
+function saveNotificationState() {
+  try {
+    const read = NOTIFICATIONS.filter(item => item.read).map(item => item.id).slice(0, 200);
+    window.localStorage.setItem(notificationStorageKey(), JSON.stringify(read));
+  } catch (_) {}
+}
 
 function renderNotifications() {
   const list = document.getElementById('notif-list');
   if (!list) return;
-  list.innerHTML = NOTIFICATIONS.length ? '' : '<div class="civic-empty">No recent notifications.</div>';
+  list.innerHTML = NOTIFICATIONS.length ? '' : `<div class="civic-empty">${escapeText(adminText('No recent notifications.'))}</div>`;
   NOTIFICATIONS.forEach(n => {
-    const div = document.createElement('div');
-    div.className = 'notif-item' + (n.read ? '' : ' unread');
-    div.setAttribute('role', 'button');
-    div.setAttribute('tabindex', '0');
-    const openTarget = () => {
+    const category = NOTIFICATION_CATEGORIES[n.type] || NOTIFICATION_CATEGORIES.request;
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = `notif-item notif-type-${n.type || 'request'}${n.read ? '' : ' unread'}`;
+    item.onclick = () => {
       n.read = true;
+      saveNotificationState();
       updateNotifBadge();
       renderNotifications();
-      toggleNotifPanel();
+      toggleNotifPanel(false);
       void openDashboardActivity(n.activityIndex);
     };
-    div.onclick = openTarget;
-    div.onkeydown = event => {
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        openTarget();
-      }
-    };
-    div.innerHTML = `
-      <div class="notif-dot" style="background:${n.dot};margin-top:5px;flex-shrink:0;"></div>
-      <div style="flex:1;">
-        <div class="notif-body"><strong>${escapeText(n.title)}</strong></div>
-        <div class="notif-body" style="margin-top:2px;">${escapeText(n.detail)}</div>
-        <div class="notif-time">${escapeText(n.time)}</div>
-      </div>
-      ${!n.read ? '<div style="width:7px;height:7px;border-radius:50%;background:var(--blue-400);flex-shrink:0;margin-top:4px;"></div>' : ''}`;
-    list.appendChild(div);
+    item.innerHTML = `
+      <span class="notif-dot" aria-hidden="true"></span>
+      <span class="notif-content">
+        <span class="notif-category">${escapeText(adminText(category))}</span>
+        <span class="notif-body"><strong>${escapeText(n.title)}</strong></span>
+        <span class="notif-body notif-detail">${escapeText(n.detail)}</span>
+        <span class="notif-time">${escapeText(n.time)}</span>
+      </span>
+      ${n.read ? '' : `<span class="notif-unread-dot"><span class="sr-only">${escapeText(adminText('Unread'))}</span></span>`}`;
+    list.appendChild(item);
   });
 }
 
@@ -2163,17 +2377,30 @@ function updateNotifBadge() {
   const unread = NOTIFICATIONS.filter(n => !n.read).length;
   const badge = document.getElementById('notif-count');
   if (badge) { badge.textContent = unread; badge.style.display = unread ? 'flex' : 'none'; }
+  document.getElementById('notif-chip')?.setAttribute('aria-label', unread
+    ? adminText('Notifications, :count unread', { count: unread })
+    : adminText('Notifications'));
+  const markAll = document.getElementById('notif-mark-all');
+  if (markAll) markAll.disabled = unread === 0;
 }
 
-function toggleNotifPanel() {
+function toggleNotifPanel(force) {
   const panel = document.getElementById('notif-panel');
   if (!panel) return;
-  panel.classList.toggle('open');
-  if (panel.classList.contains('open')) { renderNotifications(); }
+  const open = typeof force === 'boolean' ? force : !panel.classList.contains('open');
+  panel.classList.toggle('open', open);
+  const chip = document.getElementById('notif-chip');
+  chip?.setAttribute('aria-expanded', String(open));
+  if (open) {
+    renderNotifications();
+    panel.querySelector('.notif-panel-close')?.focus?.();
+  }
 }
 
 function markAllNotifsRead() {
+  if (!NOTIFICATIONS.some(n => !n.read)) return;
   NOTIFICATIONS.forEach(n => n.read = true);
+  saveNotificationState();
   updateNotifBadge(); renderNotifications();
   showToast('All notifications marked as read.', 'green');
 }
@@ -2182,8 +2409,15 @@ document.addEventListener('click', function(e) {
   const panel = document.getElementById('notif-panel');
   const chip = document.getElementById('notif-chip');
   if (panel && panel.classList.contains('open') && !panel.contains(e.target) && !chip.contains(e.target)) {
-    panel.classList.remove('open');
+    toggleNotifPanel(false);
   }
+});
+
+document.addEventListener('keydown', event => {
+  const panel = document.getElementById('notif-panel');
+  if (event.key !== 'Escape' || !panel?.classList.contains('open') || topOpenModal()) return;
+  toggleNotifPanel(false);
+  document.getElementById('notif-chip')?.focus?.();
 });
 
 // ═══════════════════════════════════════
@@ -2203,27 +2437,30 @@ function renderSpecialGroups() {
     const meta = SPECIAL_GROUP_META[key];
     return { ...meta, key, count, pct: total ? ((count / total) * 100).toFixed(1) : '0.0' };
   });
-  container.innerHTML = '<div class="special-groups-grid">' +
-    groups.map(g => `
-      <div class="special-group-card" role="button" tabindex="0" data-group="${escapeText(g.key)}" onclick="openSpecialGroupRecords(this.dataset.group)" onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openSpecialGroupRecords(this.dataset.group); }" aria-label="${escapeText(g.label)}: ${g.count.toLocaleString()}. View in Resident Records" style="border-color:${g.border};background:linear-gradient(135deg,${g.bg},var(--bg-card));">
-        <div class="sg-header">
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span style="font-size:20px;">${g.icon}</span>
-            <div>
-              <div class="sg-label">${g.label}</div>
-              <div class="sg-sub">${g.sub}</div>
-            </div>
-          </div>
-        </div>
-        <div class="sg-count" style="color:${g.color};">${g.count.toLocaleString()}</div>
-        <div class="sg-pct">${g.pct}% ${adminText('of population')}</div>
-        <div class="sg-link">${adminText('View in Resident Records')} &rarr;</div>
-      </div>`).join('') + '</div>';
+  // Rows open the filtered Resident Records list only for staff who may view resident records.
+  const canOpenRecords = hasStaffPermission('records.view');
+  const largest = Math.max(...groups.map(g => g.count), 1);
+  container.innerHTML = `${canOpenRecords ? '<p class="special-group-hint">Select a group to see its residents in Resident Records.</p>' : ''}<ul class="special-group-list">` +
+    groups.sort((first, second) => second.count - first.count).map(g => {
+      const tag = canOpenRecords ? 'button' : 'div';
+      const action = canOpenRecords ? ` type="button" data-group="${escapeText(g.key)}" onclick="openSpecialGroupRecords(this.dataset.group)"` : '';
+      return `<li><${tag} class="special-group-row"${action} style="--group-color:${g.color};">
+        <span class="special-group-dot" aria-hidden="true"></span>
+        <span class="special-group-name"><strong>${escapeText(g.label)}</strong><small>${escapeText(g.sub)}</small></span>
+        <span class="special-group-meter" aria-hidden="true"><span style="width:${(g.count / largest * 100).toFixed(0)}%;"></span></span>
+        <span class="special-group-count"><strong>${g.count.toLocaleString()}</strong><small>${g.pct}%</small></span>
+      </${tag}></li>`;
+    }).join('') + '</ul>';
 }
 
 function renderPurokCards() {
   const grid = document.getElementById('demo-purok-grid');
   if (!grid) return;
+  const panelState = purokPanelState();
+  if (panelState) {
+    grid.innerHTML = panelState;
+    return;
+  }
   syncPurokSelects();
   grid.innerHTML = '';
   const countByPurok = {};
@@ -2238,6 +2475,7 @@ function renderPurokCards() {
     if (groups.includes('4Ps Beneficiary')) beneByPurok[r.purok] = (beneByPurok[r.purok] || 0) + 1;
   });
   const total = Number(DEMOGRAPHIC_SUMMARY?.total ?? RESIDENTS.length);
+  const canOpenHouseholds = hasStaffPermission('households.view') || hasStaffPermission('records.view');
   PUROK_DATA.forEach(p => {
     const count = Number(p.residentsCount ?? countByPurok[p.key] ?? 0);
     const pct = total > 0 ? ((count / total) * 100).toFixed(1) : '0.0';
@@ -2245,17 +2483,19 @@ function renderPurokCards() {
     const seniors = Number(p.seniorCount ?? seniorByPurok[p.key] ?? 0);
     const pwd = Number(p.pwdCount ?? pwdByPurok[p.key] ?? 0);
     const bene = Number(p.fourPsCount ?? beneByPurok[p.key] ?? 0);
+    // Opening a purok lists its households by name, so the card is a button only for staff who may see households.
+    const opensHouseholds = canOpenHouseholds && p.databaseId;
     grid.innerHTML += `
-      <div class="demo-purok-card" role="button" tabindex="0" onclick="openPurokHouseholds(${Number(p.databaseId)})" onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openPurokHouseholds(${Number(p.databaseId)}); }" aria-label="${escapeText(p.label)}: ${Number(p.householdsCount || 0)} households">
+      <div class="demo-purok-card" ${opensHouseholds ? `role="button" tabindex="0" onclick="openPurokHouseholds(${Number(p.databaseId)})" onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openPurokHouseholds(${Number(p.databaseId)}); }"` : ''} aria-label="${escapeText(p.label)}: ${Number(p.householdsCount || 0)} households">
         <div class="demo-purok-name"> ${escapeText(p.label)}</div>
         <div class="demo-purok-pop" style="color:${p.color};">${count.toLocaleString()}</div>
         <div class="demo-purok-pct">${pct}% of total population</div>
-        <div class="demo-purok-pct">${Number(p.householdsCount || 0)} households</div>
+        <div class="demo-purok-pct">${Number(p.householdsCount || 0).toLocaleString()} <span>${Number(p.householdsCount || 0) === 1 ? 'household' : 'households'}</span></div>
         <div class="demo-purok-bar" style="margin:8px 0 6px;"><div class="progress-bar"><div class="progress-fill" style="width:${barPct}%;background:${p.color};"></div></div></div>
         <div class="sg-tags">
-          ${seniors > 0 ? `<span class="demo-purok-tag" style="color:var(--senior-color);border-color:rgba(245,158,11,0.25);"> ${seniors} Seniors</span>` : ''}
-          ${pwd > 0 ? `<span class="demo-purok-tag" style="color:#A78BFA;border-color:rgba(139,92,246,0.25);"> ${pwd} PWD</span>` : ''}
-          ${bene > 0 ? `<span class="demo-purok-tag" style="color:#EF4444;border-color:rgba(239,68,68,0.25);"> ${bene} 4Ps</span>` : ''}
+          ${seniors > 0 ? `<span class="demo-purok-tag is-senior"> ${seniors} Seniors</span>` : ''}
+          ${pwd > 0 ? `<span class="demo-purok-tag is-pwd"> ${pwd} PWD</span>` : ''}
+          ${bene > 0 ? `<span class="demo-purok-tag is-4ps"> ${bene} 4Ps</span>` : ''}
         </div>
       </div>`;
   });
@@ -2265,10 +2505,11 @@ function renderAgeDistribution() {
   const list = document.getElementById('age-distribution-list');
   if (!list) return;
   const groups = [
-    { label: '0–12 (Children)',        color: '#60A5FA',             min: 0,  max: 12  },
-    { label: '13–17 (Youth)',           color: 'var(--green-400)',    min: 13, max: 17  },
-    { label: '18–35 (Young Adults)',    color: 'var(--green-500)',    min: 18, max: 35  },
-    { label: '36–59 (Middle Age)',      color: 'var(--blue-400)',     min: 36, max: 59  },
+    // Ordered age bands use one blue scale, light to dark; seniors keep the Senior Citizens amber.
+    { label: '0–12 (Children)',        color: '#93c5fd',             min: 0,  max: 12  },
+    { label: '13–17 (Youth)',           color: '#60a5fa',             min: 13, max: 17  },
+    { label: '18–35 (Young Adults)',    color: '#3b82f6',             min: 18, max: 35  },
+    { label: '36–59 (Middle Age)',      color: '#1d4ed8',             min: 36, max: 59  },
     { label: '60+ (Senior Citizens)',   color: 'var(--senior-color)', min: 60, max: 999 },
   ];
   const counts = groups.map(g => ({ ...g, count: 0 }));
@@ -2287,16 +2528,29 @@ function renderAgeDistribution() {
   }
   const total = Number(DEMOGRAPHIC_SUMMARY?.total ?? RESIDENTS.length);
   const maxCount = Math.max(...counts.map(g => g.count), 1);
+  const male = Number(DEMOGRAPHIC_SUMMARY?.households?.male ?? DEMOGRAPHIC_SUMMARY?.male ?? 0);
+  const female = Number(DEMOGRAPHIC_SUMMARY?.households?.female ?? DEMOGRAPHIC_SUMMARY?.female ?? 0);
+  const bySex = male + female;
   list.innerHTML = counts.map(g => {
     const pct = total > 0 ? ((g.count / total) * 100).toFixed(1) : '0.0';
     const barPct = (g.count / maxCount * 100).toFixed(0);
     return `
     <div class="age-bar-item">
       <div class="age-bar-label">${g.label}</div>
-      <div style="flex:1;"><div class="progress-bar"><div class="progress-fill" style="width:${barPct}%;background:${g.color};"></div></div></div>
-      <div class="age-bar-count" style="color:${g.color};">${g.count.toLocaleString()} <span style="font-size:10px;font-weight:400;color:var(--text-muted);">(${pct}%)</span></div>
+      <div class="age-bar-track" aria-hidden="true"><div class="age-bar-fill" style="width:${barPct}%;background:${g.color};"></div></div>
+      <div class="age-bar-count">${g.count.toLocaleString()} <span>(${pct}%)</span></div>
     </div>`;
-  }).join('');
+  }).join('') + (bySex > 0 ? `
+    <div class="demo-sex-split">
+      <div class="demo-sex-split-title">By sex</div>
+      <div class="demo-sex-split-bar" role="img" aria-label="Male ${male.toLocaleString()}, Female ${female.toLocaleString()}">
+        <span class="is-male" style="width:${(male / bySex * 100).toFixed(1)}%;"></span><span class="is-female" style="width:${(female / bySex * 100).toFixed(1)}%;"></span>
+      </div>
+      <div class="demo-sex-split-legend">
+        <span><i class="is-male" aria-hidden="true"></i>Male <strong>${male.toLocaleString()}</strong> (${(male / bySex * 100).toFixed(1)}%)</span>
+        <span><i class="is-female" aria-hidden="true"></i>Female <strong>${female.toLocaleString()}</strong> (${(female / bySex * 100).toFixed(1)}%)</span>
+      </div>
+    </div>` : '');
 }
 
 function renderDemographicsStats() {
@@ -2332,10 +2586,11 @@ function renderDemographics() {
 // CERTIFICATES KANBAN
 // ═══════════════════════════════════════
 const CERT_LANES = [
-  { id: 'online',     label: 'Online Requests', color: '#A78BFA',          icon: '', next: 'In Progress',    nextLabel: '▶ Process',        nextClass: 'btn-primary' },
-  { id: 'processing', label: 'Processing',       color: '#F59E0B',          icon: '', next: 'Ready to Print', nextLabel: '▶ Ready to Print', nextClass: 'btn-primary' },
-  { id: 'ready',      label: 'Ready to Print',   color: 'var(--blue-400)', icon: '', next: 'Completed',      nextLabel: ' Print & Release',nextClass: 'btn-green'   },
-  { id: 'completed',  label: 'Released / Done',  color: 'var(--green-500)',icon: '', next: null,              nextLabel: null,               nextClass: ''            },
+  // Lane colours match the summary cards above the board: online purple, in progress amber, ready blue, released green.
+  { id: 'online',     label: 'New online requests', color: '#7c3aed', icon: '', next: 'In Progress',    nextLabel: 'Process',         nextClass: 'btn-primary' },
+  { id: 'processing', label: 'Processing',          color: '#b7791f', icon: '', next: 'Ready to Print', nextLabel: 'Mark ready',      nextClass: 'btn-primary' },
+  { id: 'ready',      label: 'Ready to Print',      color: '#2563eb', icon: '', next: 'Completed',      nextLabel: 'Print & release', nextClass: 'btn-green'   },
+  { id: 'completed',  label: 'Released / Done',     color: '#16845a', icon: '', next: null,              nextLabel: null,              nextClass: ''            },
 ];
 
 function getLane(status, via) {
@@ -2444,64 +2699,109 @@ async function advanceCertStatus(code, newStatus, event) {
   }
 }
 
-function renderCertKanban(filter = '') {
+/**
+ * The board loads each lane from the paginated request list instead of embedding every request in the page:
+ * a lane shows its newest requests first and "Show more" loads further; search runs on the server so older
+ * records are still found. Totals and the summary cards come from server counts, not from the loaded cards.
+ */
+const CERT_BOARD_PAGE_SIZE = 25;
+const CERT_BOARD_MAX_PER_LANE = 100;
+const certBoardLaneLimits = { online: CERT_BOARD_PAGE_SIZE, processing: CERT_BOARD_PAGE_SIZE, ready: CERT_BOARD_PAGE_SIZE, completed: CERT_BOARD_PAGE_SIZE };
+const certBoardMatching = { online: 0, processing: 0, ready: 0, completed: 0 };
+let certBoardCounts = null;
+let certBoardSearch = '';
+let certBoardLoadedSearch = null;
+let certBoardState = 'idle';
+let certBoardError = null;
+let certBoardLoadVersion = 0;
+let certBoardInFlight = null;
+let certBoardSearchTimer = null;
 
-  // Convert real Laravel/MySQL requests into the format
-  // expected by the original SmartBrgy Kanban UI
-  if (Array.isArray(window.LARAVEL_DOCUMENT_REQUESTS)) {
+/** Convert one request from the server into the card format the board uses. */
+function boardRequestFromServer(r) {
+  let uiStatus = 'Pending';
+  if (r.status === 'processing') uiStatus = 'In Progress';
+  if (r.status === 'approved' || r.status === 'ready_for_release') uiStatus = 'Ready to Print';
+  if (r.status === 'released') uiStatus = 'Completed';
 
-    const laravelRequests = window.LARAVEL_DOCUMENT_REQUESTS
-      .filter(r => r.status !== 'rejected')
-      .map(r => {
+  return {
+    id: r.id,
+    code: r.reference_code,
+    name: r.full_name,
+    type: r.document_type,
+    status: uiStatus,
+    via: r.source === 'online' ? 'Online' : 'Walk-in',
+    requested: r.created_at ? new Date(r.created_at).toLocaleString('en-PH') : null,
+    dateOfBirth: r.date_of_birth,
+    address: r.address,
+    email: r.email,
+    purpose: r.purpose,
+    businessName: r.business_name,
+    attachment: r.attachment_path,
+    remarks: r.remarks,
+    hidden: false,
+    laravelStatus: r.status
+  };
+}
 
-        let uiStatus = 'Pending';
+function isCertificatesScreenActive() {
+  return Boolean(document.getElementById('screen-certificates')?.classList.contains('active'));
+}
 
-        if (r.status === 'processing') {
-          uiStatus = 'In Progress';
-        }
+/** Load every lane (one page each) and the lane counts. A poll is skipped while a load is still running. */
+async function loadCertBoard({ poll = false } = {}) {
+  if (!hasStaffPermission('documents.view')) return;
+  if (poll && certBoardInFlight) return certBoardInFlight;
 
-        if (
-          r.status === 'approved' ||
-          r.status === 'ready_for_release'
-        ) {
-          uiStatus = 'Ready to Print';
-        }
+  const version = ++certBoardLoadVersion;
+  const search = certBoardSearch;
+  if (certBoardState === 'idle') certBoardState = 'loading';
 
-        if (r.status === 'released') {
-          uiStatus = 'Completed';
-        }
+  const load = (async () => {
+    try {
+      const payloads = await Promise.all(CERT_LANES.map(async (lane, index) => {
+        const query = new URLSearchParams({ lane: lane.id, per_page: String(certBoardLaneLimits[lane.id]) });
+        if (search) query.set('search', search);
+        if (index === 0) query.set('with_counts', '1');
+        const response = await fetch(`/staff/document-requests/list?${query}`, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload?.message || 'Unable to load certificate requests.');
+        return payload;
+      }));
+      if (version !== certBoardLoadVersion) return;
 
-        return {
-          id: r.id,
-          code: r.reference_code,
-          name: r.full_name,
-          type: r.document_type,
-          status: uiStatus,
-          via: r.source === 'online' ? 'Online' : 'Walk-in',
+      CERT_REQUESTS.splice(0, CERT_REQUESTS.length, ...payloads.flatMap(payload => (payload.data || []).map(boardRequestFromServer)));
+      CERT_LANES.forEach((lane, index) => { certBoardMatching[lane.id] = Number(payloads[index].total || 0); });
+      certBoardCounts = payloads[0].counts || null;
+      certBoardLoadedSearch = search;
+      certBoardState = 'ready';
+      certBoardError = null;
+      renderCertKanban();
+    } catch (error) {
+      if (version !== certBoardLoadVersion) return;
+      console.error('Certificate board refresh failed:', error);
+      if (certBoardState !== 'ready') {
+        certBoardState = 'error';
+        certBoardError = error;
+        renderCertKanban();
+      }
+    }
+  })();
 
-          requested: r.created_at
-            ? new Date(r.created_at).toLocaleString('en-PH')
-            : null,
-          dateOfBirth: r.date_of_birth,
-          address: r.address,
-          email: r.email,
-          purpose: r.purpose,
-          businessName: r.business_name,
-          attachment: r.attachment_path,
-          remarks: r.remarks,
-
-          hidden: false,
-          laravelStatus: r.status
-        };
-      });
-
-    CERT_REQUESTS.splice(
-      0,
-      CERT_REQUESTS.length,
-      ...laravelRequests
-    );
+  certBoardInFlight = load;
+  try {
+    await load;
+  } finally {
+    if (certBoardInFlight === load) certBoardInFlight = null;
   }
+}
 
+function showMoreCertLane(laneId) {
+  certBoardLaneLimits[laneId] = Math.min(CERT_BOARD_MAX_PER_LANE, (certBoardLaneLimits[laneId] || CERT_BOARD_PAGE_SIZE) + CERT_BOARD_PAGE_SIZE);
+  return loadCertBoard();
+}
+
+function renderCertKanban() {
   const board = document.getElementById('cert-kanban-board');
 
   if (!board) return;
@@ -2525,7 +2825,8 @@ function renderCertKanban(filter = '') {
 
     if (r.hidden) return;
 
-    const searchValue = (filter || '').toLowerCase().trim();
+    // The server already filtered by this search; filtering here too keeps the board in step while the next load runs.
+    const searchValue = certBoardSearch.toLowerCase();
 
     if (
       searchValue &&
@@ -2546,6 +2847,17 @@ function renderCertKanban(filter = '') {
   CERT_LANES.forEach(lane => {
 
     const items = grouped[lane.id] || [];
+    const laneTotal = certBoardState === 'ready' && !certBoardSearchPending() ? Math.max(certBoardMatching[lane.id], items.length) : items.length;
+    const emptyMessage = certBoardState === 'error'
+      ? listErrorMarkup(certBoardError, 'loadCertBoard()', 'Unable to load certificate requests.')
+      : escapeText(adminText(certBoardState === 'ready' ? 'No requests' : 'Loading requests...'));
+    let laneFooter = '';
+    if (laneTotal > items.length) {
+      const showing = escapeText(adminText('Showing :shown of :total', { shown: items.length, total: laneTotal }));
+      laneFooter = certBoardLaneLimits[lane.id] < CERT_BOARD_MAX_PER_LANE
+        ? `<div class="cert-lane-more"><span>${showing}</span><button type="button" class="btn btn-xs" onclick="showMoreCertLane('${lane.id}')">${escapeText(adminText('Show more'))}</button></div>`
+        : `<div class="cert-lane-more"><span>${showing}</span><span>${escapeText(adminText('Search by name or reference code to find older requests, or open the full request list.'))}</span><a class="btn btn-xs" href="/staff/document-requests/list">${escapeText(adminText('Full request list'))}</a></div>`;
+    }
 
     const laneEl = document.createElement('div');
 
@@ -2567,7 +2879,7 @@ function renderCertKanban(filter = '') {
             border-color:var(--border);
           "
         >
-          ${items.length}
+          ${laneTotal}
         </span>
 
       </div>
@@ -2576,15 +2888,8 @@ function renderCertKanban(filter = '') {
         items.length === 0
 
         ? `
-          <div
-            style="
-              text-align:center;
-              color:var(--text-muted);
-              font-size:11px;
-              padding:18px 0;
-            "
-          >
-            No requests
+          <div class="cert-lane-empty" ${certBoardState === 'error' ? 'role="alert"' : ''}>
+            ${emptyMessage}
           </div>
         `
 
@@ -2622,65 +2927,30 @@ function renderCertKanban(filter = '') {
 
               : '';
 
-            const viewBtn = `
-              <button
-                class="btn btn-xs cert-card-action cert-card-view"
-                onclick="openViewCertReq('${r.code}')"
-              >
-                 View
-              </button>
-            `;
-
             const rejectBtn = hasStaffPermission('documents.process') && lane.id !== 'completed' && r.via === 'Online'
-              ? `
-                <button data-action-permission="documents.process"
-                  class="btn btn-xs btn-danger cert-card-action"
-                  onclick="openRejectRequest(${Number(r.id)}, '${r.code}', event)"
-                >
-                  Reject
-                </button>
-              `
+              ? `<button type="button" data-action-permission="documents.process" class="btn btn-xs btn-danger-outline cert-card-action" onclick="openRejectRequest(${Number(r.id)}, '${r.code}', event)">Reject</button>`
               : '';
-
-            const actionCount = [proceedBtn, viewBtn, rejectBtn].filter(Boolean).length;
-            const btnRow = `
-              <div class="cert-card-actions" data-action-count="${actionCount}">
-                ${proceedBtn}
-                ${viewBtn}
-                ${rejectBtn}
-              </div>
-            `;
+            // The requester's name opens the details (it stretches over the card); a separate View button is only
+            // shown when the card has no other action, so each card needs at most one row of buttons.
+            const viewBtn = proceedBtn || rejectBtn
+              ? ''
+              : `<button type="button" class="btn btn-xs cert-card-action cert-card-view" onclick="openViewCertReq('${r.code}')">View</button>`;
+            const actionCount = [proceedBtn, rejectBtn, viewBtn].filter(Boolean).length;
+            const btnRow = `<div class="cert-card-actions" data-action-count="${actionCount}">${proceedBtn}${rejectBtn}${viewBtn}</div>`;
 
             return `
               <div class="cert-card">
-
                 <div class="cert-card-heading">
-                  <div class="cert-card-name">
-                    ${escapeText(r.name)}
-                  </div>
+                  <button type="button" class="cert-card-name cert-card-open" onclick="openViewCertReq('${r.code}')" aria-label="${escapeText(adminText('View request :code for :name', { code: r.code, name: r.name }))}">${escapeText(r.name)}</button>
                 </div>
-
-                <div class="cert-card-type">
-                  ${escapeText(r.type)}
-                </div>
-
-                <div class="cert-card-code">
-                  ${escapeText(r.code)}
-                </div>
-
-                <div
-                  class="cert-card-meta"
-                  style="margin-top:5px;"
-                >
-                  ${viaBadge}
-                </div>
-
+                <div class="cert-card-type">${escapeText(r.type)}</div>
+                <div class="cert-card-meta"><span class="cert-card-code">${escapeText(r.code)}</span>${viaBadge}</div>
                 ${btnRow}
-
               </div>
             `;
           }).join('')
       }
+      ${laneFooter}
     `;
 
     board.appendChild(laneEl);
@@ -2703,39 +2973,43 @@ function renderCertKanban(filter = '') {
 
   };
 
-  setCount(
-    'cert-today',
-    CERT_REQUESTS.filter(
-      r => r.status === 'Completed'
-    ).length
-  );
-
-  setCount(
-    'cert-pending',
-    CERT_REQUESTS.filter(
-      r => r.status === 'In Progress'
-    ).length
-  );
-
-  setCount(
-    'cert-ready',
-    CERT_REQUESTS.filter(
-      r => r.status === 'Ready to Print'
-    ).length
-  );
-
-  setCount(
-    'cert-online',
-    CERT_REQUESTS.filter(
-      r =>
-        r.via === 'Online' &&
-        !r.hidden
-    ).length
-  );
+  // Each card counts one board lane (all requests, not only the loaded ones), so the cards and the lanes agree.
+  if (certBoardState !== 'ready' || !certBoardCounts) return;
+  const laneCounts = certBoardCounts;
+  setCount('cert-today', laneCounts.completed);
+  setCount('cert-pending', laneCounts.processing);
+  setCount('cert-ready', laneCounts.ready);
+  setCount('cert-online', laneCounts.online);
 
 }
 
-function filterCertBoard(val) { renderCertKanban(val.toLowerCase()); }
+/** Certificate KPI cards: each counts one board lane; jump to that lane (they stack far down on small screens). */
+function showCertLane(laneId) {
+  const lane = document.querySelector(`#cert-kanban-board .cert-lane[data-lane-id="${laneId}"]`);
+  if (!lane) return;
+  revealKpiResults(lane);
+  lane.setAttribute('tabindex', '-1');
+  lane.focus({ preventScroll: true });
+}
+
+/** True while the search box holds text the server has not filtered by yet. */
+function certBoardSearchPending() {
+  return certBoardLoadedSearch !== certBoardSearch;
+}
+
+/** Filter the loaded cards at once, then ask the server so older matching requests appear too. */
+function filterCertBoard(val) {
+  certBoardSearch = String(val || '').trim();
+  clearTimeout(certBoardSearchTimer);
+  renderCertKanban();
+  return new Promise(resolve => {
+    certBoardSearchTimer = setTimeout(async () => {
+      certBoardSearchTimer = null;
+      await loadCertBoard();
+      resolve();
+    }, 250);
+  });
+}
 
 function openViewCertReq(code) {
   const r = CERT_REQUESTS.find(x => x.code === code);
@@ -2774,7 +3048,7 @@ function renderCertTypesList() {
   if (!container) return;
   container.innerHTML = `<table class="tbl cert-fees-table">
     <thead><tr><th>Document</th><th>Processing</th><th>Fee</th></tr></thead>
-    <tbody>${CERTIFICATE_TYPES.map(ct => `<tr><td><strong>${escapeText(ct.label)}</strong></td><td>${escapeText(ct.days)}</td><td class="cert-fee">${escapeText(ct.fee)}</td></tr>`).join('')}</tbody>
+    <tbody>${CERTIFICATE_TYPES.map(ct => `<tr><td><strong>${escapeText(ct.label)}</strong></td><td>${escapeText(ct.days)}</td><td class="cert-fee">${escapeText(certificateFeeText(ct.label))}</td></tr>`).join('')}</tbody>
   </table>`;
 }
 
@@ -2808,16 +3082,12 @@ function renderAuditLog() {
   setEl('astat-records', LIVE_AUDIT_LOGS.filter(l => l.type === 'record').length);
   setEl('astat-certs', LIVE_AUDIT_LOGS.filter(l => l.type === 'cert').length);
   setEl('astat-security', LIVE_AUDIT_LOGS.filter(l => l.type === 'security' || l.type === 'cabinet').length);
-  const showCount = document.getElementById('audit-showing-count');
   const pageCount = Math.max(1, Math.ceil(logs.length / AUDIT_PAGE_SIZE));
   auditCurrentPage = Math.min(auditCurrentPage, pageCount);
-  const firstItem = logs.length ? ((auditCurrentPage - 1) * AUDIT_PAGE_SIZE) + 1 : 0;
-  const lastItem = Math.min(auditCurrentPage * AUDIT_PAGE_SIZE, logs.length);
-  if (showCount) showCount.textContent = `Showing ${firstItem}–${lastItem} of ${logs.length} filtered events`;
   container.innerHTML = '';
-  renderAuditPagination(logs.length, pageCount);
+  renderPager('audit-pagination', { page: auditCurrentPage, lastPage: pageCount, total: logs.length, perPage: AUDIT_PAGE_SIZE, noun: ['event', 'events'], loader: 'goToAuditPage' });
   if (logs.length === 0) {
-    container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:32px 0;">No events match the current filter.</div>';
+    container.innerHTML = `<div class="resident-table-message">${LIVE_AUDIT_LOGS.length ? 'No events match the current filter.' : 'No audit events recorded yet.'}</div>`;
     return;
   }
   const pageLogs = logs.slice((auditCurrentPage - 1) * AUDIT_PAGE_SIZE, auditCurrentPage * AUDIT_PAGE_SIZE);
@@ -2868,31 +3138,20 @@ function auditCategoryLabel(type) {
   return ({ auth: 'Account', cert: 'Certificates', rfid: 'RFID', cabinet: 'Cabinet access', record: 'Records', incident: 'Incidents', security: 'Security' })[type] || 'Other';
 }
 
-function renderAuditPagination(total, pageCount) {
-  const container = document.getElementById('audit-pagination');
-  if (!container) return;
-  container.replaceChildren();
-  if (total <= AUDIT_PAGE_SIZE) return;
+function goToAuditPage(page) {
+  auditCurrentPage = page;
+  renderAuditLog();
+  const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  document.getElementById('screen-audit')?.scrollIntoView({ block: 'start', behavior: reduceMotion ? 'auto' : 'smooth' });
+}
 
-  const createButton = (label, page, disabled = false) => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'btn btn-sm';
-    button.textContent = label;
-    button.disabled = disabled;
-    button.addEventListener('click', () => {
-      auditCurrentPage = page;
-      renderAuditLog();
-      document.getElementById('screen-audit')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
-    });
-    return button;
-  };
-
-  container.append(createButton('Previous', auditCurrentPage - 1, auditCurrentPage === 1));
-  const pageLabel = document.createElement('span');
-  pageLabel.textContent = `Page ${auditCurrentPage} of ${pageCount}`;
-  pageLabel.setAttribute('aria-live', 'polite');
-  container.append(pageLabel, createButton('Next', auditCurrentPage + 1, auditCurrentPage === pageCount));
+/** Permission lists from a staff permission change, as readable text rather than raw JSON. */
+function auditAssignmentText(assignments) {
+  if (Array.isArray(assignments)) return assignments.length ? assignments.join(', ') : 'No permissions';
+  if (assignments && typeof assignments === 'object') {
+    return Object.entries(assignments).map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') || 'none' : value}`).join('\n');
+  }
+  return String(assignments ?? '');
 }
 
 function openAuditDetail(log) {
@@ -2900,19 +3159,19 @@ function openAuditDetail(log) {
   const subtitle = document.getElementById('audit-detail-subtitle');
   if (!fields || !subtitle) return;
 
+  const affected = log.target_staff_id ? `Staff account #${log.target_staff_id}` : (String(log.detail || '').match(/Record ID: ([^·]+)/)?.[1]?.trim() ?? 'Not recorded');
   const rows = [
     ['Category', auditCategoryLabel(log.type)],
-    ['Timestamp', log.time || 'Not recorded'],
+    ['Date and time', log.time || 'Not recorded'],
     ['Action', log.action || 'Not recorded'],
-    ['User / Source', log.user || 'System'],
-    ['Actor ID', log.actor_id ?? 'Not recorded'],
-    ['Target staff ID', log.target_staff_id ?? 'Not applicable'],
+    ['Performed by', log.user ? `${log.user}${log.actor_id ? ` (user #${log.actor_id})` : ''}` : 'System'],
+    ['Affected record', affected],
     ['Details', log.detail || 'No additional details recorded'],
   ];
-  if (log.before_assignments) rows.push(['Before', JSON.stringify(log.before_assignments, null, 2)]);
-  if (log.after_assignments) rows.push(['After', JSON.stringify(log.after_assignments, null, 2)]);
+  if (log.before_assignments) rows.push(['Permissions before', auditAssignmentText(log.before_assignments)]);
+  if (log.after_assignments) rows.push(['Permissions after', auditAssignmentText(log.after_assignments)]);
 
-  subtitle.textContent = `Audit event #${log.id}`;
+  subtitle.textContent = `Audit event #${log.id} · read-only record`;
   fields.replaceChildren();
   rows.forEach(([label, value]) => {
     const wrapper = document.createElement('div');
@@ -2926,10 +3185,10 @@ function openAuditDetail(log) {
   openModal('modal-audit-detail');
 }
 
-function filterAuditType(type, el) {
-  document.querySelectorAll('.audit-type-btn').forEach(b => b.classList.remove('active'));
-  if (el) el.classList.add('active');
-  auditCurrentType = type;
+function filterAuditType(type) {
+  auditCurrentType = type || 'all';
+  const select = document.getElementById('audit-category-filter');
+  if (select) select.value = auditCurrentType;
   auditCurrentPage = 1;
   renderAuditLog();
 }
@@ -2948,8 +3207,7 @@ function clearAuditFilter() {
   auditCurrentPage = 1;
   const s = document.getElementById('audit-search'); if (s) s.value = '';
   const d = document.getElementById('audit-date-filter'); if (d) d.value = '';
-  document.querySelectorAll('.audit-type-btn').forEach(b => b.classList.remove('active'));
-  document.querySelector('.audit-type-btn')?.classList.add('active');
+  const c = document.getElementById('audit-category-filter'); if (c) c.value = 'all';
   renderAuditLog();
 }
 
@@ -2959,7 +3217,7 @@ async function reloadAuditLog() {
     LIVE_AUDIT_LOGS.splice(0, LIVE_AUDIT_LOGS.length, ...payload.events);
     renderAuditLog();
   } catch (error) {
-    document.getElementById('audit-log-list').textContent = error.message;
+    document.getElementById('audit-log-list').innerHTML = `<div class="resident-table-message resident-table-error">${listErrorMarkup(error, 'reloadAuditLog()')}</div>`;
     showToast(error.message, 'red');
   }
 }
@@ -3006,50 +3264,77 @@ async function reloadUsers() {
     USERS.splice(0, USERS.length, ...payload.users);
     renderUsers();
   } catch (error) {
-    if (container) container.textContent = error.message;
-    showToast(error.message, 'red');
+    if (container) container.innerHTML = `<div class="card civic-empty resident-table-error">${listErrorMarkup(error, 'reloadUsers()')}</div>`;
+    markStatsUnavailable(['usr-total', 'usr-active', 'usr-suspended', 'usr-no-2fa']);
   }
+}
+
+/** Role names as personnel see them elsewhere in the workspace (account menu, exports). */
+function staffRoleLabel(user) {
+  if (user.is_super_admin) return 'Super Admin';
+  return { captain: 'Barangay Captain', admin: 'Barangay Admin', staff: 'Barangay Staff', viewer: 'View only' }[user.role] || user.role;
+}
+
+function staffRoleKey(user) {
+  return user.is_super_admin ? 'super_admin' : user.role;
+}
+
+function setUserStat(id, value) {
+  const element = document.getElementById(id);
+  if (!element) return;
+  element.textContent = value;
+  element.closest?.('.user-kpi')?.classList.toggle('is-zero', value === 0);
 }
 
 function renderUsers() {
   const container = document.getElementById('users-list-container');
   if (!container) return;
   const users = USERS.filter(user =>
-    (userRoleFilter === 'all' || user.role === userRoleFilter) &&
+    (userRoleFilter === 'all' || staffRoleKey(user) === userRoleFilter) &&
     (userStatusFilter === 'all' || (userStatusFilter === 'active' ? user.is_active : !user.is_active)) &&
-    (!userSearch || `${user.name} ${user.email} ${user.role} ${user.role === 'captain' ? 'barangay captain' : ''}`.toLowerCase().includes(userSearch))
+    (!userSearch || `${user.name} ${user.email} ${user.role} ${staffRoleLabel(user)} ${adminText(staffRoleLabel(user))}`.toLowerCase().includes(userSearch))
   );
-  const totalElement = document.getElementById('usr-total');
-  if (totalElement) totalElement.textContent = USERS.length;
-  document.getElementById('usr-active').textContent = USERS.filter(user => user.is_active).length;
-  document.getElementById('usr-suspended').textContent = USERS.filter(user => !user.is_active).length;
-  container.innerHTML = users.length ? users.map(user => `
-    <div class="user-card ${user.is_active ? '' : 'suspended'}" data-user-card-id="${Number(user.id)}" role="button" tabindex="0" aria-label="View details for ${escapeText(user.name)}">
-      <div class="user-avatar-lg">${escapeText(initials(user.name))}</div>
+  setUserStat('usr-total', USERS.length);
+  setUserStat('usr-active', USERS.filter(user => user.is_active).length);
+  setUserStat('usr-suspended', USERS.filter(user => !user.is_active).length);
+  setUserStat('usr-no-2fa', USERS.filter(user => user.is_active && !user.two_factor_confirmed_at).length);
+  const summary = document.getElementById('users-result-count');
+  if (summary) summary.textContent = adminText(users.length === 1 ? ':count account shown' : ':count accounts shown', { count: users.length });
+  const currentUserId = Number(window.AUTHENTICATED_USER?.id);
+  container.innerHTML = users.length ? users.map(user => {
+    const id = Number(user.id);
+    const name = escapeText(user.name);
+    const isSelf = id === currentUserId;
+    const canChangeAccess = !isSelf && !user.is_super_admin;
+    const canEdit = canEditUserAccount(user);
+    return `
+    <article class="user-card ${user.is_active ? '' : 'suspended'}" data-user-card-id="${id}">
+      <div class="user-avatar-lg user-avatar-${escapeText(staffRoleKey(user))}" aria-hidden="true">${escapeText(initials(user.name))}</div>
       <div class="user-info">
-        <div class="user-name">${escapeText(user.name)}</div>
+        <h3 class="user-name"><button type="button" class="user-card-open" onclick="openUserDetails(${id})" aria-label="${escapeText(adminText('View account details for :name', { name: user.name }))}">${name}</button>${isSelf ? `<span class="user-self-tag">${escapeText(adminText('You'))}</span>` : ''}</h3>
         <div class="user-role-tag">${escapeText(user.email)}</div>
-        <div class="user-badges"><span class="badge badge-blue">${escapeText(user.role === 'captain' ? 'Barangay Captain' : user.role)}</span>
-          ${user.is_super_admin ? '<span class="badge badge-green">Super Admin</span>' : ''}
+        <div class="user-badges">
+          <span class="badge user-role-badge user-role-${escapeText(staffRoleKey(user))}">${escapeText(adminText(staffRoleLabel(user)))}</span>
           <span class="badge ${user.is_active ? 'badge-green' : 'badge-red'}">${user.is_active ? 'Active' : 'Suspended'}</span>
-          <span class="badge badge-gray">${user.two_factor_confirmed_at ? '2FA enabled' : '2FA not configured'}</span>
+          <span class="badge ${user.two_factor_confirmed_at ? 'badge-gray' : 'badge-amber'}">${user.two_factor_confirmed_at ? '2FA enabled' : '2FA not configured'}</span>
         </div>
       </div>
-      <div class="user-actions"><button class="btn btn-primary" onclick="event.stopPropagation();openEditUser(${Number(user.id)})">Edit account</button>
-      ${Number(user.id) !== Number(window.AUTHENTICATED_USER.id) && !user.is_super_admin ? `<button class="btn" onclick="event.stopPropagation();setUserActive(${Number(user.id)}, ${!user.is_active})">${user.is_active ? 'Suspend' : 'Activate'}</button><button class="btn btn-danger" onclick="event.stopPropagation();deleteUser(${Number(user.id)})">Delete</button>` : ''}</div>
-    </div>`).join('') : '<div class="card civic-empty">No accounts match your filters.</div>';
-  container.querySelectorAll('[data-user-card-id]').forEach(card => {
-    card.addEventListener('click', event => {
-      if (!event.target.closest('button, a, input, select')) openUserDetails(Number(card.dataset.userCardId));
-    });
-    card.addEventListener('keydown', event => {
-      if (event.target !== card) return;
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        openUserDetails(Number(card.dataset.userCardId));
-      }
-    });
-  });
+      <div class="user-actions">
+        ${canEdit ? `<button type="button" class="btn" onclick="event.stopPropagation();openEditUser(${id})" aria-label="${escapeText(adminText('Edit account of :name', { name: user.name }))}">Edit</button>` : ''}
+        ${canChangeAccess ? `<button type="button" class="btn ${user.is_active ? 'user-action-suspend' : 'user-action-activate'}" onclick="event.stopPropagation();setUserActive(${id}, ${!user.is_active})" aria-label="${escapeText(adminText(user.is_active ? 'Suspend :name' : 'Activate :name', { name: user.name }))}">${user.is_active ? 'Suspend' : 'Activate'}</button><button type="button" class="btn btn-danger" onclick="event.stopPropagation();deleteUser(${id})" aria-label="${escapeText(adminText('Delete account of :name', { name: user.name }))}">Delete</button>` : ''}
+      </div>
+    </article>`;
+  }).join('') : '<div class="card civic-empty">No accounts match your filters.</div>';
+}
+
+/** User KPI cards count every personnel account, so search and role are cleared before the status filter is applied. */
+function showUserKpi(status) {
+  const set = (id, value) => { const element = document.getElementById(id); if (element) element.value = value; };
+  set('user-search', '');
+  set('user-role-filter', 'all');
+  set('user-status-filter', status);
+  filterUsers();
+  revealKpiResults(document.querySelector('#screen-users .user-directory'));
 }
 
 function filterUsers() {
@@ -3066,29 +3351,51 @@ function openUserDetails(id) {
 
   const cabinet = user.cabinet_access || null;
   const drawerAccessLabels = { none: 'No drawers assigned', drawer_1: 'Drawer 1', drawer_2: 'Drawer 2', all: 'All drawers' };
+  const enrollmentLabels = { enrolled: 'Enrolled', pending: 'Pending', not_started: 'Not started' };
+  const enrollment = status => (status ? enrollmentLabels[status] || String(status).replaceAll('_', ' ') : 'Not assigned');
+  const permissionLabels = new Map([...document.querySelectorAll('[data-staff-permission]')].map(input => [input.dataset.staffPermission, {
+    module: input.closest('fieldset')?.querySelector('legend')?.textContent.trim() || input.dataset.staffPermission.split('.')[0],
+    action: input.closest('label')?.textContent.trim() || input.dataset.staffPermission,
+  }]));
   const permissions = user.staff_permissions;
+  const groupedPermissions = new Map();
+  if (Array.isArray(permissions)) {
+    permissions.filter(item => typeof item === 'string').forEach(item => {
+      const { module, action } = permissionLabels.get(item) || { module: item.split('.')[0], action: item.split('.').slice(1).join('.') || item };
+      groupedPermissions.set(module, [...(groupedPermissions.get(module) || []), adminText(action)]);
+    });
+  }
   const permissionText = Array.isArray(permissions)
-    ? permissions.map(item => typeof item === 'string' ? item : item.label || item.name || '').filter(Boolean).join(', ')
+    ? [...groupedPermissions].map(([module, actions]) => `${adminText(module)}: ${actions.join(', ')}`).join('\n')
     : permissions && typeof permissions === 'object'
       ? Object.entries(permissions).filter(([, enabled]) => Boolean(enabled)).map(([name]) => name.replaceAll('_', ' ')).join(', ')
       : '';
-  const values = [
-    ['Name', user.name],
-    ['Email', user.email],
-    ['Role', user.is_super_admin ? 'Super Admin' : (user.role === 'captain' ? 'Barangay Captain' : user.role)],
-    ['Account status', user.is_active ? 'Active' : 'Suspended'],
-    ['Two-factor authentication', user.two_factor_confirmed_at ? 'Enabled' : 'Not configured'],
-    ['Created', user.created_at ? new Date(user.created_at).toLocaleString() : 'Not available'],
-    ['Staff access', permissionText || 'Role defaults'],
-    ['Cabinet access', cabinet ? (cabinet.is_active ? 'Enabled' : 'Disabled') : 'Not assigned'],
-    ['RFID enrollment', cabinet?.rfid_enrollment_status || 'Not assigned'],
-    ['Face enrollment', cabinet?.face_enrollment_status || 'Not assigned'],
-    ['Drawer access', drawerAccessLabels[cabinet?.drawer_access] || 'Not assigned'],
-    ['Raspberry Pi employee ID', cabinet?.rpi_employee_id || 'Not linked'],
+  const sections = [
+    ['Account', [
+      ['Role', staffRoleLabel(user)],
+      ['Account status', user.is_active ? 'Active' : 'Suspended'],
+      ['Two-factor authentication', user.two_factor_confirmed_at ? 'Enabled' : 'Not configured'],
+      ['Created', user.created_at ? new Date(user.created_at).toLocaleString() : 'Not available'],
+    ]],
+    ['Staff access', [
+      ['Assigned operations', user.role === 'staff' || user.is_super_admin ? (permissionText || 'No operations assigned') : 'Role defaults'],
+    ]],
+    ['Smart cabinet', [
+      ['Cabinet access', cabinet ? (cabinet.is_active ? 'Enabled' : 'Disabled') : 'Not assigned'],
+      ['Drawer access', drawerAccessLabels[cabinet?.drawer_access] || 'Not assigned'],
+      ['RFID enrollment', enrollment(cabinet?.rfid_enrollment_status)],
+      ['Face enrollment', enrollment(cabinet?.face_enrollment_status)],
+      ['Raspberry Pi employee ID', cabinet?.rpi_employee_id || 'Not linked'],
+    ]],
   ];
   document.getElementById('user-details-title').textContent = user.name;
   document.getElementById('user-details-subtitle').textContent = user.email;
-  fields.innerHTML = values.map(([label, value]) => `<div class="user-detail-field"><dt>${escapeText(label)}</dt><dd>${escapeText(String(value ?? 'Not available'))}</dd></div>`).join('');
+  fields.innerHTML = sections.map(([heading, values]) => `<section class="user-detail-section"><h3>${escapeText(adminText(heading))}</h3><dl class="user-detail-section-grid">${values.map(([label, value]) => `<div class="user-detail-field${label === 'Assigned operations' ? ' is-wide' : ''}"><dt>${escapeText(adminText(label))}</dt><dd>${escapeText(adminText(String(value ?? 'Not available')))}</dd></div>`).join('')}</dl></section>`).join('');
+  const editButton = document.getElementById('user-details-edit');
+  if (editButton) {
+    editButton.hidden = !canEditUserAccount(user);
+    editButton.onclick = () => { closeModal('modal-user-details'); openEditUser(Number(user.id)); };
+  }
   openModal('modal-user-details');
 }
 
@@ -3107,7 +3414,9 @@ function openAddUser() {
 
   document.getElementById('adduser-role').value = 'staff';
   document.getElementById('adduser-status').value = 'active';
+  lockUserCredentials(null);
   document.getElementById('adduser-password').required = true;
+  showUserResetLink(null);
 
   document.getElementById('adduser-cabinet-access').checked = false;
   document.getElementById('adduser-enrollment-status').style.display = 'none';
@@ -3116,15 +3425,57 @@ function openAddUser() {
 
   setStaffAssignments([]);
   document.getElementById('staff-access-preset').value = '';
+  showStaffPresetDescription('');
   toggleStaffAssignmentFields();
   document.getElementById('adduser-role').querySelectorAll('option:not([value=staff])').forEach(option => { option.disabled = true; option.hidden = true; });
   document.getElementById('adduser-modal-title').textContent = 'New user account';
   openModal('modal-adduser');
 }
 
+/** Only a Super Admin may change a Super Admin account; the server refuses everyone else (403). */
+function canEditUserAccount(user) {
+  return !user.is_super_admin || Boolean(window.AUTHENTICATED_USER?.is_super_admin);
+}
+
+/** The reset link goes to an existing, active account the viewer may edit; a Super Admin only sends one to themselves. */
+function showUserResetLink(user) {
+  const row = document.getElementById('adduser-reset-link-row');
+  if (!row) return;
+  row.hidden = !user || !user.is_active || (Boolean(user.is_super_admin) && Number(user.id) !== Number(window.AUTHENTICATED_USER?.id));
+}
+
+async function sendUserPasswordResetLink(button) {
+  const id = Number(document.getElementById('adduser-edit-id')?.value || 0);
+  if (!id || button.disabled) return;
+  button.disabled = true;
+  if (!(await confirmAction('Email this person a password reset link? They will choose a new password themselves; their current password keeps working until they do.', { title: 'Send password reset link', confirmLabel: 'Send link' }))) {
+    button.disabled = false;
+    return;
+  }
+  try {
+    const result = await adminRequest(`/admin/users/${id}/password-reset-link`, { method: 'POST', body: JSON.stringify({}) });
+    showToast(result.message, 'green');
+  } catch (error) {
+    showToast(error.message, 'red');
+  } finally {
+    button.disabled = false;
+  }
+}
+
+/** Another Super Admin's email and password change only through that person, the reset link or the server command. */
+function lockUserCredentials(user) {
+  const locked = Boolean(user?.is_super_admin) && Number(user.id) !== Number(window.AUTHENTICATED_USER?.id);
+  const email = document.getElementById('adduser-email');
+  const password = document.getElementById('adduser-password');
+  if (email) email.readOnly = locked;
+  if (password) { password.disabled = locked; if (locked) password.value = ''; }
+  const note = document.getElementById('adduser-credential-lock');
+  if (note) note.hidden = !locked;
+}
+
 function openEditUser(id) {
   const user = USERS.find(item => item.id === id);
-  if (!user) return;
+  if (!user || !canEditUserAccount(user)) return;
 
   const cabinetAccess = user.cabinet_access || null;
 
@@ -3140,10 +3491,13 @@ function openEditUser(id) {
   document.getElementById('adduser-role').value = user.role;
   setStaffAssignments(user.staff_permissions || []);
   document.getElementById('staff-access-preset').value = '';
+  showStaffPresetDescription('');
   toggleStaffAssignmentFields();
   document.getElementById('adduser-status').value = user.is_active ? 'active' : 'suspended';
   document.getElementById('adduser-password').value = '';
   document.getElementById('adduser-password').required = false;
+  lockUserCredentials(user);
+  showUserResetLink(user);
 
   document.getElementById('adduser-cabinet-access').checked =
     Boolean(cabinetAccess?.is_active);
@@ -3193,6 +3547,7 @@ async function saveNewUser() {
   };
 
   if (payload.role === 'staff' || editedUser?.is_super_admin) payload.staff_permissions = [...document.querySelectorAll('[data-staff-permission]:checked')].map(input => input.dataset.staffPermission);
+  else if (payload.role === 'captain') payload.staff_permissions = [...document.querySelectorAll('[data-staff-permission^="vawc."]:checked')].map(input => input.dataset.staffPermission);
   const button = document.getElementById('adduser-save-btn');
   button.disabled = true;
 
@@ -3220,7 +3575,9 @@ async function setUserActive(id, active) {
 
   if (
     !user ||
-    !(await confirmAction(`${active ? 'Activate' : 'Suspend'} ${user.name}'s account?`, { title: `${active ? 'Activate' : 'Suspend'} account`, confirmLabel: active ? 'Activate' : 'Suspend', danger: !active }))
+    !(await confirmAction(active
+      ? adminText('Reactivate :name? They can sign in again with their existing role and access.', { name: user.name })
+      : adminText('Suspend :name? They will be signed out and cannot sign in until an administrator reactivates the account. Their records and history are kept.', { name: user.name }), { title: active ? 'Reactivate account' : 'Suspend account', confirmLabel: active ? 'Reactivate' : 'Suspend', danger: !active }))
   ) {
     return;
   }
@@ -3295,7 +3652,7 @@ function renderEligRulesGrid() {
         <div style="color:${rule.needsGoodStanding ? '#EF4444' : 'var(--text-muted)'};">${rule.needsGoodStanding ? ' Requires clean record (no blotter)' : ' No clean record required'}</div>
         <div style="color:${rule.oneTimeOnly ? '#F59E0B' : 'var(--text-muted)'};">${rule.oneTimeOnly ? ' One-time only per resident' : ' Can be requested multiple times'}</div>
         <div style="color:${rule.requiresActive ? 'var(--green-500)' : 'var(--text-muted)'};"> Active resident status required</div>
-        <div style="color:var(--text-muted);margin-top:3px;">Fee: <strong style="color:var(--text-primary);">${ct?.fee || '—'}</strong> | Processing: ${ct?.days || '—'}</div>
+        <div style="color:var(--text-muted);margin-top:3px;">Fee: <strong style="color:var(--text-primary);">${escapeText(certificateFeeText(ct?.label || rule.label))}</strong> | Processing: ${ct?.days || '—'}</div>
       </div>
     </div>`;
   }).join('');
@@ -3307,7 +3664,8 @@ function toggleEligRules() {
   if (!panel) return;
   const visible = panel.style.display !== 'none';
   panel.style.display = visible ? 'none' : 'block';
-  if (chevron) chevron.textContent = visible ? '▼ Show' : '▲ Hide';
+  if (chevron) chevron.textContent = visible ? 'Show' : 'Hide';
+  document.getElementById('elig-rules-toggle')?.setAttribute('aria-expanded', String(!visible));
   if (!visible) renderEligRulesGrid();
 }
 
@@ -3366,11 +3724,9 @@ function launchApp(name = 'Staff', role = 'Staff') {
   app.classList.add('visible');
   applyAccessControl(currentUserAccess);
   const userNameEl = document.getElementById('sidebar-user-name');
-  const userRoleEl = document.getElementById('sidebar-user-role');
   const userAvatarEl = document.getElementById('sidebar-user-avatar');
   const topAvatarEl = document.querySelector('.topbar-avatar');
   if (userNameEl) userNameEl.textContent = currentUserName;
-  if (userRoleEl) userRoleEl.textContent = currentUserRole;
   if (userAvatarEl) userAvatarEl.textContent = initials(currentUserName);
   if (topAvatarEl) topAvatarEl.textContent = initials(currentUserName);
   const dashboardRefreshButton = document.querySelector('#screen-dashboard .dashboard-refresh-actions > .btn');
@@ -3400,6 +3756,14 @@ function launchApp(name = 'Staff', role = 'Staff') {
 // ═══════════════════════════════════════
 // ENGLISH TRANSLATIONS for JS-generated text
 // ═══════════════════════════════════════
+const SENIOR_PAGE_SIZE = 10;
+let seniorCurrentPage = 1;
+
+function changeSeniorPage(page) {
+  seniorCurrentPage = page;
+  renderSeniorList();
+}
+
 function renderSeniorList() {
   const container = document.getElementById('senior-citizens-list');
   if (!container) return;
@@ -3415,14 +3779,25 @@ function renderSeniorList() {
     : RESIDENTS.filter(r => isSenior(r.dob));
   const countEl = document.getElementById('demo-senior-count');
   if (countEl) countEl.textContent = Number(DEMOGRAPHIC_SUMMARY?.seniors ?? seniors.length).toLocaleString();
-  if (seniors.length === 0) {
-    container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;">No registered senior citizens.</div>';
+  // Staff with population statistics only get the count; names and birth dates need Resident Records access.
+  if (DEMOGRAPHIC_SUMMARY && DEMOGRAPHIC_SUMMARY.senior_residents === null) {
+    container.innerHTML = `<div class="resident-table-message">${escapeText(adminText('Senior citizen names are in Resident Records. Your access shows the count only.'))}</div>`;
+    renderPager('senior-citizens-pagination', { total: 0 });
     return;
   }
+  if (seniors.length === 0) {
+    container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;">No registered senior citizens.</div>';
+    renderPager('senior-citizens-pagination', { total: 0 });
+    return;
+  }
+  const lastPage = Math.max(1, Math.ceil(seniors.length / SENIOR_PAGE_SIZE));
+  seniorCurrentPage = Math.min(seniorCurrentPage, lastPage);
+  const pageSeniors = seniors.slice((seniorCurrentPage - 1) * SENIOR_PAGE_SIZE, seniorCurrentPage * SENIOR_PAGE_SIZE);
+  renderPager('senior-citizens-pagination', { page: seniorCurrentPage, lastPage, total: seniors.length, perPage: SENIOR_PAGE_SIZE, noun: ['senior citizen', 'senior citizens'], loader: 'changeSeniorPage' });
   container.innerHTML = `
     <table class="tbl">
       <thead><tr><th>Resident ID</th><th>Full Name</th><th>Age</th><th>Date of Birth</th><th>Zone / Purok</th><th>Status</th><th>Classification</th></tr></thead>
-      <tbody>${seniors.map(r => {
+      <tbody>${pageSeniors.map(r => {
         const age = Number(r.age ?? calcAge(r.dob));
         return `<tr>
           <td><span style="font-family:var(--font-mono);font-size:10.5px;color:var(--blue-400);">${escapeText(r.id)}</span></td>
@@ -3434,7 +3809,7 @@ function renderSeniorList() {
           <td><span class="badge badge-senior"> Senior Citizen</span></td>
         </tr>`;
       }).join('')}</tbody>
-    </table>`;
+    </table>${Number(DEMOGRAPHIC_SUMMARY?.seniors ?? 0) > seniors.length ? '<p class="senior-register-note">This register lists the first 100 senior citizens by surname. Open Resident Records and choose Senior Citizens to see everyone.</p>' : ''}`;
 }
 
 // Override openViewResident for English
@@ -3586,10 +3961,14 @@ function legacyEnglishSaveResident() {
   populateEligResidentDropdown(null);
 }
 
+/** Only the newest incident list request may render; a slower earlier one must not overwrite it. */
+let incidentLoadVersion = 0;
+
 async function loadIncidents(page = 1) {
   const tbody = document.getElementById('incidents-tbody');
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="9" class="resident-table-message">Loading incident reports...</td></tr>';
+  const version = ++incidentLoadVersion;
+  tbody.innerHTML = '<tr><td colspan="8" class="resident-table-message">Loading incident reports...</td></tr>';
   const query = new URLSearchParams({ page: String(page), per_page: '15' });
   const search = document.getElementById('incident-search')?.value.trim();
   const status = document.getElementById('incident-status-filter')?.value;
@@ -3597,6 +3976,7 @@ async function loadIncidents(page = 1) {
   if (search) query.set('search', search);
   if (status) query.set('status', status);
   if (severity) query.set('severity', severity);
+  if (incidentProtectionOrderFilter) query.set('protection_order', '1');
   for (const [id, parameter] of [['incident-date-from', 'date_from'], ['incident-date-to', 'date_to'], ['incident-assignee-filter', 'assigned_to']]) {
     const value = document.getElementById(id)?.value;
     if (value) query.set(parameter, value);
@@ -3605,6 +3985,7 @@ async function loadIncidents(page = 1) {
   try {
     const response = await fetch(`/staff/incidents?${query}`, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
     const payload = await response.json();
+    if (version !== incidentLoadVersion) return;
     if (!response.ok) throw new Error(payload?.message || 'Hindi ma-load ang incident reports.');
     INCIDENTS.splice(0, INCIDENTS.length, ...(payload.data || []));
     incidentCurrentPage = Number(payload.current_page || 1);
@@ -3612,7 +3993,9 @@ async function loadIncidents(page = 1) {
     renderIncidents(payload.total || 0);
     updateIncidentSummary(payload.summary || {});
   } catch (error) {
-    tbody.innerHTML = `<tr><td colspan="9" class="resident-table-message resident-table-error">${escapeText(error.message)}</td></tr>`;
+    if (version !== incidentLoadVersion) return;
+    tbody.innerHTML = `<tr><td colspan="8" class="resident-table-message resident-table-error">${listErrorMarkup(error, 'loadIncidents(incidentCurrentPage)')}</td></tr>`;
+    markStatsUnavailable(['inc-stat-pending', 'inc-stat-resolved', 'inc-stat-high']);
   }
 }
 
@@ -3622,42 +4005,57 @@ function renderIncidents(total = 0) {
   tbody.innerHTML = '';
 
   if (INCIDENTS.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9" class="resident-table-message">Walang nakitang incident report.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="resident-table-message">Walang nakitang incident report.</td></tr>';
   }
 
   INCIDENTS.forEach(incident => {
     const severityClass = incident.severity === 'high' ? 'badge-red' : incident.severity === 'medium' ? 'badge-amber' : 'badge-gray';
-    const statusClass = incident.status === 'resolved' ? 'badge-green' : incident.status === 'dismissed' ? 'badge-gray' : 'badge-amber';
     const archiveButton = incident.can_archive
-      ? `<button data-action-permission="incidents.archive|vawc.archive" class="btn btn-xs btn-danger" onclick="archiveIncident(${incident.id})">Archive</button>`
+      ? `<button type="button" data-action-permission="incidents.archive|vawc.archive" class="btn btn-xs btn-danger-outline" onclick="archiveIncident(${incident.id})">Archive</button>`
       : '';
+    // "Nov 2, 2026 3:30 PM" reads better as a date line and a time line than wrapped word by word.
+    const [, occurredDate = incident.occurred_at_display, occurredTime = ''] = String(incident.occurred_at_display || '').match(/^(\w{3} \d{1,2}, \d{4}) (.+)$/) || [];
     const row = document.createElement('tr');
+    row.className = 'incident-row';
+    row.tabIndex = 0;
+    row.setAttribute('aria-label', `${incident.incident_number}, ${incident.incident_type}. Open incident details`);
     row.innerHTML = `
-      <td><span class="resident-number">${escapeText(incident.incident_number)}</span></td>
-      <td><strong>${escapeText(incident.incident_type)}</strong></td>
+      <td class="incident-cell-main"><strong>${escapeText(incident.incident_type)}</strong><span class="resident-number incident-ref" title="${escapeText(incident.incident_number)}">${incidentReferenceMarkup(incident.incident_number)}</span></td>
+      <td class="incident-cell-date"><span>${escapeText(occurredDate)}</span><small>${escapeText(occurredTime)}</small></td>
       <td>${escapeText(incident.location)}</td>
-      <td>${escapeText(incident.occurred_at_display)}</td>
       <td>${escapeText(incident.complainant_name)}</td>
       <td>${incident.respondent_name ? escapeText(incident.respondent_name) : '—'}</td>
       <td><span class="badge ${severityClass}">${escapeText(incident.severity_label)}</span></td>
-      <td><span class="badge ${statusClass}">${escapeText(incident.status_label)}</span></td>
-      <td class="resident-actions">
-        <button class="btn btn-xs" onclick="openViewIncident(${incident.id})">View</button>
-        ${incident.can_update ? `<button data-action-permission="incidents.update|vawc.update" class="btn btn-xs btn-primary" onclick="openEditIncident(${incident.id})">Edit</button>` : ''}
+      <td><span class="badge ${incidentStatusBadge(incident.status)}">${escapeText(incident.status_label)}</span></td>
+      <td><div class="resident-actions">
+        <button type="button" class="btn btn-xs" onclick="openViewIncident(${incident.id})">View</button>
+        ${incident.can_update ? `<button type="button" data-action-permission="incidents.update|vawc.update" class="btn btn-xs" onclick="openEditIncident(${incident.id})">Edit</button>` : ''}
         ${archiveButton}
-      </td>`;
+      </div></td>`;
+    // The whole row opens the record; its own buttons keep their actions.
+    row.addEventListener('click', event => { if (!event.target.closest('button, a')) openViewIncident(incident.id); });
+    row.addEventListener('keydown', event => {
+      if (event.target === row && (event.key === 'Enter' || event.key === ' ')) {
+        event.preventDefault();
+        openViewIncident(incident.id);
+      }
+    });
     applyStaffActionVisibility(row);
     tbody.appendChild(row);
   });
 
-  const pagination = document.getElementById('incident-pagination');
-  if (pagination) {
-    pagination.innerHTML = `
-      <span class="resident-page-summary">${Number(total).toLocaleString()} report${Number(total) === 1 ? '' : 's'}</span>
-      <button class="btn btn-xs" ${incidentCurrentPage <= 1 ? 'disabled' : ''} onclick="loadIncidents(${incidentCurrentPage - 1})">Previous</button>
-      <span>Page ${incidentCurrentPage} of ${incidentLastPage}</span>
-      <button class="btn btn-xs" ${incidentCurrentPage >= incidentLastPage ? 'disabled' : ''} onclick="loadIncidents(${incidentCurrentPage + 1})">Next</button>`;
-  }
+  renderPager('incident-pagination', { page: incidentCurrentPage, lastPage: incidentLastPage, total, noun: ['report', 'reports'], loader: 'loadIncidents' });
+}
+
+/** Status colours by meaning: new is blue, in progress amber, handed over purple, done green, ended grey. */
+function incidentStatusBadge(status) {
+  return ({
+    open: 'badge-blue', pending: 'badge-blue',
+    under_review: 'badge-amber', under_investigation: 'badge-amber',
+    referred: 'badge-purple',
+    resolved: 'badge-green',
+    closed: 'badge-gray', dismissed: 'badge-gray',
+  })[status] || 'badge-gray';
 }
 
 function updateIncidentSummary(summary) {
@@ -3665,6 +4063,81 @@ function updateIncidentSummary(summary) {
   set('inc-stat-pending', summary.pending);
   set('inc-stat-resolved', summary.resolved_this_month);
   set('inc-stat-high', summary.high);
+  renderIncidentStatusStrip(summary);
+}
+
+/** Current statuses always show; legacy ones only when reports still carry them. */
+const INCIDENT_STATUS_CHIPS = [
+  ['open', 'Open'], ['under_review', 'Under review'], ['referred', 'Referred'], ['resolved', 'Resolved'], ['closed', 'Closed'],
+  ['pending', 'Pending (legacy)'], ['under_investigation', 'Under investigation (legacy)'], ['dismissed', 'Dismissed (legacy)'],
+];
+let incidentProtectionOrderFilter = false;
+
+/**
+ * Report counts per status (over every report the viewer may see, like the cards above). Each chip applies
+ * the matching status filter. The protection-order chip exists only when the server sends that count,
+ * which it does for staff with VAWC access.
+ */
+function renderIncidentStatusStrip(summary) {
+  const strip = document.getElementById('incident-status-strip');
+  if (!strip) return;
+  const counts = summary.by_status || {};
+  const current = document.getElementById('incident-status-filter')?.value || '';
+  const chip = (pressed, onclick, label, count, tone) => `<button type="button" class="incident-status-chip" aria-pressed="${pressed}" onclick="${onclick}">
+    <span>${escapeText(label)}</span><span class="badge ${tone}">${Number(count || 0).toLocaleString()}</span></button>`;
+  const chips = INCIDENT_STATUS_CHIPS
+    .filter(([status], index) => index < 5 || Number(counts[status]) > 0)
+    .map(([status, label]) => chip(!incidentProtectionOrderFilter && current === status, `showIncidentKpi('${status}', '')`, label, counts[status], incidentStatusBadge(status)));
+  if ('protection_orders' in summary) chips.push(chip(incidentProtectionOrderFilter, 'toggleProtectionOrderIncidents()', 'With a protection order', summary.protection_orders, 'badge-purple'));
+  strip.innerHTML = `<span class="incident-status-strip-label">${escapeText('By status')}</span>${chips.join('')}`;
+}
+
+/** Show only reports that have a protection order record (VAWC access only), or clear that filter. */
+function toggleProtectionOrderIncidents() {
+  const set = (id, value) => { const element = document.getElementById(id); if (element) element.value = value; };
+  ['incident-search', 'incident-status-filter', 'incident-severity-filter', 'incident-date-from', 'incident-date-to', 'incident-assignee-filter'].forEach(id => set(id, ''));
+  incidentProtectionOrderFilter = !incidentProtectionOrderFilter;
+  clearTimeout(incidentSearchTimer);
+  loadIncidents(1);
+  revealKpiResults(document.querySelector('#screen-incidents .incident-filter-bar'));
+}
+
+/** Bring a KPI's result list into view without animating when the user prefers reduced motion. */
+function revealKpiResults(element) {
+  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  element?.scrollIntoView?.({ block: 'start', behavior: reduce ? 'auto' : 'smooth' });
+}
+
+/**
+ * Incident KPI cards: the counts are over every report the user may see, so other filters are cleared and the
+ * card's own status (and severity) filter is applied. "active" is the same status set the counts use.
+ */
+function showIncidentKpi(status, severity) {
+  const set = (id, value) => { const element = document.getElementById(id); if (element) element.value = value; };
+  ['incident-search', 'incident-date-from', 'incident-date-to', 'incident-assignee-filter'].forEach(id => set(id, ''));
+  set('incident-status-filter', status);
+  set('incident-severity-filter', severity);
+  incidentProtectionOrderFilter = false;
+  clearTimeout(incidentSearchTimer);
+  loadIncidents(1);
+  revealKpiResults(document.querySelector('#screen-incidents .incident-filter-bar'));
+}
+
+/** Dashboard "Open Incident Reports" card: open the incident list already narrowed to the reports it counts. */
+async function openDashboardIncidents() {
+  await showScreen('incidents', findNavItem('incidents'));
+  showIncidentKpi('active', '');
+}
+
+/**
+ * Incident numbers are INC-YYYY- plus a 26-character ULID. Allow one line break after the year and keep the
+ * ULID on a single line, instead of breaking anywhere; the copied text stays the full number.
+ */
+function incidentReferenceMarkup(number) {
+  const value = String(number ?? '');
+  const match = value.match(/^([A-Z]+-\d{4}-)(.+)$/);
+  if (!match) return escapeText(value);
+  return `${escapeText(match[1])}<wbr><span class="incident-ref-id">${escapeText(match[2])}</span>`;
 }
 
 function filterIncidents() {
@@ -3685,6 +4158,10 @@ function openViewIncident(id) {
   set('view-inc-description', incident.details);
   set('view-inc-severity', incident.severity_label);
   set('view-inc-status', incident.status_label);
+  const severityBadge = document.getElementById('view-inc-severity');
+  if (severityBadge) severityBadge.className = `badge ${incident.severity === 'high' ? 'badge-red' : incident.severity === 'medium' ? 'badge-amber' : 'badge-gray'}`;
+  const statusBadge = document.getElementById('view-inc-status');
+  if (statusBadge) statusBadge.className = `badge ${incidentStatusBadge(incident.status)}`;
   const editButton = document.getElementById('view-inc-edit-btn');
   if (editButton) editButton.hidden = !incident.can_update;
   if (editButton) editButton.onclick = () => { closeModal('modal-view-incident'); openEditIncident(id); };
@@ -3723,7 +4200,7 @@ async function openEditIncident(id) {
   document.getElementById('inc-attachments').value = '';
   document.getElementById('inc-attachments-preview').innerHTML = '';
   document.getElementById('inc-modal-title').textContent = 'Edit Incident Report';
-  document.querySelector('#modal-incident .btn-danger').textContent = 'Save Changes';
+  document.getElementById('inc-save-button').textContent = 'Save Changes';
   toggleIncidentResolution();
   if (typeof prepareIncidentLinks === 'function') prepareIncidentLinks(incident);
   openModal('modal-incident');
@@ -3747,7 +4224,7 @@ async function openAddIncident() {
   document.getElementById('inc-attachments').value = '';
   document.getElementById('inc-attachments-preview').innerHTML = '';
   document.getElementById('inc-modal-title').textContent = 'File Incident Report';
-  document.querySelector('#modal-incident .btn-danger').textContent = 'File Report';
+  document.getElementById('inc-save-button').textContent = 'File Report';
   if (typeof prepareIncidentLinks === 'function') prepareIncidentLinks();
   openModal('modal-incident');
   if (typeof loadCaseStaff === 'function') {
@@ -3786,7 +4263,7 @@ async function saveIncident() {
     formData.append('resolution_notes', document.getElementById('inc-resolution-notes')?.value.trim() || '');
   }
   [...(document.getElementById('inc-attachments')?.files || [])].forEach(file => formData.append('attachments[]', file));
-  const button = document.querySelector('#modal-incident .btn-danger');
+  const button = document.getElementById('inc-save-button');
   if (button) button.disabled = true;
 
   try {
@@ -3796,7 +4273,7 @@ async function saveIncident() {
       headers: { 'Accept': 'application/json', ...csrfRequestHeaders() },
       body: formData
     });
-    const result = await response.json();
+    const result = await response.json().catch(() => ({}));
     if (!response.ok) {
       const message = result?.errors ? Object.values(result.errors).flat()[0] : result?.message;
       throw new Error(message || 'Hindi ma-save ang incident report.');
@@ -3830,10 +4307,14 @@ async function archiveIncident(id) {
   }
 }
 
+/** Only the newest request-record search may render. */
+let requestRecordLoadVersion = 0;
+
 async function loadRequestRecords(page = 1) {
   const container = document.getElementById('rr-resident-list');
   if (!container) return;
-  container.innerHTML = '<div class="resident-table-message">Loading request records...</div>';
+  const version = ++requestRecordLoadVersion;
+  if (requestRecordResidents.length === 0) container.innerHTML = '<div class="card rr-list-card"><div class="resident-table-message">Loading request records...</div></div>';
   const query = new URLSearchParams({ page: String(page), per_page: '15' });
   if (rrCurrentFilter.trim()) query.set('search', rrCurrentFilter.trim());
   if (rrCurrentStatusFilter) query.set('eligibility', rrCurrentStatusFilter);
@@ -3844,6 +4325,7 @@ async function loadRequestRecords(page = 1) {
       headers: { 'Accept': 'application/json' }
     });
     const payload = await response.json();
+    if (version !== requestRecordLoadVersion) return;
     if (!response.ok) throw new Error(payload?.message || 'Hindi ma-load ang request records.');
     requestRecordResidents = payload.data || [];
     rrCurrentPage = Number(payload.current_page || 1);
@@ -3856,7 +4338,7 @@ async function loadRequestRecords(page = 1) {
     set('rr-blocked', summary.blocked);
     set('rr-review', summary.needs_review);
   } catch (error) {
-    container.innerHTML = `<div class="resident-table-message resident-table-error">${escapeText(error.message)}</div>`;
+    if (version === requestRecordLoadVersion) container.innerHTML = `<div class="card rr-list-card"><div class="resident-table-message resident-table-error">${listErrorMarkup(error, 'loadRequestRecords(rrCurrentPage || 1)')}</div></div>`;
   }
 }
 
@@ -3865,9 +4347,9 @@ function renderRequestRecords(total = 0) {
   if (!container) return;
 
   if (requestRecordResidents.length === 0) {
-    container.innerHTML = '<div class="resident-table-message">Walang nakitang resident request record.</div>';
+    container.innerHTML = '<div class="card rr-list-card"><div class="resident-table-message">Walang nakitang resident request record.</div></div>';
   } else {
-    container.innerHTML = requestRecordResidents.map(resident => {
+    container.innerHTML = '<div class="card rr-list-card"><ul class="rr-list">' + requestRecordResidents.map(resident => {
       const eligible = resident.status === 'active' && Boolean(resident.is_in_good_standing);
       const requests = Array.isArray(resident.document_requests) ? resident.document_requests : [];
       const requestRows = requests.length === 0
@@ -3884,37 +4366,26 @@ function renderRequestRecords(total = 0) {
             </tr>`;
           }).join('');
 
-      return `<div class="card rr-resident-card" style="margin-bottom:0;">
-        <div class="rr-resident-header" onclick="toggleRRCard(this)">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <div class="rr-avatar">${escapeText(String(resident.full_name || '?').charAt(0))}</div>
-            <div>
-              <div style="font-weight:700;color:var(--text-primary);font-size:13.5px;">${escapeText(resident.full_name)}</div>
-              <div style="font-size:11px;color:var(--text-muted);">${escapeText(resident.resident_number)} &nbsp;•&nbsp; ${escapeText(resident.purok)} &nbsp;•&nbsp; ${Number(resident.age)} yrs old</div>
-            </div>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span class="badge ${eligible ? 'badge-green' : 'badge-red'}">${eligible ? 'Good Standing' : 'Needs Review'}</span>
-            <span class="badge badge-gray">${requests.length} req</span>
-            <button class="btn btn-xs btn-primary" onclick="event.stopPropagation();openEligibilityForRequestResident(${resident.id})">Check</button>
-            <span class="rr-chevron">▼</span>
-          </div>
+      const panelId = `rr-requests-${Number(resident.id)}`;
+      return `<li class="rr-row">
+        <div class="rr-row-summary">
+          <button type="button" class="rr-row-toggle" aria-expanded="false" aria-controls="${panelId}" onclick="toggleRRCard(this)">
+            <span class="rr-avatar" aria-hidden="true">${escapeText(String(resident.full_name || '?').charAt(0))}</span>
+            <span class="rr-row-name"><strong>${escapeText(resident.full_name)}</strong><small>${escapeText(resident.resident_number)} · ${escapeText(resident.purok)} · ${Number(resident.age)} yrs old</small></span>
+            <span class="rr-chevron" aria-hidden="true"></span>
+          </button>
+          <span class="badge ${eligible ? 'badge-green' : 'badge-red'}">${eligible ? 'Good Standing' : 'Needs Review'}</span>
+          <span class="rr-request-count">${requests.length} <span>${requests.length === 1 ? 'request' : 'requests'}</span></span>
+          <button type="button" class="btn btn-xs" onclick="openEligibilityForRequestResident(${resident.id})">Check</button>
         </div>
-        <div class="rr-requests-panel" style="display:none;">
+        <div class="rr-requests-panel" id="${panelId}" hidden>
           <div class="table-scroll"><table class="tbl"><thead><tr><th>Code</th><th>Document</th><th>Date</th><th>Source</th><th>Status</th></tr></thead><tbody>${requestRows}</tbody></table></div>
         </div>
-      </div>`;
-    }).join('');
+      </li>`;
+    }).join('') + '</ul></div>';
   }
 
-  const pagination = document.getElementById('rr-pagination');
-  if (pagination) {
-    pagination.innerHTML = `
-      <span class="resident-page-summary">${Number(total).toLocaleString()} resident${Number(total) === 1 ? '' : 's'}</span>
-      <button class="btn btn-xs" ${rrCurrentPage <= 1 ? 'disabled' : ''} onclick="loadRequestRecords(${rrCurrentPage - 1})">Previous</button>
-      <span>Page ${rrCurrentPage} of ${rrLastPage}</span>
-      <button class="btn btn-xs" ${rrCurrentPage >= rrLastPage ? 'disabled' : ''} onclick="loadRequestRecords(${rrCurrentPage + 1})">Next</button>`;
-  }
+  renderPager('rr-pagination', { page: rrCurrentPage, lastPage: rrLastPage, total, noun: ['resident', 'residents'], loader: 'loadRequestRecords' });
 }
 
 function openEligibilityForRequestResident(databaseId) {
@@ -3935,28 +4406,17 @@ function filterRequestRecords() {
 }
 
 function filterRRStatus(status, element) {
-  document.querySelectorAll('.rr-filter-btn').forEach(button => button.classList.remove('active'));
+  document.querySelectorAll('.rr-filter-btn').forEach(button => { button.classList.remove('active'); button.setAttribute?.('aria-pressed', 'false'); });
   element?.classList.add('active');
+  element?.setAttribute?.('aria-pressed', 'true');
   rrCurrentStatusFilter = status;
   void loadRequestRecords(1);
 }
 
-async function refreshDocumentRequestsLive() {
-  if (!hasStaffPermission('documents.view')) return;
-  try {
-    const response = await fetch('/staff/document-requests-live', {
-      headers: { 'Accept': 'application/json' }
-    });
-
-    if (!response.ok) return;
-
-    const requests = await response.json();
-    window.LARAVEL_DOCUMENT_REQUESTS = requests;
-
-    renderCertKanban(document.getElementById('cert-search')?.value || '');
-  } catch (error) {
-    console.error('Live request refresh failed:', error);
-  }
+/** Reload the certificates board after a change, or on a poll while the board is on screen. */
+async function refreshDocumentRequestsLive({ poll = false } = {}) {
+  if (poll && !isCertificatesScreenActive()) return;
+  await loadCertBoard({ poll });
 }
 
 let documentRequestLiveTimer = null;
@@ -3981,14 +4441,15 @@ function startDocumentRequestLiveRefresh() {
 
   documentRequestLiveTimer = setInterval(() => {
     if (!document.hidden) {
-      refreshDocumentRequestsLive();
+      void refreshDocumentRequestsLive({ poll: true });
     }
   }, 3000);
+  void refreshDocumentRequestsLive({ poll: true });
 }
 
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && document.getElementById('app')) {
-    refreshDocumentRequestsLive();
+    void refreshDocumentRequestsLive({ poll: true });
     if (document.getElementById('screen-dashboard')?.classList.contains('active')) {
       void refreshDashboardStats();
     }
@@ -4112,14 +4573,34 @@ function residentFromApi(resident) {
     household: resident.household || null,
     householdId: resident.household_id,
     relationshipToHead: resident.relationship_to_household_head || '',
-    isHouseholdHead: Boolean(resident.is_household_head)
+    isHouseholdHead: Boolean(resident.is_household_head),
+    voterStatus: resident.voter_status || null,
+    version: resident.updated_at || null
   };
 }
 
+/**
+ * Voter registration as the Voters module records it. A missing record reads "No voter record": the
+ * system holds none, which is not the same as the person being unregistered with COMELEC.
+ */
+function voterStatusText(status) {
+  return ({ active: 'Registered voter', transferred: 'Transferred', deceased: 'Deceased', deregistered: 'Deregistered' })[status]
+    || (status ? String(status) : 'No voter record');
+}
+
+function voterStatusBadge(status) {
+  if (!status) return `<span class="voter-status-none">${escapeText(voterStatusText(status))}</span>`;
+  return `<span class="badge ${status === 'active' ? 'badge-green' : 'badge-gray'}">${escapeText(voterStatusText(status))}</span>`;
+}
+
+/** Only the newest resident list request may render; a slower earlier search must not overwrite it. */
+let residentLoadVersion = 0;
+
 async function loadResidents(page = 1) {
   if (!hasStaffPermission('records.view')) return;
+  const version = ++residentLoadVersion;
   const tbody = document.getElementById('records-tbody');
-  if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="resident-table-message">Loading resident records...</td></tr>';
+  if (tbody && RESIDENTS.length === 0) tbody.innerHTML = '<tr><td colspan="9" class="resident-table-message">Loading resident records...</td></tr>';
 
   const query = new URLSearchParams({ page: String(page), per_page: '15' });
   const search = document.getElementById('residents-search')?.value.trim();
@@ -4133,6 +4614,7 @@ async function loadResidents(page = 1) {
       headers: { 'Accept': 'application/json' }
     });
     const payload = await response.json();
+    if (version !== residentLoadVersion) return;
     if (!response.ok) throw new Error(payload?.message || 'Unable to load resident records.');
 
     RESIDENTS.splice(0, RESIDENTS.length, ...payload.data.map(residentFromApi));
@@ -4146,7 +4628,7 @@ async function loadResidents(page = 1) {
     renderDashPurokBreakdown();
     populateEligResidentDropdown(null);
   } catch (error) {
-    if (tbody) tbody.innerHTML = `<tr><td colspan="9" class="resident-table-message resident-table-error">${escapeText(error.message)}</td></tr>`;
+    if (tbody && version === residentLoadVersion) tbody.innerHTML = `<tr><td colspan="9" class="resident-table-message resident-table-error">${listErrorMarkup(error, 'loadResidents(residentCurrentPage || 1)')}</td></tr>`;
   }
 }
 
@@ -4165,13 +4647,13 @@ function renderResidentsTable() {
     const archivedBadge = resident.archived ? `<span class="badge badge-red">Archived</span><small>${escapeText(String(resident.archivedAt || '').slice(0, 10))}</small>` : `<span class="badge ${resident.status === 'Active' ? 'badge-green' : 'badge-red'}">${escapeText(resident.status)}</span>`;
     const actions = resident.archived
       ? `<button data-action-permission="records.archive" class="btn btn-xs btn-green" onclick="restoreResident(${resident.databaseId})">Restore</button>`
-      : `<button class="btn btn-xs btn-primary" onclick="openViewResident('${resident.id}')">View</button>
+      : `<button class="btn btn-xs" onclick="openViewResident('${resident.id}')">View</button>
          <button data-action-permission="records.update" class="btn btn-xs" onclick="openEditResident('${resident.id}')">Edit</button>
-         <button data-action-permission="records.archive" class="btn btn-xs btn-danger" onclick="deleteResident('${resident.id}')">Archive</button>`;
+         <button data-action-permission="records.archive" class="btn btn-xs btn-danger-outline" onclick="deleteResident('${resident.id}')">Archive</button>`;
 
     row.innerHTML = `
       <td><span class="resident-number">${escapeText(resident.id)}</span></td>
-      <td><strong>${escapeText(resident.name)}</strong>${calcAge(resident.dob) >= 60 ? '<span class="badge badge-senior">Senior</span>' : ''}</td>
+      <td><strong>${escapeText(resident.name)}</strong>${calcAge(resident.dob) >= 60 ? '<span class="badge badge-senior">Senior</span>' : ''}${resident.voterStatus === 'active' ? '<span class="badge badge-green" title="Registered voter">Voter</span>' : ''}</td>
       <td>${calcAge(resident.dob)}</td>
       <td>${escapeText(resident.purok)}</td>
       <td>${escapeText(resident.gender)}</td>
@@ -4214,13 +4696,7 @@ function residentContactError(value) {
 }
 
 function renderResidentPagination(total) {
-  const container = document.getElementById('resident-pagination');
-  if (!container) return;
-  container.innerHTML = `
-    <span class="resident-page-summary">${Number(total).toLocaleString()} record${total === 1 ? '' : 's'}</span>
-    <button class="btn btn-xs" ${residentCurrentPage <= 1 ? 'disabled' : ''} onclick="loadResidents(${residentCurrentPage - 1})">Previous</button>
-    <span>Page ${residentCurrentPage} of ${residentLastPage}</span>
-    <button class="btn btn-xs" ${residentCurrentPage >= residentLastPage ? 'disabled' : ''} onclick="loadResidents(${residentCurrentPage + 1})">Next</button>`;
+  renderPager('resident-pagination', { page: residentCurrentPage, lastPage: residentLastPage, total, loader: 'loadResidents' });
 }
 
 function filterResidents() {
@@ -4259,6 +4735,7 @@ function renderResidentGroupFilter() {
       ? residentStatusFilter === '' && residentSpecialGroupFilter === ''
       : status === residentStatusFilter.toLowerCase();
     pill.classList.toggle('active', active);
+    pill.setAttribute?.('aria-pressed', String(active));
   });
 }
 
@@ -4276,6 +4753,7 @@ function openSpecialGroupRecords(group) {
 
 function openAddResident() {
   syncPurokSelects();
+  void ensurePuroksLoaded();
   document.querySelector('#modal-resident-title span').textContent = 'Register New Resident';
   ['res-lastname', 'res-name', 'res-middlename', 'res-suffix', 'res-dob', 'res-contact', 'res-address', 'res-edit-id', 'res-nationality', 'res-photo'].forEach(id => {
     const element = document.getElementById(id);
@@ -4288,13 +4766,35 @@ function openAddResident() {
   setResidentPhotoPreview(null);
   setCheckedSpecialGroups([]);
   resetResidentHouseholdFields();
+  residentEditVersion = null;
+  hideResidentConflict();
   openModal('modal-resident');
 }
 
 function openEditResident(residentNumber) {
   const resident = RESIDENTS.find(item => item.id === residentNumber);
   if (!resident) return showToast('Resident not found.', 'red');
+  fillResidentForm(resident);
+  openModal('modal-resident');
+}
+
+/** Version of the record open in the edit form (its updated_at). The server refuses a save based on an older one. */
+let residentEditVersion = null;
+let residentConflictLatest = null;
+let residentConflictDraft = {};
+
+const RESIDENT_CONFLICT_FIELDS = ['res-lastname', 'res-name', 'res-middlename', 'res-suffix', 'res-dob', 'res-gender', 'res-civil', 'res-nationality', 'res-purok', 'res-address', 'res-contact', 'res-type', 'res-status'];
+const RESIDENT_CONFLICT_CHECKBOXES = ['res-good-standing', 'res-verified-indigent'];
+
+/** The record the edit form was filled from, so a conflict can tell this user's edits from the other save's. */
+let residentEditOriginal = null;
+
+function fillResidentForm(resident) {
+  residentEditVersion = resident.version || null;
+  residentEditOriginal = resident;
+  hideResidentConflict();
   syncPurokSelects(resident.purok);
+  void ensurePuroksLoaded(resident.purok);
   document.querySelector('#modal-resident-title span').textContent = 'Edit Resident Record';
   const values = {
     'res-lastname': resident.lastName, 'res-name': resident.firstName,
@@ -4316,11 +4816,102 @@ function openEditResident(residentNumber) {
   setResidentPhotoPreview(resident.hasPhoto ? resident.databaseId : null);
   setCheckedSpecialGroups(resident.specialGroups);
   resetResidentHouseholdFields(resident);
-  openModal('modal-resident');
+}
+
+/** The editable values in the resident form, keyed by field id, as plain text for comparing two versions. */
+function residentFormSnapshot() {
+  const snapshot = {};
+  RESIDENT_CONFLICT_FIELDS.forEach(id => { snapshot[id] = String(document.getElementById(id)?.value ?? '').trim(); });
+  RESIDENT_CONFLICT_CHECKBOXES.forEach(id => { snapshot[id] = document.getElementById(id)?.checked ? 'Yes' : 'No'; });
+  snapshot['special-groups'] = getCheckedSpecialGroups().join(', ');
+  return snapshot;
+}
+
+/** The same fields as residentFormSnapshot(), read from a record instead of the form. */
+function residentRecordSnapshot(resident) {
+  const text = value => String(value ?? '').trim();
+  return {
+    'res-lastname': text(resident.lastName), 'res-name': text(resident.firstName), 'res-middlename': text(resident.middleName),
+    'res-suffix': text(resident.suffix), 'res-dob': text(resident.dob), 'res-gender': text(resident.gender), 'res-civil': text(resident.civil),
+    'res-nationality': text(resident.nationality), 'res-purok': text(resident.purok), 'res-address': text(resident.address),
+    'res-contact': text(resident.contact), 'res-type': text(resident.type), 'res-status': text(resident.status).toLowerCase(),
+    'res-good-standing': resident.goodStanding ? 'Yes' : 'No', 'res-verified-indigent': resident.verifiedIndigent ? 'Yes' : 'No',
+    'special-groups': (resident.specialGroups || []).join(', '),
+  };
+}
+
+function residentFieldLabel(id) {
+  if (id === 'special-groups') return 'Special Groups';
+  return (document.querySelector(`label[for="${id}"]`)?.textContent || id).replace('*', '').trim();
+}
+
+function hideResidentConflict() {
+  residentConflictLatest = null;
+  residentConflictDraft = {};
+  const notice = document.getElementById('res-conflict');
+  if (notice) { notice.hidden = true; notice.innerHTML = ''; }
+}
+
+/** A save was refused because someone else saved first. The form keeps what this user typed. */
+function showResidentConflict(message, latest) {
+  residentConflictLatest = latest;
+  const notice = document.getElementById('res-conflict');
+  if (!notice) return showToast(message, 'red');
+  notice.innerHTML = `<p><strong>${escapeText(message)}</strong></p>
+    <p>${escapeText('Your edits are still in the form. Load the latest record to see what changed; you can then re-apply your edits.')}</p>
+    <button type="button" class="btn btn-sm" onclick="loadLatestResidentVersion()">Load the latest record</button>`;
+  notice.hidden = false;
+  notice.scrollIntoView?.({ block: 'nearest' });
+}
+
+/**
+ * Put the latest saved record in the form. Only fields this user changed (compared with the record the form
+ * was opened from) are offered for re-applying; fields only the other save changed keep the latest value.
+ */
+function loadLatestResidentVersion() {
+  const latest = residentConflictLatest;
+  if (!latest) return;
+  const draft = residentFormSnapshot();
+  const original = residentRecordSnapshot(residentEditOriginal || latest);
+  const saved = residentRecordSnapshot(latest);
+  const index = RESIDENTS.findIndex(item => item.databaseId === latest.databaseId);
+  if (index >= 0) RESIDENTS[index] = latest;
+  fillResidentForm(latest);
+  residentConflictDraft = Object.fromEntries(Object.keys(draft)
+    .filter(key => draft[key] !== original[key] && draft[key] !== saved[key])
+    .map(key => [key, draft[key]]));
+  const changedByOthers = Object.keys(saved).filter(key => saved[key] !== original[key]);
+  const notice = document.getElementById('res-conflict');
+  const keys = Object.keys(residentConflictDraft);
+  const othersLine = changedByOthers.length
+    ? `<p><span>${escapeText('Changed in the latest record:')}</span> <strong>${changedByOthers.map(key => escapeText(residentFieldLabel(key))).join(', ')}</strong></p>`
+    : '';
+  notice.innerHTML = keys.length === 0
+    ? `${othersLine}<p>${escapeText('The latest record is in the form and already matches your edits. Review it, then save.')}</p>`
+    : `<p><strong>${escapeText('The latest record is in the form.')}</strong></p>${othersLine}
+      <p>${escapeText('Your unsaved values that differ from it:')}</p>
+      <ul class="form-conflict-list">${keys.map(key => `<li><span>${escapeText(residentFieldLabel(key))}</span> <strong>${escapeText(residentConflictDraft[key] || '—')}</strong></li>`).join('')}</ul>
+      <button type="button" class="btn btn-sm" onclick="reapplyResidentDraft()">Re-apply my values</button>`;
+  notice.hidden = false;
+}
+
+/** Put this user's differing values back over the latest record; saving then replaces the latest values knowingly. */
+function reapplyResidentDraft() {
+  Object.entries(residentConflictDraft).forEach(([key, value]) => {
+    if (key === 'special-groups') return setCheckedSpecialGroups(value ? value.split(', ') : []);
+    const element = document.getElementById(key);
+    if (!element) return;
+    if (RESIDENT_CONFLICT_CHECKBOXES.includes(key)) element.checked = value === 'Yes';
+    else element.value = value;
+  });
+  hideResidentConflict();
+  showToast('Your values are back in the form. Review them, then save.', 'green');
 }
 
 function residentFormPayload(confirmDuplicate = false) {
+  const editing = Boolean(document.getElementById('res-edit-id')?.value);
   return {
+    ...(editing && residentEditVersion ? { expected_updated_at: residentEditVersion } : {}),
     first_name: document.getElementById('res-name')?.value.trim(),
     middle_name: document.getElementById('res-middlename')?.value.trim() || null,
     last_name: document.getElementById('res-lastname')?.value.trim(),
@@ -4377,6 +4968,10 @@ function validateResidentPhoto(input) {
 }
 
 async function saveResident(confirmDuplicate = false) {
+  return runSubmitOnce('resident', 'resident-save-button', () => saveResidentRecord(confirmDuplicate));
+}
+
+async function saveResidentRecord(confirmDuplicate = false) {
   if (!validateResidentPhoto(document.getElementById('res-photo'))) return;
   const contactError = residentContactError(document.getElementById('res-contact')?.value);
   if (contactError) {
@@ -4396,9 +4991,14 @@ async function saveResident(confirmDuplicate = false) {
       headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', ...csrfRequestHeaders() },
       body: JSON.stringify(residentFormPayload(confirmDuplicate))
     });
-    const payload = await response.json();
+    // An expired session or server error returns HTML, not JSON; fall back to the status-based message below.
+    const payload = await response.json().catch(() => ({}));
     if (response.status === 422 && payload?.errors?.duplicate && !confirmDuplicate) {
-      if (await confirmAction(`${payload.errors.duplicate[0]} Save as a separate resident anyway?`, { title: 'Possible duplicate resident', confirmLabel: 'Save as separate resident' })) return saveResident(true);
+      if (await confirmAction(`${payload.errors.duplicate[0]} Save as a separate resident anyway?`, { title: 'Possible duplicate resident', confirmLabel: 'Save as separate resident' })) return saveResidentRecord(true);
+      return;
+    }
+    if (response.status === 409 && payload?.resident) {
+      showResidentConflict(payload.message || 'Someone else saved changes to this resident after you opened it. Your changes were not saved.', residentFromApi(payload.resident));
       return;
     }
     if (!response.ok) {
@@ -4413,6 +5013,7 @@ async function saveResident(confirmDuplicate = false) {
       if (index >= 0) RESIDENTS[index] = residentFromApi(saved);
       else RESIDENTS.push(residentFromApi(saved));
       document.getElementById('res-edit-id').value = saved.resident_number;
+      residentEditVersion = saved.updated_at || null;
       const form = new FormData();
       form.append('photo', photo);
       const photoResponse = await fetch(`/staff/residents/${saved.id}/photo`, { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', ...csrfRequestHeaders() }, body: form });
@@ -4428,7 +5029,7 @@ async function saveResident(confirmDuplicate = false) {
       offerDashboardFeature('records', 'Resident registered', 'The resident record was saved. Open Resident Records to view the new entry.');
     }
   } catch (error) {
-    showToast(error.message, 'red');
+    showToast(requestErrorMessage(error, 'Unable to save the resident record.'), 'red');
   }
 }
 
@@ -4482,6 +5083,7 @@ function openViewResident(residentNumber) {
       <div><span>Purok</span><strong>${escapeText(resident.purok)}</strong></div>
       <div><span>Contact</span><strong>${escapeText(resident.contact || 'None')}</strong></div>
       <div><span>Residency Type</span><strong>${escapeText(resident.type)}</strong></div>
+      <div class="resident-detail-wide"><span>Voter registration</span><strong>${voterStatusBadge(resident.voterStatus)}</strong>${resident.voterStatus ? '' : `<small class="resident-detail-hint">${escapeText('No voter record has been entered in the Voters module. This does not mean the person is unregistered.')}</small>`}</div>
       <div class="resident-detail-wide"><span>Address</span><strong>${escapeText(resident.address)}</strong></div>
       <div class="resident-detail-wide"><span>Special Groups</span><strong>${groups}</strong></div>
       ${hasStaffPermission('documents.view') ? `<div><span>Document Requests</span><strong>${resident.documentRequestsCount}</strong></div>
@@ -4490,9 +5092,62 @@ ${hasStaffPermission('documents.view') || hasStaffPermission('eligibility.view')
     </div>`;
   document.getElementById('view-resident-content').insertAdjacentHTML('beforeend', '<section id="resident-portal-account" class="resident-account-panel" aria-live="polite">Loading portal account...</section>');
   document.getElementById('view-resident-content').insertAdjacentHTML('beforeend', '<section id="resident-household-information" class="resident-account-panel" aria-live="polite">Loading household information...</section>');
+  const canSeeIncidents = hasStaffPermission('incidents.view') || hasStaffPermission('vawc.view');
+  if (canSeeIncidents) document.getElementById('view-resident-content').insertAdjacentHTML('beforeend', '<section id="resident-incident-links" class="resident-account-panel" aria-live="polite">Loading linked incident reports...</section>');
   openModal('modal-view-resident');
   void loadResidentPortalAccount(resident.databaseId);
   void loadResidentHouseholdInformation(resident.databaseId);
+  if (canSeeIncidents) void loadResidentIncidentLinks(resident.databaseId);
+}
+
+/**
+ * Incident reports naming this resident as complainant or respondent. The incident API applies the
+ * viewer's own visibility (ordinary versus VAWC/sensitive cases), so the panel lists only reports the
+ * viewer could already open in Incident Reports, and shows only number, type, status and role.
+ */
+async function loadResidentIncidentLinks(residentId) {
+  const container = document.getElementById('resident-incident-links');
+  const request = extra => householdApi(`/staff/incidents?${new URLSearchParams({ resident_id: residentId, ...extra })}`);
+  try {
+    const [recent, active] = await Promise.all([request({ per_page: 5 }), request({ status: 'active', per_page: 1 })]);
+    if (container !== document.getElementById('resident-incident-links')) return;
+    const total = Number(recent.total || 0);
+    if (total === 0) {
+      container.innerHTML = `<h3>Incident reports</h3><p class="resident-detail-hint">${escapeText('No incident reports are linked to this resident.')}</p>`;
+      return;
+    }
+    const rows = (recent.data || []).map(incident => {
+      const role = Number(incident.complainant_resident_id) === Number(residentId) ? 'Complainant' : 'Respondent';
+      return `<li class="resident-incident-link">
+        <span class="resident-incident-main">
+          <strong>${escapeText(incident.incident_type)}</strong>
+          <span class="resident-number incident-ref" title="${escapeText(incident.incident_number)}">${incidentReferenceMarkup(incident.incident_number)}</span>
+        </span>
+        <span class="badge ${incidentStatusBadge(incident.status)}">${escapeText(incident.status_label)}</span>
+        <span class="resident-incident-role">${escapeText(role)}</span>
+        <button type="button" class="btn btn-xs" onclick="openResidentIncident('${escapeText(incident.incident_number)}')" aria-label="${escapeText(`View ${incident.incident_number} in Incident Reports`)}">View</button>
+      </li>`;
+    }).join('');
+    container.innerHTML = `<h3>Incident reports</h3>
+      <p class="resident-incident-summary"><strong>${total.toLocaleString()}</strong> <span>${escapeText(total === 1 ? 'linked report' : 'linked reports')}</span> · <strong>${Number(active.total || 0).toLocaleString()}</strong> <span>${escapeText('active')}</span></p>
+      <ul class="resident-incident-list">${rows}</ul>
+      ${total > 5 ? `<p class="resident-detail-hint">${escapeText('Showing the 5 most recent. Search Incident Reports by resident ID for the rest.')}</p>` : ''}
+      <p class="resident-detail-hint">${escapeText('A linked report does not by itself restrict document requests.')}</p>`;
+  } catch (error) {
+    if (container === document.getElementById('resident-incident-links')) container.remove();
+  }
+}
+
+/** Open Incident Reports narrowed to one report number, from the resident details dialog. */
+async function openResidentIncident(incidentNumber) {
+  closeModal('modal-view-resident');
+  await showScreen('incidents', findNavItem('incidents'));
+  const set = (id, value) => { const element = document.getElementById(id); if (element) element.value = value; };
+  ['incident-status-filter', 'incident-severity-filter', 'incident-date-from', 'incident-date-to', 'incident-assignee-filter'].forEach(id => set(id, ''));
+  set('incident-search', incidentNumber);
+  incidentProtectionOrderFilter = false;
+  clearTimeout(incidentSearchTimer);
+  loadIncidents(1);
 }
 
 let householdLookupTimer = null;
@@ -4530,7 +5185,8 @@ async function householdApi(url, method = 'GET', body) {
     ...(body !== undefined ? { body: JSON.stringify(body) } : {})
   });
   const payload = await response.json();
-  if (!response.ok) throw new Error(payload.errors ? Object.values(payload.errors).flat()[0] : payload.message || 'Unable to load household records.');
+  // A refusal carries no message of its own; say so plainly instead of blaming household records.
+  if (!response.ok) throw new Error(payload.errors ? Object.values(payload.errors).flat()[0] : payload.message || (response.status === 403 ? 'You do not have access to this information.' : 'Unable to load household records.'));
   return payload;
 }
 
@@ -4579,11 +5235,8 @@ function searchResidentHouseholds() {
   householdLookupTimer = setTimeout(() => loadResidentHouseholds(), 250);
 }
 
-function householdPagination(containerId, payload, callback) {
-  document.getElementById(containerId).innerHTML = `
-    <button class="btn btn-xs" ${payload.current_page <= 1 ? 'disabled' : ''} onclick="${callback}(${payload.current_page - 1})">Previous</button>
-    <span>Page ${Number(payload.current_page)} of ${Number(payload.last_page)}</span>
-    <button class="btn btn-xs" ${payload.current_page >= payload.last_page ? 'disabled' : ''} onclick="${callback}(${payload.current_page + 1})">Next</button>`;
+function householdPagination(containerId, payload, callback, noun = ['household', 'households']) {
+  renderPager(containerId, { page: payload.current_page, lastPage: payload.last_page, total: payload.total, perPage: Number(payload.per_page) || 15, noun, loader: callback });
 }
 
 async function loadResidentHouseholds() {
@@ -4622,10 +5275,10 @@ async function openDemographicMember(id) {
 }
 function householdMembersMarkup(household, manageable = false) {
   if (!household.members.length) return '<p>No household members assigned.</p>';
-  return `<div class="table-scroll"><table class="tbl"><thead><tr><th>Name</th><th>Relationship</th><th>Gender</th><th>Registered voter</th>${manageable ? '<th>Actions</th>' : ''}</tr></thead><tbody>${household.members.map(member => `
-    <tr><td>${hasStaffPermission('demographics.view') || hasStaffPermission('records.view') ? `<button class="btn btn-xs" onclick="openDemographicMember(${Number(member.id)})">${escapeText(member.full_name)}</button>` : escapeText(member.full_name)}${member.status !== 'active' ? ' <span class="badge badge-gray">Inactive</span>' : ''}</td>
-    <td>${escapeText(member.relationship_to_household_head || 'Unspecified')}</td><td>${escapeText(member.gender)}</td><td>${member.registered_voter ? 'Yes' : 'No'}</td>
-    ${manageable ? `<td>${hasStaffPermission('households.remove') ? `<button class="btn btn-xs btn-danger" onclick="removeManagedHouseholdMember(${Number(household.id)}, ${Number(member.id)})">Remove</button>` : ''}</td>` : ''}</tr>`).join('')}</tbody></table></div>`;
+  return `<div class="table-scroll"><table class="tbl"><thead><tr><th>Name</th><th>Relationship</th><th>Gender</th><th>Voter registration</th>${manageable ? '<th>Actions</th>' : ''}</tr></thead><tbody>${household.members.map(member => `
+    <tr><td>${hasStaffPermission('records.view') ? `<button class="btn btn-xs" onclick="openDemographicMember(${Number(member.id)})">${escapeText(member.full_name)}</button>` : escapeText(member.full_name)}${member.status !== 'active' ? ' <span class="badge badge-gray">Inactive</span>' : ''}</td>
+    <td>${escapeText(member.relationship_to_household_head || 'Unspecified')}</td><td>${escapeText(member.gender)}</td><td>${voterStatusBadge(member.voter_status ?? (member.registered_voter ? 'active' : null))}</td>
+    ${manageable ? `<td>${hasStaffPermission('households.remove') ? `<button class="btn btn-xs btn-danger-outline" onclick="removeManagedHouseholdMember(${Number(household.id)}, ${Number(member.id)})">Remove</button>` : ''}</td>` : ''}</tr>`).join('')}</tbody></table></div>`;
 }
 
 async function loadResidentHouseholdInformation(residentId) {
@@ -4706,7 +5359,7 @@ function renderDraftHouseholdMembers(selectedHead = document.getElementById('hou
   const candidates = new Map([...householdResidentOptions, ...draftHouseholdMembers]);
   [...candidates.values()].filter(member => member.status === 'active').forEach(member => head.add(new Option(member.full_name, String(member.id))));
   head.value = draftHouseholdMembers.has(Number(selectedHead)) ? String(selectedHead) : '';
-  document.getElementById('household-members').innerHTML = members.length ? `<h4>Selected existing residents</h4><div class="table-scroll"><table class="tbl"><thead><tr><th>Name</th><th>Relationship to head</th><th>Actions</th></tr></thead><tbody>${members.map(member => `<tr><td>${hasStaffPermission('demographics.view') || hasStaffPermission('records.view') ? `<button class="btn btn-xs" onclick="openDemographicMember(${Number(member.id)})">${escapeText(member.full_name)}</button>` : escapeText(member.full_name)}</td><td><input class="form-input" aria-label="Relationship for ${escapeText(member.full_name)}" maxlength="100" value="${escapeText(member.relationship_to_household_head)}" oninput="updateDraftHouseholdRelationship(${Number(member.id)}, this.value)"/></td><td><button class="btn btn-xs btn-danger" onclick="removeDraftHouseholdMember(${Number(member.id)})">Remove</button></td></tr>`).join('')}</tbody></table></div>` : '<p>No residents selected yet.</p>';
+  document.getElementById('household-members').innerHTML = members.length ? `<h4>Selected existing residents</h4><div class="table-scroll"><table class="tbl"><thead><tr><th>Name</th><th>Relationship to head</th><th>Actions</th></tr></thead><tbody>${members.map(member => `<tr><td>${hasStaffPermission('records.view') ? `<button class="btn btn-xs" onclick="openDemographicMember(${Number(member.id)})">${escapeText(member.full_name)}</button>` : escapeText(member.full_name)}</td><td><input class="form-input" aria-label="Relationship for ${escapeText(member.full_name)}" maxlength="100" value="${escapeText(member.relationship_to_household_head)}" oninput="updateDraftHouseholdRelationship(${Number(member.id)}, this.value)"/></td><td><button class="btn btn-xs btn-danger-outline" onclick="removeDraftHouseholdMember(${Number(member.id)})">Remove</button></td></tr>`).join('')}</tbody></table></div>` : '<p>No residents selected yet.</p>';
 }
 
 async function selectManagedHouseholdHead(residentId) {
@@ -4822,7 +5475,7 @@ async function loadHouseholdResidents(page = 1) {
       householdResidentOptions.set(resident.id, resident);
       select.add(new Option(`${resident.full_name} — ${resident.resident_number}${resident.household ? ` — currently ${resident.household.household_number}` : ''}`, String(resident.id)));
     });
-    householdPagination('household-resident-pagination', payload, 'loadHouseholdResidents');
+    householdPagination('household-resident-pagination', payload, 'loadHouseholdResidents', ['resident', 'residents']);
     if (!householdId) renderDraftHouseholdMembers();
   } catch (error) { if (version === householdMemberLookupVersion) showToast(error.message, 'red'); }
 }
@@ -4994,11 +5647,16 @@ let voterSearchTimer = null;
 let voterRegistrations = [];
 let voterEligibleResidents = [];
 
+/** Only the newest voter list request may render; a slower earlier search must not overwrite it. */
+let voterLoadVersion = 0;
+
 async function loadVoterRegistry(page = 1) {
   if (!hasStaffPermission('voters.view')) return;
   const tbody = document.getElementById('voter-registry-tbody');
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="7" class="resident-table-message">Loading voter list...</td></tr>';
+  const version = ++voterLoadVersion;
+  const columns = hasStaffPermission('voters.update') ? 8 : 7;
+  if (voterRegistrations.length === 0) tbody.innerHTML = `<tr><td colspan="${columns}" class="resident-table-message">Loading voter list...</td></tr>`;
 
   const query = new URLSearchParams({ page: String(page), per_page: '15' });
   const search = document.getElementById('voter-search')?.value.trim();
@@ -5012,6 +5670,7 @@ async function loadVoterRegistry(page = 1) {
       headers: { 'Accept': 'application/json' }
     });
     const payload = await response.json();
+    if (version !== voterLoadVersion) return;
     if (!response.ok) throw new Error(payload?.message || 'Unable to load the voters list.');
 
     voterRegistrations = payload.data || [];
@@ -5022,7 +5681,10 @@ async function loadVoterRegistry(page = 1) {
     renderVoterRegistry(payload.total || 0);
     updateVoterSummary(payload.summary || {});
   } catch (error) {
-    tbody.innerHTML = `<tr><td colspan="7" class="resident-table-message resident-table-error">${escapeText(error.message)}</td></tr>`;
+    if (version === voterLoadVersion) {
+      tbody.innerHTML = `<tr><td colspan="${columns}" class="resident-table-message resident-table-error">${listErrorMarkup(error, 'loadVoterRegistry(voterCurrentPage || 1)')}</td></tr>`;
+      markStatsUnavailable(['voter-stat-total', 'voter-stat-sk-only', 'voter-stat-sk-regular', 'voter-stat-regular-only']);
+    }
   }
 }
 
@@ -5030,8 +5692,9 @@ function renderVoterRegistry(total) {
   const tbody = document.getElementById('voter-registry-tbody');
   if (!tbody) return;
 
+  const canEdit = hasStaffPermission('voters.update');
   if (voterRegistrations.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="voter-empty-state"><strong>Walang nakitang botante.</strong><span>Subukang baguhin ang purok, age group, o search.</span></td></tr>';
+    tbody.innerHTML = `<tr><td colspan="${canEdit ? 8 : 7}" class="voter-empty-state"><strong>Walang nakitang botante.</strong><span>Subukang baguhin ang purok, age group, o search.</span></td></tr>`;
   } else {
     tbody.innerHTML = voterRegistrations.map(registration => {
       const eligibilityClass = registration.voter_eligibility === 'sk_only'
@@ -5046,18 +5709,14 @@ function renderVoterRegistry(total) {
         <td><span class="badge ${eligibilityClass}">${escapeText(registration.voter_eligibility_label)}</span></td>
         <td>${escapeText(registration.precinct_number)}</td>
         <td>${escapeText(registration.cluster_number)}</td>
+        ${canEdit ? `<td><div class="resident-actions">${registration.integrity_valid === false
+          ? '<span class="badge badge-red" title="Updates are blocked until an administrator reviews this record.">Locked for review</span>'
+          : `<button type="button" class="btn btn-xs" onclick="openEditVoter(${Number(registration.id)})" aria-label="Edit voter record of ${escapeText(registration.resident_name)}">Edit</button>`}</div></td>` : ''}
       </tr>`;
     }).join('');
   }
 
-  const pagination = document.getElementById('voter-pagination');
-  if (pagination) {
-    pagination.innerHTML = `
-      <span class="resident-page-summary">${Number(total).toLocaleString()} record${Number(total) === 1 ? '' : 's'}</span>
-      <button class="btn btn-xs" ${voterCurrentPage <= 1 ? 'disabled' : ''} onclick="loadVoterRegistry(${voterCurrentPage - 1})">Previous</button>
-      <span>Page ${voterCurrentPage} of ${voterLastPage}</span>
-      <button class="btn btn-xs" ${voterCurrentPage >= voterLastPage ? 'disabled' : ''} onclick="loadVoterRegistry(${voterCurrentPage + 1})">Next</button>`;
-  }
+  renderPager('voter-pagination', { page: voterCurrentPage, lastPage: voterLastPage, total, loader: 'loadVoterRegistry' });
 }
 
 function updateVoterSummary(summary) {
@@ -5079,10 +5738,31 @@ function filterVoterRegistry() {
 }
 
 function filterVoterEligibility(eligibility, element) {
-  document.querySelectorAll('#screen-voters .status-pill').forEach(pill => pill.classList.remove('active'));
+  document.querySelectorAll('#screen-voters .status-pill').forEach(pill => { pill.classList.remove('active'); pill.setAttribute?.('aria-pressed', 'false'); });
   element?.classList.add('active');
+  element?.setAttribute?.('aria-pressed', 'true');
   voterEligibilityFilter = eligibility;
   loadVoterRegistry(1);
+}
+
+/** Voter KPI cards count every active registration, so search and purok are cleared before the age group is applied. */
+function showVoterKpi(eligibility) {
+  const search = document.getElementById('voter-search');
+  if (search) search.value = '';
+  const purok = document.getElementById('voter-purok-filter');
+  if (purok) purok.value = '';
+  voterPurokFilter = '';
+  clearTimeout(voterSearchTimer);
+  const pill = [...document.querySelectorAll('#screen-voters .voter-filter-pills .status-pill')]
+    .find(button => (button.getAttribute('onclick') || '').includes(`'${eligibility}'`));
+  filterVoterEligibility(eligibility, pill);
+  revealKpiResults(document.querySelector('#screen-voters .voter-search-row'));
+}
+
+/** Demographics "Registered Voters" counts the same registry as the Voters module's total. */
+async function openVoterRegistryFromDemographics() {
+  await showScreen('voters', findNavItem('voters'));
+  showVoterKpi('');
 }
 
 function filterVoterPurok(purok) {
@@ -5115,8 +5795,31 @@ function populateVoterResidentSelect() {
   });
 }
 
+/** The registration being edited, or null while the dialog adds a new voter. */
+let editingVoterRegistration = null;
+
+/** Switch the shared voter dialog between adding a voter and editing an existing registration. */
+function setVoterDialogMode(registration) {
+  editingVoterRegistration = registration;
+  const editing = registration !== null;
+  document.getElementById('voter-modal-title').textContent = adminText(editing ? 'Edit Voter' : 'Add Voter');
+  const subtitle = document.getElementById('voter-modal-sub');
+  if (subtitle) {
+    subtitle.dataset.addText ??= subtitle.textContent;
+    subtitle.textContent = editing ? adminText('Update the voter information of this resident. Every change is recorded in the audit log.') : subtitle.dataset.addText;
+  }
+  document.getElementById('voter-resident-group').hidden = editing;
+  document.getElementById('voter-resident-readonly').hidden = !editing;
+  document.getElementById('voter-status-group').hidden = !editing;
+  document.getElementById('voter-comelec-label').textContent = adminText(editing ? 'COMELEC / Voter Number' : 'COMELEC / Voter Number *');
+  const hint = document.getElementById('voter-comelec-hint');
+  hint.hidden = !editing;
+  hint.textContent = editing ? adminText('Saved as :number. Leave blank to keep it.', { number: registration.masked_comelec_voter_number || '—' }) : '';
+}
+
 async function openVoterRegistration() {
   if (voterEligibleResidents.length === 0) await loadVoterRegistry(1);
+  setVoterDialogMode(null);
   populateVoterResidentSelect();
   document.getElementById('voter-resident-id').value = '';
   document.getElementById('voter-comelec-number').value = '';
@@ -5126,21 +5829,36 @@ async function openVoterRegistration() {
   openModal('modal-voter-registration');
 }
 
+function openEditVoter(registrationId) {
+  const registration = voterRegistrations.find(item => Number(item.id) === Number(registrationId));
+  if (!registration) return;
+  setVoterDialogMode(registration);
+  document.getElementById('voter-resident-name').textContent = `${registration.resident_name} — ${registration.resident_number}`;
+  document.getElementById('voter-comelec-number').value = '';
+  document.getElementById('voter-precinct').value = registration.precinct_number || '';
+  document.getElementById('voter-cluster').value = registration.cluster_number || '';
+  document.getElementById('voter-registration-date').value = registration.registration_date || '';
+  document.getElementById('voter-status').value = registration.status || 'active';
+  openModal('modal-voter-registration');
+}
+
 async function saveVoterRegistration() {
-  const payload = {
-    resident_id: Number(document.getElementById('voter-resident-id')?.value),
+  const editing = editingVoterRegistration;
+  const fields = {
     comelec_voter_number: document.getElementById('voter-comelec-number')?.value.trim(),
     precinct_number: document.getElementById('voter-precinct')?.value.trim(),
     cluster_number: document.getElementById('voter-cluster')?.value.trim(),
     registration_date: document.getElementById('voter-registration-date')?.value,
-    status: 'active'
   };
+  const payload = editing
+    ? { ...fields, status: document.getElementById('voter-status')?.value, version: Number(editing.version) }
+    : { resident_id: Number(document.getElementById('voter-resident-id')?.value), ...fields, status: 'active' };
   const button = document.getElementById('voter-save-button');
   if (button) button.disabled = true;
 
   try {
-    const response = await fetch('/staff/voter-registrations', {
-      method: 'POST',
+    const response = await fetch(editing ? `/staff/voter-registrations/${Number(editing.id)}` : '/staff/voter-registrations', {
+      method: editing ? 'PATCH' : 'POST',
       credentials: 'same-origin',
       headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', ...csrfRequestHeaders() },
       body: JSON.stringify(payload)
@@ -5152,8 +5870,8 @@ async function saveVoterRegistration() {
     }
 
     closeModal('modal-voter-registration');
-    showToast('Naidagdag na ang botante.', 'green');
-    await loadVoterRegistry(1);
+    showToast(editing ? 'Voter record updated.' : 'Naidagdag na ang botante.', 'green');
+    await loadVoterRegistry(editing ? voterCurrentPage : 1);
   } catch (error) {
     showToast(error.message || 'Hindi ma-save ang voter record.', 'red');
   } finally {
@@ -5182,7 +5900,13 @@ async function confirmRejectRequest() {
   const requestId = document.getElementById('reject-request-id')?.value;
   const reason = document.getElementById('reject-request-reason')?.value.trim();
   if (!requestId || !reason || reason.length < 10) {
-    showToast('Enter a clear rejection reason of at least 10 characters.', 'red');
+    const field = document.getElementById('reject-request-reason');
+    if (field && window.FormFeedback) {
+      window.FormFeedback.markInvalid(field, adminText('Enter a clear rejection reason of at least 10 characters.'));
+      field.focus();
+    } else {
+      showToast('Enter a clear rejection reason of at least 10 characters.', 'red');
+    }
     return;
   }
 
@@ -5285,7 +6009,7 @@ function toggleNavigation(force) {
 }
 
 document.addEventListener('keydown', event => {
-  const modal = document.querySelector('.modal-overlay.show');
+  const modal = topOpenModal();
   if (event.key === 'Escape') {
     if (modal) closeModal(modal.id);
     toggleNavigation(false);
@@ -5323,11 +6047,15 @@ async function loadResidentPortalAccount(residentId) {
     const account = resident.portal_account;
     panel.innerHTML = `<h3>Resident Portal account</h3><p>Resident record: ${escapeText(resident.status)}</p>`;
     if (account.registered) {
-      panel.innerHTML += `<p>Account: <strong>${account.is_active ? 'Active' : 'Suspended'}</strong></p><p>${escapeText(account.email)} &middot; Created ${escapeText(account.created_at)}</p><p>Last login: ${escapeText(account.last_login || 'Not yet recorded')}</p>`;
-      if (currentUserRole === 'admin') panel.innerHTML += `<button class="btn btn-sm" onclick="changePortalAccountStatus(${residentId}, ${!account.is_active}, this)">${account.is_active ? 'Suspend' : 'Reactivate'} portal account</button>`;
+      panel.innerHTML += `<p>Account: <strong>${account.is_active ? 'Active' : 'Suspended'}</strong></p><p>${escapeText(account.email)} &middot; Created ${escapeText(account.created_at)}</p><p>Last login: ${escapeText(account.last_login || 'Not yet recorded')}</p>
+        <p>Email confirmed: <strong>${account.email_verified ? 'Yes' : 'Not yet (document requests are closed until it is)'}</strong></p>
+        <p>Activated with: <strong>${escapeText(({ staff_code: 'Staff-issued code', email_self_service: 'Email self-service (identity not checked by staff)', unknown: 'Not recorded' })[account.activation] || 'Not recorded')}</strong></p>
+        ${account.activation === 'email_self_service' ? `<p class="resident-detail-hint">${escapeText('This account was created through the removed email self-service step. Check the resident\'s valid ID in person; suspend the account if their identity cannot be confirmed.')}</p>` : ''}`;
+      // The server lets every administrator (Super Admin or active Captain) suspend or reactivate; show the button to both.
+      if (window.AUTHENTICATED_USER?.is_administrator) panel.innerHTML += `<button class="btn btn-sm" onclick="changePortalAccountStatus(${residentId}, ${!account.is_active}, this)">${account.is_active ? 'Suspend' : 'Reactivate'} portal account</button>`;
     } else {
       panel.innerHTML += '<p>Not registered. Verify the resident in person before issuing their private activation code.</p>';
-      if (resident.status === 'active') panel.innerHTML += `<button class="btn btn-sm btn-primary" onclick="issuePortalActivation(${residentId}, this)">Issue activation code</button><div id="resident-activation-result"></div>`;
+      if (resident.status === 'active' && hasStaffPermission('records.activate')) panel.innerHTML += `<button class="btn btn-sm btn-primary" onclick="issuePortalActivation(${residentId}, this)">Issue activation code</button><div id="resident-activation-result"></div>`;
     }
   } catch (error) { if (panel?.isConnected) panel.textContent = error.message; }
 }
@@ -5335,13 +6063,13 @@ async function loadResidentPortalAccount(residentId) {
 async function issuePortalActivation(residentId, button) {
   if (button.disabled) return;
   button.disabled = true;
-  if (!(await confirmAction('Issue a private activation code for this resident after verifying their identity? Any previous code will stop working.', { title: 'Issue activation code', confirmLabel: 'Issue code' }))) {
+  if (!(await confirmAction('Confirm that you checked this resident\'s valid ID in person. The code works once and expires in 24 hours; any previous code stops working.', { title: 'Issue activation code', confirmLabel: 'I checked the ID, issue code' }))) {
     button.disabled = false;
     return;
   }
   const output = document.getElementById('resident-activation-result');
   try {
-    const result = await adminRequest(`/staff/residents/${residentId}/portal-activation`, { method: 'POST' });
+    const result = await adminRequest(`/staff/residents/${residentId}/portal-activation`, { method: 'POST', body: JSON.stringify({ identity_checked: true }) });
     if (output?.isConnected && button.closest('.modal-overlay')?.classList.contains('show')) output.innerHTML = `<p>${escapeText(result.message)}</p><label for="resident-activation-code">Private activation code</label><input id="resident-activation-code" class="form-input" readonly autocomplete="off" value="${escapeText(result.activation_code)}"><p>Expires: ${escapeText(result.expires_at)}</p>`;
   } catch (error) { showToast(error.message, 'red'); }
   finally { button.disabled = false; }

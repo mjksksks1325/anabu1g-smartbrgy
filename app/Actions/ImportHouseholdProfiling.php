@@ -21,7 +21,7 @@ class ImportHouseholdProfiling
     /** @return list<string> */
     public function fields(): array
     {
-        return ['household_group', 'household_number', 'household_name', 'is_household_head', 'relationship_to_household_head', 'first_name', 'middle_name', 'last_name', 'suffix', 'date_of_birth', 'gender', 'civil_status', 'purok', 'address', 'contact_number', 'residency_type'];
+        return ['household_group', 'household_number', 'household_name', 'is_household_head', 'relationship_to_household_head', 'resident_number', 'first_name', 'middle_name', 'last_name', 'suffix', 'date_of_birth', 'gender', 'civil_status', 'purok', 'address', 'contact_number', 'residency_type'];
     }
 
     /** @param list<string> $headers
@@ -29,7 +29,7 @@ class ImportHouseholdProfiling
      */
     public function mapping(array $headers): array
     {
-        $aliases = ['family_id' => 'household_group', 'family_group' => 'household_group', 'household_id' => 'household_group', 'household_no' => 'household_number', 'household_head' => 'is_household_head', 'relationship' => 'relationship_to_household_head', 'birthdate' => 'date_of_birth', 'birth_date' => 'date_of_birth', 'sex' => 'gender', 'subdivision' => 'purok', 'contact' => 'contact_number'];
+        $aliases = ['family_id' => 'household_group', 'family_group' => 'household_group', 'household_id' => 'household_group', 'household_no' => 'household_number', 'household_head' => 'is_household_head', 'relationship' => 'relationship_to_household_head', 'birthdate' => 'date_of_birth', 'birth_date' => 'date_of_birth', 'sex' => 'gender', 'subdivision' => 'purok', 'contact' => 'contact_number', 'resident_id' => 'resident_number', 'resident_no' => 'resident_number'];
         $mapping = [];
         foreach ($headers as $index => $header) {
             $field = Str::snake(Str::lower(preg_replace('/[^a-zA-Z0-9]+/', ' ', $header) ?? ''));
@@ -68,7 +68,7 @@ class ImportHouseholdProfiling
             $fields['gender'] = match (Str::lower($fields['gender'])) {
                 'm', 'male' => 'Male', 'f', 'female' => 'Female', default => $fields['gender']
             };
-            $fields['contact_number'] = preg_replace('/[\s-]+/', '', $fields['contact_number']) ?: null;
+            $fields['contact_number'] = Resident::normalizeContactNumber($fields['contact_number']);
             foreach (['middle_name', 'suffix'] as $nullable) {
                 $fields[$nullable] = $fields[$nullable] ?: null;
             }
@@ -78,9 +78,9 @@ class ImportHouseholdProfiling
                     ? Carbon::parse('1899-12-30')->addDays((int) $date)->toDateString()
                     : ($date ? Carbon::parse($date)->toDateString() : '');
             } catch (\Throwable) {
-                $fields['date_of_birth'] = '';
+                // Keep what was typed so staff can see and correct it; the date rule reports it as invalid.
             }
-            $validator = Validator::make($fields, $rules);
+            $validator = Validator::make($fields, $rules, (new StoreResidentRequest)->messages());
             $matches = collect();
             if (! $validator->errors()->hasAny(['first_name', 'last_name', 'date_of_birth'])) {
                 $matches = $this->identity->matches($fields)->map(fn (Resident $resident): array => [
@@ -88,13 +88,25 @@ class ImportHouseholdProfiling
                     'exact' => $this->normalized($resident->middle_name) === $this->normalized($fields['middle_name']) && $this->normalized($resident->suffix) === $this->normalized($fields['suffix']),
                 ]);
             }
+            $numberErrors = [];
+            if ($fields['resident_number'] !== '') {
+                $numbered = Resident::query()->withTrashed()->where('resident_number', $fields['resident_number'])->first();
+                if (! $numbered) {
+                    $numberErrors[] = "No resident has the resident number {$fields['resident_number']}. Correct it, or clear it for a new resident.";
+                } elseif (! $this->isSameIdentity($numbered, $fields)) {
+                    $numberErrors[] = "Resident number {$fields['resident_number']} belongs to {$numbered->full_name}. Check the name and date of birth in this row.";
+                } else {
+                    // The unique resident number confirms the match even when the middle name or suffix is written differently.
+                    $matches = $matches->map(fn (array $match): array => [...$match, 'exact' => $match['exact'] || $match['id'] === $numbered->id]);
+                }
+            }
             $alreadyExists = $matches->contains('exact', true);
             $action = $edit['action'] ?? match (true) {
                 $matches->isEmpty() => 'create',
                 $alreadyExists => 'skip',
                 default => 'resolve',
             };
-            $errors = $action === 'create' ? $validator->errors()->all() : Validator::make($fields, Arr::only($rules, ['household_group', 'household_number', 'household_name', 'relationship_to_household_head', 'purok', 'address']))->errors()->all();
+            $errors = [...($action === 'create' ? $validator->errors()->all() : Validator::make($fields, Arr::only($rules, ['household_group', 'household_number', 'household_name', 'relationship_to_household_head', 'purok', 'address']))->errors()->all()), ...$numberErrors];
             $existingId = $edit['resident_id'] ?? null;
             if ($action === 'resolve') {
                 $errors[] = 'Choose Link existing, Create as new after confirmation, or Skip.';
@@ -264,6 +276,14 @@ class ImportHouseholdProfiling
                 $lock->release();
             }
         }
+    }
+
+    /** @param array<string, mixed> $fields */
+    private function isSameIdentity(Resident $resident, array $fields): bool
+    {
+        return $this->normalized($resident->first_name) === $this->normalized($fields['first_name'])
+            && $this->normalized($resident->last_name) === $this->normalized($fields['last_name'])
+            && $resident->date_of_birth?->toDateString() === $fields['date_of_birth'];
     }
 
     private function normalized(?string $value): string

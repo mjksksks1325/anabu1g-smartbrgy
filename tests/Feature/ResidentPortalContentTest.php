@@ -1,5 +1,6 @@
 <?php
 
+use App\CertificateType;
 use App\Models\User;
 
 test('resident portal footer links to the Provincial Government of Cavite', function () {
@@ -7,12 +8,35 @@ test('resident portal footer links to the Provincial Government of Cavite', func
     $document = new DOMDocument;
     @$document->loadHTML($response->getContent());
     $xpath = new DOMXPath($document);
-    $links = $xpath->query('//footer//nav[@id="quick-links"]//a[@href="https://cavite.gov.ph/"]');
+    $links = $xpath->query('//footer//nav[@id="government-links"]//a[@href="https://cavite.gov.ph/"]');
 
     expect($links)->toHaveCount(1);
     expect(trim($links->item(0)->textContent))->toBe('Provincial Government of Cavite');
     expect($links->item(0)->getAttribute('target'))->toBe('_blank');
     expect($links->item(0)->getAttribute('rel'))->toBe('noopener noreferrer');
+});
+
+test('resident portal footer groups barangay contact, quick links and government links without unconfirmed details', function () {
+    $response = $this->get(route('portal.officials'))->assertOk();
+    $document = new DOMDocument;
+    @$document->loadHTML($response->getContent());
+    $xpath = new DOMXPath($document);
+    $footer = '//footer[contains(@class, "site-footer")]';
+
+    expect($xpath->query($footer.'//section[@id="footer-contact"]//a[starts-with(@href, "https://www.google.com/maps/search/")][@target="_blank"][@rel="noopener noreferrer"]'))->toHaveCount(1);
+    expect($xpath->query($footer.'//section[@id="footer-contact"]//*[contains(@class, "tag-unconfirmed")]'))->toHaveCount(2);
+    expect($xpath->query($footer.'//section[@id="footer-contact"]//a[@href="tel:911"]'))->toHaveCount(1);
+    expect(collect($xpath->query($footer.'//nav[@id="quick-links"]//a'))->map(fn (DOMElement $link): string => $link->getAttribute('href'))->all())
+        ->toBe([
+            route('portal.request.create'),
+            route('portal.information').'#requirements',
+            route('portal.announcements.index'),
+            route('portal.officials'),
+            route('home').'#contacts',
+            route('portal.information').'#help',
+        ]);
+    expect($xpath->query($footer.'//nav[@id="government-links"]//a[@target="_blank"][@rel="noopener noreferrer"]'))->toHaveCount(5);
+    expect($xpath->query($footer.'//a[contains(@href, "facebook.com")]'))->toHaveCount(0);
 });
 
 test('officials placeholders render with local images and native details controls', function () {
@@ -100,8 +124,31 @@ test('confirmed fees are shown on information and authenticated request pages', 
         ->assertDontSee('PHP 50.00');
 });
 
-test('home displays an unconfirmed land area without changing the map', function () {
-    $this->get(route('home'))
+test('each requestable document shows its system fee and certificate validity', function () {
+    $response = $this->actingAs(User::factory()->resident()->create(), 'resident')
+        ->get(route('portal.request.create'))->assertOk();
+    $document = new DOMDocument;
+    @$document->loadHTML($response->getContent());
+    $xpath = new DOMXPath($document);
+    $options = $xpath->query('//div[@id="cert-type-grid"]/button[contains(@class, "cert-btn")]');
+
+    expect($options)->toHaveCount(count(CertificateType::cases()));
+    foreach (CertificateType::cases() as $index => $type) {
+        $text = preg_replace('/\s+/', ' ', $options->item($index)->textContent);
+        expect($text)->toContain($type->value, $type->feeLabel() === 'Walang bayad' ? 'Free' : $type->feeLabel())
+            ->toContain($type === CertificateType::BarangayId ? 'Valid for 1 year from issue' : 'Valid for 3 months from issue');
+        expect(str_contains($text, 'To be confirmed'))->toBe($type === CertificateType::BusinessClearance);
+    }
+});
+
+test('request terms keep the full legal text after a plain summary', function () {
+    $this->actingAs(User::factory()->resident()->create(), 'resident')
+        ->get(route('portal.request.create'))->assertOk()
+        ->assertSeeInOrder(['What you are agreeing to, in short', 'id="tnc-scroll"', 'Online requests remain valid for 30 days from submission.', 'Monday to Friday, 8:00 AM to 5:00 PM.']);
+});
+
+test('help page displays an unconfirmed land area without changing the map', function () {
+    $this->get(route('portal.information'))
         ->assertSeeInOrder(['Land Area', 'To be confirmed'])
         ->assertSee('src="https://maps.google.com/maps?q=Barangay%20Anabu%20I-G%2C%20Imus%2C%20Cavite&amp;output=embed"', false);
 });

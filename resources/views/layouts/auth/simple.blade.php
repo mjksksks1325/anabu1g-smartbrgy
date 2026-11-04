@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-    <head>@include('partials.head')<meta name="csrf-token" content="{{ csrf_token() }}"><link rel="stylesheet" href="{{ asset('css/figma-tokens.css') }}?v={{ filemtime(public_path('css/figma-tokens.css')) }}"><link rel="stylesheet" href="{{ asset('css/figma-auth.css') }}?v={{ filemtime(public_path('css/figma-auth.css')) }}">@include('partials.admin-localization-scripts')</head>
+    <head>@include('partials.head')<meta name="csrf-token" content="{{ csrf_token() }}"><link rel="stylesheet" href="{{ asset('css/figma-tokens.css') }}?v={{ filemtime(public_path('css/figma-tokens.css')) }}"><link rel="stylesheet" href="{{ asset('css/figma-auth.css') }}?v={{ filemtime(public_path('css/figma-auth.css')) }}">@include('partials.admin-localization-scripts')<link rel="stylesheet" href="{{ asset('css/staff-theme.css') }}?v={{ filemtime(public_path('css/staff-theme.css')) }}"></head>
     <body class="civic-page staff-auth-page min-h-screen antialiased" data-admin-localization>
         <a href="#main-content" class="skip-link">Skip to main content</a>
         <div class="staff-auth-gov"><div><span><strong>GOVPH</strong> <span aria-hidden="true">|</span> Republic of the Philippines</span>@include('partials.admin-language-toggle')<span>Authorized personnel only</span></div></div>

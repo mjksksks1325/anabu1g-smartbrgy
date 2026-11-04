@@ -190,9 +190,9 @@ test('a resident record added during review prevents duplicate approval', functi
 });
 
 test('new application form supports both portal languages and preserves existing registration', function () {
-    $this->get(route('portal.register'))->assertSee('Apply as a new resident')->assertSee('Find resident record');
+    $this->get(route('portal.register'))->assertSee('Apply as a new resident')->assertSee('Enter your activation code');
     $this->get(route('portal.new-resident.create'))->assertSee('New resident registration');
-    $this->withCookie('portal_locale', 'fil')->get(route('portal.new-resident.create'))->assertSee('Pagpaparehistro ng bagong residente');
+    $this->withCookie('portal_locale', 'fil')->get(route('portal.new-resident.create'))->assertSee('Bagong resident registration');
     expect(StaffPermissions::keys())->toContain('records.review');
     expect(User::factory()->create(['role' => 'staff', 'staff_permissions' => ['records.view']])->hasPermission('records.review'))->toBeFalse();
 });
@@ -282,8 +282,9 @@ test('review result email reaches the application email with reference decision 
     $mail = $notification->toMail(new AnonymousNotifiable);
     if ($decision === 'approved') {
         expect($mail->viewData['actionUrl'])->toBe(route('portal.register'));
-        $this->get($mail->viewData['actionUrl'])->assertOk()->assertViewHas('stage', 'name')
-            ->assertSee('name="full_name"', false);
+        expect($mail->viewData['instructions'])->toContain('visit the Barangay Hall with a valid ID');
+        $this->get($mail->viewData['actionUrl'])->assertOk()->assertViewHas('stage', 'code')
+            ->assertSee('name="activation_code"', false)->assertDontSee('name="full_name"', false);
         app()->setLocale($locale);
     }
     $html = view($mail->view['html'], $mail->viewData)->render();
@@ -291,7 +292,7 @@ test('review result email reaches the application email with reference decision 
     expect($html)->toContain($application->reference, 'Please verify the complete address.', '&lt;script&gt;')
         ->not->toContain('<script>do-not-execute</script>', 'Activation Code');
     expect($text)->toContain($application->reference, 'Please verify the complete address.');
-    expect($mail->subject)->toContain($locale === 'fil' ? 'Resulta ng pagpaparehistro ng residente' : 'Resident registration update');
+    expect($mail->subject)->toContain($locale === 'fil' ? 'Resulta ng resident registration' : 'Resident registration update');
     $this->post(route('staff.resident-applications.update', $application), ['decision' => $decision, 'remarks' => $remarks])->assertConflict();
     expect(Notification::sent(new AnonymousNotifiable, ResidentRegistrationReviewedNotification::class))->toHaveCount(1);
     Notification::assertNotSentTo(new AnonymousNotifiable, ResidentPortalActivationNotification::class);

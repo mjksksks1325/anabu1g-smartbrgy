@@ -4,6 +4,8 @@ use App\Actions\WriteRecordsSpreadsheet;
 use App\Models\DocumentRequest;
 use App\Models\Resident;
 use App\Models\User;
+use App\Models\VoterRegistration;
+use Illuminate\Support\Facades\DB;
 
 function residentPayload(array $overrides = []): array
 {
@@ -223,6 +225,78 @@ it('searches and combines resident status filters with pagination', function () 
         ->assertJsonPath('per_page', 1);
 });
 
+it('finds a resident by full name in any order, case, spacing or with an initial', function (string $search) {
+    $staff = User::factory()->assignedOperations()->create();
+    $juan = Resident::factory()->create(['first_name' => 'Juan', 'middle_name' => 'Dimaculangan', 'last_name' => 'Dela Cruz', 'suffix' => 'Jr.']);
+    Resident::factory()->create(['first_name' => 'Juan', 'middle_name' => null, 'last_name' => 'Santos', 'suffix' => null]);
+    Resident::factory()->create(['first_name' => 'Pedro', 'middle_name' => null, 'last_name' => 'Dela Cruz', 'suffix' => null]);
+
+    $this->actingAs($staff)->getJson(route('staff.residents.index', ['search' => $search]))
+        ->assertOk()
+        ->assertJsonPath('total', 1)
+        ->assertJsonPath('data.0.id', $juan->id);
+})->with([
+    'first then last' => 'Juan Dela Cruz',
+    'last, first' => 'Dela Cruz, Juan',
+    'mixed case and extra spaces' => '  jUAN   dela   CRUZ ',
+    'middle initial' => 'Juan D. Cruz',
+    'with suffix' => 'Juan Cruz Jr.',
+]);
+
+it('applies the same name search to request records and the case resident lookup', function () {
+    $staff = User::factory()->assignedOperations()->create();
+    $juan = Resident::factory()->create(['first_name' => 'Juan', 'middle_name' => null, 'last_name' => 'Dela Cruz']);
+    Resident::factory()->create(['first_name' => 'Pedro', 'middle_name' => null, 'last_name' => 'Dela Cruz']);
+
+    $this->actingAs($staff)->getJson(route('staff.request-records.index', ['search' => 'Dela Cruz Juan']))
+        ->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.id', $juan->id);
+    $this->getJson(route('staff.case-residents', ['search' => 'Dela Cruz Juan']))
+        ->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.id', $juan->id);
+});
+
+it('shows each resident voter record status, with null for no record and no COMELEC number', function () {
+    $staff = User::factory()->assignedOperations()->create();
+    $registered = Resident::factory()->create(['last_name' => 'Aquino']);
+    $transferred = Resident::factory()->create(['last_name' => 'Bautista']);
+    $unrecorded = Resident::factory()->create(['last_name' => 'Castro']);
+    VoterRegistration::factory()->create(['resident_id' => $registered->id, 'status' => 'active']);
+    VoterRegistration::factory()->create(['resident_id' => $transferred->id, 'status' => 'transferred']);
+
+    $response = $this->actingAs($staff)->getJson(route('staff.residents.index'))->assertOk();
+
+    expect(collect($response->json('data'))->pluck('voter_status', 'id')->all())->toBe([
+        $registered->id => 'active',
+        $transferred->id => 'transferred',
+        $unrecorded->id => null,
+    ]);
+    expect($response->getContent())->not->toContain('comelec');
+});
+
+it('refuses a save based on an older version instead of overwriting another staff member', function () {
+    $first = User::factory()->assignedOperations()->create();
+    $second = User::factory()->assignedOperations()->create();
+    $this->travelTo(now()->subMinute());
+    $resident = Resident::factory()->create(residentPayload());
+    $this->travelBack();
+    $loadedVersion = $this->actingAs($first)->getJson(route('staff.residents.index'))->json('data.0.updated_at');
+    $audits = fn (): int => DB::table('administrative_audits')->where('action', 'admin.residents.update')->count();
+
+    $this->actingAs($first)->patchJson(route('staff.residents.update', $resident), residentPayload(['address' => 'Saved first', 'expected_updated_at' => $loadedVersion]))
+        ->assertOk();
+    $refused = $this->actingAs($second)->patchJson(route('staff.residents.update', $resident), residentPayload(['address' => 'Saved second', 'expected_updated_at' => $loadedVersion]));
+
+    $refused->assertStatus(409)
+        ->assertJsonPath('message', 'Someone else saved changes to this resident after you opened it. Your changes were not saved.')
+        ->assertJsonPath('resident.address', 'Saved first')
+        ->assertJsonPath('resident.voter_status', null);
+    expect($resident->fresh()->address)->toBe('Saved first')
+        ->and($audits())->toBe(1);
+
+    $this->patchJson(route('staff.residents.update', $resident), residentPayload(['address' => 'Saved second', 'expected_updated_at' => $refused->json('resident.updated_at')]))
+        ->assertOk()->assertJsonPath('resident.address', 'Saved second');
+    expect($audits())->toBe(2);
+});
+
 it('updates a resident without allowing a client to replace its resident number', function () {
     $staff = User::factory()->assignedOperations()->create();
     $resident = Resident::factory()->create();
@@ -251,7 +325,15 @@ it('archives and restores a resident without deleting linked request history', f
         'status' => 'pending',
     ]);
 
-    $this->actingAs($staff)->deleteJson(route('staff.residents.destroy', $resident))->assertOk();
+    $this->actingAs($staff)->deleteJson(route('staff.residents.destroy', $resident))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('super_admin_password');
+    $this->actingAs($staff)->deleteJson(route('staff.residents.destroy', $resident), ['super_admin_password' => 'wrong-password'])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('super_admin_password');
+    expect($resident->fresh()->trashed())->toBeFalse();
+
+    $this->actingAs($staff)->deleteJson(route('staff.residents.destroy', $resident), supervisorApproval())->assertOk();
 
     $this->assertSoftDeleted($resident);
     expect($request->fresh()->resident_id)->toBe($resident->id);
@@ -342,7 +424,8 @@ it('exports request history as a branded formula-safe excel file', function () {
 });
 
 it('exports the current resident filters as a branded formula-safe excel file', function () {
-    $staff = User::factory()->assignedOperations()->create();
+    // A fixed name: a random one with an apostrophe is XML-escaped in the sheet and breaks the text match.
+    $staff = User::factory()->assignedOperations()->create(['name' => 'Records Officer']);
     Resident::factory()->create([
         'first_name' => 'Maria',
         'middle_name' => null,
@@ -407,3 +490,14 @@ it('accepts only 09 or +639 mobile numbers when creating or editing a resident',
         $update->assertJsonValidationErrors(['contact_number' => 'Enter 11 digits starting with 09']);
     }
 })->with([['09171234567', true], ['+639171234567', true], ['9171234567', false], ['0817123456', false], ['+6391712345678', false]]);
+
+it('stores every accepted mobile number in the local 09XXXXXXXXX format', function (string $typed) {
+    $staff = User::factory()->assignedOperations()->create();
+    $resident = Resident::factory()->create(['contact_number' => null]);
+
+    $created = $this->actingAs($staff)->postJson(route('staff.residents.store'), residentPayload(['contact_number' => $typed]))->assertCreated();
+    $this->patchJson(route('staff.residents.update', $resident), [...residentPayload(['first_name' => $resident->first_name, 'last_name' => $resident->last_name, 'date_of_birth' => $resident->date_of_birth->toDateString()]), 'contact_number' => $typed])->assertOk();
+
+    expect(Resident::query()->whereKey($created->json('resident.id') ?? $created->json('id'))->value('contact_number'))->toBe('09171234567')
+        ->and($resident->fresh()->contact_number)->toBe('09171234567');
+})->with(['09171234567', '+639171234567', '+63 917 123 4567', '0917-123-4567']);

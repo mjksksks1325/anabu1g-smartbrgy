@@ -60,6 +60,45 @@ it('searches linked residents and filters cases by category dates assignment and
     $this->actingAs($staff)->getJson(route('staff.incidents.index', ['search' => 'UniqueLinkedSurname', 'status' => 'referred', 'incident_type' => 'Property Dispute', 'date_from' => today()->toDateString(), 'date_to' => today()->toDateString(), 'assigned_to' => $staff->id, 'per_page' => 1]))->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.id', $case->id);
     $this->getJson(route('staff.incidents.index', ['search' => $case->incident_number]))->assertJsonPath('total', 1);
 });
+it('lists a resident linked cases only within the viewer case visibility', function () {
+    $resident = Resident::factory()->create();
+    $ordinary = Incident::factory()->create(['respondent_resident_id' => $resident->id, 'incident_type' => 'Noise Complaint', 'is_sensitive' => false, 'status' => 'open']);
+    $vawc = Incident::factory()->create(['complainant_resident_id' => $resident->id, 'incident_type' => 'VAWC', 'is_sensitive' => true, 'status' => 'under_review']);
+    Incident::factory()->create(['incident_type' => 'Theft', 'is_sensitive' => false]);
+    $ordinaryHandler = User::factory()->create(['role' => 'staff', 'staff_permissions' => ['incidents.view']]);
+    $vawcHandler = User::factory()->create(['role' => 'staff', 'staff_permissions' => ['vawc.view']]);
+    $recordsClerk = User::factory()->create(['role' => 'staff', 'staff_permissions' => ['records.view']]);
+
+    $this->actingAs($ordinaryHandler)->getJson(route('staff.incidents.index', ['resident_id' => $resident->id]))
+        ->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.id', $ordinary->id);
+    $this->actingAs($vawcHandler)->getJson(route('staff.incidents.index', ['resident_id' => $resident->id]))
+        ->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.id', $vawc->id);
+    $this->actingAs($recordsClerk)->getJson(route('staff.incidents.index', ['resident_id' => $resident->id]))->assertForbidden();
+});
+
+it('counts reports per status and protection orders only within the viewer case visibility', function () {
+    foreach (['open', 'open', 'under_review', 'referred', 'resolved', 'closed'] as $status) {
+        Incident::factory()->create(['status' => $status, 'incident_type' => 'Noise Complaint', 'is_sensitive' => false]);
+    }
+    $vawcOpen = Incident::factory()->create(['status' => 'open', 'incident_type' => 'VAWC', 'is_sensitive' => true]);
+    $withOrder = Incident::factory()->create(['status' => 'referred', 'incident_type' => 'VAWC', 'is_sensitive' => true]);
+    BarangayProtectionOrder::factory()->create(['incident_id' => $withOrder->id]);
+    $ordinaryHandler = User::factory()->create(['role' => 'staff', 'staff_permissions' => ['incidents.view']]);
+    $vawcHandler = User::factory()->create(['role' => 'staff', 'staff_permissions' => ['vawc.view']]);
+
+    $ordinary = $this->actingAs($ordinaryHandler)->getJson(route('staff.incidents.index'))->assertOk();
+    expect($ordinary->json('summary.by_status'))->toMatchArray(['open' => 2, 'under_review' => 1, 'referred' => 1, 'resolved' => 1, 'closed' => 1, 'dismissed' => 0])
+        ->and($ordinary->json('summary'))->not->toHaveKey('protection_orders');
+    $this->getJson(route('staff.incidents.index', ['protection_order' => 1]))->assertOk()->assertJsonPath('total', 6);
+
+    $vawc = $this->actingAs($vawcHandler)->getJson(route('staff.incidents.index'))->assertOk();
+    expect($vawc->json('summary.by_status'))->toMatchArray(['open' => 1, 'under_review' => 0, 'referred' => 1, 'resolved' => 0])
+        ->and($vawc->json('summary.protection_orders'))->toBe(1);
+    $this->getJson(route('staff.incidents.index', ['protection_order' => 1]))->assertOk()
+        ->assertJsonPath('total', 1)->assertJsonPath('data.0.id', $withOrder->id);
+    $this->getJson(route('staff.incidents.index', ['status' => 'open']))->assertJsonPath('total', 1)->assertJsonPath('data.0.id', $vawcOpen->id);
+});
+
 it('returns searchable resident matches and assignable staff to incident managers', function () {
     $manager = User::factory()->assignedOperations()->create(['role' => 'staff']);
     $assignable = User::factory()->assignedOperations()->create(['role' => 'staff', 'name' => 'Case Follow-up Staff']);

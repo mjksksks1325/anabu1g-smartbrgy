@@ -6,6 +6,7 @@ use App\CertificateType;
 use App\Models\Resident;
 use App\Models\ResidentRequestRestriction;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
 class CheckRequestRestrictions
@@ -14,11 +15,29 @@ class CheckRequestRestrictions
     {
         $this->expire($resident->id);
 
-        return ResidentRequestRestriction::query()->where('resident_id', $resident->id)
-            ->where('status', 'active')->whereNotNull('reviewed_at')->whereNotNull('reviewed_by')
-            ->where('starts_at', '<=', now())->where(fn (Builder $query) => $query->whereNull('ends_at')->orWhere('ends_at', '>', now()))
+        return $this->inForce($resident)
             ->where(fn (Builder $query) => $query->whereNull('affected_document_type')->orWhere('affected_document_type', $type->value))
             ->first();
+    }
+
+    /**
+     * Every reviewed hold in force for the resident, for the notice on the request page.
+     *
+     * @return Collection<int, ResidentRequestRestriction>
+     */
+    public function allActive(Resident $resident): Collection
+    {
+        $this->expire($resident->id);
+
+        return $this->inForce($resident)->orderByRaw('affected_document_type IS NOT NULL')->orderBy('affected_document_type')->get();
+    }
+
+    /** @return Builder<ResidentRequestRestriction> */
+    private function inForce(Resident $resident): Builder
+    {
+        return ResidentRequestRestriction::query()->where('resident_id', $resident->id)
+            ->where('status', 'active')->whereNotNull('reviewed_at')->whereNotNull('reviewed_by')
+            ->where('starts_at', '<=', now())->where(fn (Builder $query) => $query->whereNull('ends_at')->orWhere('ends_at', '>', now()));
     }
 
     public function expire(?int $residentId = null): int

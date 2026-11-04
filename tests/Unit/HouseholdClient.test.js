@@ -7,6 +7,7 @@ const source = readFileSync(new URL('../../public/js/admin.js', import.meta.url)
 const householdCode = source.slice(source.indexOf('let householdLookupTimer ='), source.indexOf('async function populateManualResidentDropdown()'));
 const payloadCode = source.slice(source.indexOf('function residentFormPayload('), source.indexOf('async function saveResident('));
 const mappingCode = source.slice(source.indexOf('function residentFromApi('), source.indexOf('async function loadResidents('));
+const pagerCode = source.slice(source.indexOf('function renderPager('), source.indexOf('function renderIssuedCertificatesPagination('));
 
 class FakeOption {
   constructor(text, value) { this.textContent = text; this.value = value; }
@@ -34,7 +35,7 @@ function householdClient(fetch) {
     showToast: message => toasts.push(message), hasStaffPermission: () => true,
     escapeText: value => String(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]))
   });
-  vm.runInContext(householdCode + payloadCode + mappingCode, context);
+  vm.runInContext(householdCode + payloadCode + mappingCode + pagerCode, context);
   return { context, fields, getField, toasts };
 }
 
@@ -232,8 +233,24 @@ test('household member markup escapes names and relationships and labels inactiv
   assert.match(html, /&lt;script&gt;/);
   assert.match(html, /&lt;img src=x&gt;/);
   assert.match(html, /Inactive/);
-  assert.match(html, /Yes/);
+  assert.match(html, /Registered voter/);
   assert.doesNotMatch(html, /<script>|<img/);
+});
+
+test('household members show the voter record status and never read a missing record as unregistered', () => {
+  const { context } = householdClient();
+  const member = (id, extra) => ({ id, full_name: `Member ${id}`, relationship_to_household_head: 'Child', gender: 'Male', status: 'active', ...extra });
+  const html = context.householdMembersMarkup({ id: 1, members: [
+    member(1, { registered_voter: true, voter_status: 'active' }),
+    member(2, { registered_voter: false, voter_status: 'transferred' }),
+    member(3, { registered_voter: false, voter_status: null }),
+  ] });
+
+  assert.match(html, /<th>Voter registration<\/th>/);
+  assert.match(html, /badge-green">Registered voter/);
+  assert.match(html, /badge-gray">Transferred/);
+  assert.match(html, /voter-status-none">No voter record/);
+  assert.doesNotMatch(html, />No</);
 });
 
 test('household write requests include CSRF headers and show validation messages', async () => {

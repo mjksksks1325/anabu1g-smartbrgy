@@ -6,6 +6,7 @@ use App\Actions\CheckRequestRestrictions;
 use App\CertificateType;
 use Carbon\CarbonInterface;
 use Database\Factories\ResidentFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -46,6 +47,21 @@ class Resident extends Model
     protected $appends = ['full_name', 'age', 'has_photo'];
 
     protected $hidden = ['photo_path', 'portal_registration_hash', 'portal_registration_expires_at', 'portal_registration_email', 'portal_registration_sent_at'];
+
+    /**
+     * Store mobile numbers in one local format: spaces, dashes and brackets are removed and +639XXXXXXXXX
+     * becomes 09XXXXXXXXX. Anything else is returned as typed so validation can reject it.
+     */
+    public static function normalizeContactNumber(mixed $value): ?string
+    {
+        $number = preg_replace('/[\s()-]+/', '', (string) $value);
+
+        if ($number === '' || $number === null) {
+            return null;
+        }
+
+        return preg_match('/^\+639\d{9}$/', $number) === 1 ? '0'.substr($number, 3) : $number;
+    }
 
     /** @return HasOne<User, $this> */
     public function portalAccount(): HasOne
@@ -99,6 +115,66 @@ class Resident extends Model
     public function voterRegistration(): HasOne
     {
         return $this->hasOne(VoterRegistration::class);
+    }
+
+    /**
+     * Residents the voter registry lists: active, not archived, and at least 15 years old (SK minimum).
+     * Demographics and the Voters module both count registered voters through this scope.
+     *
+     * @param  Builder<Resident>  $query
+     * @return Builder<Resident>
+     */
+    public function scopeInVoterRegistry(Builder $query): Builder
+    {
+        return $query->where('status', 'active')
+            ->whereNull('deleted_at')
+            ->whereDate('date_of_birth', '<=', today()->subYears(15));
+    }
+
+    /**
+     * Adds `voter_status`: the status of the resident's voter record (active, transferred, deceased or
+     * deregistered), or null when the system holds no voter record. A null value means "not recorded here",
+     * not "not registered with COMELEC". Only the status is read; COMELEC numbers stay out of the payload.
+     *
+     * @param  Builder<Resident>  $query
+     * @return Builder<Resident>
+     */
+    public function scopeWithVoterStatus(Builder $query): Builder
+    {
+        return $query->addSelect(['voter_status' => VoterRegistration::query()
+            ->select('status')
+            ->whereColumn('voter_registrations.resident_id', 'residents.id')
+            ->limit(1)]);
+    }
+
+    /**
+     * Staff name search: every word must match the resident ID or a name part, so "Juan Dela Cruz",
+     * "dela cruz juan", "Cruz, Juan" and "Juan D. Cruz" all find Juan Dela Cruz. Extra spaces, commas and
+     * initials' full stops are ignored; letter case follows the database collation (case-insensitive on
+     * MySQL `_ci` and on SQLite for ASCII letters).
+     *
+     * @param  Builder<Resident>  $query
+     * @param  list<string>  $extraColumns
+     * @return Builder<Resident>
+     */
+    public function scopeMatchingSearch(Builder $query, string $search, array $extraColumns = []): Builder
+    {
+        $columns = ['resident_number', 'first_name', 'middle_name', 'last_name', 'suffix', ...$extraColumns];
+        $words = collect(preg_split('/[\s,]+/u', $search, -1, PREG_SPLIT_NO_EMPTY) ?: [])
+            ->map(fn (string $word): string => rtrim($word, '.'))
+            ->filter(fn (string $word): bool => $word !== '')
+            ->unique()
+            ->take(6);
+
+        foreach ($words as $word) {
+            $query->where(function (Builder $query) use ($columns, $word): void {
+                foreach ($columns as $column) {
+                    $query->orWhere($query->qualifyColumn($column), 'like', '%'.$word.'%');
+                }
+            });
+        }
+
+        return $query;
     }
 
     /** @return array{eligible: bool, reasons: list<string>} */

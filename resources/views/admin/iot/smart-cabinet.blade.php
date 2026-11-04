@@ -18,7 +18,7 @@
             @else
                 Not reported
             @endif
-        </dd></div><div><dt>Cabinet state</dt><dd>{{ $cabinet->cabinet_state ? json_encode($cabinet->cabinet_state, JSON_UNESCAPED_SLASHES) : 'Not reported' }}</dd></div><div><dt>Last error</dt><dd>{{ $cabinet->last_error ?? 'None reported' }}</dd></div></dl></article>
+        </dd></div><div><dt>Cabinet state</dt><dd>@if(is_array($cabinet->cabinet_state) && $cabinet->cabinet_state)<ul class="cabinet-state-list">@foreach($cabinet->cabinet_state as $stateKey => $stateValue)<li><span>{{ \Illuminate\Support\Str::headline((string) $stateKey) }}</span><strong>{{ is_bool($stateValue) ? ($stateValue ? 'Yes' : 'No') : (is_scalar($stateValue) ? $stateValue : json_encode($stateValue, JSON_UNESCAPED_SLASHES)) }}</strong></li>@endforeach</ul>@elseif($cabinet->cabinet_state){{ json_encode($cabinet->cabinet_state, JSON_UNESCAPED_SLASHES) }}@else Not reported @endif</dd></div><div><dt>Last error</dt><dd>{{ $cabinet->last_error ?? 'None reported' }}</dd></div></dl></article>
 @empty
     <div class="empty-state"><strong>No cabinets registered</strong><p>Device details will appear after an administrator registers the Raspberry Pi integration.</p></div>
 @endforelse
@@ -89,7 +89,7 @@
                         <td><span class="pill {{ $file->is_active ? 'success' : 'neutral' }}">{{ $file->is_active ? 'Active' : 'Archived' }}</span></td>
                         <td>
                             @if ($file->is_active)
-                                <button class="button quiet" type="button" data-folder-archive data-archive-url="{{ route('admin.smart-cabinet.folders.archive', $file) }}" data-file-reference="{{ $file->file_reference }}">Archive</button>
+                                <button class="button danger-outline" type="button" data-folder-archive data-archive-url="{{ route('admin.smart-cabinet.folders.archive', $file) }}" data-file-reference="{{ $file->file_reference }}">Archive</button>
                             @else
                                 <form method="POST" action="{{ route('admin.smart-cabinet.folders.restore', $file) }}">
                                     @csrf
@@ -111,11 +111,11 @@
         <h2 id="cabinet-folder-archive-title">Archive folder</h2>
         <p id="cabinet-folder-archive-description">This keeps the folder and its movement history in the records. Confirm with the active Barangay Captain or Super Admin password.</p>
         <p class="cabinet-folder-archive-reference" data-folder-archive-reference></p>
-        <label for="cabinet-folder-archive-password">Password ng Barangay Captain o Super Admin</label>
+        <label for="cabinet-folder-archive-password">Barangay Captain or Super Admin password</label>
         <input id="cabinet-folder-archive-password" name="super_admin_password" type="password" autocomplete="current-password" required>
         <p class="cabinet-folder-archive-error" data-folder-archive-error role="alert" hidden></p>
         <div class="cabinet-folder-archive-actions">
-            <button class="button quiet" type="button" data-folder-archive-cancel>Cancel</button>
+            <button class="button danger-outline" type="button" data-folder-archive-cancel>Cancel</button>
             <button class="button danger" type="submit" data-folder-archive-submit>Confirm archive</button>
         </div>
     </form>

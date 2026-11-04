@@ -95,7 +95,8 @@ class PurokController extends Controller
                 'seniors' => $activeResidents->filter(fn (Resident $resident): bool => $resident->age >= 60)->count(),
                 'age_groups' => $ageGroups,
                 'special_groups' => $specialGroupCounts,
-                'senior_residents' => $activeResidents
+                // Names and birth dates are individual records: only for staff who may open Resident Records.
+                'senior_residents' => ! request()->user()->hasPermission('records.view') ? null : $activeResidents
                     ->filter(fn (Resident $resident): bool => $resident->age >= 60)
                     ->sortBy('last_name')
                     ->take(100)

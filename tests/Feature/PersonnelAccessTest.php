@@ -53,7 +53,7 @@ test('resident login uses its separate guard while personnel login does not chan
     $resident = User::factory()->resident()->create();
     $staff = User::factory()->create();
 
-    $this->post('/portal/login', ['email' => $resident->email, 'password' => 'password'])->assertRedirect('/portal/account');
+    $this->post('/portal/login', ['email' => $resident->email, 'password' => 'password'])->assertRedirect('/portal/dashboard');
     $this->assertAuthenticatedAs($resident, 'resident');
     $this->assertGuest('web');
     $this->post('/staff/login', ['email' => $staff->email, 'password' => 'password'])->assertRedirect('/staff/access-pending');

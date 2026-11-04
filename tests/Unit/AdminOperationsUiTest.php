@@ -52,7 +52,7 @@ test('dashboard and incident screens use authenticated database endpoints', func
         ->toContain('id="incidents-tbody"')
         ->toContain('id="incident-pagination"')
         ->toContain('id="inc-resolution-notes"')
-        ->toContain('IoT status')
+        ->toContain("onclick=\"openModal('modal-hardware-status')\"")
         ->not->toContain('IoT Not Connected')
         ->toContain("route('staff.rfid-files.index')")
         ->not->toContain('id="screen-cabinet"')
@@ -83,7 +83,7 @@ test('request eligibility uses server history and a real csv export', function (
         ->toContain('openEligibilityForRequestResident');
 });
 
-test('personnel tables center cells and audit headers share the five column row layout', function () {
+test('personnel tables center cells and audit headers share the four column row layout', function () {
     $adminStyles = file_get_contents(dirname(__DIR__, 2).'/public/css/figma-admin.css');
     $iotStyles = file_get_contents(dirname(__DIR__, 2).'/public/css/figma-iot.css');
     $dashboard = file_get_contents(dirname(__DIR__, 2).'/resources/views/admin/dashboard.blade.php');
@@ -96,7 +96,7 @@ test('personnel tables center cells and audit headers share the five column row 
         ->toContain('.tbl td.resident-actions { display: table-cell; }')
         ->toContain('.audit-table-head,')
         ->toContain('.audit-log-row {')
-        ->toContain('grid-template-columns: 50px minmax(135px, 1fr) minmax(0, 2fr) minmax(110px, 1fr) 90px;')
+        ->toContain('grid-template-columns: minmax(110px, .8fr) minmax(135px, 1fr) minmax(0, 2fr) minmax(110px, 1fr);')
         ->toContain('@media (min-width: 761px)');
     expect($iotStyles)->toContain('.main-content table th,')
         ->toContain('.main-content table td { text-align: center; vertical-align: middle; }');
@@ -104,16 +104,20 @@ test('personnel tables center cells and audit headers share the five column row 
         ->not->toContain('grid-template-columns:50px 130px 1fr 200px 90px');
 });
 
-test('every workspace modal closes only through the upper-right X button', function (string $view) {
+test('every workspace modal has the upper-right X, and only confirmations add a Cancel button', function (string $view, array $confirmations) {
     $markup = file_get_contents(dirname(__DIR__, 2).'/resources/views/'.$view);
     preg_match_all('/<div class="modal-overlay[^"]*"[^>]*id="([\w-]+)"/', $markup, $modals);
 
     expect($modals[1])->not->toBeEmpty();
     foreach ($modals[1] as $modal) {
         expect(substr_count($markup, 'class="modal-close" onclick="closeModal(\''.$modal.'\')" aria-label="Close">&times;</button>'))->toBe(1, $modal);
-        expect(preg_match('/<button(?=[^>]*class="btn")[^>]*onclick="closeModal\(\''.preg_quote($modal, '/').'\'\)"[^>]*>\s*(Close|Cancel|Isara)\s*<\/button>/', $markup))->toBe(0, $modal);
+        $cancelButtons = preg_match_all('/<button(?=[^>]*class="btn")[^>]*onclick="closeModal\(\''.preg_quote($modal, '/').'\'\)"[^>]*>\s*(Close|Cancel|Isara)\s*<\/button>/', $markup);
+        expect($cancelButtons)->toBe(in_array($modal, $confirmations, true) ? 1 : 0, $modal);
     }
-})->with(['admin/dashboard.blade.php', 'admin/partials/case-management.blade.php']);
+})->with([
+    'workspace' => ['admin/dashboard.blade.php', ['modal-confirm-action', 'modal-reject-request']],
+    'case management' => ['admin/partials/case-management.blade.php', ['modal-lift-restriction']],
+]);
 
 test('demographics, voters and certificates KPI cards each use their own color', function (string $grid, int $count, array $expected) {
     $markup = file_get_contents(dirname(__DIR__, 2).'/resources/views/admin/dashboard.blade.php');
@@ -143,10 +147,13 @@ test('certificates page uses a stepper, paginated filtered history and one fees 
         ->toContain('<form class="issued-history-filters" role="search" aria-label="Filter issued certificates"')
         ->toContain('id="issued-certificates-pagination"')
         ->toContain('onclick="openCertificateFees()">Certificates &amp; Fees</button>')
-        ->toContain('<div class="modal-overlay" id="modal-cert-fees">')
+        ->toContain('<div class="modal-overlay" id="modal-cert-issue">')
+        ->toContain('id="cert-issue-title">Certificates &amp; Fees</div>')
+        ->not->toContain('id="modal-cert-fees"')
         ->not->toContain('Available Certificates &amp; Fees')
         ->and(substr_count($markup, 'id="cert-types-list"'))->toBe(1)
-        ->and($script)->toContain('<span class="cert-lane-title" style="--lane-color:${lane.color};">');
+        ->and($script)->toContain('<span class="cert-lane-title" style="--lane-color:${lane.color};">')
+        ->toContain("function openCertificateFees() {\n  renderCertTypesList();\n  openModal('modal-cert-issue');");
 });
 
 test('voter actions sit beside the search field instead of the page title', function () {
@@ -160,7 +167,7 @@ test('resident records order the toolbar and filter special groups with one drop
     $markup = file_get_contents(dirname(__DIR__, 2).'/resources/views/admin/dashboard.blade.php');
 
     expect($markup)->toMatch('/<div class="search-row resident-records-toolbar">\s*<div class="search-wrap">.*id="residents-search".*\n\s*<button[^\n]*openAddResident\(\)[^\n]*\n\s*<button[^\n]*openHouseholdManagement\(\)[^\n]*\n\s*<button[^\n]*openHouseholdProfilingImport\(\)[^\n]*\n\s*<button[^\n]*exportResidents\(\)/')
-        ->toMatch('/filterResidentStatus\(\'Archived\',this\)">Archived<\/div>\s*<label class="resident-group-select" for="resident-group-filter">/')
+        ->toMatch('/<button type="button" class="status-pill" aria-pressed="false" data-resident-status="archived" onclick="filterResidentStatus\(\'Archived\',this\)">Archived<\/button>\s*<label class="resident-group-select" for="resident-group-filter">/')
         ->toContain('<select class="form-input" id="resident-group-filter" onchange="filterResidentSpecialGroup(this.value)">')
         ->not->toContain('data-resident-group=');
     foreach (Resident::SPECIAL_GROUPS as $group) {

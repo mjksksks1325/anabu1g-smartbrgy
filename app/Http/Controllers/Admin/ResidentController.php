@@ -6,6 +6,7 @@ use App\Actions\ManageHouseholds;
 use App\Actions\ResidentIdentity;
 use App\Actions\WriteRecordsSpreadsheet;
 use App\CertificateType;
+use App\Exceptions\StaleRecordException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreResidentRequest;
 use App\Http\Requests\Admin\UpdateResidentRequest;
@@ -15,6 +16,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -95,15 +97,6 @@ class ResidentController extends Controller
     {
         Gate::authorize('view', $resident);
 
-        if (! request()->user()->hasPermission('records.view')) {
-            return response()->json([
-                ...$resident->only(['id', 'resident_number', 'first_name', 'middle_name', 'last_name', 'suffix', 'date_of_birth', 'gender', 'civil_status', 'purok', 'address', 'status', 'household_id', 'relationship_to_household_head', 'is_household_head']),
-                'full_name' => $resident->full_name,
-                'age' => $resident->age,
-                'household_information' => $resident->household?->details(),
-            ]);
-        }
-
         $account = $resident->portalAccount()->first();
         $resident->load('household');
         $resident->setAttribute('household_information', $resident->household?->details());
@@ -113,6 +106,8 @@ class ResidentController extends Controller
             'is_active' => $account->is_active,
             'email' => Str::mask($account->email, '*', 1, max(1, strpos($account->email, '@') - 1)),
             'created_at' => $account->created_at?->toDateString(),
+            'email_verified' => $account->email_verified_at !== null,
+            'activation' => $account->portalActivationPath(),
             'last_login' => DB::table('administrative_audits')->where('user_id', $account->id)->where('action', 'auth.login')->max('created_at'),
         ] : ['registered' => false]);
 
@@ -134,11 +129,19 @@ class ResidentController extends Controller
     public function update(UpdateResidentRequest $request, Resident $resident): JsonResponse
     {
         $validated = $request->validated();
+        $expectedVersion = Arr::pull($validated, 'expected_updated_at');
         $validated['date_of_birth'] = Carbon::parse($validated['date_of_birth'])->toDateString();
-        Cache::lock($this->residentIdentityLockKey($validated), 15)->block(5, function () use ($request, $resident, $validated): void {
-            $this->rejectDuplicate($validated, $request->boolean('confirm_duplicate'), $resident);
-            $this->households->saveResident($validated, $resident);
-        });
+        try {
+            Cache::lock($this->residentIdentityLockKey($validated), 15)->block(5, function () use ($request, $resident, $validated, $expectedVersion): void {
+                $this->rejectDuplicate($validated, $request->boolean('confirm_duplicate'), $resident);
+                $this->households->saveResident($validated, $resident, $expectedVersion ? Carbon::parse($expectedVersion) : null);
+            });
+        } catch (StaleRecordException) {
+            return response()->json([
+                'message' => 'Someone else saved changes to this resident after you opened it. Your changes were not saved.',
+                'resident' => Resident::query()->with('household.head')->withVoterStatus()->findOrFail($resident->id),
+            ], 409);
+        }
 
         return response()->json([
             'message' => 'Resident record updated successfully.',
@@ -195,15 +198,7 @@ class ResidentController extends Controller
 
         $residents = Resident::query()
             ->with(['documentRequests' => fn ($query) => $query->latest()->limit(50)])
-            ->when($validated['search'] ?? null, function (Builder $query, string $search): void {
-                $term = '%'.trim($search).'%';
-                $query->where(function (Builder $query) use ($term): void {
-                    $query->where('resident_number', 'like', $term)
-                        ->orWhere('first_name', 'like', $term)
-                        ->orWhere('middle_name', 'like', $term)
-                        ->orWhere('last_name', 'like', $term);
-                });
-            })
+            ->when($validated['search'] ?? null, fn (Builder $query, string $search) => $query->matchingSearch($search))
             ->when(($validated['eligibility'] ?? null) === 'eligible', fn (Builder $query) => $query
                 ->where('status', 'active')
                 ->where('is_in_good_standing', true))
@@ -264,17 +259,8 @@ class ResidentController extends Controller
             : Resident::query();
 
         return $query->with('household.head')
-            ->when($request->filled('search'), function (Builder $query) use ($request): void {
-                $search = '%'.$request->string('search')->trim()->toString().'%';
-
-                $query->where(function (Builder $query) use ($search): void {
-                    $query->where('resident_number', 'like', $search)
-                        ->orWhere('first_name', 'like', $search)
-                        ->orWhere('middle_name', 'like', $search)
-                        ->orWhere('last_name', 'like', $search)
-                        ->orWhere('purok', 'like', $search);
-                });
-            })
+            ->withVoterStatus()
+            ->when($request->filled('search'), fn (Builder $query) => $query->matchingSearch($request->string('search')->toString(), ['purok']))
             ->when(in_array($status, ['active', 'inactive'], true), fn (Builder $query) => $query->where('status', $status))
             ->when($status === 'senior', fn (Builder $query) => $query->whereDate('date_of_birth', '<=', today()->subYears(60)))
             ->when($request->filled('purok'), fn (Builder $query) => $query->where('purok', $request->string('purok')->toString()))

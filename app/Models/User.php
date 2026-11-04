@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\StaffPermissions;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -14,6 +15,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
@@ -91,8 +93,30 @@ class User extends Authenticatable
 
     public function hasPermission(string $permission): bool
     {
+        if (str_starts_with($permission, 'vawc.') && self::vawcNeedsExplicitAssignment()) {
+            return $this->canLoginAsPersonnel()
+                && ($this->role === 'staff' || $this->hasAdministrativeAccess())
+                && in_array($permission, $this->staff_permissions ?? [], true);
+        }
+
         return $this->hasAdministrativeAccess() || ($this->canLoginAsPersonnel()
             && $this->role === 'staff' && in_array($permission, $this->staff_permissions ?? [], true));
+    }
+
+    /** When on, VAWC/BPO access comes only from an account's own assignments, for administrators too. */
+    public static function vawcNeedsExplicitAssignment(): bool
+    {
+        return (bool) config('access.vawc_explicit_assignment');
+    }
+
+    /**
+     * Every permission key this account holds now, for the interface (menus and buttons).
+     *
+     * @return list<string>
+     */
+    public function effectivePermissions(): array
+    {
+        return array_values(array_filter(StaffPermissions::keys(), fn (string $permission): bool => $this->hasPermission($permission)));
     }
 
     public function canTrackRfidFiles(): bool
@@ -103,6 +127,25 @@ class User extends Authenticatable
     public function isResidentAccount(): bool
     {
         return $this->role === 'resident';
+    }
+
+    /**
+     * How this resident portal account was activated, read from stored traces:
+     *  - `email_self_service`: through the removed name / birth date / any-email path. That path left the
+     *    record's `portal_registration_sent_at` set; staff-issued codes clear it, and neither path can issue a
+     *    code once an account exists, so the value is reliable for these accounts. Identity was never
+     *    checked by staff.
+     *  - `staff_code`: registered through the portal with a staff-issued code (audit `portal.account.registered`).
+     *  - `unknown`: created outside the portal flow (for example by a seeder or console), so no trace exists.
+     */
+    public function portalActivationPath(): string
+    {
+        if ($this->resident?->portal_registration_sent_at !== null) {
+            return 'email_self_service';
+        }
+
+        return DB::table('administrative_audits')->where('user_id', $this->id)->where('action', 'portal.account.registered')->exists()
+            ? 'staff_code' : 'unknown';
     }
 
     public function canUseResidentPortal(): bool

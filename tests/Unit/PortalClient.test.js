@@ -103,6 +103,18 @@ test('mobile navigation still works when browser storage is unavailable', () => 
   assert.equal(element('screen-status').classList.contains('active'), true);
 });
 
+test('starting another request clears the chosen document for assistive technology', () => {
+  const { context, element } = portal();
+
+  context.selectDoc('BC', element('card-BC'));
+  assert.equal(element('card-BC').getAttribute('aria-pressed'), 'true');
+
+  context.newRequest(false);
+  assert.equal(element('card-BC').getAttribute('aria-pressed'), 'false');
+  assert.equal(element('card-BBC').getAttribute('aria-pressed'), 'false');
+  assert.equal(element('card-BC').classList.contains('selected'), false);
+});
+
 test('invalid restored screens cannot leave the portal blank', () => {
   const { context, saved, element } = portal();
   saved.set('smartbrgy_session', JSON.stringify({ screen: 'missing-screen', docId: 'invalid', tncScrolled: true, tncChecked: true }));

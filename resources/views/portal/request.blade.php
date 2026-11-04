@@ -1,8 +1,7 @@
 @extends('layouts.portal')
 @section('title', __('Request a document'))
 @section('band')
-<x-portal.page-band title="Request a document">
-    <p><span data-portal-i18n="Limang hakbang: basahin ang terms, piliin ang dokumento, i-check ang details, mag-upload ng valid ID kung gusto, at i-review bago i-submit.">{{ __('Limang hakbang: basahin ang terms, piliin ang dokumento, i-check ang details, mag-upload ng valid ID kung gusto, at i-review bago i-submit.') }}</span></p>
+<x-portal.page-band title="Request a document" class="page-band-compact">
     <p class="page-band-meta"><span data-portal-i18n="May reference number na?">{{ __('May reference number na?') }}</span> <button type="button" class="btn-link" onclick="showScreen('screen-status')"><span data-portal-i18n="I-check ang status">{{ __('I-check ang status') }}</span></button></p>
 </x-portal.page-band>
 @endsection
@@ -10,12 +9,27 @@
 <div id="toast-wrap" role="status" aria-live="polite"></div>
 <div id="loader" style="display:none;"><div class="spinner"></div><p><span data-portal-i18n="Sandali lang...">{{ __('Sandali lang...') }}</span></p></div>
 
-@if ($hasPendingOrdinaryIncidentReport)
-  <p class="alert alert-blue" role="status" data-portal-i18n="A pending incident report has been linked to your resident record and is awaiting barangay review. This does not mean that a violation has been established. You may continue with your document request.">{{ __('A pending incident report has been linked to your resident record and is awaiting barangay review. This does not mean that a violation has been established. You may continue with your document request.') }}</p>
-@endif
-
-<div class="request-layout">
+<div class="request-layout v2-request">
   <section class="portal-request-flow" id="request-flow" aria-label="{{ __('Document request') }}" data-portal-i18n-aria-label="Document request">
+  @if ($requestHolds->isNotEmpty())
+    <section class="alert alert-yellow request-holds" role="status" aria-labelledby="request-holds-title">
+      <h2 id="request-holds-title"><span data-portal-i18n="Some requests are on hold">{{ __('Some requests are on hold') }}</span></h2>
+      <ul>
+        @foreach ($requestHolds as $hold)
+          <li>
+            <strong>@if ($hold['documents'])<span data-portal-i18n="{{ $hold['documents'] }}">{{ __($hold['documents']) }}</span>@else<span data-portal-i18n="All document requests">{{ __('All document requests') }}</span>@endif</strong>
+            @if ($hold['message'])<p><span data-portal-i18n="Message from the barangay:">{{ __('Message from the barangay:') }}</span> {{ $hold['message'] }}</p>@endif
+            @if ($hold['ends_at'])<p><span data-portal-i18n="Hold ends:">{{ __('Hold ends:') }}</span> <time datetime="{{ $hold['ends_at']->toIso8601String() }}">{{ $hold['ends_at']->format('F j, Y g:i A') }}</time></p>@endif
+            @if ($hold['next_review_at'])<p><span data-portal-i18n="Next review by barangay staff:">{{ __('Next review by barangay staff:') }}</span> <time datetime="{{ $hold['next_review_at']->toIso8601String() }}">{{ $hold['next_review_at']->format('F j, Y g:i A') }}</time></p>@endif
+            @if (! $hold['ends_at'] && ! $hold['next_review_at'])<p><span data-portal-i18n="No end date has been set. Barangay staff will review it; ask at the Barangay Hall for help.">{{ __('No end date has been set. Barangay staff will review it; ask at the Barangay Hall for help.') }}</span></p>@endif
+          </li>
+        @endforeach
+      </ul>
+    </section>
+  @endif
+  @if ($hasPendingOrdinaryIncidentReport)
+    <p class="alert alert-blue" role="status" data-portal-i18n="A pending incident report has been linked to your resident record and is awaiting barangay review. This does not mean that a violation has been established. You may continue with your document request.">{{ __('A pending incident report has been linked to your resident record and is awaiting barangay review. This does not mean that a violation has been established. You may continue with your document request.') }}</p>
+  @endif
 
   <div class="screen active" id="screen-terms">
     @include('portal.partials.request-steps', ['current' => 1, 'title' => 'Basahin ang terms'])
@@ -25,7 +39,16 @@
         <p><span data-portal-i18n="Basahin hanggang dulo bago magpatuloy.">{{ __('Basahin hanggang dulo bago magpatuloy.') }}</span></p>
       </div>
       <div class="card-body">
-        <p class="alert alert-blue"><span data-portal-i18n="Pinangangalagaan ng Barangay Anabu I-G ang personal na impormasyon ninyo alinsunod sa Republic Act 10173 (Data Privacy Act of 2012).">{{ __('Pinangangalagaan ng Barangay Anabu I-G ang personal na impormasyon ninyo alinsunod sa Republic Act 10173 (Data Privacy Act of 2012).') }}</span></p>
+        <section class="v2-terms-summary" aria-labelledby="terms-summary-title">
+          <h3 id="terms-summary-title"><span data-portal-i18n="Ang sinasang-ayunan mo, sa madaling salita">{{ __('Ang sinasang-ayunan mo, sa madaling salita') }}</span></h3>
+          <ul class="v2-list">
+            <li><span data-portal-i18n="Totoo at kumpleto ang impormasyong ibibigay mo.">{{ __('Totoo at kumpleto ang impormasyong ibibigay mo.') }}</span></li>
+            <li><span data-portal-i18n="Rerepasuhin muna ng barangay staff ang request bago ito aprubahan.">{{ __('Rerepasuhin muna ng barangay staff ang request bago ito aprubahan.') }}</span></li>
+            <li><span data-portal-i18n="Sa Barangay Hall kukunin ang dokumento at babayaran ang fee, kung mayroon.">{{ __('Sa Barangay Hall kukunin ang dokumento at babayaran ang fee, kung mayroon.') }}</span></li>
+            <li><span data-portal-i18n="Pinangangalagaan ng Barangay Anabu I-G ang personal na impormasyon ninyo alinsunod sa Republic Act 10173 (Data Privacy Act of 2012).">{{ __('Pinangangalagaan ng Barangay Anabu I-G ang personal na impormasyon ninyo alinsunod sa Republic Act 10173 (Data Privacy Act of 2012).') }}</span></li>
+          </ul>
+          <p class="v2-summary-note"><span data-portal-i18n="Nasa ibaba ang buong Terms and Conditions. Basahin ito hanggang dulo.">{{ __('Nasa ibaba ang buong Terms and Conditions. Basahin ito hanggang dulo.') }}</span></p>
+        </section>
         <div class="tnc-box" id="tnc-scroll" tabindex="0" role="region" aria-label="{{ __('Terms and Conditions') }}" data-portal-i18n-aria-label="Terms and Conditions">
           <h3><span data-portal-i18n="SmartBrgy Online Portal Terms and Conditions">{{ __('SmartBrgy Online Portal Terms and Conditions') }}</span></h3>
           <p><em><span data-portal-i18n="Barangay Anabu I-G, Imus City, Cavite - Version 1.0, May 2025">{{ __('Barangay Anabu I-G, Imus City, Cavite - Version 1.0, May 2025') }}</span></em></p>
@@ -66,11 +89,14 @@
         <p><span data-portal-i18n="Isang dokumento bawat request.">{{ __('Isang dokumento bawat request.') }}</span></p>
       </div>
       <div class="card-body">
-        <p class="unconfirmed small" style="margin-bottom:16px;"><strong><span data-portal-i18n="Hindi pa kumpirmado:">{{ __('Hindi pa kumpirmado:') }}</span></strong> <span data-portal-i18n="Business Clearance fee at processing time. Regular Barangay ID ang fee na nakalista. Sa Barangay Hall babayaran ang fee.">{{ __('Business Clearance fee at processing time. Regular Barangay ID ang fee na nakalista. Sa Barangay Hall babayaran ang fee.') }}</span></p>
-        <div class="cert-grid" id="cert-type-grid">
+                <div class="cert-grid" id="cert-type-grid">
           @foreach($services as $service)
-          <button type="button" class="cert-btn" aria-pressed="false" onclick="selectDoc('{{ $service->portalCode() }}',this)"><span class="label"><span data-portal-i18n="{{ $service->value }}">{{ __($service->value) }}</span></span><span class="fee"><span data-portal-i18n="Fee:">{{ __('Fee:') }}</span> <span data-portal-i18n="{{ $service->feeLabel() }}">{{ __($service->feeLabel()) }}</span></span><span class="cert-selected"><span data-portal-i18n="Napili">{{ __('Napili') }}</span></span><span class="cert-check" aria-hidden="true"></span></button>
+          <button type="button" class="cert-btn" aria-pressed="false" onclick="selectDoc('{{ $service->portalCode() }}',this)"><span class="label"><span data-portal-i18n="{{ $service->value }}">{{ __($service->value) }}</span></span><span class="fee"><span class="sr-only"><span data-portal-i18n="Fee:">{{ __('Fee:') }}</span> </span><span data-portal-i18n="{{ $service->feeLabel() }}">{{ __($service->feeLabel()) }}</span>@if(! $service->feeConfirmed()) <span class="tag-unconfirmed"><span data-portal-i18n="To be confirmed">{{ __('To be confirmed') }}</span></span>@endif</span><span class="cert-validity">@if($service->validityPeriodInMonths() === 12)<span data-portal-i18n="Valid nang 1 taon mula pagka-issue">{{ __('Valid nang 1 taon mula pagka-issue') }}</span>@else<span data-portal-i18n="Valid nang :months buwan mula pagka-issue" data-portal-params="{{ json_encode(['months' => $service->validityPeriodInMonths()]) }}">{{ __('Valid nang :months buwan mula pagka-issue', ['months' => $service->validityPeriodInMonths()]) }}</span>@endif</span><span class="cert-selected"><span aria-hidden="true">&#10003;</span> <span data-portal-i18n="Napili">{{ __('Napili') }}</span></span><span class="cert-check" aria-hidden="true"></span></button>
           @endforeach
+        </div>
+        <div class="v2-callout v2-callout-warning">
+          <svg class="v2-callout-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17h.01"/></svg>
+          <p><strong><span data-portal-i18n="Hindi pa kumpirmado:">{{ __('Hindi pa kumpirmado:') }}</span></strong> <span data-portal-i18n="Business Clearance fee at processing time. Regular Barangay ID ang fee na nakalista. Sa Barangay Hall babayaran ang fee.">{{ __('Business Clearance fee at processing time. Regular Barangay ID ang fee na nakalista. Sa Barangay Hall babayaran ang fee.') }}</span></p>
         </div>
         <p id="doc-selected-info" class="selected-document" style="display:none;" aria-live="polite"><span data-portal-i18n="Napili:">{{ __('Napili:') }}</span> <strong id="doc-sel-label"></strong> &middot; <span id="doc-sel-fee"></span></p>
         <div class="btn-row btn-row-split">
@@ -250,13 +276,32 @@
   </div>
 
   </section>
+
+  <aside class="v2-request-aside" id="request-progress" aria-label="{{ __('Ang request mo') }}" data-portal-i18n-aria-label="Ang request mo">
+    <section class="v2-card" aria-labelledby="request-progress-title">
+      <h2 id="request-progress-title"><span data-portal-i18n="Mga hakbang">{{ __('Mga hakbang') }}</span></h2>
+      <ol class="v2-steps">
+        @foreach(['Terms', 'Dokumento', 'Layunin', 'Litrato ng ID', 'I-review'] as $index => $label)
+          <li data-step="{{ $index + 1 }}" @class(['is-current' => $index === 0]) @if($index === 0) aria-current="step" @endif><span><span data-portal-i18n="{{ $label }}">{{ __($label) }}</span><span class="v2-step-now" @if($index !== 0) hidden @endif><span data-portal-i18n="Nandito ka">{{ __('Nandito ka') }}</span></span></span></li>
+        @endforeach
+      </ol>
+    </section>
+    <section class="v2-card" aria-labelledby="request-summary-title">
+      <h2 id="request-summary-title"><span data-portal-i18n="Ang request mo">{{ __('Ang request mo') }}</span></h2>
+      <dl class="v2-summary">
+        <div><dt><span data-portal-i18n="Dokumento">{{ __('Dokumento') }}</span></dt><dd id="request-summary-document"><span data-portal-i18n="Wala pang napili">{{ __('Wala pang napili') }}</span></dd></div>
+        <div><dt><span data-portal-i18n="Fee">{{ __('Fee') }}</span></dt><dd id="request-summary-fee">—</dd></div>
+      </dl>
+      <p class="v2-summary-note"><span data-portal-i18n="Babayaran sa Barangay Hall pagkuha ng dokumento.">{{ __('Babayaran sa Barangay Hall pagkuha ng dokumento.') }}</span></p>
+    </section>
+  </aside>
 </div>
 @endsection
 
 @push('scripts')
 <script>
 const API = '';
-const DOC_TYPES = {{ Illuminate\Support\Js::from(collect($services)->mapWithKeys(fn ($service) => [$service->portalCode() => ['label' => $service->value, 'fee' => $service->feeLabel()]])) }};
+const DOC_TYPES = {{ Illuminate\Support\Js::from(collect($services)->mapWithKeys(fn ($service) => [$service->portalCode() => ['label' => $service->value, 'fee' => __($service->feeLabel()).($service->feeConfirmed() ? '' : ' ('.__('To be confirmed').')')]])) }};
 window.RESIDENT_PORTAL = {{ Illuminate\Support\Js::from(['authenticated' => auth('resident')->check(), 'loginUrl' => route('portal.login'), 'identityUrl' => route('portal.identity'), 'startRequest' => true, 'service' => request()->string('service')->toString()]) }};
 
 let selectedDocId = null;
@@ -304,4 +349,5 @@ document.addEventListener('DOMContentLoaded', () => {
 <script src="{{ asset('js/portal-ui.js') }}?v={{ filemtime(public_path('js/portal-ui.js')) }}"></script>
 <script src="{{ asset('js/document-request.js') }}?v={{ filemtime(public_path('js/document-request.js')) }}"></script>
 <script src="{{ asset('js/status-checker.js') }}?v={{ filemtime(public_path('js/status-checker.js')) }}"></script>
+<script src="{{ asset('js/request-progress.js') }}?v={{ filemtime(public_path('js/request-progress.js')) }}"></script>
 @endpush

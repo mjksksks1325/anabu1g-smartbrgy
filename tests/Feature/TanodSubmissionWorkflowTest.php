@@ -169,7 +169,7 @@ test('authorized reclassification immediately removes ordinary access including 
     Storage::disk('local')->put('incident-attachments/sensitive.pdf', 'confidential evidence');
     $incident = Incident::factory()->create(['incident_type' => 'Noise Complaint', 'status' => 'open', 'severity' => 'high', 'attachments' => [['path' => 'incident-attachments/sensitive.pdf', 'name' => 'evidence.pdf', 'mime' => 'application/pdf', 'size' => 21]]]);
     $ordinary = User::factory()->create(['role' => 'staff', 'staff_permissions' => ['incidents.view', 'incidents.update', 'dashboard.view']]);
-    $reviewer = User::factory()->create(['role' => 'staff', 'staff_permissions' => StaffPermissions::presets()['Authorized Kagawad']]);
+    $reviewer = User::factory()->create(['role' => 'staff', 'staff_permissions' => [...StaffPermissions::presets()['Kagawad — Ordinary Incidents'], ...StaffPermissions::presets()['VAW Desk — Restricted Cases']]]);
     $this->actingAs($ordinary)->getJson(route('staff.incidents.index'))->assertJsonPath('total', 1)->assertJsonPath('summary.high', 1);
 
     $this->actingAs($reviewer)->patchJson(route('staff.incidents.update', $incident), ordinaryTanodReport(['incident_type' => 'Noise Complaint', 'status' => 'under_review', 'is_sensitive' => true]))->assertOk()->assertJsonPath('incident.is_sensitive', true);

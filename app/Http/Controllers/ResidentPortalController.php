@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\CheckRequestRestrictions;
 use App\CertificateType;
 use App\Models\Announcement;
 use App\Models\Incident;
@@ -21,6 +22,7 @@ class ResidentPortalController extends Controller
         return view('portal.index', [
             'services' => CertificateType::cases(),
             'announcements' => Announcement::published()->orderByDesc('published_at')->orderByDesc('id')->limit(3)->get(),
+            'complaintHotline' => collect(config('portal.resources', []))->firstWhere('id', '8888'),
         ]);
     }
 
@@ -43,9 +45,12 @@ class ResidentPortalController extends Controller
             ->whereIn('status', Incident::PENDING_STATUSES)
             ->exists();
 
+        $resident = $request->user()->resident;
+
         return view('portal.request', [
             'services' => CertificateType::cases(),
             'hasPendingOrdinaryIncidentReport' => $hasPendingOrdinaryIncidentReport,
+            'requestHolds' => $resident ? app(CheckRequestRestrictions::class)->allActive($resident)->map->residentNotice() : collect(),
         ]);
     }
 
@@ -81,6 +86,44 @@ class ResidentPortalController extends Controller
         $resident = $request->user()->resident;
 
         return view('portal.account', ['resident' => $resident, 'requests' => $resident->documentRequests()->latest()->paginate(15)]);
+    }
+
+    public function dashboard(Request $request): View
+    {
+        $resident = $request->user()->resident;
+
+        return view('portal.dashboard', [
+            'resident' => $resident,
+            'statusCounts' => $resident->documentRequests()->toBase()->selectRaw('status, count(*) as aggregate')->groupBy('status')->pluck('aggregate', 'status'),
+            'attentionRequests' => $resident->documentRequests()
+                ->where(fn ($query) => $query
+                    ->where('status', 'ready_for_release')
+                    ->orWhere(fn ($query) => $query->where('status', 'rejected')->where('updated_at', '>=', now()->subDays(30)))
+                    ->orWhere(fn ($query) => $query->whereIn('status', ['pending', 'processing', 'approved'])->whereNotNull('remarks')->where('remarks', '!=', '')))
+                ->latest()->latest('id')->limit(5)->get(),
+            'recentRequests' => $resident->documentRequests()->latest()->latest('id')->limit(5)->get(),
+            'announcements' => Announcement::published()->orderByDesc('published_at')->orderByDesc('id')->limit(3)->get(),
+        ]);
+    }
+
+    /**
+     * "My account" and the profile are one page; this address stays so older links keep working.
+     */
+    public function accountHome(): RedirectResponse
+    {
+        return redirect()->route('portal.profile');
+    }
+
+    public function showRequest(Request $request, string $referenceCode): View
+    {
+        $documentRequest = $request->user()->resident->documentRequests()
+            ->where('reference_code', $referenceCode)
+            ->firstOrFail();
+
+        return view('portal.request-status', [
+            'item' => $documentRequest,
+            'certificateType' => CertificateType::tryFromLabel($documentRequest->document_type),
+        ]);
     }
 
     public function requestStatuses(Request $request): JsonResponse

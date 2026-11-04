@@ -1,0 +1,929 @@
+/*
+ * Staff workspace — Anabu green design system.
+ * Loaded last by every staff layout (workspace, IoT/request pages, account settings, staff sign-in).
+ * Surfaces: forest sidebar · white top bar · neutral workspace · white cards. Green marks brand, primary actions and
+ * the current item; information, warning, error and success keep their own colours.
+ */
+
+/* ── Tokens: light ─────────────────────────────────────────────── */
+:root {
+  --civic-primary: #17663a;
+  --civic-primary-hover: #0f5130;
+  --civic-blue: #17663a;
+  --civic-blue-strong: #0f5130;
+  --civic-blue-soft: #e3f0e7;
+  --civic-green-soft: #dff1e6;
+  --civic-ink: #14211a;
+  --civic-muted: #4f5e56;
+  --civic-line: #d5ddd8;
+  --civic-paper: #eef2ef;
+  --civic-surface: #f6f8f7;
+  --civic-gold: #c9a24a;
+
+  --staff-bg: #eef2ef;
+  --staff-topbar: #ffffff;
+  --staff-card: #ffffff;
+  --staff-raised: #ffffff;
+  --staff-soft: #f5f8f6;
+  --staff-input: #ffffff;
+  --staff-border: #d5ddd8;
+  --staff-control-border: #7a8981;
+  --staff-row: #e4eae6;
+  --staff-table-head: #f3f6f4;
+  --staff-ink: #14211a;
+  --staff-muted: #4f5e56;
+  --staff-accent: #17663a;
+  --staff-accent-fill: #17663a;
+  --staff-accent-fill-hover: #0f5130;
+  --staff-active-bg: #e3f0e7;
+  --staff-active-ink: #0f5130;
+  --staff-hover-bg: #eef3ef;
+  --staff-quiet-bg: #ffffff;
+  --staff-quiet-border: #7a8981;
+  --staff-quiet-ink: #14211a;
+  --staff-quiet-hover: #eef3ef;
+  --staff-danger: #b42318;
+  --staff-danger-hover: #912018;
+  --staff-focus: #17663a;
+  --staff-shadow: 0 1px 2px rgba(16, 32, 24, .05), 0 4px 14px rgba(16, 32, 24, .06);
+  --staff-shadow-raised: 0 18px 44px rgba(16, 32, 24, .2);
+
+  /* Sidebar: the forest column is the same in both themes, only deeper in dark mode. */
+  --staff-sidebar: #13281c;
+  --staff-side-ink: #e6eee9;
+  --staff-side-muted: #b9cbbf;
+  --staff-side-label: #93ad9c;
+  --staff-side-line: rgba(255, 255, 255, .1);
+  --staff-side-hover: rgba(255, 255, 255, .07);
+  --staff-side-active-bg: #215a39;
+  --staff-side-active-ink: #ffffff;
+  --staff-side-indicator: #9edbb5;
+  --staff-nav-active-bg: var(--staff-side-active-bg);
+  --staff-nav-active-ink: var(--staff-side-active-ink);
+}
+
+/* ── Tokens: dark (workspace, IoT pages, settings) ─────────────── */
+/*
+ * Neutral charcoal surfaces in four steps, each lighter step closer to the user: canvas → top bar → card →
+ * raised (dialogs, menus). Borders and a faint top highlight separate them; green is kept for the brand
+ * sidebar, primary actions, links and the current item.
+ */
+:root:has(body[data-personnel-layout="admin"]:not(.light-mode)),
+html[data-theme=dark], html.dark, body:not(.light-mode) #app.admin-interface.admin-interface {
+  --civic-blue: #8fd4ab;
+  --civic-blue-strong: #bfe8cf;
+  --civic-blue-soft: #1b3226;
+  --civic-green-soft: #1b3226;
+  --civic-ink: #e6e9ec;
+  --civic-muted: #a7b0b8;
+  --civic-line: #353b41;
+
+  --staff-bg: #111315;
+  --staff-topbar: #181b1e;
+  --staff-card: #1c2024;
+  --staff-raised: #24292e;
+  --staff-soft: #23282c;
+  --staff-input: #141619;
+  --staff-border: #30363c;
+  --staff-control-border: #66707a;
+  --staff-row: #2a2f35;
+  --staff-table-head: #21262a;
+  --staff-ink: #e6e9ec;
+  --staff-muted: #a7b0b8;
+  --staff-accent: #8fd4ab;
+  --staff-accent-fill: #1d7146;
+  --staff-accent-fill-hover: #23824f;
+  --staff-active-bg: #1b3226;
+  --staff-active-ink: #a9e2c0;
+  --staff-hover-bg: #262b30;
+  --staff-quiet-bg: #22272b;
+  --staff-quiet-border: #4d565f;
+  --staff-quiet-ink: #e6e9ec;
+  --staff-quiet-hover: #2b3136;
+  --staff-danger: #c2392d;
+  --staff-danger-hover: #d14a3e;
+  --staff-focus: #8fd4ab;
+  --staff-shadow: 0 1px 2px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .035);
+  --staff-shadow-raised: 0 24px 56px rgba(0, 0, 0, .6), 0 0 0 1px rgba(255, 255, 255, .04);
+  --staff-sidebar: #0f1a15;
+  --staff-side-line: rgba(255, 255, 255, .07);
+  --staff-side-active-bg: #1d3a2a;
+  --staff-side-active-ink: #ffffff;
+  --staff-nav-active-bg: #1d3a2a;
+  --staff-nav-active-ink: #ffffff;
+}
+/* The workspace layer maps its own variables per theme on #app; point them at the tokens again. */
+body.light-mode #app.admin-interface.admin-interface, body:not(.light-mode) #app.admin-interface.admin-interface {
+  --blue-700: var(--staff-accent-fill);
+  --blue-600: var(--staff-accent-fill);
+  --blue-500: var(--staff-accent);
+  --blue-400: var(--staff-accent);
+  --bg-glass: var(--staff-hover-bg);
+  --border-hover: var(--staff-control-border);
+  --sidebar-bg: var(--staff-sidebar);
+  --topbar-bg: var(--staff-topbar);
+}
+body.light-mode #app.admin-interface.admin-interface { --green-500: #17663a; --green-400: #17663a; --green-dim: #e3f0e7; }
+body:not(.light-mode) #app.admin-interface.admin-interface { --green-500: #9edbb5; --green-400: #9edbb5; --green-dim: #1e3a2b; }
+
+/* ── Workspace surfaces ────────────────────────────────────────── */
+body[data-personnel-layout="admin"], body[data-personnel-layout="iot"], html:has(body[data-personnel-layout="iot"]) { background: var(--staff-bg); }
+body #app.admin-interface.admin-interface .app-body, body #app.admin-interface.admin-interface .content, body[data-personnel-layout="iot"] .main-content,
+body.civic-settings, body.civic-settings .civic-settings-main, .dark body.civic-settings .civic-settings-main { background: var(--staff-bg); }
+
+/* Top bar: a white (charcoal in dark) strip, separated from the workspace by a border and a soft shadow. */
+body #app.admin-interface.admin-interface .topbar, body.light-mode #app.admin-interface.admin-interface .topbar,
+body[data-personnel-layout="iot"] .site-header, html[data-theme=dark] body[data-personnel-layout="iot"] .site-header,
+.staff-settings-topbar, .dark .staff-settings-topbar {
+  border-bottom: 1px solid var(--staff-border); background: var(--staff-topbar); color: var(--staff-ink);
+  box-shadow: 0 1px 3px rgba(16, 32, 24, .06);
+}
+body #app.admin-interface.admin-interface .topbar { position: relative; z-index: 5; }
+body #app.admin-interface.admin-interface .topbar-status span, body[data-personnel-layout="iot"] .workspace-title span, .staff-settings-topbar-title span { display: none; }
+body #app.admin-interface.admin-interface .topbar-status strong, body[data-personnel-layout="iot"] .workspace-title strong, .staff-settings-topbar-title strong { color: var(--staff-ink); font-size: 18px; }
+body #app.admin-interface.admin-interface .topbar-avatar, .staff-settings-topbar-actions > span { background: var(--staff-accent-fill); color: #fff; }
+
+/* Brand block sits on the sidebar column so the forest strip runs the full height. */
+body #app.admin-interface.admin-interface .topbar-logo, body[data-personnel-layout="iot"] .site-header .brand,
+body.civic-settings .civic-settings-sidebar [data-flux-sidebar-header] {
+  border-right: 0; border-bottom: 1px solid var(--staff-side-line); background: var(--staff-sidebar); color: var(--staff-side-ink);
+}
+body #app.admin-interface.admin-interface .topbar-brand, body.light-mode #app.admin-interface.admin-interface .topbar-brand,
+body[data-personnel-layout="iot"] .brand strong, html[data-theme=dark] body[data-personnel-layout="iot"] .brand strong,
+.staff-settings-brand, .dark .staff-settings-brand { color: #fff; }
+body #app.admin-interface.admin-interface .topbar-brand span, body.light-mode #app.admin-interface.admin-interface .topbar-brand span,
+body[data-personnel-layout="iot"] .brand small, html[data-theme=dark] body[data-personnel-layout="iot"] .brand small,
+.staff-settings-brand-text small, .dark .staff-settings-brand-text small { color: var(--civic-gold); }
+body #app.admin-interface.admin-interface .topbar-logo-box, body[data-personnel-layout="iot"] .brand img, .staff-settings-seal { border-color: var(--civic-gold); }
+
+/* ── Sidebar ───────────────────────────────────────────────────── */
+body #app.admin-interface.admin-interface .sidebar, body.light-mode #app.admin-interface.admin-interface .sidebar,
+body[data-personnel-layout="iot"] .side-nav, html[data-theme=dark] body[data-personnel-layout="iot"] .side-nav,
+body.civic-settings .civic-settings-sidebar, .dark body.civic-settings .civic-settings-sidebar {
+  border-right: 0; background: var(--staff-sidebar) !important; color: var(--staff-side-ink);
+}
+:is(body #app.admin-interface.admin-interface .sidebar, body[data-personnel-layout="iot"] .side-nav, body.civic-settings .staff-settings-navigation) .sidebar-label,
+.dark .staff-settings-navigation .sidebar-label,
+body.civic-settings .civic-settings-sidebar [data-flux-sidebar-group] > div:first-child { color: var(--staff-side-label); }
+:is(body #app.admin-interface.admin-interface .sidebar, body[data-personnel-layout="iot"] .side-nav, body.civic-settings .staff-settings-navigation) .nav-item,
+html[data-theme=dark] body[data-personnel-layout="iot"] .side-nav a, .dark .staff-settings-navigation .nav-item,
+body.civic-settings .civic-settings-sidebar [data-flux-sidebar-item], .dark body.civic-settings .civic-settings-sidebar [data-flux-sidebar-item] {
+  position: relative; color: var(--staff-side-muted); background: transparent;
+}
+:is(body #app.admin-interface.admin-interface .sidebar, body[data-personnel-layout="iot"] .side-nav, body.civic-settings .staff-settings-navigation) .nav-item:hover,
+html[data-theme=dark] body[data-personnel-layout="iot"] .side-nav a:hover, .dark .staff-settings-navigation .nav-item:hover,
+body.civic-settings .civic-settings-sidebar [data-flux-sidebar-item]:hover, .dark body.civic-settings .civic-settings-sidebar [data-flux-sidebar-item]:hover {
+  background: var(--staff-side-hover); color: var(--staff-side-ink);
+}
+body #app.admin-interface.admin-interface .sidebar .nav-item.active, body.light-mode #app.admin-interface.admin-interface .sidebar .nav-item.active,
+body[data-personnel-layout="iot"] .side-nav a.current, html[data-theme=dark] body[data-personnel-layout="iot"] .side-nav a.current,
+body.civic-settings .staff-settings-navigation .nav-item.active, .dark .staff-settings-navigation .nav-item.active,
+body.civic-settings .civic-settings-sidebar [data-flux-sidebar-item][data-current], .dark body.civic-settings .civic-settings-sidebar [data-flux-sidebar-item][data-current] {
+  background: var(--staff-side-active-bg); color: var(--staff-side-active-ink); font-weight: 700;
+  box-shadow: inset 3px 0 0 var(--staff-side-indicator);
+}
+:is(body #app.admin-interface.admin-interface .sidebar, body[data-personnel-layout="iot"] .side-nav, body.civic-settings .staff-settings-navigation) .nav-item:focus-visible {
+  outline: 2px solid var(--staff-side-indicator); outline-offset: -2px;
+}
+body #app.admin-interface.admin-interface .nav-badge { background: var(--civic-gold); color: #13281c; }
+body #app.admin-interface.admin-interface .sidebar-scroll .staff-settings-portal, body[data-personnel-layout="iot"] .side-nav a.portal-link,
+body.civic-settings .staff-settings-navigation .staff-settings-portal { border-top-color: var(--staff-side-line); }
+body #app.admin-interface.admin-interface .sidebar-footer, body[data-personnel-layout="iot"] .side-nav-user, body.civic-settings .staff-settings-footer, .dark body.civic-settings .staff-settings-footer {
+  border-top: 1px solid var(--staff-side-line); background: var(--staff-sidebar); color: var(--staff-side-ink);
+}
+:is(body #app.admin-interface.admin-interface .sidebar-footer, body[data-personnel-layout="iot"] .side-nav-user, body.civic-settings .staff-settings-footer) :is(.su-name, strong, .staff-settings-user, .staff-settings-user-name) { color: var(--staff-side-ink); }
+:is(body #app.admin-interface.admin-interface .sidebar-footer, body[data-personnel-layout="iot"] .side-nav-user, body.civic-settings .staff-settings-footer) :is(.su-role, small, .staff-settings-user-role) { color: var(--staff-side-muted); }
+:is(body #app.admin-interface.admin-interface .su-avatar, body[data-personnel-layout="iot"] .side-nav-user .staff-initials, .staff-settings-user-avatar) { border: 2px solid var(--civic-gold); background: var(--staff-side-active-bg); color: #fff; }
+:is(body #app.admin-interface.admin-interface .sidebar-scroll, body[data-personnel-layout="iot"] .side-nav-scroll, body.civic-settings .staff-settings-navigation) { scrollbar-color: rgba(255, 255, 255, .28) transparent; }
+:is(body #app.admin-interface.admin-interface .sidebar-scroll, body[data-personnel-layout="iot"] .side-nav-scroll, .staff-settings-navigation)::-webkit-scrollbar-track { background: transparent; }
+:is(body #app.admin-interface.admin-interface .sidebar-scroll, body[data-personnel-layout="iot"] .side-nav-scroll, .staff-settings-navigation)::-webkit-scrollbar-thumb { border-color: var(--staff-sidebar); background: rgba(255, 255, 255, .28); }
+:is(body #app.admin-interface.admin-interface .sidebar-scroll, body[data-personnel-layout="iot"] .side-nav-scroll, .staff-settings-navigation)::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, .45); }
+
+/* ── Cards, panels, page headings ──────────────────────────────── */
+body #app.admin-interface.admin-interface :is(.card, .stat-card, .stat-card.blue, .stat-card.green, .stat-card.amber, .stat-card.red),
+body[data-personnel-layout="iot"] :is(.panel, .filter-panel, .device-card, .employee-card, .component-health-item),
+html[data-theme=dark] body[data-personnel-layout="iot"] :is(.panel, .filter-panel),
+body.civic-settings .civic-settings-main > section, .dark body.civic-settings .civic-settings-main > section {
+  border: 1px solid var(--staff-border); border-radius: 10px; background: var(--staff-card); box-shadow: var(--staff-shadow);
+}
+body[data-personnel-layout="iot"] .panel-heading, html[data-theme=dark] body[data-personnel-layout="iot"] .panel-heading { border-color: var(--staff-row); background: var(--staff-soft); }
+body #app.admin-interface.admin-interface .card-header { border-color: var(--staff-row); }
+body #app.admin-interface.admin-interface .page-header-row, body[data-personnel-layout="iot"] .page-heading { border-bottom: 0; margin-bottom: 20px; padding-bottom: 0; min-height: 0; }
+body #app.admin-interface.admin-interface .page-header h1, body[data-personnel-layout="iot"] .page-heading h1 { color: var(--staff-ink); font-size: 26px; }
+body[data-personnel-layout="iot"] .eyebrow, html[data-theme=dark] body[data-personnel-layout="iot"] .eyebrow { color: var(--staff-accent); }
+body[data-personnel-layout="iot"] .device-card .detail-grid > div { border-color: var(--staff-border); background: var(--staff-soft); }
+body[data-personnel-layout="iot"] .component-health-item { border-left: 4px solid var(--staff-control-border); }
+body[data-personnel-layout="iot"] .component-health-dot { background: var(--staff-control-border); box-shadow: 0 0 0 3px var(--staff-soft); }
+
+/* Dashboard summary cards: one meaning per colour, value first. */
+body #app.admin-interface.admin-interface .stat-card { min-height: 0; }
+body #app.admin-interface.admin-interface .stat-card.blue .stat-icon { background: #e6eff6; color: #245a82; }
+body #app.admin-interface.admin-interface .stat-card.green .stat-icon { background: #dff1e6; color: #17663a; }
+body #app.admin-interface.admin-interface .stat-card.amber .stat-icon { background: #fbf0dc; color: #8a5a00; }
+body #app.admin-interface.admin-interface .stat-card.red .stat-icon { background: #fbe9e7; color: #b42318; }
+body:not(.light-mode) #app.admin-interface.admin-interface .stat-card.blue .stat-icon { background: #1b2d3c; color: #9cc7f5; }
+body:not(.light-mode) #app.admin-interface.admin-interface .stat-card.green .stat-icon { background: #1e3a2b; color: #9edbb5; }
+body:not(.light-mode) #app.admin-interface.admin-interface .stat-card.amber .stat-icon { background: #3a2d0c; color: #f0c96a; }
+body:not(.light-mode) #app.admin-interface.admin-interface .stat-card.red .stat-icon { background: #3d1a17; color: #f2a49c; }
+body #app.admin-interface.admin-interface .stat-sub { color: var(--staff-muted); }
+
+/* Quick actions are equal-weight shortcuts, not competing primary buttons. */
+body #app.admin-interface.admin-interface .dashboard-quick-actions .dashboard-quick-action-list .btn, body.light-mode #app.admin-interface.admin-interface .dashboard-quick-actions .dashboard-quick-action-list .btn {
+  justify-content: flex-start; gap: 10px; min-height: 52px; padding: 10px 16px; border: 1px solid var(--staff-border); border-radius: 8px;
+  background: var(--staff-soft); color: var(--staff-ink); font-weight: 700; text-align: left;
+}
+body #app.admin-interface.admin-interface .dashboard-quick-action-list .btn > .nav-icon { width: 20px; height: 20px; padding: 6px; box-sizing: content-box; border-radius: 6px; background: var(--staff-active-bg); color: var(--staff-active-ink); }
+body #app.admin-interface.admin-interface .dashboard-quick-actions .dashboard-quick-action-list .btn:hover, body.light-mode #app.admin-interface.admin-interface .dashboard-quick-actions .dashboard-quick-action-list .btn:hover { border-color: var(--staff-accent); background: var(--staff-hover-bg); color: var(--staff-ink); }
+
+/* ── Buttons: green = primary, neutral outline = secondary, red = destructive ── */
+body #app.admin-interface.admin-interface .btn, body.light-mode #app.admin-interface.admin-interface .btn:not(.btn-primary, .btn-green, .btn-danger, .btn-danger-outline),
+body[data-personnel-layout="admin"] .modal .btn:not(.btn-primary):not(.btn-green):not(.btn-danger):not(.btn-danger-outline),
+body[data-personnel-layout="iot"] :is(.button.quiet, .site-header .button.quiet), html[data-theme=dark] body[data-personnel-layout="iot"] .button.quiet,
+body[data-personnel-layout="iot"] .document-request-detail .btn:not(.btn-green),
+.staff-settings-topbar-actions :is(button, a), .dark .staff-settings-topbar-actions :is(button, a),
+.personnel-confirm-actions button, .personnel-logout-actions button {
+  border: 1px solid var(--staff-quiet-border); background: var(--staff-quiet-bg); color: var(--staff-quiet-ink);
+}
+body #app.admin-interface.admin-interface .btn:hover, body.light-mode #app.admin-interface.admin-interface .btn:not(.btn-primary, .btn-green, .btn-danger, .btn-danger-outline):hover,
+body[data-personnel-layout="iot"] .button.quiet:hover, .staff-settings-topbar-actions :is(button, a):hover,
+.personnel-confirm-actions button:hover, .personnel-logout-actions button:hover {
+  border-color: var(--staff-ink); background: var(--staff-quiet-hover); color: var(--staff-quiet-ink);
+}
+body #app.admin-interface.admin-interface :is(.btn-primary, .btn-green), body.light-mode #app.admin-interface.admin-interface :is(.btn-primary, .btn-green),
+body[data-personnel-layout="admin"] .modal :is(.btn-primary, .btn-green), body #app.admin-interface.admin-interface .modal .btn-green,
+body[data-personnel-layout="iot"] .button:not(.quiet):not(.danger):not(.danger-outline), body[data-personnel-layout="iot"] .btn-green,
+.personnel-confirm-actions button[type=submit] {
+  border-color: var(--staff-accent-fill); background: var(--staff-accent-fill); color: #fff;
+}
+body #app.admin-interface.admin-interface :is(.btn-primary, .btn-green):hover, body[data-personnel-layout="iot"] .button:not(.quiet):not(.danger):not(.danger-outline):hover,
+.personnel-confirm-actions button[type=submit]:hover {
+  border-color: var(--staff-accent-fill-hover); background: var(--staff-accent-fill-hover); color: #fff;
+}
+body #app.admin-interface.admin-interface .btn-danger, body[data-personnel-layout="admin"] .modal .btn-danger, body[data-personnel-layout="iot"] .button.danger,
+.personnel-logout-actions button[type=submit] {
+  border-color: var(--staff-danger); background: var(--staff-danger); color: #fff;
+}
+body #app.admin-interface.admin-interface .btn-danger:hover, body[data-personnel-layout="iot"] .button.danger:hover, .personnel-logout-actions button[type=submit]:hover {
+  border-color: var(--staff-danger-hover); background: var(--staff-danger-hover); color: #fff;
+}
+:is(body #app.admin-interface.admin-interface, body[data-personnel-layout="iot"], body.civic-settings, .personnel-password-dialog, .personnel-logout-dialog) :is(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid var(--staff-focus); outline-offset: 2px;
+}
+:is(body #app.admin-interface.admin-interface .btn, body[data-personnel-layout="iot"] .button):disabled { opacity: .55; cursor: not-allowed; }
+
+/* Language toggle and other selected states use the fill green with white text in both themes. */
+:is(body #app.admin-interface.admin-interface, body[data-personnel-layout="iot"], .staff-settings-topbar-actions) .admin-locale-toggle:not(.admin-language-inline) button[aria-pressed="true"],
+html[data-theme=dark] .admin-locale-toggle:not(.admin-language-inline) button[aria-pressed="true"] { background: var(--staff-accent-fill); color: #fff; }
+:is(body #app.admin-interface.admin-interface, body[data-personnel-layout="iot"], .staff-settings-topbar-actions) .admin-language-inline button[aria-pressed="true"] { color: var(--staff-accent); }
+/* The settings top bar gives its buttons a quiet outline; the inline English | Filipino links keep none in either theme. */
+:is(.staff-settings-topbar-actions, .dark .staff-settings-topbar-actions) .admin-language-inline button { border: 0; background: transparent; }
+/* IoT pages: the dark boxed-toggle rule must not paint the inline English | Filipino links. */
+html[data-theme=dark] .admin-locale-toggle.admin-language-inline { border: 0; background: transparent; }
+body #app.admin-interface.admin-interface .rr-filter-btn.active, body #app.admin-interface.admin-interface .tab.active, body #app.admin-interface.admin-interface [role="tab"][aria-selected="true"] {
+  border-color: var(--staff-accent-fill); background: var(--staff-active-bg); color: var(--staff-active-ink);
+}
+
+/* ── Forms ─────────────────────────────────────────────────────── */
+:is(body #app.admin-interface.admin-interface, body[data-personnel-layout="iot"] .main-content, .personnel-password-dialog) :is(.form-input, .search-input, input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=range]):not([type=file]), select, textarea),
+html[data-theme=dark] body[data-personnel-layout="iot"] :is(.filter-panel input, .filter-panel select) {
+  border-color: var(--staff-control-border); background: var(--staff-input); color: var(--staff-ink);
+}
+:is(body #app.admin-interface.admin-interface, body[data-personnel-layout="iot"] .main-content) :is(.form-input, .search-input, input, select, textarea):hover:not(:focus):not(:disabled) { border-color: var(--staff-ink); }
+:is(body #app.admin-interface.admin-interface, body[data-personnel-layout="iot"] .main-content) :is(.form-input, .search-input, input, select, textarea):focus { border-color: var(--staff-accent-fill); }
+:is(body #app.admin-interface.admin-interface, body[data-personnel-layout="iot"] .main-content) :is(.form-input, input, select, textarea):disabled { border-color: var(--staff-border); background: var(--staff-soft); color: var(--staff-muted); }
+:is(body #app.admin-interface.admin-interface, body[data-personnel-layout="iot"] .main-content) :is(input[type=checkbox], input[type=radio]) { accent-color: var(--staff-accent-fill); }
+:is(body #app.admin-interface.admin-interface, body[data-personnel-layout="iot"] .main-content) :is(.form-label, label) { color: var(--staff-ink); }
+
+/* ── Tables ────────────────────────────────────────────────────── */
+body #app.admin-interface.admin-interface .tbl th, body[data-personnel-layout="iot"] :is(th, .civic-table th), html[data-theme=dark] body[data-personnel-layout="iot"] th {
+  border-bottom: 1px solid var(--staff-border); background: var(--staff-table-head); color: var(--staff-muted); font-weight: 700;
+}
+body #app.admin-interface.admin-interface .tbl td, body[data-personnel-layout="iot"] td { border-color: var(--staff-row); }
+body #app.admin-interface.admin-interface .tbl tbody tr:hover td, body[data-personnel-layout="iot"] tbody tr:hover { background: var(--staff-hover-bg); }
+
+/* Shared list pager (renderPager): range summary on the left, Previous · Page x of y · Next on the right. */
+#app.admin-interface .resident-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 12px 2px 0; color: var(--staff-muted); font-size: 12.5px; }
+#app.admin-interface .resident-pagination:empty { display: none; }
+#app.admin-interface .resident-pagination .list-pager-controls { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }
+#app.admin-interface .resident-pagination .list-pager-status { min-width: 96px; text-align: center; color: var(--staff-ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+#app.admin-interface .resident-pagination .btn:disabled { opacity: .5; cursor: not-allowed; }
+@media (max-width: 760px) {
+  #app.admin-interface .resident-pagination { justify-content: center; text-align: center; }
+  #app.admin-interface .resident-pagination .list-pager-controls { margin-left: 0; }
+}
+
+/* ── Notices and dialogs ───────────────────────────────────────── */
+body[data-personnel-layout="iot"] .notice:not(.success):not(.error), html[data-theme=dark] body[data-personnel-layout="iot"] .notice:not(.success):not(.error) {
+  border-color: #b9d0e6; background: #eaf2fb; color: #1d4f7a;
+}
+html[data-theme=dark] body[data-personnel-layout="iot"] .notice:not(.success):not(.error) { border-color: #2b4a6b; background: #132a42; color: #cfe2f7; }
+body #app.admin-interface.admin-interface .modal, body[data-personnel-layout="iot"] .confirm-dialog, .personnel-password-dialog, .personnel-logout-dialog {
+  border: 1px solid var(--staff-border); background: var(--staff-raised); color: var(--staff-ink); box-shadow: var(--staff-shadow-raised);
+}
+:is(.personnel-password-dialog, .personnel-logout-dialog, body[data-personnel-layout="iot"] .confirm-dialog)::backdrop { background: rgba(10, 18, 14, .62); }
+body #app.admin-interface.admin-interface .modal-overlay { background: rgba(10, 18, 14, .62); }
+body #app.admin-interface.admin-interface .modal-header, body #app.admin-interface.admin-interface .modal-footer { border-color: var(--staff-row); }
+#app.admin-interface .notif-panel-close { display: inline-grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: var(--staff-muted); font-size: 20px; line-height: 1; cursor: pointer; }
+#app.admin-interface .notif-panel-close:hover { background: var(--staff-hover-bg); color: var(--staff-ink); }
+#app.admin-interface .notif-panel-close:focus-visible { outline: 2px solid var(--civic-primary); outline-offset: 2px; }
+
+/* Logout: the session-ending action is red; Cancel stays neutral. */
+.personnel-logout-dialog .personnel-logout-symbol { background: #fbe9e7; color: var(--staff-danger); }
+:root:has(body[data-personnel-layout="admin"]:not(.light-mode)) .personnel-logout-dialog .personnel-logout-symbol,
+html[data-theme=dark] .personnel-logout-dialog .personnel-logout-symbol, html.dark .personnel-logout-dialog .personnel-logout-symbol { background: #3d1a17; color: #f2a49c; }
+.personnel-logout-dialog .personnel-logout-eyebrow { color: var(--staff-muted); }
+.personnel-logout-dialog .personnel-logout-close { color: var(--staff-muted); }
+
+/* ── Staff sign-in ─────────────────────────────────────────────── */
+.staff-auth-page, .dark .staff-auth-page {
+  --civic-ink: #14211a; --civic-muted: #4f5e56; --civic-line: #d5ddd8; --civic-blue: #17663a; --civic-green: #17663a;
+  color-scheme: light; background: #eef2ef; color: #14211a;
+}
+.staff-auth-gov { border-bottom: 3px solid var(--civic-gold); background: #0d1a12; color: #d3dfd7; }
+.staff-auth-gov span span { color: #6f8a78; }
+.staff-auth-gov .admin-language-inline > span { color: #a9bcaf; }
+.staff-auth-gov .admin-language-inline button { color: #d3dfd7; }
+.staff-auth-gov .admin-language-inline button:focus-visible { outline-color: #9edbb5; }
+.staff-auth-page .civic-auth { align-items: center; gap: 32px; }
+.staff-auth-page .civic-auth-aside {
+  display: flex; flex-direction: column; justify-content: center; padding: 48px; border-radius: 14px;
+  background: #13281c; color: #e6eee9; box-shadow: 0 18px 44px rgba(16, 32, 24, .18);
+}
+.staff-auth-page .civic-auth-aside h1, .staff-auth-brand strong, .staff-auth-features strong { color: #fff; }
+.staff-auth-page .civic-auth-aside > p, .staff-auth-features span { color: #c9d8ce; }
+.staff-auth-brand span { color: var(--civic-gold); }
+.staff-auth-brand img { border-color: var(--civic-gold); }
+.staff-auth-features > div { border-left-color: var(--civic-gold); }
+.staff-auth-features > div + div { border-left-color: #9edbb5; }
+.staff-auth-resident-link, .staff-auth-resident-link:visited { color: #9edbb5; }
+.staff-auth-page .civic-auth-form {
+  align-self: center; border: 1px solid #d5ddd8; border-top: 4px solid #17663a; border-radius: 12px; background: #fff;
+  box-shadow: 0 1px 2px rgba(16, 32, 24, .05), 0 10px 30px rgba(16, 32, 24, .08);
+}
+.staff-auth-page .civic-auth-form::before { display: none; }
+.staff-login-eyebrow { color: #17663a; }
+.staff-auth-page .civic-auth-form [data-flux-control] { border-color: #7a8981; background: #fff; color: #14211a; }
+.staff-auth-page .civic-auth-form [data-flux-control]::placeholder { color: #6b7a72; }
+.staff-auth-page .civic-auth-form [data-flux-control]:focus { border-color: #17663a; outline-color: #17663a; }
+.staff-auth-page .civic-auth-form [data-flux-checkbox] { border-color: #7a8981; }
+.staff-login-form button[type="submit"], .staff-auth-page .civic-auth-form button[type="submit"] { border-color: #17663a; background: #17663a; color: #fff; }
+.staff-login-form button[type="submit"]:hover { border-color: #0f5130; background: #0f5130; }
+.staff-login-links a, .staff-auth-page .civic-auth-form a { color: #17663a; }
+.staff-login-security::before, .staff-login-security::after { border-color: #17663a; }
+@media (max-width: 850px) {
+  .staff-auth-page .civic-auth-aside { padding: 28px 24px; }
+}
+
+/* ── Corrections over older layers ─────────────────────────────── */
+body.light-mode, body[data-personnel-layout="admin"] { color: var(--staff-ink); }
+body #app.admin-interface.admin-interface { color: var(--staff-ink); }
+body #app.admin-interface.admin-interface .stat-icon { display: grid; opacity: 1; filter: none; }
+body #app.admin-interface.admin-interface .badge-green { border-color: transparent; background: #dff1e6; color: #0f5130; }
+body #app.admin-interface.admin-interface .badge-blue { border-color: transparent; background: #e6eff6; color: #1d4f7a; }
+body #app.admin-interface.admin-interface .badge-amber { border-color: transparent; background: #fbf0dc; color: #7a4d00; }
+body #app.admin-interface.admin-interface .badge-red { border-color: transparent; background: #fbe9e7; color: #9f1d14; }
+body:not(.light-mode) #app.admin-interface.admin-interface .badge-green { background: #1e3a2b; color: #9edbb5; }
+body:not(.light-mode) #app.admin-interface.admin-interface .badge-blue { background: #1b2d3c; color: #9cc7f5; }
+body:not(.light-mode) #app.admin-interface.admin-interface .badge-amber { background: #3a2d0c; color: #f0c96a; }
+body:not(.light-mode) #app.admin-interface.admin-interface .badge-red { background: #3d1a17; color: #f2a49c; }
+body #app.admin-interface.admin-interface .dashboard-activity-mark { background: var(--staff-active-bg); color: var(--staff-active-ink); }
+body #app.admin-interface.admin-interface .dashboard-activity-mark.incident { background: #fbf0dc; color: #7a4d00; }
+body:not(.light-mode) #app.admin-interface.admin-interface .dashboard-activity-mark.incident { background: #3a2d0c; color: #f0c96a; }
+/* Quick actions: one compact row — the heading on the left, the shortcuts beside it; they stack on narrow screens. */
+body #app.admin-interface.admin-interface .dashboard-quick-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; padding: 16px 20px; }
+body #app.admin-interface.admin-interface .dashboard-quick-actions .card-header { flex: 0 1 220px; margin: 0; padding: 0; border: 0; }
+body #app.admin-interface.admin-interface .dashboard-quick-action-list { flex: 1 1 520px; display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); justify-content: stretch; gap: 10px; padding: 0; }
+body #app.admin-interface.admin-interface .dashboard-quick-action-list .btn { width: 100%; min-height: 44px; }
+
+/* Each page already has its own heading and the sidebar marks the current item, so the bar does not repeat the title. */
+body #app.admin-interface.admin-interface .topbar-status, body[data-personnel-layout="iot"] .workspace-title, .staff-settings-topbar-title { visibility: hidden; }
+.skip-link { color: var(--staff-ink); border-color: var(--civic-gold); }
+
+/* ── Module fixes (found by a per-page colour and contrast audit) ── */
+body[data-personnel-layout] .staff-initials, body #app.admin-interface.admin-interface .user-avatar-lg { background: var(--staff-accent-fill); color: #fff; }
+body[data-personnel-layout="iot"] .side-nav-user .staff-initials { border: 2px solid var(--civic-gold); background: var(--staff-side-active-bg); }
+body #app.admin-interface.admin-interface .audit-type-btn.active, body:not(.light-mode) #app.admin-interface.admin-interface .audit-type-btn.active {
+  border-color: var(--staff-accent-fill); background: var(--staff-active-bg); color: var(--staff-active-ink);
+}
+body.light-mode #app.admin-interface.admin-interface :is(.audit-time, .audit-detail) { color: var(--staff-muted); }
+body.light-mode #app.admin-interface.admin-interface .audit-action { color: var(--staff-ink); }
+body #app.admin-interface.admin-interface .demo-purok-tag { border-color: var(--staff-border); background: var(--staff-soft); color: var(--staff-muted); font-size: 11px; }
+body #app.admin-interface.admin-interface .demo-purok-pop { color: var(--staff-accent); }
+body.light-mode #app.admin-interface.admin-interface .badge-senior { border-color: #e7c27a; background: #fbf0dc; color: #7a4d00; }
+body:not(.light-mode) #app.admin-interface.admin-interface .badge-senior { border-color: #6b5520; background: #3a2d0c; color: #f0c96a; }
+body #app.admin-interface.admin-interface .special-group-card { border-color: var(--staff-border); }
+body #app.admin-interface.admin-interface .cert-card:not(.cert-card-view) { border-color: var(--staff-border); }
+body #app.admin-interface.admin-interface .cert-card:not(.cert-card-view):hover { border-color: var(--staff-accent); }
+body[data-personnel-layout="iot"] .pill.neutral { border-color: var(--staff-border); background: var(--staff-soft); color: var(--staff-muted); }
+body[data-personnel-layout="iot"] :is(.employee-card, .device-card) { border-color: var(--staff-border); }
+body[data-personnel-layout="iot"] :is(.panel-heading span, .empty-state p, .employee-card p, .device-card p), html[data-theme=dark] body[data-personnel-layout="iot"] :is(.panel-heading span, .empty-state p) { color: var(--staff-muted); }
+
+/* Filter pills are buttons: keep the pill look, add a visible keyboard focus ring. */
+#app.admin-interface button.status-pill { font-family: inherit; cursor: pointer; }
+#app.admin-interface button.status-pill:focus-visible { outline: 2px solid var(--civic-primary); outline-offset: 2px; }
+#app.admin-interface .page-header-row { flex-wrap: wrap; gap: 12px; }
+/* ── IoT pages (RFID File Tracking, Employee Cabinet Access) ── */
+/* Server-rendered pager, matching the workspace pager. */
+body[data-personnel-layout="iot"] .staff-pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; color: var(--staff-muted); font-size: 12.5px; }
+body[data-personnel-layout="iot"] .staff-pager-controls { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }
+body[data-personnel-layout="iot"] .staff-pager-status { min-width: 96px; color: var(--staff-ink); font-weight: 600; text-align: center; font-variant-numeric: tabular-nums; }
+body[data-personnel-layout="iot"] .staff-pager .button { min-height: 34px; padding: 6px 14px; text-decoration: none; }
+body[data-personnel-layout="iot"] .staff-pager .button[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
+body[data-personnel-layout="iot"] :is(.iot-rfid-pagination, .employee-access-panel > [data-filter-region] > .pagination) { padding: 16px 22px; border-top: 1px solid var(--staff-border); }
+/* Filtered regions dim while new results load in place. */
+body[data-personnel-layout="iot"] [data-filter-results][aria-busy="true"] [data-filter-region] { opacity: .55; transition: opacity .15s ease; }
+@media (prefers-reduced-motion: reduce) { body[data-personnel-layout="iot"] [data-filter-results] [data-filter-region] { transition: none; } }
+body[data-personnel-layout="iot"] .iot-movement-table time small, body[data-personnel-layout="iot"] .iot-movement-table td small { display: block; color: var(--staff-muted); font-size: 11.5px; }
+body[data-personnel-layout="iot"] .iot-movement-table time { white-space: nowrap; }
+body[data-personnel-layout="iot"] .iot-movement-table code { font-size: 12px; }
+/* Employee rows: identity, scannable status chips, effective-access state and Details. */
+body[data-personnel-layout="iot"] .employee-access-filters { display: grid; grid-template-columns: minmax(240px, 2fr) minmax(180px, 1fr) auto; gap: 12px; align-items: end; margin: 0; padding: 16px 22px; border: 0; border-bottom: 1px solid var(--staff-border); border-radius: 0; box-shadow: none; }
+body[data-personnel-layout="iot"] .employee-access-filters label { display: block; min-width: 0; color: var(--staff-muted); font-size: 12px; font-weight: 700; }
+body[data-personnel-layout="iot"] .employee-access-filters :is(input, select) { display: block; width: 100%; min-height: 42px; margin-top: 6px; }
+body[data-personnel-layout="iot"] .employee-card > .employee-intro { flex-wrap: wrap; row-gap: 10px; }
+body[data-personnel-layout="iot"] .employee-card > .employee-intro > .employee-identity { flex: 1 1 220px; }
+body[data-personnel-layout="iot"] .employee-status-chips { display: flex; flex: 2 1 360px; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+body[data-personnel-layout="iot"] .employee-status-chips .pill { gap: 4px; font-size: 11.5px; }
+body[data-personnel-layout="iot"] .employee-status-chips .pill > span:first-child { font-weight: 800; }
+body[data-personnel-layout="iot"] .employee-effective { flex: 0 0 auto; font-weight: 700; }
+html[data-theme=dark] body[data-personnel-layout="iot"] .pill.success { background: #16301f; color: #9edbb5; }
+html[data-theme=dark] body[data-personnel-layout="iot"] .pill.warning { background: #3a2d0c; color: #f0c96a; }
+html[data-theme=dark] body[data-personnel-layout="iot"] .pill.neutral { background: #2b3136; color: #cdd3d9; }
+body[data-personnel-layout="iot"] .dialog-close { display: inline-grid; flex: 0 0 auto; place-items: center; width: 34px; height: 34px; border: 1px solid var(--staff-border); border-radius: 50%; background: var(--staff-card); color: var(--staff-muted); font-size: 20px; line-height: 1; cursor: pointer; }
+body[data-personnel-layout="iot"] .dialog-close:hover { background: var(--staff-hover-bg); color: var(--staff-ink); }
+@media (max-width: 760px) {
+  body[data-personnel-layout="iot"] .employee-access-filters { grid-template-columns: minmax(0, 1fr); }
+  body[data-personnel-layout="iot"] .staff-pager { justify-content: center; text-align: center; }
+  body[data-personnel-layout="iot"] .staff-pager-controls { margin-left: 0; }
+}
+
+/* ── Audit Log toolbar: search, category and date on one row ── */
+#app.admin-interface .audit-toolbar { display: grid; grid-template-columns: minmax(240px, 1fr) minmax(200px, auto) minmax(190px, auto); gap: 10px 14px; align-items: center; padding: 0 0 14px; margin-bottom: 14px; border-bottom: 1px solid var(--staff-row); }
+#app.admin-interface .audit-toolbar .search-wrap { max-width: none; }
+#app.admin-interface .audit-list-pagination { padding: 12px 14px 4px; }
+/* Pages hold 20 events, so the list grows with the page instead of scrolling inside a fixed box. */
+#app.admin-interface .audit-log-table-scroll { max-height: none; overflow-y: visible; }
+body[data-personnel-layout="admin"] .audit-detail-modal { overflow-x: hidden; }
+@media (max-width: 760px) {
+  #app.admin-interface .audit-toolbar { grid-template-columns: minmax(0, 1fr); }
+  #app.admin-interface .audit-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+}
+
+/* ── Certificates: readable lane titles, roomier lanes, card actions that never wrap mid-label ── */
+/* Process steps use soft tiles with a coloured icon, like the summary cards (a later rule had hidden the white icon). */
+#app.admin-interface .cert-flow-icon { background: color-mix(in srgb, var(--flow-accent, var(--civic-primary)) 14%, var(--staff-card)); color: var(--flow-accent, var(--civic-primary)); box-shadow: none; }
+#app.admin-interface .cert-flow-icon svg { stroke: currentColor; color: inherit; }
+body:not(.light-mode) #app.admin-interface :is(.cert-flow-icon, .cert-flow-number) { color: color-mix(in srgb, var(--flow-accent, #2f9e62) 55%, #ffffff); }
+@media (max-width: 760px) {
+  #app.admin-interface :is(#screen-incidents, #screen-request-records) .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+}
+#app.admin-interface .incident-table .badge, #app.admin-interface .issued-history-table .badge { white-space: nowrap; }
+#app.admin-interface .card:has(> .card-header #elig-rules-toggle[aria-expanded="false"]) > .card-header { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
+#app.admin-interface .cert-lane { max-height: 640px; }
+#app.admin-interface .cert-lane-header { align-items: center; }
+#app.admin-interface .cert-lane-title { display: inline-flex; align-items: center; gap: 8px; color: var(--staff-ink); font-size: 15px; font-weight: 800; letter-spacing: 0; text-transform: none; }
+#app.admin-interface .cert-lane-title::before { content: ""; flex: 0 0 auto; width: 10px; height: 10px; border-radius: 50%; background: var(--lane-color); }
+#app.admin-interface .cert-lane-empty { padding: 18px 0; color: var(--staff-muted); font-size: 12px; text-align: center; }
+#app.admin-interface .cert-lane-more { display: grid; gap: 8px; justify-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); color: var(--staff-muted); font-size: 12px; text-align: center; }
+#app.admin-interface .cert-card-actions[data-action-count] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#app.admin-interface .cert-card-actions[data-action-count="1"] { grid-template-columns: minmax(0, 1fr); }
+#app.admin-interface .cert-card-actions[data-action-count="3"] > .cert-card-action:first-child { grid-column: 1 / -1; }
+#app.admin-interface .cert-card-actions .btn { min-height: 34px; padding-inline: 8px; white-space: nowrap; }
+#app.admin-interface .issued-history-table td { white-space: nowrap; }
+#app.admin-interface .issued-history-table td:nth-child(2), #app.admin-interface .issued-history-table td:nth-child(3) { white-space: normal; }
+#app.admin-interface .issued-history-table .issued-date small { display: block; color: var(--staff-muted); font-size: 11.5px; }
+#app.admin-interface .issued-history-table .resident-actions > .btn:not(:has(> svg:only-child)) { width: auto; min-width: 64px; }
+
+/* ── Request Eligibility: one toolbar, then a single card of compact resident rows ── */
+#app.admin-interface .rr-header-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+#app.admin-interface .rr-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 14px; }
+#app.admin-interface .rr-toolbar .search-wrap { flex: 1 1 320px; max-width: none; }
+#app.admin-interface .rr-toolbar .status-pills { margin: 0; }
+#app.admin-interface .rr-list-card { padding: 0; overflow: hidden; }
+#app.admin-interface .rr-list { margin: 0; padding: 0; list-style: none; }
+#app.admin-interface .rr-row + .rr-row { border-top: 1px solid var(--staff-row); }
+#app.admin-interface .rr-row-summary { display: flex; align-items: center; gap: 12px; padding: 10px 16px; }
+#app.admin-interface .rr-row-toggle { display: flex; flex: 1 1 auto; align-items: center; gap: 12px; min-width: 0; padding: 4px; border: 0; border-radius: 8px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+#app.admin-interface .rr-row-toggle:hover { background: var(--staff-hover-bg); }
+#app.admin-interface .rr-row-toggle:focus-visible { outline: 2px solid var(--civic-primary); outline-offset: 2px; }
+#app.admin-interface .rr-avatar { flex: 0 0 auto; width: 34px; height: 34px; border: 1px solid var(--staff-border); background: var(--staff-soft); color: var(--staff-accent); font-size: 13px; }
+#app.admin-interface .rr-row-name { display: flex; flex-direction: column; min-width: 0; }
+#app.admin-interface .rr-row-name strong { color: var(--staff-ink); font-size: 13.5px; }
+#app.admin-interface .rr-row-name small { color: var(--staff-muted); font-size: 11.5px; overflow-wrap: anywhere; }
+#app.admin-interface .rr-chevron { width: 8px; height: 8px; margin-left: auto; border-right: 2px solid var(--staff-muted); border-bottom: 2px solid var(--staff-muted); transform: rotate(45deg); transition: transform .15s ease; }
+#app.admin-interface .rr-row-toggle[aria-expanded="true"] .rr-chevron { transform: rotate(-135deg); }
+#app.admin-interface .rr-request-count { flex: 0 0 auto; min-width: 82px; color: var(--staff-muted); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
+#app.admin-interface .rr-row-summary > .badge { flex: 0 0 auto; }
+#app.admin-interface .rr-requests-panel { padding: 0 16px 14px 62px; background: transparent; }
+@media (prefers-reduced-motion: reduce) { #app.admin-interface .rr-chevron { transition: none; } }
+@media (max-width: 640px) {
+  #app.admin-interface .rr-row-summary { flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
+  #app.admin-interface .rr-row-toggle { flex-basis: 100%; }
+  #app.admin-interface .rr-request-count { min-width: 0; margin-right: auto; text-align: left; }
+  #app.admin-interface .rr-requests-panel { padding: 0 12px 12px; }
+}
+
+/* ── Incident Reports: search on its own row, labelled filters below, a table that fits without sideways scrolling ── */
+#app.admin-interface .incident-filter-bar { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px 12px; align-items: center; }
+#app.admin-interface .incident-filter-bar .incident-filter-search { grid-column: 1 / -1; }
+#app.admin-interface .incident-date-filter { display: flex; align-items: center; gap: 8px; min-width: 0; margin: 0; }
+#app.admin-interface .incident-date-filter > span { flex: 0 0 auto; color: var(--staff-muted); font-size: 12px; font-weight: 700; }
+#app.admin-interface .incident-date-filter > .form-input { flex: 1 1 auto; min-width: 0; }
+#app.admin-interface .incident-table { min-width: 920px; }
+#app.admin-interface .incident-table .incident-cell-main { text-align: left; }
+#app.admin-interface .incident-table .incident-cell-main strong { display: block; color: var(--staff-ink); font-size: 13px; }
+#app.admin-interface .incident-table .incident-cell-main .resident-number { display: block; margin-top: 2px; font-size: 10.5px; overflow-wrap: anywhere; }
+#app.admin-interface .incident-table .incident-cell-date span { display: block; white-space: nowrap; }
+#app.admin-interface .incident-table .incident-cell-date small { color: var(--staff-muted); font-size: 11.5px; white-space: nowrap; }
+#app.admin-interface .incident-table .incident-row { cursor: pointer; }
+#app.admin-interface .incident-table .incident-row:focus-visible { outline: 2px solid var(--civic-primary); outline-offset: -2px; }
+#app.admin-interface .incident-table .resident-actions > .btn:not(:has(> svg:only-child)) { width: auto; min-width: 62px; padding-inline: 10px; white-space: nowrap; }
+@media (max-width: 1100px) {
+  #app.admin-interface .incident-filter-bar { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  #app.admin-interface .incident-filter-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  #app.admin-interface .incident-filter-bar #incident-assignee-filter { grid-column: 1 / -1; }
+  #app.admin-interface .incident-date-filter { flex-direction: column; align-items: stretch; gap: 4px; }
+}
+
+/* Import preview summary: labelled counts; problems in red, duplicates in amber, ready rows in green. */
+body[data-personnel-layout="admin"] #profiling-summary { display: flex; flex-wrap: wrap; gap: 8px; }
+body[data-personnel-layout="admin"] .profiling-summary-item { display: inline-flex; align-items: baseline; gap: 6px; padding: 6px 10px; border: 1px solid var(--staff-border); border-radius: 8px; background: var(--staff-soft); color: var(--staff-muted); font-size: 12.5px; }
+body[data-personnel-layout="admin"] .profiling-summary-item strong { color: var(--staff-ink); font-size: 15px; }
+body[data-personnel-layout="admin"] .profiling-summary-item.is-ready { border-color: #9fd0b2; background: #e8f5ed; }
+body[data-personnel-layout="admin"] .profiling-summary-item.is-warning { border-color: #e7c27a; background: #fbf0dc; }
+body[data-personnel-layout="admin"] .profiling-summary-item.is-error { border-color: #e9a29b; background: #fbe9e7; }
+body[data-personnel-layout="admin"]:not(.light-mode) .profiling-summary-item.is-ready { border-color: #2f6a47; background: #16301f; }
+body[data-personnel-layout="admin"]:not(.light-mode) .profiling-summary-item.is-warning { border-color: #6b5520; background: #3a2d0c; }
+body[data-personnel-layout="admin"]:not(.light-mode) .profiling-summary-item.is-error { border-color: #7a2c25; background: #3d1a17; }
+body[data-personnel-layout="admin"] .profiling-result { display: block; padding: 12px 14px; border: 1px solid #9fd0b2; border-radius: 8px; background: #e8f5ed; color: var(--staff-ink); line-height: 1.6; }
+body[data-personnel-layout="admin"]:not(.light-mode) .profiling-result { border-color: #2f6a47; background: #16301f; }
+body[data-personnel-layout="admin"] .profiling-result strong { display: block; }
+
+/* Long forms are split into named sections. */
+body[data-personnel-layout="admin"] .modal .form-section-heading { margin: 22px 0 12px; padding-top: 16px; border-top: 1px solid var(--staff-row); color: var(--staff-accent); font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+body[data-personnel-layout="admin"] .modal .modal-header + .form-section-heading { margin-top: 0; padding-top: 0; border-top: 0; }
+#app.admin-interface .page-header-row > .btn.resident-applications-link { display: inline-flex; align-items: center; gap: 8px; width: auto; margin-left: auto; white-space: nowrap; }
+
+/* ── Demographics: age and sex chart, special-group list, senior register ── */
+#app.admin-interface { --sex-male: #2563eb; --sex-female: #db2777; }
+body:not(.light-mode) #app.admin-interface { --sex-male: #7aa7ff; --sex-female: #f27ab6; }
+#app.admin-interface .demo-insights { align-items: start; }
+#app.admin-interface .age-distribution-list { display: flex; flex-direction: column; gap: 14px; }
+#app.admin-interface .age-bar-item { grid-template-columns: minmax(120px, 170px) minmax(0, 1fr) 92px; gap: 12px; }
+#app.admin-interface .age-bar-label { color: var(--staff-ink); font-size: 13px; font-weight: 600; }
+#app.admin-interface .age-bar-track { height: 14px; overflow: hidden; border-radius: 7px; background: var(--staff-row); }
+#app.admin-interface .age-bar-fill { height: 100%; min-width: 2px; border-radius: 7px; }
+#app.admin-interface .age-bar-count { color: var(--staff-ink); font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+#app.admin-interface .age-bar-count span { color: var(--staff-muted); font-size: 11px; font-weight: 500; }
+#app.admin-interface .demo-sex-split { margin-top: 6px; padding-top: 16px; border-top: 1px solid var(--staff-row); }
+#app.admin-interface .demo-sex-split-title { margin-bottom: 8px; color: var(--staff-muted); font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+#app.admin-interface .demo-sex-split-bar { display: flex; height: 14px; overflow: hidden; border-radius: 7px; background: var(--staff-row); }
+#app.admin-interface .demo-sex-split-bar .is-male { background: var(--sex-male); }
+#app.admin-interface .demo-sex-split-bar .is-female { background: var(--sex-female); }
+#app.admin-interface .demo-sex-split-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; color: var(--staff-muted); font-size: 12.5px; }
+#app.admin-interface .demo-sex-split-legend strong { color: var(--staff-ink); }
+#app.admin-interface .demo-sex-split-legend i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 3px; vertical-align: -1px; }
+#app.admin-interface .demo-sex-split-legend i.is-male { background: var(--sex-male); }
+#app.admin-interface .demo-sex-split-legend i.is-female { background: var(--sex-female); }
+#app.admin-interface .special-group-hint { margin: -4px 0 10px; color: var(--staff-muted); font-size: 12px; }
+#app.admin-interface .special-group-list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+#app.admin-interface .special-group-row { display: grid; grid-template-columns: 10px minmax(0, 1.6fr) minmax(60px, 1fr) 76px; align-items: center; gap: 12px; width: 100%; padding: 7px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--staff-ink); font: inherit; text-align: left; }
+#app.admin-interface button.special-group-row { cursor: pointer; }
+#app.admin-interface button.special-group-row:hover { background: var(--staff-hover-bg); }
+#app.admin-interface button.special-group-row:focus-visible { outline: 2px solid var(--civic-primary); outline-offset: 1px; }
+#app.admin-interface .special-group-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--group-color); }
+#app.admin-interface .special-group-name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; min-width: 0; }
+#app.admin-interface .special-group-name strong { font-size: 13px; font-weight: 700; }
+#app.admin-interface .special-group-name small, #app.admin-interface .special-group-count small { color: var(--staff-muted); font-size: 11px; }
+#app.admin-interface .special-group-meter { height: 8px; overflow: hidden; border-radius: 4px; background: var(--staff-row); }
+#app.admin-interface .special-group-meter span { display: block; height: 100%; border-radius: 4px; background: var(--group-color); }
+#app.admin-interface .special-group-count { display: flex; align-items: baseline; justify-content: flex-end; gap: 6px; font-variant-numeric: tabular-nums; }
+#app.admin-interface .special-group-count strong { font-size: 15px; }
+#app.admin-interface .senior-register-note { margin: 10px 0 0; color: var(--staff-muted); font-size: 12px; }
+@media (max-width: 760px) {
+  /* Two summary cards per row on phones instead of six full-width cards. */
+  #app.admin-interface :is(#demographics-stats-grid, #voter-stats-grid, #cert-stats-grid, .dashboard-stats-grid) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  #app.admin-interface :is(#demographics-stats-grid, #voter-stats-grid, #cert-stats-grid) .stat-sub { font-size: 11px; }
+  #app.admin-interface .age-bar-item { grid-template-columns: minmax(0, 1fr) 84px; }
+  #app.admin-interface .age-bar-track { grid-column: 1 / -1; grid-row: 2; }
+  #app.admin-interface .special-group-row { grid-template-columns: 10px minmax(0, 1fr) 64px; }
+  #app.admin-interface .special-group-meter { display: none; }
+}
+
+/* Account settings (Flux components read the accent from these variables). */
+body.civic-settings { --color-accent: #17663a; --color-accent-content: #17663a; --color-accent-foreground: #fff; }
+.dark body.civic-settings { --color-accent: #17663a; --color-accent-content: #9edbb5; --color-accent-foreground: #fff; }
+body.civic-settings .civic-eyebrow, .dark body.civic-settings .civic-eyebrow { color: var(--staff-accent); }
+body.civic-settings .staff-theme-icon-button { color: var(--staff-ink); }
+body.civic-settings :is(.bg-red-500, [data-flux-button][data-variant="danger"]) { background: var(--staff-danger); color: #fff; }
+body.civic-settings :is(.bg-red-500, [data-flux-button][data-variant="danger"]):hover { background: var(--staff-danger-hover); }
+body[data-personnel-layout="iot"] .employee-access-panel > .employee-card, html:not([data-theme="dark"]) body[data-personnel-layout="iot"] .employee-access-panel > .employee-card { border-color: var(--staff-border); }
+/* Purok group tags: category colours at readable strength in each theme. */
+body #app.admin-interface.admin-interface .demo-purok-tag.is-senior { border-color: #e7c27a; color: #7a4d00; }
+body #app.admin-interface.admin-interface .demo-purok-tag.is-pwd { border-color: #c9b8f0; color: #5b3fb0; }
+body #app.admin-interface.admin-interface .demo-purok-tag.is-4ps { border-color: #f0b4ae; color: #9f1d14; }
+body:not(.light-mode) #app.admin-interface.admin-interface .demo-purok-tag.is-senior { border-color: #6b5520; color: #f0c96a; }
+body:not(.light-mode) #app.admin-interface.admin-interface .demo-purok-tag.is-pwd { border-color: #4b3d7a; color: #c9b8f0; }
+body:not(.light-mode) #app.admin-interface.admin-interface .demo-purok-tag.is-4ps { border-color: #6b2a24; color: #f2a49c; }
+/* Same weight as the generic sidebar link rule above, so the current item always wins. */
+:is(body #app.admin-interface.admin-interface .sidebar, body[data-personnel-layout="iot"] .side-nav, body.civic-settings .staff-settings-navigation) :is(.nav-item.active, a.current) {
+  background: var(--staff-side-active-bg); color: var(--staff-side-active-ink); font-weight: 700; box-shadow: inset 3px 0 0 var(--staff-side-indicator);
+}
+.personnel-logout-actions #logout-confirm { border-color: var(--staff-danger); background: var(--staff-danger); color: #fff; }
+.personnel-logout-actions #logout-confirm:hover { border-color: var(--staff-danger-hover); background: var(--staff-danger-hover); }
+/* Reversible negative actions (archive, remove from household): red outline; Delete and Reject stay solid red. */
+body #app.admin-interface.admin-interface .btn-danger-outline, body.light-mode #app.admin-interface.admin-interface .btn-danger-outline, body[data-personnel-layout="iot"] .button.danger-outline {
+  border: 1px solid var(--staff-danger); background: var(--staff-quiet-bg); color: var(--staff-danger);
+}
+body #app.admin-interface.admin-interface .btn-danger-outline:hover, body.light-mode #app.admin-interface.admin-interface .btn-danger-outline:hover, body[data-personnel-layout="iot"] .button.danger-outline:hover { border-color: var(--staff-danger-hover); background: #fbe9e7; color: var(--staff-danger-hover); }
+:is(body:not(.light-mode) #app.admin-interface.admin-interface .btn-danger-outline, html[data-theme=dark] body[data-personnel-layout="iot"] .button.danger-outline) { border-color: #e06c61; color: #f2a49c; }
+:is(body:not(.light-mode) #app.admin-interface.admin-interface .btn-danger-outline, html[data-theme=dark] body[data-personnel-layout="iot"] .button.danger-outline):hover { background: #3d1a17; color: #f6c1bb; }
+/* Small screens: the sidebar is an overlay drawer (an older unconditional rule had pinned it into the page flow). */
+@media (max-width: 760px) {
+  body #app.admin-interface.admin-interface .sidebar { position: fixed; top: 68px; bottom: 0; left: 0; z-index: 200; box-shadow: 12px 0 32px rgba(10, 18, 14, .35); }
+  body #app.admin-interface.admin-interface .topbar { padding-right: 12px; }
+  body #app.admin-interface.admin-interface .topbar-status { display: none; }
+  body #app.admin-interface.admin-interface .topbar-right { flex: 1 1 auto; justify-content: flex-end; min-width: 0; gap: 4px; }
+}
+body #app.admin-interface.admin-interface .sidebar .nav-item .nav-icon, body #app.admin-interface.admin-interface .sidebar .nav-item.active .nav-icon,
+body.light-mode #app.admin-interface.admin-interface .sidebar .nav-item.active .nav-icon { color: currentColor; opacity: 1; }
+.staff-auth-page { --color-accent: #17663a; --color-accent-content: #17663a; --color-accent-foreground: #fff; }
+.staff-auth-page .civic-auth-form :is(input, button, a):focus-visible { outline: 3px solid #17663a; outline-offset: 2px; }
+/* On narrow screens the sign-in form comes first; the brand panel follows it. */
+@media (max-width: 850px) {
+  .staff-auth-page .civic-auth-form { order: -1; }
+  .staff-auth-page .civic-auth-aside h1 { font-size: 28px; }
+}
+/* Summary cards open their module; the link stretches over the card so the whole card is a target. */
+body #app.admin-interface.admin-interface .stat-card:has(.stat-link) { position: relative; cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease; }
+body #app.admin-interface.admin-interface .stat-link { grid-area: link; justify-self: start; margin-top: 8px; padding: 0; border: 0; background: none; color: var(--staff-accent); font: inherit; font-size: 12.5px; font-weight: 650; text-align: left; text-decoration: none; cursor: pointer; }
+body #app.admin-interface.admin-interface .stat-link::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+body #app.admin-interface.admin-interface .stat-card:has(.stat-link):hover { border-color: var(--staff-accent); box-shadow: 0 2px 4px rgba(16, 32, 24, .08), 0 10px 24px rgba(16, 32, 24, .1); }
+body #app.admin-interface.admin-interface .stat-link:hover { text-decoration: underline; }
+body #app.admin-interface.admin-interface .stat-card:has(.stat-link:focus-visible) { outline: 3px solid var(--staff-focus); outline-offset: 2px; }
+body #app.admin-interface.admin-interface .stat-link:focus-visible { outline: none; }
+/* The sign-in card is always light; Flux would otherwise switch its text and checkbox to dark variants under a dark system theme. */
+.staff-auth-page .civic-auth-form :is([data-flux-subheading], [data-flux-text][class*="text-zinc"]) { color: #4f5e56; }
+.staff-auth-page .civic-auth-form :is([data-flux-heading], [data-flux-label]) { color: #14211a; }
+.staff-auth-page .civic-auth-form [data-flux-checkbox-indicator] { border: 1px solid #7a8981; background: #fff; }
+.staff-auth-page .civic-auth-form [data-flux-checkbox][data-checked] [data-flux-checkbox-indicator] { border-color: #17663a; background: #17663a; color: #fff; }
+.staff-auth-page .civic-auth-form .opacity-50 { color: #4f5e56; opacity: 1; }
+/* ── User Management: KPI meaning, one directory card, compact account rows ── */
+body #app.admin-interface.admin-interface .user-management-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+body #app.admin-interface.admin-interface .user-kpi { min-height: 0; }
+body #app.admin-interface.admin-interface .user-kpi-total { --user-kpi-color: #2f6f9f; }
+body #app.admin-interface.admin-interface .user-kpi-2fa { --user-kpi-color: #a16207; }
+body #app.admin-interface.admin-interface .user-kpi .stat-value { color: var(--user-kpi-color); }
+body #app.admin-interface.admin-interface .user-kpi .stat-sub { color: var(--staff-muted); font-size: 12px; }
+/* Zero suspended accounts or zero accounts without 2FA needs no attention: the card drops to a neutral tone. */
+body #app.admin-interface.admin-interface :is(.user-kpi-suspended, .user-kpi-2fa).is-zero { --user-kpi-color: #5c6b63; }
+:is(html[data-theme=dark], html.dark) body #app.admin-interface.admin-interface .user-kpi-total { --user-kpi-color: #7cb6e3; }
+:is(html[data-theme=dark], html.dark) body #app.admin-interface.admin-interface .user-kpi-active { --user-kpi-color: #5fd396; }
+:is(html[data-theme=dark], html.dark) body #app.admin-interface.admin-interface .user-kpi-suspended { --user-kpi-color: #f08a80; }
+:is(html[data-theme=dark], html.dark) body #app.admin-interface.admin-interface .user-kpi-2fa { --user-kpi-color: #f2c14e; }
+:is(html[data-theme=dark], html.dark) body #app.admin-interface.admin-interface :is(.user-kpi-suspended, .user-kpi-2fa).is-zero { --user-kpi-color: #a3b3aa; }
+body #app.admin-interface.admin-interface .user-directory { padding: 20px; }
+body #app.admin-interface.admin-interface .user-directory-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px 20px; margin-bottom: 14px; }
+body #app.admin-interface.admin-interface .user-directory-head .card-title { margin: 0 0 4px; font-size: 17px; }
+body #app.admin-interface.admin-interface .user-directory-head .card-sub { margin: 0; }
+body #app.admin-interface.admin-interface .user-directory-count { flex: 0 0 auto; padding: 4px 10px; border: 1px solid var(--staff-border); border-radius: 999px; background: var(--staff-soft); color: var(--staff-muted); font-size: 12px; font-weight: 700; white-space: nowrap; }
+body #app.admin-interface.admin-interface .user-filter-row { grid-template-columns: minmax(220px, 1fr) repeat(2, minmax(160px, 200px)); align-items: end; margin: 0 0 14px; padding-bottom: 14px; border-bottom: 1px solid var(--staff-row); }
+body #app.admin-interface.admin-interface .user-filter-control > span { color: var(--staff-muted); font-size: 12px; }
+body #app.admin-interface.admin-interface .user-list { display: grid; gap: 8px; }
+body #app.admin-interface.admin-interface #users-list-container .user-card { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; min-height: 0; margin: 0; padding: 14px 16px; border: 1px solid var(--staff-border); border-radius: 10px; background: var(--staff-card); box-shadow: none; cursor: default; opacity: 1; }
+body #app.admin-interface.admin-interface #users-list-container .user-card:hover { border-color: var(--staff-accent); background: var(--staff-hover-bg); box-shadow: none; }
+body #app.admin-interface.admin-interface #users-list-container .user-card:has(.user-card-open:focus-visible) { outline: 3px solid var(--staff-focus); outline-offset: 2px; }
+/* Suspended rows stay fully readable; a red edge and the status badge carry the state. */
+body #app.admin-interface.admin-interface #users-list-container .user-card.suspended { box-shadow: inset 4px 0 0 var(--staff-danger); }
+body #app.admin-interface.admin-interface #users-list-container .user-card.suspended .user-avatar-lg { filter: grayscale(1); opacity: .75; }
+body #app.admin-interface.admin-interface .user-avatar-lg { width: 44px; height: 44px; border: 0; background: var(--staff-active-bg); color: var(--staff-active-ink); font-size: 14px; }
+body #app.admin-interface.admin-interface :is(.user-avatar-super_admin, .user-avatar-captain) { background: #17663a; color: #fff; }
+body #app.admin-interface.admin-interface .user-info { min-width: 0; }
+body #app.admin-interface.admin-interface .user-name { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; font-size: 15px; font-weight: 700; line-height: 1.3; }
+body #app.admin-interface.admin-interface .user-card-open { padding: 0; border: 0; background: none; color: var(--staff-ink); font: inherit; text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+/* The name button stretches over the row, so the whole row opens the details; the action buttons sit above it. */
+body #app.admin-interface.admin-interface .user-card-open::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+body #app.admin-interface.admin-interface .user-card-open:hover { color: var(--staff-accent); text-decoration: underline; }
+body #app.admin-interface.admin-interface .user-card-open:focus-visible { outline: none; }
+body #app.admin-interface.admin-interface .user-self-tag { padding: 1px 7px; border-radius: 999px; background: var(--staff-soft); color: var(--staff-muted); font-size: 11px; font-weight: 700; }
+body #app.admin-interface.admin-interface .user-role-tag { margin-top: 2px; color: var(--staff-muted); font-size: 13px; overflow-wrap: anywhere; }
+body #app.admin-interface.admin-interface .user-badges { gap: 6px; margin-top: 8px; }
+body #app.admin-interface.admin-interface .user-badges .badge { font-size: 11px; letter-spacing: 0; text-transform: none; }
+body #app.admin-interface.admin-interface .user-role-badge { border: 1px solid #b8cfe2; background: #eaf2f9; color: #1f4f75; }
+body #app.admin-interface.admin-interface :is(.user-role-super_admin, .user-role-captain) { border-color: #9fc9ae; background: #e3f0e7; color: #0f5130; }
+body #app.admin-interface.admin-interface .user-role-viewer { border-color: var(--staff-border); background: var(--staff-soft); color: var(--staff-muted); }
+:is(html[data-theme=dark], html.dark) body #app.admin-interface.admin-interface .user-role-badge { border-color: #35546d; background: #1b2c3a; color: #b7d6ef; }
+:is(html[data-theme=dark], html.dark) body #app.admin-interface.admin-interface :is(.user-role-super_admin, .user-role-captain) { border-color: #2f6b45; background: #183424; color: #a9e2bd; }
+:is(html[data-theme=dark], html.dark) body #app.admin-interface.admin-interface .user-role-viewer { border-color: var(--staff-border); background: var(--staff-soft); color: var(--staff-muted); }
+body #app.admin-interface.admin-interface .user-actions { position: relative; z-index: 1; display: flex; flex-direction: row; flex-wrap: wrap; justify-content: flex-end; gap: 6px; width: auto; margin: 0; }
+body #app.admin-interface.admin-interface .user-actions .btn { width: auto; min-width: 84px; min-height: 38px; white-space: nowrap; }
+body #app.admin-interface.admin-interface .user-actions .user-action-suspend { border-color: #b45309; color: #92400e; }
+body #app.admin-interface.admin-interface .user-actions .user-action-suspend:hover { background: #fef3e2; }
+:is(html[data-theme=dark], html.dark) body #app.admin-interface.admin-interface .user-actions .user-action-suspend { border-color: #d99a3d; color: #f2c37a; }
+:is(html[data-theme=dark], html.dark) body #app.admin-interface.admin-interface .user-actions .user-action-suspend:hover { background: #3a2a12; }
+@media (max-width: 1100px) {
+  body #app.admin-interface.admin-interface .user-management-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  body #app.admin-interface.admin-interface .user-directory { padding: 14px; }
+  body #app.admin-interface.admin-interface .user-directory-head { flex-direction: column; }
+  body #app.admin-interface.admin-interface .user-filter-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body #app.admin-interface.admin-interface .user-filter-row .search-wrap { grid-column: 1 / -1; }
+  body #app.admin-interface.admin-interface #users-list-container .user-card { grid-template-columns: auto minmax(0, 1fr); }
+  body #app.admin-interface.admin-interface .user-actions { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); }
+  body #app.admin-interface.admin-interface .user-actions .btn { width: 100%; min-width: 0; min-height: 44px; }
+}
+@media (max-width: 560px) {
+  body #app.admin-interface.admin-interface .user-management-kpis { gap: 10px; }
+  body #app.admin-interface.admin-interface .user-kpi .stat-icon { display: none; }
+}
+/* Account details dialog: grouped sections instead of one long grid. */
+body[data-personnel-layout="admin"] #modal-user-details .user-details-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+body[data-personnel-layout="admin"] #modal-user-details .user-detail-section h3 { margin: 0 0 8px; color: var(--staff-muted); font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+body[data-personnel-layout="admin"] #modal-user-details .user-detail-section-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; }
+body[data-personnel-layout="admin"] #modal-user-details .user-detail-field { padding: 10px 12px; border: 1px solid var(--staff-border); border-radius: 8px; background: var(--staff-soft); }
+body[data-personnel-layout="admin"] #modal-user-details .user-detail-field.is-wide { grid-column: 1 / -1; }
+body[data-personnel-layout="admin"] #modal-user-details .user-detail-field.is-wide dd { font-weight: 500; white-space: pre-line; }
+body[data-personnel-layout="admin"] #modal-user-details .user-detail-field dt { margin-bottom: 4px; color: var(--staff-muted); font-size: 11px; font-weight: 700; letter-spacing: 0; text-transform: none; }
+body[data-personnel-layout="admin"] #modal-user-details .user-detail-field dd { color: var(--staff-ink); font-size: 14px; font-weight: 600; line-height: 1.45; }
+@media (max-width: 560px) {
+  body[data-personnel-layout="admin"] #modal-user-details .user-detail-section-grid { grid-template-columns: minmax(0, 1fr); }
+}
+/* ── Notifications: a bounded panel with a category line, one unread marker, real buttons ── */
+body #app.admin-interface.admin-interface .notif-panel { display: none; flex-direction: column; width: min(400px, calc(100vw - 24px)); max-height: min(640px, calc(100vh - 88px)); overflow: hidden; border: 1px solid var(--staff-border); border-radius: 12px; background: var(--staff-card); box-shadow: var(--staff-shadow-raised); }
+body #app.admin-interface.admin-interface .notif-panel.open { display: flex; }
+body #app.admin-interface.admin-interface .notif-panel-header { align-items: flex-start; gap: 12px; padding: 14px 14px 12px 16px; border-color: var(--staff-row); }
+body #app.admin-interface.admin-interface .notif-panel-title { margin: 0; color: var(--staff-ink); font-size: 15px; font-weight: 700; }
+body #app.admin-interface.admin-interface .notif-panel-sub { margin: 2px 0 0; color: var(--staff-muted); font-size: 12px; line-height: 1.4; }
+body #app.admin-interface.admin-interface .notif-panel-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 4px; }
+body #app.admin-interface.admin-interface #notif-mark-all:disabled { opacity: .55; cursor: default; }
+body #app.admin-interface.admin-interface #notif-list { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
+body #app.admin-interface.admin-interface .notif-item { display: flex; align-items: flex-start; gap: 11px; width: 100%; padding: 12px 16px; border: 0; border-bottom: 1px solid var(--staff-row); background: transparent; color: inherit; font: inherit; text-align: left; }
+body #app.admin-interface.admin-interface .notif-item:hover { background: var(--staff-hover-bg); }
+body #app.admin-interface.admin-interface .notif-item.unread { background: color-mix(in srgb, var(--staff-accent) 6%, var(--staff-card)); }
+body #app.admin-interface.admin-interface .notif-item.unread:hover { background: var(--staff-hover-bg); }
+body #app.admin-interface.admin-interface .notif-item .notif-dot { width: 10px; height: 10px; margin-top: 4px; border-radius: 3px; background: #2f6f9f; }
+body #app.admin-interface.admin-interface .notif-type-incident .notif-dot { background: #b45309; }
+body #app.admin-interface.admin-interface .notif-type-application .notif-dot { background: #17663a; }
+body #app.admin-interface.admin-interface .notif-content { display: grid; flex: 1 1 auto; gap: 1px; min-width: 0; }
+body #app.admin-interface.admin-interface .notif-category { color: var(--staff-muted); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+body #app.admin-interface.admin-interface .notif-item .notif-body { color: var(--staff-muted); font-size: 13px; overflow-wrap: anywhere; }
+body #app.admin-interface.admin-interface .notif-item .notif-body strong { color: var(--staff-ink); font-weight: 600; }
+body #app.admin-interface.admin-interface .notif-item.unread .notif-body strong { font-weight: 700; }
+body #app.admin-interface.admin-interface .notif-item .notif-time { margin-top: 2px; color: var(--staff-muted); font-family: inherit; font-size: 12px; }
+body #app.admin-interface.admin-interface .notif-unread-dot { flex: 0 0 auto; width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; background: var(--staff-accent); }
+body #app.admin-interface.admin-interface #notif-list .civic-empty { padding: 28px 16px; color: var(--staff-muted); text-align: center; }
+:is(html[data-theme=dark], html.dark) body #app.admin-interface.admin-interface .notif-item .notif-dot { background: #7cb6e3; }
+:is(html[data-theme=dark], html.dark) body #app.admin-interface.admin-interface .notif-type-incident .notif-dot { background: #f2c14e; }
+:is(html[data-theme=dark], html.dark) body #app.admin-interface.admin-interface .notif-type-application .notif-dot { background: #5fd396; }
+@media (max-width: 760px) {
+  body #app.admin-interface.admin-interface .notif-panel { position: fixed; top: 72px; right: 12px; left: 12px; width: auto; }
+}
+.sr-only { position: absolute !important; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+/* ── Account & Settings hub ── */
+body #app.admin-interface.admin-interface .settings-hub { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 18px; }
+body #app.admin-interface.admin-interface .settings-hub-card { padding: 20px; }
+body #app.admin-interface.admin-interface .settings-hub-card .card-title { margin: 0; font-size: 17px; }
+body #app.admin-interface.admin-interface .settings-identity { display: flex; align-items: center; gap: 14px; padding-bottom: 16px; border-bottom: 1px solid var(--staff-row); }
+body #app.admin-interface.admin-interface .settings-identity .card-sub { margin: 2px 0 0; overflow-wrap: anywhere; }
+body #app.admin-interface.admin-interface .settings-identity-avatar { display: inline-grid; flex: 0 0 auto; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: #17663a; color: #fff; font-weight: 700; }
+body #app.admin-interface.admin-interface .settings-hub-card .setting-row { gap: 16px; padding: 14px 0; border-color: var(--staff-row); }
+body #app.admin-interface.admin-interface .settings-hub-card .setting-row:last-child { border-bottom: 0; padding-bottom: 0; }
+body #app.admin-interface.admin-interface .settings-hub-card .setting-row > .btn { flex: 0 0 auto; min-width: 132px; }
+body #app.admin-interface.admin-interface .settings-hub-card .setting-sub { max-width: 52ch; line-height: 1.45; }
+@media (max-width: 1100px) {
+  body #app.admin-interface.admin-interface .settings-hub { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 560px) {
+  body #app.admin-interface.admin-interface .settings-hub-card .setting-row { flex-direction: column; align-items: stretch; }
+  body #app.admin-interface.admin-interface .settings-hub-card .setting-row > .btn { width: 100%; }
+}
+/* ── Confirmation dialogs: Cancel and the action share one row (the footer grid), Cancel first ── */
+body[data-personnel-layout="admin"] .modal .confirm-dialog-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* ── Announcements: read view first, editing behind a disclosure ── */
+body[data-personnel-layout="iot"] .announcement-record-body { margin: 0 0 14px; color: var(--staff-ink); }
+body[data-personnel-layout="iot"] .announcement-record-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+body[data-personnel-layout="iot"] .announcement-record-actions form { margin: 0; }
+body[data-personnel-layout="iot"] .announcement-record-actions:empty { display: none; }
+body[data-personnel-layout="iot"] .announcement-edit { margin-top: 14px; border: 1px solid var(--staff-border); border-radius: 10px; background: var(--staff-soft); }
+body[data-personnel-layout="iot"] .announcement-edit > summary { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; color: var(--staff-accent); font-size: 13px; font-weight: 700; cursor: pointer; list-style: none; }
+body[data-personnel-layout="iot"] .announcement-edit > summary::-webkit-details-marker { display: none; }
+body[data-personnel-layout="iot"] .announcement-edit > summary::before { content: ""; width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg); transition: transform .15s ease; }
+body[data-personnel-layout="iot"] .announcement-edit[open] > summary::before { transform: rotate(45deg); }
+body[data-personnel-layout="iot"] .announcement-edit > summary:focus-visible { outline: 3px solid var(--staff-focus); outline-offset: 2px; border-radius: 10px; }
+body[data-personnel-layout="iot"] .announcement-edit .announcement-form { padding: 0 16px 16px; }
+body[data-personnel-layout="iot"] .announcement-form small { color: var(--staff-muted); font-size: 12px; font-weight: 500; }
+body[data-personnel-layout="iot"] .announcement-form input[type="file"] { padding: 8px; border: 1px dashed var(--staff-control-border); border-radius: 8px; background: var(--staff-card); color: var(--staff-muted); font-size: 13px; }
+body[data-personnel-layout="iot"] .announcement-form input[type="file"]::file-selector-button { margin-right: 12px; padding: 8px 14px; border: 1px solid var(--staff-quiet-border); border-radius: 6px; background: var(--staff-quiet-bg); color: var(--staff-quiet-ink); font: 600 13px var(--civic-font-body, inherit); cursor: pointer; }
+body[data-personnel-layout="iot"] .announcement-form input[type="file"]::file-selector-button:hover { background: var(--staff-quiet-hover); }
+body[data-personnel-layout="iot"] .announcement-form .field-feedback-message { margin-top: -10px; color: var(--staff-danger); font-size: 12px; font-weight: 600; }
+body[data-personnel-layout="iot"] .announcement-form [aria-invalid="true"] { border-color: var(--staff-danger); }
+/* ── Dialog layers: admin.js (syncModalLayers) orders open dialogs by z-index; the page behind them does not scroll ── */
+body[data-personnel-layout="admin"].modal-open { overflow: hidden; }
+@media (prefers-reduced-motion: reduce) {
+  body #app.admin-interface.admin-interface .stat-card:has(.stat-link) { transition: none; }
+}
+/* List load failures: plain-language message with a Retry button (admin.js listErrorMarkup). */
+body #app.admin-interface.admin-interface .resident-table-error .list-retry { margin-left: 10px; vertical-align: middle; }
+/* Dashboard charts: the canvases are drawn at 240 px; show them large enough to read, legend beside on wide screens. */
+body #app.admin-interface.admin-interface .dashboard-pie { width: 200px; height: 200px; }
+@media (min-width: 1280px) {
+  body #app.admin-interface.admin-interface .dashboard-pie-wrap { grid-template-columns: 200px minmax(0, 1fr); align-items: center; justify-items: stretch; gap: 24px; }
+  body #app.admin-interface.admin-interface .dashboard-pie-wrap .dashboard-pie { justify-self: center; }
+  body #app.admin-interface.admin-interface .dashboard-pie-breakdown { grid-template-columns: minmax(0, 1fr); }
+}
+/* Staff settings: account removal is handled by administrators (no self-deletion). */
+body.civic-settings .settings-account-removal-note { margin-top: 32px; padding: 12px 14px; border: 1px solid var(--staff-border); border-radius: 8px; background: var(--staff-soft); color: var(--staff-muted); font-size: 13px; line-height: 1.5; }
+/* ── Certificates: the process flow is a one-line summary that expands; request cards need one row of buttons ── */
+body #app.admin-interface.admin-interface .cert-flow-card { padding: 0; }
+body #app.admin-interface.admin-interface .cert-flow-details > summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; min-height: 52px; padding: 12px 20px; cursor: pointer; list-style: none; }
+body #app.admin-interface.admin-interface .cert-flow-details > summary::-webkit-details-marker { display: none; }
+body #app.admin-interface.admin-interface .cert-flow-details > summary:focus-visible { outline: 3px solid var(--staff-focus); outline-offset: -3px; border-radius: 10px; }
+body #app.admin-interface.admin-interface .cert-flow-summary-title { color: var(--staff-ink); font-size: 14px; font-weight: 700; }
+body #app.admin-interface.admin-interface .cert-flow-inline { flex: 1 1 320px; color: var(--staff-muted); font-size: 13px; }
+body #app.admin-interface.admin-interface .cert-flow-inline span { margin: 0 4px; color: var(--staff-accent); }
+body #app.admin-interface.admin-interface .cert-flow-toggle { margin-left: auto; color: var(--staff-accent); font-size: 13px; font-weight: 700; }
+body #app.admin-interface.admin-interface .cert-flow-details .cert-flow-toggle-hide, body #app.admin-interface.admin-interface .cert-flow-details[open] .cert-flow-toggle-show { display: none; }
+body #app.admin-interface.admin-interface .cert-flow-details[open] .cert-flow-toggle-hide { display: inline; }
+body #app.admin-interface.admin-interface .cert-flow-details .cert-flow { padding: 0 20px 20px; }
+body #app.admin-interface.admin-interface #cert-stats-grid .stat-card { min-height: 0; }
+body #app.admin-interface.admin-interface .cert-card { position: relative; }
+body #app.admin-interface.admin-interface .cert-card-open { display: block; width: 100%; padding: 0; border: 0; background: none; color: var(--staff-ink); font: inherit; font-size: 14px; font-weight: 700; text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+body #app.admin-interface.admin-interface .cert-card-open::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+body #app.admin-interface.admin-interface .cert-card-open:hover { color: var(--staff-accent); text-decoration: underline; }
+body #app.admin-interface.admin-interface .cert-card:has(.cert-card-open:focus-visible) { outline: 3px solid var(--staff-focus); outline-offset: 2px; }
+body #app.admin-interface.admin-interface .cert-card-open:focus-visible { outline: none; }
+body #app.admin-interface.admin-interface .cert-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 4px; }
+body #app.admin-interface.admin-interface .cert-card-meta .cert-card-code { color: var(--staff-muted); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; }
+body #app.admin-interface.admin-interface .cert-card-meta .badge { font-size: 11px !important; }
+body #app.admin-interface.admin-interface .cert-card-actions { position: relative; z-index: 1; margin-top: 10px; }
+body #app.admin-interface.admin-interface .cert-card-actions[data-action-count] { grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); }
+body #app.admin-interface.admin-interface .cert-card-actions[data-action-count="3"] > .cert-card-action:first-child { grid-column: auto; }
+/* ── Forms: required fields are marked before the first submit; sections read as groups ── */
+body[data-personnel-layout="admin"] .modal .required-mark { margin-left: 2px; color: var(--staff-danger); font-weight: 700; }
+body[data-personnel-layout="admin"] .modal .form-required-note { margin: 0 0 14px; color: var(--staff-muted); font-size: 12px; }
+body[data-personnel-layout="admin"] .modal .form-required-note + .form-section-heading { margin-top: 0; padding-top: 0; border-top: 0; }
+body[data-personnel-layout="admin"] .modal .form-section-optional { margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: var(--staff-soft); color: var(--staff-muted); font-size: 11px; font-weight: 700; letter-spacing: 0; text-transform: none; vertical-align: middle; }
+body[data-personnel-layout="admin"] .modal fieldset.resident-special-groups { min-width: 0; margin: 0 0 14px; padding: 0; border: 0; }
+body[data-personnel-layout="admin"] .modal fieldset.resident-special-groups > legend { margin-bottom: 8px; padding: 0; }
+body[data-personnel-layout="admin"] .modal #res-photo-hint { margin: -2px 0 6px; color: var(--staff-muted); font-size: 12px; }
+body[data-personnel-layout="admin"] .modal input[type="file"].form-input { padding: 8px; border-style: dashed; color: var(--staff-muted); font-size: 13px; }
+body[data-personnel-layout="admin"] .modal input[type="file"].form-input::file-selector-button { margin-right: 12px; padding: 7px 14px; border: 1px solid var(--staff-quiet-border); border-radius: 6px; background: var(--staff-quiet-bg); color: var(--staff-quiet-ink); font: 600 13px var(--civic-font-body, inherit); cursor: pointer; }
+/* ── IoT pages: one card level. Panels are the cards; what sits inside them is flat, divided by rules. ── */
+body[data-personnel-layout="iot"] .notice, html[data-theme=dark] body[data-personnel-layout="iot"] .notice { padding: 12px 16px; font-size: 14px; line-height: 1.5; }
+body[data-personnel-layout="iot"] .panel :is(.device-card, .cabinet-reader-card), html[data-theme=dark] body[data-personnel-layout="iot"] .panel :is(.device-card, .cabinet-reader-card) {
+  margin: 0; padding: 18px 22px; border: 0; border-bottom: 1px solid var(--staff-row); border-radius: 0; background: transparent; box-shadow: none;
+}
+body[data-personnel-layout="iot"] .panel :is(.device-card, .cabinet-reader-card):last-of-type { border-bottom: 0; }
+body[data-personnel-layout="iot"] .panel .filter-panel.cabinet-reader-form, body[data-personnel-layout="iot"] .panel .filter-panel.cabinet-folder-create,
+html[data-theme=dark] body[data-personnel-layout="iot"] .panel .filter-panel:is(.cabinet-reader-form, .cabinet-folder-create) { border: 1px solid var(--staff-row); border-radius: 8px; background: var(--staff-soft); box-shadow: none; }
+body[data-personnel-layout="iot"] .device-card .detail-grid { gap: 0; border: 1px solid var(--staff-row); border-radius: 8px; overflow: hidden; }
+body[data-personnel-layout="iot"] .device-card .detail-grid > div { padding: 10px 14px; border: 0; border-bottom: 1px solid var(--staff-row); border-radius: 0; background: transparent; box-shadow: none; }
+body[data-personnel-layout="iot"] .device-card .detail-grid dt { font-size: 11px; letter-spacing: .04em; }
+body[data-personnel-layout="iot"] .device-card .detail-grid dd { font-size: 14px; }
+body[data-personnel-layout="iot"] .cabinet-state-list { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+body[data-personnel-layout="iot"] .cabinet-state-list li { display: flex; justify-content: space-between; gap: 12px; }
+body[data-personnel-layout="iot"] .cabinet-state-list span { color: var(--staff-muted); }
+/* Incident numbers: one break after the year at most; the ULID part never splits. */
+body #app.admin-interface.admin-interface .incident-ref { display: block; font-size: 11.5px; line-height: 1.45; overflow-wrap: normal; word-break: normal; }
+body #app.admin-interface.admin-interface .incident-ref-id { white-space: nowrap; }
+body #app.admin-interface.admin-interface .incident-table th:first-child, body #app.admin-interface.admin-interface .incident-table td.incident-cell-main { min-width: 215px; }
+
+/* Resident details: the grid styles every span as a small label, so badges and plain values inside a value need their own size and colour. */
+body[data-personnel-layout="admin"] .modal .resident-detail-grid strong .badge { font-size: 11px; letter-spacing: 0; text-transform: none; }
+body[data-personnel-layout="admin"] .modal .resident-detail-grid strong .badge-green { color: var(--green-500); }
+body[data-personnel-layout="admin"] .modal .resident-detail-grid strong .badge-gray { color: var(--text-secondary); }
+body[data-personnel-layout="admin"] .modal .resident-detail-grid strong .badge-blue { color: var(--blue-400); }
+body[data-personnel-layout="admin"] .modal .resident-detail-grid .voter-status-none { color: var(--text-secondary); font-size: 13px; letter-spacing: 0; text-transform: none; }
+body[data-personnel-layout="admin"] .modal .resident-detail-hint { display: block; color: var(--text-muted); font-size: 12px; line-height: 1.45; }
+/* Resident details: incident reports linked to the resident (number, type, status, role). */
+body[data-personnel-layout="admin"] .modal .resident-incident-summary { margin: 6px 0 10px; color: var(--text-secondary); }
+body[data-personnel-layout="admin"] .modal .resident-incident-list { margin: 0 0 8px; padding: 0; list-style: none; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+body[data-personnel-layout="admin"] .modal .resident-incident-link { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; gap: 8px 12px; padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
+body[data-personnel-layout="admin"] .modal .resident-incident-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+body[data-personnel-layout="admin"] .modal :is(.resident-incident-link, .resident-detail-grid, .tbl) .badge { white-space: nowrap; }
+body[data-personnel-layout="admin"] .modal .resident-incident-link:last-child { border-bottom: 0; }
+body[data-personnel-layout="admin"] .modal .resident-incident-link .incident-ref { font-size: 12px; overflow-wrap: normal; word-break: normal; }
+body[data-personnel-layout="admin"] .modal .resident-incident-link .incident-ref-id { white-space: nowrap; }
+body[data-personnel-layout="admin"] .modal .resident-incident-role { color: var(--text-muted); font-size: 12px; }
+body[data-personnel-layout="admin"] .modal .resident-incident-link > .badge { justify-self: start; }
+@media (max-width: 640px) {
+  body[data-personnel-layout="admin"] .modal .resident-incident-link { grid-template-columns: auto minmax(0, 1fr) auto; }
+  body[data-personnel-layout="admin"] .modal .resident-incident-main { grid-column: 1 / -1; }
+}/* Resident form: a save was refused because someone else saved first. */
+body[data-personnel-layout="admin"] .modal .form-conflict { margin: 0 0 16px; padding: 12px 14px; border: 1px solid #e0b252; border-left-width: 4px; border-radius: 8px; background: #fff7e6; color: #5c3d00; font-size: 13px; line-height: 1.5; }
+html[data-theme=dark] body[data-personnel-layout="admin"] .modal .form-conflict, body:not(.light-mode)[data-personnel-layout="admin"] .modal .form-conflict { border-color: #8a6a22; background: #3a2d0c; color: #f5dfa6; }
+body[data-personnel-layout="admin"] .modal .form-conflict p { margin: 0 0 8px; }
+body[data-personnel-layout="admin"] .modal .form-conflict-list { margin: 0 0 10px; padding-left: 18px; }
+body[data-personnel-layout="admin"] .modal .form-conflict-list span { color: inherit; opacity: .8; }/* Incident Reports: report counts per status; each chip applies that status filter. */
+body #app.admin-interface .incident-status-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 14px; }
+body #app.admin-interface .incident-status-strip:empty { display: none; }
+body #app.admin-interface .incident-status-strip-label { margin-right: 4px; color: var(--staff-muted, var(--text-muted)); font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+body #app.admin-interface .incident-status-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 5px 8px 5px 12px; border: 1px solid var(--staff-row, var(--border)); border-radius: 999px; background: var(--staff-card, var(--bg-card)); color: inherit; font: 600 13px var(--civic-font-body, inherit); cursor: pointer; }
+body #app.admin-interface .incident-status-chip:hover { border-color: var(--staff-quiet-border, var(--border)); background: var(--staff-soft, var(--bg-glass)); }
+body #app.admin-interface .incident-status-chip[aria-pressed="true"] { border-color: currentColor; box-shadow: inset 0 0 0 1px currentColor; }
+body #app.admin-interface .incident-status-chip:focus-visible { outline: 3px solid var(--staff-focus, #2563eb); outline-offset: 2px; }
+body #app.admin-interface .incident-status-chip .badge { min-width: 28px; justify-content: center; }
+#app.admin-interface .restriction-needs-reviewer { display: inline-block; color: var(--staff-muted); font-size: 12px; font-style: italic; }

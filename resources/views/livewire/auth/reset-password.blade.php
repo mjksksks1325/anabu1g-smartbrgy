@@ -50,5 +50,10 @@
                 </flux:button>
             </div>
         </form>
+
+        <div class="text-center text-sm text-zinc-500">
+            <span>{{ __('Resident account?') }}</span>
+            <flux:link :href="route('portal.login')">{{ __('Log in at the Resident Portal after resetting') }}</flux:link>
+        </div>
     </div>
 </x-layouts::auth>

@@ -22,7 +22,7 @@
     indicator.style.cssText = `position:fixed;top:0;left:0;right:0;height:3px;z-index:2147483000;overflow:hidden;pointer-events:none;background:${isDark ? 'rgba(232,242,250,.12)' : 'rgba(16,36,58,.12)'};`;
     style.textContent = '@keyframes staff-navigation-progress{0%{transform:translateX(-110%)}100%{transform:translateX(370%)}}';
     progress.setAttribute('aria-hidden', 'true');
-    progress.style.cssText = `display:block;width:30%;height:100%;border-radius:0 3px 3px 0;background:${isDark ? '#65b7ff' : '#0759b5'};animation:staff-navigation-progress 1.1s ease-in-out infinite;`;
+    progress.style.cssText = `display:block;width:30%;height:100%;border-radius:0 3px 3px 0;background:${isDark ? '#9edbb5' : '#17663a'};animation:staff-navigation-progress 1.1s ease-in-out infinite;`;
     indicator.append(style, progress);
     // Livewire replaces the entire body during SPA navigation. Keep this
     // non-blocking indicator outside it so it survives that swap and paints
@@ -82,8 +82,6 @@
 
   function syncStyles() {
     const layout = document.body.dataset.personnelLayout;
-    if (!layout) return true;
-
     const stylesByLayout = {
       'admin.css': 'admin',
       'figma-admin.css': 'admin',
@@ -99,6 +97,15 @@
 
       return { link, owner };
     });
+
+    // Ordinary pages reached by in-app navigation: switch the workspace-only sheets off and the app bundle back on.
+    if (!layout) {
+      ownedStylesheets.forEach(({ link, owner }) => {
+        if (owner) link.disabled = owner !== 'settings';
+      });
+      activeStylesLayout = null;
+      return true;
+    }
 
     const targetStylesheets = ownedStylesheets.filter(item => item.owner === layout);
     const pendingStylesheets = targetStylesheets.filter(({ link }) => !loadedStylesheets.has(link));

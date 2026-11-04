@@ -78,6 +78,16 @@ it('files a validated incident with a private attachment', function () {
     Storage::disk('local')->assertExists($incident->attachments[0]['path']);
 });
 
+it('names incident form fields the way staff see them in validation messages', function () {
+    $staff = User::factory()->assignedOperations()->create();
+
+    $this->actingAs($staff)->postJson(route('staff.incidents.store'), incidentPayload(['occurred_date' => '', 'location' => '']))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['occurred_date' => 'The incident date field is required.', 'location' => 'The location field is required.']);
+
+    expect(Incident::query()->count())->toBe(0);
+});
+
 it('rejects invalid incident data and unsafe attachments', function () {
     Storage::fake('local');
     $staff = User::factory()->assignedOperations()->create();
@@ -121,6 +131,21 @@ it('filters incident reports and returns authoritative summary counts', function
         ->assertJsonPath('summary.high', 1);
 });
 
+it('lists exactly the reports the active and high-severity summary cards count', function () {
+    $staff = User::factory()->assignedOperations()->create();
+    foreach ([['open', 'high'], ['under_review', 'low'], ['referred', 'high'], ['pending', 'medium'], ['resolved', 'high'], ['closed', 'high'], ['dismissed', 'low']] as [$status, $severity]) {
+        Incident::factory()->for($staff, 'reporter')->create(['status' => $status, 'severity' => $severity, 'resolved_at' => $status === 'resolved' ? now() : null]);
+    }
+
+    $active = $this->actingAs($staff)->getJson(route('staff.incidents.index', ['status' => 'active']))->assertOk();
+    $active->assertJsonCount(4, 'data')->assertJsonPath('summary.pending', 4)->assertJsonPath('total', 4);
+    expect(collect($active->json('data'))->pluck('status')->sort()->values()->all())->toBe(['open', 'pending', 'referred', 'under_review']);
+
+    $this->getJson(route('staff.incidents.index', ['status' => 'active', 'severity' => 'high']))->assertOk()
+        ->assertJsonPath('total', 2)->assertJsonPath('summary.high', 2);
+    $this->getJson(route('staff.incidents.index', ['status' => 'everything']))->assertUnprocessable()->assertJsonValidationErrors('status');
+});
+
 it('requires resolution notes before resolving an incident', function () {
     $staff = User::factory()->assignedOperations()->create();
     $incident = Incident::factory()->for($staff, 'reporter')->create();
@@ -147,8 +172,8 @@ it('allows only administrators to archive incidents', function () {
     $admin = User::factory()->superAdmin()->create();
     $incident = Incident::factory()->for($staff, 'reporter')->create();
 
-    $this->actingAs($staff)->deleteJson(route('staff.incidents.destroy', $incident))->assertForbidden();
-    $this->actingAs($admin)->deleteJson(route('staff.incidents.destroy', $incident))->assertOk();
+    $this->actingAs($staff)->deleteJson(route('staff.incidents.destroy', $incident), supervisorApproval())->assertForbidden();
+    $this->actingAs($admin)->deleteJson(route('staff.incidents.destroy', $incident), supervisorApproval())->assertOk();
 
     $this->assertSoftDeleted($incident);
 });

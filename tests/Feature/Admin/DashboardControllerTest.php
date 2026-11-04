@@ -1,17 +1,36 @@
 <?php
 
+use App\CertificateType;
 use App\Models\DocumentRequest;
 use App\Models\Incident;
 use App\Models\IssuedCertificate;
 use App\Models\Resident;
 use App\Models\User;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Js;
 
 it('requires staff access for the dashboard summary', function () {
     $this->getJson(route('staff.dashboard.summary'))->assertUnauthorized();
 
     $viewer = User::factory()->assignedOperations()->create(['role' => 'viewer']);
     $this->actingAs($viewer)->getJson(route('staff.dashboard.summary'))->assertForbidden();
+});
+
+it('counts every request not yet released or rejected as pending, including approved ones', function () {
+    $staff = User::factory()->assignedOperations()->create();
+    foreach (['pending', 'processing', 'approved', 'ready_for_release', 'released', 'rejected'] as $index => $status) {
+        DocumentRequest::query()->create([
+            'reference_code' => 'REQ-PEND-00'.$index,
+            'document_type' => 'Barangay Clearance',
+            'full_name' => 'Resident '.$index,
+            'address' => 'Anabu I-G',
+            'status' => $status,
+        ]);
+    }
+
+    $this->actingAs($staff)->getJson(route('staff.dashboard.summary'))
+        ->assertOk()
+        ->assertJsonPath('summary.pending_requests', 4);
 });
 
 it('returns database-backed dashboard totals and recent activity', function () {
@@ -105,6 +124,13 @@ it('renders the staff language toggle as inline links with an icon theme control
         ->assertSee('>Filipino</button>', false)
         ->assertSee('class="dark-mode-toggle staff-theme-icon"', false)
         ->assertSee('staff-theme-moon', false);
+});
+
+it('gives staff screens the server fee schedule, with the business clearance fee marked unconfirmed', function () {
+    $this->actingAs(User::factory()->assignedOperations()->create(['role' => 'staff']))
+        ->get(route('staff.dashboard'))
+        ->assertOk()
+        ->assertSee('window.CERTIFICATE_FEES = '.Js::from(CertificateType::feeSchedule()).';', false);
 });
 
 it('keeps certificate requests and recent activity in the original two-column dashboard layout', function () {

@@ -30,12 +30,14 @@ use App\Http\Controllers\EmployeeSessionController;
 use App\Http\Controllers\LegacyPersonnelRouteController;
 use App\Http\Controllers\PortalLocaleController;
 use App\Http\Controllers\ResidentApplicationController;
+use App\Http\Controllers\ResidentEmailVerificationController;
 use App\Http\Controllers\ResidentPortalController;
 use App\Http\Controllers\ResidentProfilePhotoController;
 use App\Http\Controllers\ResidentRegistrationController;
 use App\Http\Controllers\ResidentSessionController;
 use App\Http\Middleware\EnsureGuestResidentPortal;
 use App\Http\Middleware\EnsureResidentAccount;
+use App\Http\Middleware\EnsureResidentEmailVerified;
 use App\Http\Middleware\EnsureStaffAccess;
 use App\Http\Middleware\RecordAdministrativeAction;
 use App\Http\Middleware\RequireSupervisorPassword;
@@ -51,15 +53,22 @@ Route::get('/portal', [ResidentPortalController::class, 'index'])->name('home');
 Route::post('/portal/locale', PortalLocaleController::class)->name('portal.locale');
 Route::get('/portal/translations.js', [PortalLocaleController::class, 'catalog'])->name('portal.translations');
 Route::get('/portal/request', [ResidentPortalController::class, 'createRequest'])
-    ->middleware(EnsureResidentAccount::class)
+    ->middleware([EnsureResidentAccount::class, EnsureResidentEmailVerified::class])
     ->name('portal.request.create');
+
+Route::get('/portal/email/verify/{account}/{hash}', [ResidentEmailVerificationController::class, 'verify'])
+    ->middleware(['signed', 'throttle:6,1'])
+    ->name('portal.verification.verify');
+Route::post('/portal/email/verification-notification', [ResidentEmailVerificationController::class, 'send'])
+    ->middleware([EnsureResidentAccount::class, 'throttle:3,1'])
+    ->name('portal.verification.send');
 
 Route::get('/dashboard', function (): RedirectResponse {
     return redirect()->route(auth()->user()->isResidentAccount() ? 'portal.account' : StaffPermissions::landing(auth()->user()));
 })->middleware('auth')->name('dashboard');
 
 Route::post('/portal/request', [DocumentRequestController::class, 'store'])
-    ->middleware([EnsureResidentAccount::class, 'throttle:10,1'])
+    ->middleware([EnsureResidentAccount::class, EnsureResidentEmailVerified::class, 'throttle:10,1'])
     ->name('portal.request.store');
 
 Route::get('/portal/csrf-token', [DocumentRequestController::class, 'csrfToken'])
@@ -80,9 +89,8 @@ Route::middleware(EnsureGuestResidentPortal::class)->group(function () {
     Route::post('/portal/register/new-resident', [ResidentApplicationController::class, 'store'])->middleware('throttle:resident-registration')->name('portal.new-resident.store');
     Route::get('/portal/register', [ResidentRegistrationController::class, 'create'])->name('portal.register');
     Route::post('/portal/register/reset', [ResidentRegistrationController::class, 'reset'])->name('portal.register.reset');
-    Route::post('/portal/register/name', [ResidentRegistrationController::class, 'verifyName'])->middleware('throttle:resident-registration')->name('portal.register.name');
-    Route::post('/portal/register/confirm-record', [ResidentRegistrationController::class, 'confirmRecord'])->middleware('throttle:resident-registration')->name('portal.register.confirm-record');
-    Route::post('/portal/register/send-code', [ResidentRegistrationController::class, 'sendCode'])->middleware('throttle:resident-registration')->name('portal.register.send-code');
+    // Existing residents activate only with a code that barangay staff issue after checking identity in person.
+    // The former name / birth date / any-email self-service steps were removed (account takeover risk).
     Route::post('/portal/register/verify', [ResidentRegistrationController::class, 'verify'])->middleware('throttle:resident-registration')->name('portal.register.verify');
     Route::post('/portal/register', [ResidentRegistrationController::class, 'store'])->middleware('throttle:resident-registration')->name('portal.register.store');
     Route::view('/portal/registration-help', 'portal.registration-help')->name('portal.registration.denied');
@@ -97,6 +105,9 @@ Route::middleware(EnsureResidentAccount::class)->group(function () {
     Route::get('/portal/account/statuses', [ResidentPortalController::class, 'requestStatuses'])
         ->middleware('throttle:30,1')
         ->name('portal.account.statuses');
+    Route::get('/portal/account/requests/{referenceCode}', [ResidentPortalController::class, 'showRequest'])->name('portal.account.requests.show');
+    Route::get('/portal/dashboard', [ResidentPortalController::class, 'dashboard'])->name('portal.dashboard');
+    Route::get('/portal/my-account', [ResidentPortalController::class, 'accountHome'])->name('portal.account.home');
     Route::get('/portal/profile', [ResidentPortalController::class, 'profile'])->name('portal.profile');
     Route::get('/portal/profile/photo', [ResidentProfilePhotoController::class, 'show'])->name('portal.profile.photo');
     Route::post('/portal/profile/photo', [ResidentProfilePhotoController::class, 'store'])->name('portal.profile.photo.store');
@@ -243,6 +254,7 @@ Route::middleware(['auth:web', 'can:access-personnel', RecordAdministrativeActio
         Route::get('/users-export', [UserController::class, 'export'])->name('users.export');
         Route::post('/users', [UserController::class, 'store'])->name('users.store');
         Route::patch('/users/{user}', [UserController::class, 'update'])->name('users.update');
+        Route::post('/users/{user}/password-reset-link', [UserController::class, 'sendPasswordResetLink'])->middleware('throttle:10,1')->name('users.password-reset-link');
         Route::delete('/users/{user}', [UserController::class, 'destroy'])->middleware(RequireSupervisorPassword::class)->name('users.destroy');
         Route::patch('/residents/{resident}/portal-account', [ResidentPortalAccountController::class, 'update'])->name('residents.portal-account');
     });

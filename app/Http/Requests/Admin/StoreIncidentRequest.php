@@ -74,6 +74,28 @@ class StoreIncidentRequest extends FormRequest
     }
 
     /** @return array<string, string> */
+    public function attributes(): array
+    {
+        return self::fieldNames();
+    }
+
+    /**
+     * Field names as staff see them on the incident form, shared with the update request.
+     *
+     * @return array<string, string>
+     */
+    public static function fieldNames(): array
+    {
+        return [
+            'occurred_date' => 'incident date',
+            'occurred_time' => 'incident time',
+            'complainant_name' => 'complainant',
+            'respondent_name' => 'respondent',
+            'resolution_notes' => 'resolution notes',
+        ];
+    }
+
+    /** @return array<string, string> */
     public function messages(): array
     {
         return [

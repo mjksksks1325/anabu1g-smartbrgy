@@ -21,6 +21,7 @@
 <script defer data-navigate-once src="{{ asset('js/password-visibility.js') }}?v={{ filemtime(public_path('js/password-visibility.js')) }}"></script>
 <link rel="stylesheet" href="{{ asset('css/form-feedback.css') }}?v={{ filemtime(public_path('css/form-feedback.css')) }}">
 <script defer data-navigate-once src="{{ asset('js/form-feedback.js') }}?v={{ filemtime(public_path('js/form-feedback.js')) }}"></script>
+<link rel="stylesheet" href="{{ asset('css/staff-theme.css') }}?v={{ filemtime(public_path('css/staff-theme.css')) }}">
 </head>
 <body data-personnel-layout="iot" data-admin-localization data-personnel-super-admin="{{ auth()->user()->hasAdministrativeAccess() ? 'true' : 'false' }}">
 <script>window.PersonnelNavigation.syncStyles();</script>
@@ -76,7 +77,10 @@
             </div>
         @endif
             <div class="sidebar-sec">
-                <a class="nav-item portal-link staff-settings-portal" href="{{ route('home') }}" target="_blank" rel="noopener"><x-staff-icon name="globe" />Resident Portal</a>
+                @unless(auth()->user()->hasAdministrativeAccess())
+                    <a wire:navigate.hover class="nav-item" aria-current="false" href="{{ route('profile.edit') }}"><x-staff-icon name="settings" />Settings</a>
+                @endunless
+                <a class="nav-item portal-link staff-settings-portal" href="{{ route('home') }}" target="_blank" rel="noopener" title="Opens the public Resident Portal in a new tab"><x-staff-icon name="globe" />Resident Portal<span class="sr-only"> (opens in a new tab)</span></a>
             </div>
 
         </div>

@@ -3,6 +3,7 @@
 use App\CertificateType;
 use App\Models\Resident;
 use App\Models\User;
+use App\Notifications\ResidentEmailVerificationNotification;
 use App\Notifications\ResidentPortalActivationNotification;
 use App\PortalLocalization;
 use Illuminate\Http\UploadedFile;
@@ -102,22 +103,36 @@ test('validation and account errors use the resident language', function (string
     'Filipino' => ['fil', 'Kailangan ang email.', 'Hindi tama ang inilagay na detalye ng resident account o hindi magamit ng account ang online services sa ngayon.'],
 ]);
 
-test('resident header uses concise localized menu labels while keeping descriptive accessible links', function (string $locale, string $request, string $requirements, string $help, string $description) {
+test('resident header uses concise localized menu labels while keeping descriptive accessible links', function (string $locale, string $request, string $requirements, string $help, string $description, string $helpDescription) {
     $this->withCookie(PortalLocalization::COOKIE, $locale);
-    foreach (['home', 'portal.login', 'portal.register', 'portal.information'] as $route) {
+    $menu = function (string $route): DOMXPath {
         $html = new DOMDocument;
         @$html->loadHTML('<?xml encoding="utf-8" ?>'.$this->get(route($route))->assertOk()->getContent());
-        $xpath = new DOMXPath($html);
-        foreach (['request' => $request, 'requirements' => $requirements, 'help' => $help] as $key => $label) {
-            expect($xpath->evaluate('string(//nav[@id="site-nav"]//span[@data-portal-i18n="portal.navigation.'.$key.'"])'))->toBe($label);
-            expect(PortalLocalization::catalogs()[$locale]['portal.navigation.'.$key])->toBe($label);
-        }
-        expect($xpath->evaluate('string(//nav[@id="site-nav"]//a[@data-portal-i18n-aria-label="Request a document"]/@aria-label)'))->toBe($description);
-        expect($xpath->evaluate('string(//nav[@id="site-nav"]//a[@data-portal-i18n-aria-label="Request a document"]/@href)'))->toBe(route('portal.request.create'));
+
+        return new DOMXPath($html);
+    };
+    foreach (['request' => $request, 'requirements' => $requirements, 'help' => $help] as $key => $label) {
+        expect(PortalLocalization::catalogs()[$locale]['portal.navigation.'.$key])->toBe($label);
     }
+
+    foreach (['home', 'portal.login', 'portal.register', 'portal.information'] as $route) {
+        $xpath = $menu($route);
+        expect($xpath->evaluate('string(//nav[@id="site-nav"]//span[@data-portal-i18n="portal.navigation.request"])'))->toBe($request);
+        expect($xpath->evaluate('string(//nav[@id="site-nav"]//span[@data-portal-i18n="portal.navigation.help"])'))->toBe($help);
+        expect($xpath->evaluate('string(//nav[@id="site-nav"]//a[@data-portal-i18n-aria-label="Help, requirements and fees"]/@aria-label)'))->toBe($helpDescription);
+        expect($xpath->evaluate('string(//nav[@id="site-nav"]//a[@data-portal-i18n-aria-label="Help, requirements and fees"]/@href)'))->toBe(route('portal.information'));
+        expect($xpath->query('//nav[@id="site-nav"]//span[@data-portal-i18n="portal.navigation.requirements"]'))->toHaveCount(0);
+    }
+
+    $this->actingAs(User::factory()->resident()->create(), 'resident');
+    $xpath = $menu('home');
+    expect($xpath->evaluate('string(//nav[@id="site-nav"]//span[@data-portal-i18n="portal.navigation.request"])'))->toBe($request);
+    expect($xpath->evaluate('string(//nav[@id="site-nav"]//a[@data-portal-i18n-aria-label="Request a document"]/@aria-label)'))->toBe($description);
+    expect($xpath->evaluate('string(//nav[@id="site-nav"]//a[@data-portal-i18n-aria-label="Request a document"]/@href)'))->toBe(route('portal.request.create'));
+    expect($xpath->query('//nav[@id="site-nav"]//span[@data-portal-i18n="portal.navigation.requirements"]'))->toHaveCount(0);
 })->with([
-    'English' => ['en', 'Request a document', 'Requirements and fees', 'Get help', 'Request a document'],
-    'Filipino' => ['fil', 'Mag-request', 'Kailangan at bayarin', 'Tulong', 'Mag-request ng dokumento'],
+    'English' => ['en', 'Request a document', 'Requirements and fees', 'Get help', 'Request a document', 'Help, requirements and fees'],
+    'Filipino' => ['fil', 'Mag-request', 'Kailangan at bayarin', 'Tulong', 'Mag-request ng dokumento', 'Tulong, mga kailangan at bayarin'],
 ]);
 
 test('activation account setup login requests profile and logout retain language and stored identifiers', function (string $locale) {
@@ -125,11 +140,16 @@ test('activation account setup login requests profile and logout retain language
     $this->withCookie(PortalLocalization::COOKIE, $locale);
     $resident = Resident::factory()->create(['portal_registration_hash' => hash('sha256', 'ABCD1234'), 'portal_registration_expires_at' => now()->addDay()]);
     $this->post(route('portal.register.verify'), ['resident_number' => $resident->resident_number, 'activation_code' => 'abcd1234'])->assertRedirect(route('portal.register'));
-    $this->get(route('portal.register'))->assertOk()->assertSee($locale === 'fil' ? 'Hakbang 4 sa 4' : 'Step 4 of 4')->assertSee('name="photo"', false);
-    $input = ['email' => 'language@example.test', 'password' => 'ResidentPassword123!', 'password_confirmation' => 'ResidentPassword123!', 'photo' => UploadedFile::fake()->image('resident.jpg')];
+    $this->get(route('portal.register'))->assertOk()->assertSee($locale === 'fil' ? 'Hakbang 2 sa 3' : 'Step 2 of 3')->assertDontSee('name="photo"', false);
+    $input = ['email' => 'language@example.test', 'password' => 'ResidentPassword123!', 'password_confirmation' => 'ResidentPassword123!'];
     $this->post(route('portal.register.store'), $input)->assertRedirect(route('portal.login'));
-    $this->post(route('portal.login.store'), ['email' => $input['email'], 'password' => $input['password']])->assertRedirect(route('portal.account'));
-    $this->get(route('portal.request.create'))->assertOk()->assertSee($locale === 'fil' ? 'Katibayan ng Paninirahan' : 'Certificate of Residency');
+    $this->post(route('portal.login.store'), ['email' => $input['email'], 'password' => $input['password']])->assertRedirect(route('portal.dashboard'));
+    $this->get(route('portal.request.create'))->assertForbidden()
+        ->assertSee($locale === 'fil' ? 'Kumpirmahin muna ang inyong email address' : 'Confirm your email address before requesting documents');
+    $this->postJson(route('portal.request.store'), ['document_type' => CertificateType::CertificateOfResidency->value, 'purpose' => 'Employment'])->assertForbidden();
+    $this->get(ResidentEmailVerificationNotification::verificationUrl(User::query()->where('email', $input['email'])->sole()))
+        ->assertRedirect(route('portal.request.create'));
+    $this->get(route('portal.request.create'))->assertOk()->assertSee('Certificate of Residency')->assertDontSee('Katibayan ng Paninirahan');
     $this->postJson(route('portal.request.store'), ['document_type' => CertificateType::CertificateOfResidency->value, 'purpose' => 'Employment'])
         ->assertOk()->assertJsonPath('message', $locale === 'fil' ? 'Matagumpay na na-submit ang request ng dokumento.' : 'Document request submitted successfully.');
     $request = $resident->documentRequests()->sole();
@@ -175,14 +195,19 @@ test('existing activation notification uses its selected locale without translat
     expect($mail->subject)->toBe('Pag-activate ng Resident Portal ng Barangay Anabu I-G');
     $this->assertStringContainsString('ABCD1234', view('mail.resident-activation-text', $mail->viewData)->render());
     $this->assertStringContainsString('ANB-UNCHANGED', view('mail.resident-activation-text', $mail->viewData)->render());
-    $this->assertStringContainsString('Ipagpatuloy ang pagpaparehistro', view('mail.resident-activation-text', $mail->viewData)->render());
+    $this->assertStringContainsString('Ituloy ang registration', view('mail.resident-activation-text', $mail->viewData)->render());
 });
 
-test('self service activation mail captures the resident locale', function () {
+test('the email confirmation mail captures the resident locale', function () {
     Notification::fake();
-    config(['mail.default' => 'smtp']);
-    $resident = Resident::factory()->create();
-    $this->withCookie(PortalLocalization::COOKIE, 'fil')->withSession(['resident_identity' => ['resident_id' => $resident->id, 'expires_at' => now()->addMinutes(10)->timestamp]])
-        ->post(route('portal.register.send-code'), ['email' => 'locale@example.test'])->assertRedirect(route('portal.register'));
-    Notification::assertSentOnDemand(ResidentPortalActivationNotification::class, fn ($notification): bool => $notification->locale === 'fil');
+    $resident = Resident::factory()->create(['portal_registration_hash' => hash('sha256', 'ABCD1234'), 'portal_registration_expires_at' => now()->addDay()]);
+    $this->withCookie(PortalLocalization::COOKIE, 'fil');
+    $this->post(route('portal.register.verify'), ['resident_number' => $resident->resident_number, 'activation_code' => 'ABCD1234']);
+    $this->post(route('portal.register.store'), ['email' => 'locale@example.test', 'password' => 'ResidentPassword123!', 'password_confirmation' => 'ResidentPassword123!'])
+        ->assertRedirect(route('portal.login'));
+
+    $account = User::query()->where('email', 'locale@example.test')->sole();
+    Notification::assertSentTo($account, ResidentEmailVerificationNotification::class, fn ($notification): bool => $notification->locale === 'fil');
+    app()->setLocale('fil');
+    expect((new ResidentEmailVerificationNotification)->toMail($account)->subject)->toBe('Kumpirmahin ang inyong email para sa Resident Portal ng Barangay Anabu I-G');
 });

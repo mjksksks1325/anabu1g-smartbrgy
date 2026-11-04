@@ -62,7 +62,7 @@ class Household extends Model
             'total_residents' => Resident::query()->count(),
             'male' => Resident::query()->where('gender', 'Male')->count(),
             'female' => Resident::query()->where('gender', 'Female')->count(),
-            'registered_voters' => Resident::query()->whereHas('voterRegistration', fn ($query) => $query->where('status', 'active'))->count(),
+            'registered_voters' => Resident::query()->inVoterRegistry()->whereHas('voterRegistration', fn ($query) => $query->where('status', 'active'))->count(),
             'average_household_size' => $householdCount > 0 ? round(Resident::query()->whereNotNull('household_id')->count() / $householdCount, 2) : 0.0,
         ];
     }
@@ -87,7 +87,7 @@ class Household extends Model
     /** @return array<string, mixed> */
     public function details(): array
     {
-        $this->loadMissing(['members' => fn ($query) => $query->withExists(['voterRegistration as registered_voter' => fn ($query) => $query->where('status', 'active')])]);
+        $this->loadMissing(['members' => fn ($query) => $query->withVoterStatus()]);
 
         return [
             ...$this->summary(),
@@ -98,7 +98,8 @@ class Household extends Model
                 'is_household_head' => $resident->is_household_head,
                 'gender' => $resident->gender,
                 'status' => $resident->status,
-                'registered_voter' => (bool) $resident->getAttribute('registered_voter'),
+                'registered_voter' => $resident->getAttribute('voter_status') === 'active',
+                'voter_status' => $resident->getAttribute('voter_status'),
             ])->all(),
         ];
     }

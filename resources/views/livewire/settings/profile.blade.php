@@ -30,9 +30,8 @@
             </div>
         </form>
 
-        @if ($this->showDeleteUser)
-            <livewire:settings.delete-user-form />
-        @endif
+        {{-- Staff accounts are never self-deleted: an administrator removes them in User Management (soft delete, cabinet credential revocation, audit entry). --}}
+        <p class="settings-account-removal-note">{{ __('Need this account removed? Ask an administrator. Staff accounts are removed in User Management so their records and history stay intact.') }}</p>
     </x-settings.layout>
     @else
         <form wire:submit="updateProfileInformation" class="settings-profile-form">

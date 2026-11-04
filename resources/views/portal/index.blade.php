@@ -63,18 +63,17 @@
         <p class="eyebrow"><span data-portal-i18n="Transparent na bayarin">{{ __('Transparent na bayarin') }}</span></p>
         <div class="doc-rates-head">
             <h2 id="doc-rates-title"><span data-portal-i18n="Mga dokumento at fee">{{ __('Mga dokumento at fee') }}</span></h2>
-            <span class="tag-unconfirmed"><span data-portal-i18n="Business Clearance fee: To be confirmed">{{ __('Business Clearance fee: To be confirmed') }}</span></span>
         </div>
         <table class="doc-rates-table">
             <caption class="sr-only"><span data-portal-i18n="Fee ng bawat dokumento ayon sa system">{{ __('Fee ng bawat dokumento ayon sa system') }}</span></caption>
             <thead><tr><th scope="col"><span data-portal-i18n="Dokumento">{{ __('Dokumento') }}</span></th><th scope="col"><span data-portal-i18n="Fee">{{ __('Fee') }}</span></th></tr></thead>
             <tbody>
                 @foreach($services as $service)
-                    <tr><th scope="row"><span data-portal-i18n="{{ $service->value }}">{{ __($service->value) }}</span></th><td><span data-portal-i18n="{{ $service->feeLabel() }}">{{ __($service->feeLabel()) }}</span></td></tr>
+                    <tr><th scope="row"><span data-portal-i18n="{{ $service->value }}">{{ __($service->value) }}</span></th><td><span data-portal-i18n="{{ $service->feeLabel() }}">{{ __($service->feeLabel()) }}</span>@unless($service->feeConfirmed()) <span class="tag-unconfirmed"><span data-portal-i18n="To be confirmed">{{ __('To be confirmed') }}</span></span>@endunless</td></tr>
                 @endforeach
             </tbody>
         </table>
-        <p class="doc-rates-note"><span data-portal-i18n="PHP 25 ang barangay clearance at certificate of residency. Libre ang indigency at first-time jobseeker. Regular Barangay ID: PHP 100. Hinihintay pa ang kumpirmasyon sa Business Clearance fee, requirements, at processing time.">{{ __('PHP 25 ang barangay clearance at certificate of residency. Libre ang indigency at first-time jobseeker. Regular Barangay ID: PHP 100. Hinihintay pa ang kumpirmasyon sa Business Clearance fee, requirements, at processing time.') }}</span> <a href="{{ route('portal.information') }}#requirements"><span data-portal-i18n="Buong requirements at fees">{{ __('Buong requirements at fees') }}</span></a></p>
+        <p class="doc-rates-note"><span data-portal-i18n="Sa Barangay Hall babayaran ang fee. Regular Barangay ID ang fee na nakalista. Hinihintay pa ang kumpirmasyon sa Business Clearance fee, requirements, at processing time.">{{ __('Sa Barangay Hall babayaran ang fee. Regular Barangay ID ang fee na nakalista. Hinihintay pa ang kumpirmasyon sa Business Clearance fee, requirements, at processing time.') }}</span> <a href="{{ route('portal.information') }}#requirements"><span data-portal-i18n="Buong requirements at fees">{{ __('Buong requirements at fees') }}</span></a></p>
     </section>
 </div>
 
@@ -135,4 +134,18 @@
         <li><span><span data-portal-i18n="Bureau of Fire Protection">{{ __('Bureau of Fire Protection') }}</span></span><a href="tel:+639155283256">0915 528 3256</a></li>
     </ul>
 </section>
+
+@if ($complaintHotline)
+<section class="home-section complaint-section" aria-labelledby="complaint-title">
+    <div>
+        <p class="eyebrow"><span data-portal-i18n="Pambansang serbisyo ng gobyerno">{{ __('Pambansang serbisyo ng gobyerno') }}</span></p>
+        <h2 id="complaint-title"><span data-portal-i18n="{{ $complaintHotline['title'] }}">{{ __($complaintHotline['title']) }}</span></h2>
+        <p><span data-portal-i18n="Para sa reklamo o feedback tungkol sa serbisyo ng mga ahensya ng national government. Hindi ito pinapatakbo ng barangay, at hindi ito para sa emergency o sa incident report sa barangay.">{{ __('Para sa reklamo o feedback tungkol sa serbisyo ng mga ahensya ng national government. Hindi ito pinapatakbo ng barangay, at hindi ito para sa emergency o sa incident report sa barangay.') }}</span></p>
+    </div>
+    <div class="complaint-actions">
+        <p><span data-portal-i18n="Tumawag o mag-text sa">{{ __('Tumawag o mag-text sa') }}</span> <a href="tel:8888">8888</a></p>
+        <a class="btn btn-outline btn-small" href="{{ $complaintHotline['url'] }}" target="_blank" rel="noopener noreferrer"><span data-portal-i18n="{{ $complaintHotline['link_label'] }}">{{ __($complaintHotline['link_label']) }}</span> <span class="sr-only"><span data-portal-i18n="(opens in a new tab)">{{ __('(opens in a new tab)') }}</span></span></a>
+    </div>
+</section>
+@endif
 @endsection

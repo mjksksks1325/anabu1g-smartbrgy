@@ -291,7 +291,7 @@ it('archives and restores the head without automatically assigning a replacement
     $manager->assign($other, $household->id, 'Child', false);
     $this->actingAs(User::factory()->assignedOperations()->create());
 
-    $this->deleteJson(route('staff.residents.destroy', $head))->assertOk();
+    $this->deleteJson(route('staff.residents.destroy', $head), supervisorApproval())->assertOk();
     $this->getJson(route('staff.households.show', $household))->assertJsonPath('head', null)->assertJsonCount(1, 'members');
     $this->patchJson(route('staff.residents.restore', $head->id))->assertOk();
 
@@ -323,7 +323,7 @@ it('removes membership without deleting the resident or request and certificate 
         'issued_by' => 'Staff', 'issued_at' => now(), 'verification_code' => 'HH-VERIFY',
     ]);
 
-    $this->actingAs(User::factory()->assignedOperations()->create())->deleteJson(route('staff.households.members.destroy', [$household, $resident]))->assertOk();
+    $this->actingAs(User::factory()->assignedOperations()->create())->deleteJson(route('staff.households.members.destroy', [$household, $resident]), supervisorApproval())->assertOk();
 
     $this->assertModelExists($resident);
     $this->assertNotSoftDeleted($resident);
@@ -342,7 +342,7 @@ it('returns 404 when removing a resident from a different household', function (
     $resident = Resident::factory()->create();
     app(ManageHouseholds::class)->assign($resident, $other->id, null, false);
 
-    $this->actingAs(User::factory()->assignedOperations()->create())->deleteJson(route('staff.households.members.destroy', [$household, $resident]))->assertNotFound();
+    $this->actingAs(User::factory()->assignedOperations()->create())->deleteJson(route('staff.households.members.destroy', [$household, $resident]), supervisorApproval())->assertNotFound();
     expect($resident->fresh()->household_id)->toBe($other->id);
 });
 
@@ -388,14 +388,17 @@ it('exports household columns while preserving resident filters and formula prot
 it('provides household size and demographic query support excluding archived members', function () {
     $household = Household::factory()->create();
     $male = Resident::factory()->create(['gender' => 'Male', 'last_name' => 'Alpha']);
-    $female = Resident::factory()->create(['gender' => 'Female', 'last_name' => 'Beta']);
+    $female = Resident::factory()->create(['gender' => 'Female', 'last_name' => 'Beta', 'date_of_birth' => now()->subYears(30)]);
     Resident::factory()->archived()->create(['gender' => 'Male']);
     VoterRegistration::factory()->for($female)->create(['status' => 'active']);
     app(ManageHouseholds::class)->assign($male, $household->id, null, true);
     app(ManageHouseholds::class)->assign($female, $household->id, 'Spouse', false);
 
     expect(Household::demographics())->toBe(['total_households' => 1, 'total_residents' => 2, 'male' => 1, 'female' => 1, 'registered_voters' => 1, 'average_household_size' => 2.0]);
-    $this->actingAs(User::factory()->assignedOperations()->create())->getJson(route('staff.residents.show', $female))->assertJsonPath('household_information.household_size', 2)->assertJsonPath('household_information.members.1.registered_voter', true);
+    $this->actingAs(User::factory()->assignedOperations()->create())->getJson(route('staff.residents.show', $female))->assertJsonPath('household_information.household_size', 2)->assertJsonPath('household_information.members.1.registered_voter', true)
+        ->assertJsonPath('household_information.members.1.voter_status', 'active')
+        ->assertJsonPath('household_information.members.0.registered_voter', false)
+        ->assertJsonPath('household_information.members.0.voter_status', null);
 });
 
 it('returns 422 for invalid household assignments and relationships', function (array $fields, string $error) {
@@ -504,7 +507,7 @@ it('returns the six household demographics with accurate averages and zero house
     $first = Household::factory()->create();
     Household::factory()->create();
     $male = Resident::factory()->create(['gender' => 'Male']);
-    $female = Resident::factory()->create(['gender' => 'Female']);
+    $female = Resident::factory()->create(['gender' => 'Female', 'date_of_birth' => now()->subYears(30)]);
     Resident::factory()->create(['gender' => 'Female', 'status' => 'inactive']);
     Resident::factory()->archived()->create(['gender' => 'Male']);
     VoterRegistration::factory()->for($female)->create(['status' => 'active']);

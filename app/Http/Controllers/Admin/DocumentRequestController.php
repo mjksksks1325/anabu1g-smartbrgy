@@ -5,16 +5,22 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateDocumentRequestStatusRequest;
 use App\Models\DocumentRequest;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DocumentRequestController extends Controller
 {
+    /** Board lanes, in the order staff work through them. Rejected requests leave the board. */
+    private const BOARD_LANES = ['online', 'processing', 'ready', 'completed'];
+
     public function attachment(DocumentRequest $documentRequest): StreamedResponse
     {
         Gate::authorize('view', $documentRequest);
@@ -23,12 +29,44 @@ class DocumentRequestController extends Controller
         return Storage::disk('local')->response($documentRequest->private_attachment_path, null, ['Cache-Control' => 'no-store, private', 'X-Content-Type-Options' => 'nosniff']);
     }
 
-    public function index(): View
+    /**
+     * The paginated request list. Browsers get the full list page; the certificates board asks for JSON one lane at a time,
+     * so the workspace never has to embed or poll every request ever made.
+     */
+    public function index(Request $request): View|JsonResponse
     {
         Gate::authorize('viewAny', DocumentRequest::class);
-        $requests = DocumentRequest::query()->latest()->paginate(25);
 
-        return view('admin.document-requests.index', compact('requests'));
+        if (! $request->expectsJson()) {
+            $requests = DocumentRequest::query()->latest()->latest('id')->paginate(25);
+
+            return view('admin.document-requests.index', compact('requests'));
+        }
+
+        $filters = $request->validate([
+            'lane' => ['nullable', Rule::in(self::BOARD_LANES)],
+            'search' => ['nullable', 'string', 'max:100'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'with_counts' => ['nullable', 'boolean'],
+        ]);
+        $search = trim((string) ($filters['search'] ?? ''));
+
+        $requests = DocumentRequest::query()
+            ->when($filters['lane'] ?? null, fn (Builder $query, string $lane) => $this->whereLane($query, $lane))
+            ->tap(fn (Builder $query) => $this->whereSearch($query, $search))
+            ->latest()
+            ->latest('id')
+            ->paginate((int) ($filters['per_page'] ?? 25))
+            ->withQueryString();
+
+        $payload = $requests->toArray();
+
+        if ($request->boolean('with_counts')) {
+            $payload['counts'] = $this->laneCounts('');
+            $payload['matching'] = $this->laneCounts($search);
+        }
+
+        return response()->json($payload);
     }
 
     public function show(DocumentRequest $documentRequest): View
@@ -93,5 +131,59 @@ class DocumentRequestController extends Controller
         Gate::authorize('viewAny', DocumentRequest::class);
 
         return response()->json(DocumentRequest::query()->latest()->get());
+    }
+
+    /** Keep only the requests that sit in one board lane; mirrors getLane() in public/js/admin.js. */
+    private function whereLane(Builder $query, string $lane): void
+    {
+        match ($lane) {
+            'completed' => $query->where('status', 'released'),
+            'ready' => $query->whereIn('status', ['approved', 'ready_for_release']),
+            'online' => $query->where('status', 'pending')->where('source', 'online'),
+            default => $query->whereNotIn('status', ['released', 'approved', 'ready_for_release', 'rejected'])
+                ->where(fn (Builder $query) => $query->where('status', '!=', 'pending')->orWhereNull('source')->orWhere('source', '!=', 'online')),
+        };
+    }
+
+    private function whereSearch(Builder $query, string $search): void
+    {
+        if ($search === '') {
+            return;
+        }
+
+        $query->where(fn (Builder $query) => $query
+            ->where('full_name', 'like', "%{$search}%")
+            ->orWhere('reference_code', 'like', "%{$search}%")
+            ->orWhere('document_type', 'like', "%{$search}%"));
+    }
+
+    /**
+     * Requests per board lane, counted in one grouped query.
+     *
+     * @return array{online: int, processing: int, ready: int, completed: int}
+     */
+    private function laneCounts(string $search): array
+    {
+        $counts = array_fill_keys(self::BOARD_LANES, 0);
+
+        DocumentRequest::query()
+            ->where('status', '!=', 'rejected')
+            ->tap(fn (Builder $query) => $this->whereSearch($query, $search))
+            ->toBase()
+            ->select('status', 'source')
+            ->selectRaw('count(*) as aggregate')
+            ->groupBy('status', 'source')
+            ->get()
+            ->each(function (object $row) use (&$counts): void {
+                $lane = match (true) {
+                    $row->status === 'released' => 'completed',
+                    in_array($row->status, ['approved', 'ready_for_release'], true) => 'ready',
+                    $row->status === 'pending' && $row->source === 'online' => 'online',
+                    default => 'processing',
+                };
+                $counts[$lane] += (int) $row->aggregate;
+            });
+
+        return $counts;
     }
 }
