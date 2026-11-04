@@ -17,10 +17,10 @@ Update it at the end of every session. Statuses come from the source code, not f
 - Tests: Pest and Node (`node --test tests/Unit/*.test.js`). The full Pest suite needs more memory than the default: `php -d memory_limit=1G vendor/pestphp/pest/bin/pest --compact`. Destructive-route tests send `supervisorApproval()` (see `tests/Pest.php`).
 - Browser checks: run the app against a **copy** of `database/database.sqlite` (set `DB_DATABASE` and start `php -S 127.0.0.1:8010 ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php` from `public/`; `artisan serve` drops the override) and sign in with a seeded local staff account. Never seed test data into the real local database.
 
-## Test status (2026-11-04, session 11)
+## Test status (2026-11-04, session 12)
 
-- Node: 204 pass, 0 fail.
-- Pest: 1039 pass, 0 fail, 2 skipped. The skipped tests are the starter kit's open staff registration tests, intentionally off; see Final review.
+- Node: 206 pass, 0 fail.
+- Pest: 1023 pass, 0 fail, 2 skipped. The count fell from 1039 because session 12 replaced the ~30 tests of the removed self-service flow with 15 tests of the secure flow, and the four-case photo test with one. The skipped tests are the starter kit's open staff registration tests, intentionally off; see Final review.
 - The 14 earlier failures were resolved as follows:
   - **Outdated tests (11):** they expected UI a teammate removed on purpose (`8e4e1a0`, `e7f1aa7`): the IoT status chip, the "My profile" and "Account security" items, 16 menu icons, and the raw role `admin` instead of `Super Admin`. One test also checked for `wire:navigate` where the link now uses `wire:navigate.hover`. These tests now assert the consolidated design.
   - **Real bugs (2):**
@@ -255,7 +255,7 @@ The copy had 50 residents, 30 voters, 14 incidents and 12 file movements.
 | A4 | Realtime na encoding | Saves are written immediately. After a save, the list, purok counts and resident pickers reload from the server. Double submits are blocked (A9), stale searches are ignored, an identity lock stops two simultaneous duplicate creations, and voter edits have a version check. Resident edits had no conflict check (last save won). | `PARTIAL` → `NEW` (session 11, `8637242`, `ce11d86`) | V2 is implemented: a save based on an older version is refused, the typed values are kept, and the user can load the latest record and re-apply only their own edits. No WebSockets or polling. | — |
 | A5 | Family sa demographics | Demographics shows residents, male, female, seniors, households, registered voters, puroks and special groups. No family data is stored. | `APPROVAL` | Households are not relabelled as families. A family count becomes possible after V1. | Depends on V1 |
 | A6 | Separate male at female | Separate Male and Female KPI cards with a share of the population, plus a male/female split in the age panel. Sex is validated as Male or Female in the staff form, the application and the import, so no other value can be stored (local data has only these two). | `DONE` | — | Recording other values would be a data-model decision |
-| A7 | ID verification | **Existing residents** activate with: full name exactly as on record → birth date → a one-time code emailed to **any address they enter** → password and photo. The account works at once; the photo is stored, but no staff review exists. Staff can also issue an activation code from Resident details. **New residents** apply with a photo, and staff approve or decline. One account per record is enforced, the routes are rate-limited, and sign-ups are audited. Requests need an activated account; pickup needs an original valid ID at the hall (portal text). | `APPROVAL` — **critical** | **Account takeover confirmed in code (session 11):** anyone who knows a resident's full name and birth date (a relative or neighbour) can claim that resident's unclaimed record with their own email and request documents in that name. The flow also reveals whether a name or birth date exists in the database. See **V3** for the narrow mitigation and the full proposal. No biometrics and no new ID-document storage. | V3 decision |
+| A7 | ID verification | **Existing residents** activate with: full name exactly as on record → birth date → a one-time code emailed to **any address they enter** → password and photo. The account works at once; the photo is stored, but no staff review exists. Staff can also issue an activation code from Resident details. **New residents** apply with a photo, and staff approve or decline. One account per record is enforced, the routes are rate-limited, and sign-ups are audited. Requests need an activated account; pickup needs an original valid ID at the hall (portal text). | `APPROVAL` → `NEW` (session 12, `77f0489`) — **critical, closed** | **Fixed in session 12;** see V3 "As built". Before: **account takeover confirmed in code (session 11):** anyone who knows a resident's full name and birth date (a relative or neighbour) can claim that resident's unclaimed record with their own email and request documents in that name. The flow also reveals whether a name or birth date exists in the database. See **V3** for the narrow mitigation and the full proposal. No biometrics and no new ID-document storage. | — |
 
 ### V-B. Public homepage and Resident Portal
 
@@ -286,7 +286,7 @@ The copy had 50 residents, 30 voters, 14 incidents and 12 file movements.
 | D1 | Barangay protection order | BPO records hang off incidents: protected person, respondent, issued/effective/end dates **as entered**, a free-text status, issuing authority, document reference and private remarks. They are restricted to `vawc.*` (Super Admin by default) and audited without narrative. Cases with a BPO are hidden from ordinary incident staff. There are no issuance stages, deadlines or reminders, and no dates are calculated. | `PARTIAL` | Keep it as record-keeping. Stages, a fixed status list or monitoring reminders must follow RA 9262 and its IRR as confirmed by the barangay VAW desk (proposal V7). **Fixed:** the BPO list title read "BPO record #3 ? recorded", and the restriction case picker read "INC-… ? Theft ? Open"; corrupted separators replaced with "·". | Legal requirements |
 | D2 | Counts ng cases | KPIs: Open/Under review (all active statuses), Resolved this month and High severity; all respect `visibleTo`. There was no per-status breakdown and no BPO count. | `PARTIAL` → `NEW` (session 11, `a174ac7`) | A "By status" strip shows Open, Under review, Referred, Resolved and Closed; legacy statuses appear only when reports still carry them. Each chip applies its status filter. "With a protection order" (count and filter) is sent only to `vawc.view` staff. All counts use `visibleTo`, so ordinary incident staff never count VAWC cases. The incident list now ignores stale responses. | — |
 | D3 | Case number / notif | Incident numbers exist, and the incident API filters by resident within the viewer's visibility. Resident details had no case information. | `PARTIAL` → `NEW` | Resident details now list linked reports for staff with `incidents.view` or `vawc.view`: number, type, status and the resident's role, plus total and active counts. View opens that report. No narrative and no other party's name. It states that a linked report does not by itself restrict requests. Staff without incident access do not get the panel (the server returns 403). | — |
-| D4 | Bakit hindi maprocess | **Staff:** the eligibility checker lists specific reasons: inactive record, not in good standing, voter registration needed, indigency not verified, Jobseeker already issued, or a restriction. **Residents:** a rejected request shows the staff's rejection reason. An active restriction blocks submission with a generic "on hold and requires barangay review". The restriction's `resident_visible_reason` column exists, but the staff form never sets it. A pending ordinary incident naming the resident as respondent shows a neutral, non-blocking notice. | `PARTIAL` → `NEW` (session 11, `b1a9483`, `ce11d86`) | V8 is implemented; see D6. Remaining finding: the pending-incident notice sits above the request flow, which the page scrolls past, so residents may not see it. Moving it into the flow is safe if wanted. | — |
+| D4 | Bakit hindi maprocess | **Staff:** the eligibility checker lists specific reasons: inactive record, not in good standing, voter registration needed, indigency not verified, Jobseeker already issued, or a restriction. **Residents:** a rejected request shows the staff's rejection reason. An active restriction blocks submission with a generic "on hold and requires barangay review". The restriction's `resident_visible_reason` column exists, but the staff form never sets it. A pending ordinary incident naming the resident as respondent shows a neutral, non-blocking notice. | `PARTIAL` → `NEW` (session 11, `b1a9483`, `ce11d86`) | V8 is implemented; see D6. The pending-incident notice now sits inside the request flow (session 12, `a2665c9`), with the same neutral text and no case details. | — |
 | D5 | Details ng pending case | Staff case details are behind `incidents.view` / `vawc.view`. Restriction internals are visible to administrators only. Residents see only their own request statuses and the neutral notice. | `DONE` | No change. | — |
 | D6 | Kailan makakapag-request ulit | Restrictions store start, end, next review, status, reviewer and the person who lifted them, and expire automatically at the end date. Residents were not told the end date. | `PARTIAL` → `NEW` (session 11) | The restriction form has an optional "Message to the resident" field (existing `resident_visible_reason` column). Its labels say the end and next-review dates are shown to the resident, and reviewers see the message before activating. The request page lists reviewed holds in force (documents, message, end date, next review), and a refused request explains the hold the same way. Without dates it says none has been set; nothing is estimated. Reason category, internal reason and linked cases are never shown, and the rules are unchanged. | — |
 
@@ -306,7 +306,46 @@ The copy had 50 residents, 30 voters, 14 incidents and 12 file movements.
   - Demographics gains a family count from the table.
   - Additive nullable columns, no backfill. `down()` drops them.
 - **V2 Edit conflicts — implemented (`8637242`, `ce11d86`).** As built: the check runs inside `ManageHouseholds::saveResident` under its existing row lock; re-apply offers only fields this user edited. Original proposal: The resident form sends the loaded record's `updated_at`. If the record changed since, the server returns 409: "Someone else updated this record. Reload to see their changes." No migration.
-- **V3 Resident Portal account activation (critical; needs approval).** Investigated in session 11. Nothing has been changed yet.
+- **V3 Resident Portal account activation — approved and implemented 2026-11-04 (session 12, `77f0489`).** The investigation and proposal from session 11 follow the "As built" notes.
+  - **As built:**
+    - **Self-service path removed on the server:**
+      - The name, birth-date and send-code routes are gone; direct requests get 404 and look up nothing.
+      - Codes left over from that path (`portal_registration_sent_at` set) are refused, cleared and audited (`portal.activation.self-service-code-rejected`).
+    - **Staff-issued codes only:**
+      - Issuing a code needs `records.activate` plus an explicit "I checked the ID in person" confirmation (`identity_checked`, validated on the server). It is audited as `admin.residents.portal-activation`.
+      - The issue button is shown only to staff with `records.activate`. No permission changed.
+    - **Code rules:**
+      - Single-use: cleared when the account is created.
+      - Expires after 24 hours; an expired code is cleared and audited.
+      - After 5 wrong entries per code it is invalidated and `portal.activation.locked` is recorded; each failure is audited as `portal.activation.failed`.
+      - Route throttle remains 5 per minute and 30 per hour per IP.
+      - Audits hold the event and `resident:<id>`, never the code or its hash.
+    - **No enumeration:** an unknown number, wrong code, expired, used or locked code, or inactive record all lead to the same generic page.
+    - **Duplicate claims:** the unique `users.resident_id` index, row locks, and code clearing; two sessions holding one code cannot both create accounts (tested).
+    - **Email ownership:**
+      - New accounts get a signed, 60-minute link (`portal.verification.verify`, bound to the account's current email). Residents can request a new one (3 per minute).
+      - `EnsureResidentEmailVerified` closes the request page and the request API until the email is confirmed. A confirmed email is **not** treated as proof of identity; identity comes from the staff code.
+    - **Profile data preserved:** activation no longer asks for or replaces the resident photo (it used to overwrite the staff-captured photo).
+    - **Text:**
+      - The approval email and the application status page tell approved applicants to get a code at the hall.
+      - Register page: two steps (activation code, then account) plus email confirmation; instructions say staff verify identity first.
+      - English and Filipino throughout.
+    - **Existing accounts:**
+      - Never deleted or changed automatically.
+      - `User::portalActivationPath()` classifies each account:
+        - `email_self_service` (reliable: that path set `portal_registration_sent_at`, staff codes clear it, and no code can be issued once an account exists);
+        - `staff_code` (audit `portal.account.registered`);
+        - `unknown` (created outside the portal, such as seeded accounts; provenance cannot be determined).
+      - Resident details show "Activated with" and "Email confirmed".
+      - `php artisan portal:unverified-accounts [--all]` lists account id, resident number, path, email confirmation and status. Read only; no names or emails.
+      - **Local development data:** 2 resident accounts, 0 email self-service, 2 not recorded (seeded). **Production must be checked with the command.**
+      - Existing accounts without `email_verified_at` must confirm their email before their next request.
+  - **Staff review process for accounts not verified by staff** (proposal; the listing and flags are in place):
+    1. Run `portal:unverified-accounts` and work through the list.
+    2. Contact the resident through details already on the record, and ask them to come to the hall with a valid ID.
+    3. If identity is confirmed, record it with an in-person check. Optionally, a "Mark identity verified" action could be added later, which needs a decision on storing who verified (two nullable columns) or using the audit log only.
+    4. If the resident never registered or cannot be confirmed, an administrator suspends the account in Resident details; history is kept.
+    5. Do not delete accounts. **Note:** the Suspend button is shown only to `role === 'admin'` (finding A16); approving A16 would also let Captains suspend.
   - **How an existing resident activates today** (`ResidentRegistrationController`, `routes/web.php` lines 81–87):
     1. Full name exactly as on record.
     2. Birth date.
@@ -622,4 +661,23 @@ Option (b) was applied: no staff role can delete its own account; staff accounts
     - browser-found fixes (`ce11d86`).
   - **Verification:** isolated database copy; Captain, Kagawad, incident desk, Secretary and resident accounts; desktop and 390 px; light and dark; English and Filipino. Details under V-G.
   - **On hold (per decision):** V1, V5, V6, V7, unverified statistics and fees, unapproved photos and boundaries.
-  - **Open:** V3 decision; the pending-incident notice placement (D4).
+  - **Open:** V3 decision; the pending-incident notice placement (D4). Both resolved in session 12.
+- **Session 12 (2026-11-04)** — Secure Resident Portal activation (approved V3) and the pending-incident notice.
+  - **Security:** the account-takeover path is closed (`77f0489`); details under V3 "As built". The pending-incident notice moved into the request flow (`a2665c9`).
+  - **Tests:**
+    - The self-service test file now asserts the closed path.
+    - The portal account, localization, approval and password tests were updated for the staff-code flow.
+    - New client tests cover the ID confirmation and the provenance panel.
+  - **Browser** (isolated copy `verify2.sqlite`, mail kept in memory; real database hash unchanged):
+    - the removed endpoints return 404;
+    - a wrong code and an unknown number produce identical pages;
+    - the Captain issued a code after the ID confirmation, and the Secretary had no issue button;
+    - registration took email and password only, and the same code then failed;
+    - the new account was blocked from requests (page and API, 403) until the signed link was opened, then the request API returned 200;
+    - the self-service account was flagged in Resident details;
+    - the incident notice was visible inside the flow at 390 px;
+    - checked in English and Filipino, light and dark, desktop and 390 px; no JavaScript errors.
+  - **For approval:**
+    - Delete the now-unused `ResidentPortalActivationNotification`, its two mail views and `ResidentActivationEmailTest` (kept because deleting tests needs approval).
+    - The optional "Mark identity verified" action.
+    - A16 (Captains suspending portal accounts).
