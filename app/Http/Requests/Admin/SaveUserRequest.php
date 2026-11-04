@@ -126,7 +126,21 @@ class SaveUserRequest extends FormRequest
             }
             $mayAssignSuperAdmin = $target instanceof User && $target->is_super_admin && $this->input('role') === 'admin';
             if ($permissions !== [] && $this->input('role') !== 'staff' && ! $mayAssignSuperAdmin) {
-                $validator->errors()->add('staff_permissions', 'Custom assignments are only available for Barangay Staff accounts.');
+                // A Captain already holds every other module; only VAWC/BPO access can be recorded on a Captain account.
+                $otherThanVawc = array_filter($permissions, fn (mixed $permission): bool => ! is_string($permission) || ! str_starts_with($permission, 'vawc.'));
+                if ($this->input('role') !== 'captain' || $otherThanVawc !== []) {
+                    $validator->errors()->add('staff_permissions', $this->input('role') === 'captain'
+                        ? 'A Captain account already has every other module; only VAWC/BPO access can be assigned to it.'
+                        : 'Custom assignments are only available for Barangay Staff accounts.');
+                }
+            }
+            if ($this->has('staff_permissions') && self::vawcKeys($target instanceof User ? ($target->staff_permissions ?? []) : []) !== self::vawcKeys($permissions)) {
+                // Confidential case access is granted only by the Super Admin, and never to themselves.
+                if (! $this->user()->isSuperAdmin()) {
+                    $validator->errors()->add('staff_permissions', 'Only the Super Admin can grant or remove VAWC/BPO access.');
+                } elseif ($target instanceof User && $this->user()->is($target)) {
+                    $validator->errors()->add('staff_permissions', 'You cannot change your own VAWC/BPO access.');
+                }
             }
             foreach ($permissions as $permission) {
                 if (! is_string($permission) || ! str_contains($permission, '.')) {
@@ -138,6 +152,18 @@ class SaveUserRequest extends FormRequest
                 }
             }
         }];
+    }
+
+    /**
+     * @param  array<mixed>  $permissions
+     * @return list<string>
+     */
+    public static function vawcKeys(array $permissions): array
+    {
+        $keys = array_values(array_unique(array_filter($permissions, fn (mixed $permission): bool => is_string($permission) && str_starts_with($permission, 'vawc.'))));
+        sort($keys);
+
+        return $keys;
     }
 
     protected function prepareForValidation(): void

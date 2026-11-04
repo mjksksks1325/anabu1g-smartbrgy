@@ -755,7 +755,7 @@ test('staff assignments remain visible when editing a super admin account', asyn
   const { context, fields } = await client();
   fields.set('adduser-edit-id', { value: '7' });
   fields.set('adduser-role', { value: 'admin' });
-  const section = { hidden: true };
+  const section = { hidden: true, querySelectorAll: () => [] };
   fields.set('staff-assignment-fields', section);
   vm.runInContext("USERS.push({ id: 7, is_super_admin: true });", context);
 
@@ -1597,4 +1597,39 @@ test('every administrator, Captain included, gets the portal-account suspend but
     await context.loadResidentPortalAccount(5);
     assert.equal(panel.innerHTML.includes('changePortalAccountStatus(5, false, this)'), expected, user.role);
   }
+});
+
+test('a Captain account shows only the VAWC boxes, and only a Super Admin editing someone else can change them', async () => {
+  const { context, fields } = await client();
+  const input = key => ({ dataset: { staffPermission: key }, checked: false, disabled: false });
+  const module = keys => { const inputs = keys.map(input); return { hidden: false, inputs, querySelector: selector => selector.includes('vawc.') ? inputs.find(i => i.dataset.staffPermission.startsWith('vawc.')) ?? null : inputs[0] ?? null }; };
+  const records = module(['records.view']);
+  const vawc = module(['vawc.view', 'vawc.update']);
+  const groups = [{ hidden: false, querySelectorAll: () => [records] }, { hidden: false, querySelectorAll: () => [vawc] }];
+  const toolbar = { hidden: false };
+  const lock = { hidden: true };
+  const section = { hidden: true, querySelectorAll: selector => ({
+    '.staff-permission-module': [records, vawc], '.staff-permission-group': groups, '.staff-preset-toolbar, .staff-preset-help': [toolbar],
+    '[data-staff-permission^="vawc."]': vawc.inputs,
+  })[selector] ?? [] };
+  fields.set('staff-assignment-fields', section);
+  fields.set('vawc-permission-lock', lock);
+  fields.set('adduser-edit-id', { value: '4' });
+  fields.set('adduser-role', { value: 'captain' });
+  vm.runInContext("USERS.push({ id: 4, role: 'captain' }, { id: 2, role: 'admin', is_super_admin: true });", context);
+
+  context.window.AUTHENTICATED_USER = { id: 4, role: 'captain', is_administrator: true };
+  context.toggleStaffAssignmentFields();
+  assert.equal(section.hidden, false);
+  assert.equal(records.hidden, true);
+  assert.equal(groups[0].hidden, true);
+  assert.equal(vawc.hidden, false);
+  assert.equal(toolbar.hidden, true);
+  assert.ok(vawc.inputs.every(item => item.disabled));
+  assert.equal(lock.hidden, false);
+
+  context.window.AUTHENTICATED_USER = { id: 2, role: 'admin', is_super_admin: true, is_administrator: true };
+  context.toggleStaffAssignmentFields();
+  assert.ok(vawc.inputs.every(item => !item.disabled));
+  assert.equal(lock.hidden, true);
 });

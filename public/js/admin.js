@@ -17,10 +17,22 @@ function toggleStaffAssignmentFields() {
   const section = document.getElementById('staff-assignment-fields');
   const editId = Number(document.getElementById('adduser-edit-id')?.value || 0);
   const editedUser = USERS.find(user => Number(user.id) === editId);
-  if (section) section.hidden = document.getElementById('adduser-role').value !== 'staff' && !editedUser?.is_super_admin;
+  const captainAccount = document.getElementById('adduser-role').value === 'captain';
+  if (!section) return;
+  section.hidden = document.getElementById('adduser-role').value !== 'staff' && !editedUser?.is_super_admin && !captainAccount;
+  // A Captain already holds every other module, so only the VAWC/BPO boxes are shown for a Captain account.
+  section.querySelectorAll('.staff-permission-module').forEach(module => { module.hidden = captainAccount && !module.querySelector('[data-staff-permission^="vawc."]'); });
+  section.querySelectorAll('.staff-permission-group').forEach(group => { group.hidden = [...group.querySelectorAll('.staff-permission-module')].every(module => module.hidden); });
+  section.querySelectorAll('.staff-preset-toolbar, .staff-preset-help').forEach(element => { element.hidden = captainAccount; });
+  // Confidential case access is granted only by the Super Admin, and never on their own account (the server enforces this).
+  const canChangeVawc = Boolean(window.AUTHENTICATED_USER?.is_super_admin) && Number(editedUser?.id) !== Number(window.AUTHENTICATED_USER?.id);
+  section.querySelectorAll('[data-staff-permission^="vawc."]').forEach(input => { input.disabled = !canChangeVawc; });
+  const lock = document.getElementById('vawc-permission-lock');
+  if (lock) lock.hidden = canChangeVawc;
 }
+/** Presets and "Clear all" leave locked boxes (VAWC for non–Super Admins) as they are. */
 function setStaffAssignments(keys) {
-  document.querySelectorAll('[data-staff-permission]').forEach(input => { input.checked = keys.includes(input.dataset.staffPermission); });
+  document.querySelectorAll('[data-staff-permission]').forEach(input => { if (!input.disabled) input.checked = keys.includes(input.dataset.staffPermission); });
 }
 /** Tick a preset's checkboxes and say what it covers; the administrator still reviews every box before saving. */
 function applyStaffPreset(name) {
@@ -3510,6 +3522,7 @@ async function saveNewUser() {
   };
 
   if (payload.role === 'staff' || editedUser?.is_super_admin) payload.staff_permissions = [...document.querySelectorAll('[data-staff-permission]:checked')].map(input => input.dataset.staffPermission);
+  else if (payload.role === 'captain') payload.staff_permissions = [...document.querySelectorAll('[data-staff-permission^="vawc."]:checked')].map(input => input.dataset.staffPermission);
   const button = document.getElementById('adduser-save-btn');
   button.disabled = true;
 

@@ -1193,7 +1193,7 @@
 
     <section id="staff-assignment-fields" class="user-account-section" aria-labelledby="staff-assignments-title">
       <h3 id="staff-assignments-title">Staff access assignments</h3>
-      <p class="card-sub">Only the Super Admin and Barangay Captain can change these assignments. Their accounts have full access regardless of selections; staff accounts with no selections have no operational access. Physical cabinet access is separate.</p>
+      <p class="card-sub">Only the Super Admin and Barangay Captain can change these assignments, and only the Super Admin can grant or remove VAWC/BPO access. Super Admin and Captain accounts have full access to every other module; staff accounts with no selections have no operational access. Physical cabinet access is separate.</p>
       <div class="staff-preset-toolbar"><div>
       <label class="form-label" for="staff-access-preset">Start from a preset</label>
       <select id="staff-access-preset" class="form-input" onchange="applyStaffPreset(this.value)">
@@ -1214,7 +1214,7 @@
             @php($definition = App\StaffPermissions::modules()[$module])
             <fieldset class="staff-permission-module">
               <legend>{{ $definition['label'] }}</legend>
-              @if($module === 'vawc')<p class="staff-permission-warning" id="vawc-permission-warning">Confidential VAWC and BPO case records. Assign only to personnel the barangay has formally designated for these cases. Ticking a box records access; it does not create that authority.</p>@endif
+              @if($module === 'vawc')<p class="card-sub" id="vawc-permission-lock" hidden>Only the Super Admin can grant or remove VAWC/BPO access, and not on their own account.</p><p class="staff-permission-warning" id="vawc-permission-warning">Confidential VAWC and BPO case records. Assign only to personnel the barangay has formally designated for these cases. Ticking a box records access; it does not create that authority.</p>@endif
               <div class="staff-permission-options"@if($module === 'vawc') aria-describedby="vawc-permission-warning"@endif>
               @foreach($definition['actions'] as $action => $label)
                 <label class="staff-permission-option"><input type="checkbox" data-staff-permission="{{ $module.'.'.$action }}" onchange="changeStaffAssignment(this)"><span>{{ $label }}</span></label>
@@ -1313,7 +1313,7 @@
     window.ADMIN_SCREEN_ROUTES = {{ Illuminate\Support\Js::from($screenRoutes) }};
     window.STAFF_PERMISSION_PRESETS = {{ Illuminate\Support\Js::from(App\StaffPermissions::presets()) }};
     window.PERSONNEL_SCREEN_ACCESS = {{ Illuminate\Support\Js::from(['dashboard' => auth()->user()->hasPermission('dashboard.view'), 'demographics' => auth()->user()->hasPermission('demographics.view'), 'records' => auth()->user()->hasAnyPermission(['records.view', 'households.view']), 'voters' => auth()->user()->hasPermission('voters.view'), 'certificates' => auth()->user()->hasPermission('documents.view'), 'request-records' => auth()->user()->hasAnyPermission(['eligibility.view', 'documents.view']), 'incidents' => auth()->user()->hasAnyPermission(['incidents.view', 'vawc.view']), 'audit' => auth()->user()->hasAdministrativeAccess(), 'users' => auth()->user()->hasAdministrativeAccess(), 'settings' => auth()->user()->hasAdministrativeAccess()]) }};
-    window.PERSONNEL_PERMISSIONS = {{ Illuminate\Support\Js::from(auth()->user()->hasAdministrativeAccess() ? App\StaffPermissions::keys() : (auth()->user()->staff_permissions ?? [])) }};
+    window.PERSONNEL_PERMISSIONS = {{ Illuminate\Support\Js::from(auth()->user()->effectivePermissions()) }};
     window.AUTHENTICATED_USER = {{ Illuminate\Support\Js::from(['id' => auth()->id(), 'name' => auth()->user()->name, 'role' => auth()->user()->role, 'is_super_admin' => auth()->user()->isSuperAdmin(), 'is_administrator' => auth()->user()->hasAdministrativeAccess()]) }};
 </script>
 

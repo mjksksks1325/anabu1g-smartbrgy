@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\StaffPermissions;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -92,8 +93,30 @@ class User extends Authenticatable
 
     public function hasPermission(string $permission): bool
     {
+        if (str_starts_with($permission, 'vawc.') && self::vawcNeedsExplicitAssignment()) {
+            return $this->canLoginAsPersonnel()
+                && ($this->role === 'staff' || $this->hasAdministrativeAccess())
+                && in_array($permission, $this->staff_permissions ?? [], true);
+        }
+
         return $this->hasAdministrativeAccess() || ($this->canLoginAsPersonnel()
             && $this->role === 'staff' && in_array($permission, $this->staff_permissions ?? [], true));
+    }
+
+    /** When on, VAWC/BPO access comes only from an account's own assignments, for administrators too. */
+    public static function vawcNeedsExplicitAssignment(): bool
+    {
+        return (bool) config('access.vawc_explicit_assignment');
+    }
+
+    /**
+     * Every permission key this account holds now, for the interface (menus and buttons).
+     *
+     * @return list<string>
+     */
+    public function effectivePermissions(): array
+    {
+        return array_values(array_filter(StaffPermissions::keys(), fn (string $permission): bool => $this->hasPermission($permission)));
     }
 
     public function canTrackRfidFiles(): bool

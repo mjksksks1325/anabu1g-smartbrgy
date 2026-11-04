@@ -74,6 +74,7 @@ class UserController extends Controller
                 $access->face_enrollment_status = EmployeeCabinetAccess::NOT_STARTED;
                 $access->authorization_version = 1;
                 $user->cabinetAccess()->save($access);
+                $this->recordSecurityEvent($request, 'admin.users.cabinet-access-enabled', $user);
             }
 
             return $user;
@@ -119,6 +120,7 @@ class UserController extends Controller
                 ]);
             }
 
+            $wasActive = (bool) $locked->is_active;
             $locked->fill(
                 $request->safe()->only(['name', 'email'])
             );
@@ -137,6 +139,13 @@ class UserController extends Controller
 
             $locked->save();
             $this->saveAssignments($request, $locked);
+            if ($wasActive !== (bool) $locked->is_active) {
+                $this->recordSecurityEvent($request, $locked->is_active ? 'admin.users.reactivated' : 'admin.users.suspended', $locked);
+            }
+            if ($request->filled('password')) {
+                // Only the fact is recorded, never the password.
+                $this->recordSecurityEvent($request, 'admin.users.password-set', $locked);
+            }
 
             $access = EmployeeCabinetAccess::query()
                 ->where('user_id', $locked->id)
@@ -155,16 +164,21 @@ class UserController extends Controller
                 }
 
                 $access->rpi_employee_id = $request->validated('rpi_employee_id');
+                $enabling = $isNewAccess || ! $access->is_active;
                 $access->is_active = true;
                 if ($isNewAccess) {
                     $locked->cabinetAccess()->save($access);
                 } else {
                     $access->save();
                 }
+                if ($enabling) {
+                    $this->recordSecurityEvent($request, 'admin.users.cabinet-access-enabled', $locked);
+                }
             } elseif ($request->has('smart_cabinet_access') && $access !== null && $access->is_active) {
                 $access->is_active = false;
                 $access->authorization_version++;
                 $access->save();
+                $this->recordSecurityEvent($request, 'admin.users.cabinet-access-disabled', $locked);
             }
         });
 
@@ -195,15 +209,27 @@ class UserController extends Controller
         ]);
     }
 
+    /** A distinct security event for one account change. Holds who, what and which account; never a secret. */
+    private function recordSecurityEvent(Request $request, string $action, User $user): void
+    {
+        DB::table('administrative_audits')->insert([
+            'user_id' => $request->user()->id, 'actor' => $request->user()->name, 'action' => $action, 'type' => 'security',
+            'record' => (string) $user->id, 'target_user_id' => $user->id, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+    }
+
     private function saveAssignments(SaveUserRequest $request, User $user): void
     {
         if (! $request->has('staff_permissions') && ($user->role === 'staff' || $user->is_super_admin)) {
             return;
         }
         $before = $user->staff_permissions ?? [];
-        $after = $user->role === 'staff' || $user->is_super_admin
-            ? $request->validated('staff_permissions', [])
-            : [];
+        // A Captain keeps only VAWC/BPO keys (every other module is already theirs); other roles keep none.
+        $after = match (true) {
+            $user->role === 'staff' || $user->is_super_admin => $request->validated('staff_permissions', []),
+            $user->role === 'captain' => SaveUserRequest::vawcKeys($request->has('staff_permissions') ? $request->validated('staff_permissions', []) : $before),
+            default => [],
+        };
         sort($before);
         sort($after);
         if ($before === $after) {
@@ -219,5 +245,16 @@ class UserController extends Controller
             'after_assignments' => json_encode($after, JSON_THROW_ON_ERROR),
             'created_at' => now(), 'updated_at' => now(),
         ]);
+        // Confidential case access gets its own, easy-to-find event as well.
+        if (SaveUserRequest::vawcKeys($before) !== SaveUserRequest::vawcKeys($after)) {
+            DB::table('administrative_audits')->insert([
+                'user_id' => $request->user()->id, 'actor' => $request->user()->name,
+                'action' => 'admin.users.vawc-access-changed', 'type' => 'security',
+                'record' => (string) $user->id, 'target_user_id' => $user->id,
+                'before_assignments' => json_encode(SaveUserRequest::vawcKeys($before), JSON_THROW_ON_ERROR),
+                'after_assignments' => json_encode(SaveUserRequest::vawcKeys($after), JSON_THROW_ON_ERROR),
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
     }
 }

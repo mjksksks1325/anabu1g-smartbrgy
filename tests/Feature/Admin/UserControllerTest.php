@@ -5,6 +5,7 @@ use App\Models\EmployeeCabinetAccess;
 use App\Models\FileMovementEvent;
 use App\Models\Incident;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 it('requires authentication and administrator access to account management', function () {
@@ -237,4 +238,21 @@ it('exports personnel accounts as a branded excel file for administrators only',
         ->assertDownload('barangay-users-'.today()->toDateString().'.xlsx');
 
     expect(spreadsheetSheetXml($response))->toContain('Barangay Users')->toContain('Export Staff')->toContain($staff->email);
+});
+
+it('records suspension, reactivation, a password set by an administrator and cabinet access as separate security events without secrets', function () {
+    $captain = User::factory()->create(['role' => 'captain']);
+    $staff = User::factory()->create(['role' => 'staff', 'staff_permissions' => ['dashboard.view']]);
+    $payload = fn (array $changes = []) => ['name' => $staff->name, 'email' => $staff->email, 'role' => 'staff', 'is_active' => true, 'staff_permissions' => ['dashboard.view'], ...$changes];
+    $this->actingAs($captain);
+
+    $this->patchJson(route('admin.users.update', $staff), $payload(['is_active' => false]))->assertOk();
+    $this->patchJson(route('admin.users.update', $staff), $payload(['password' => 'Changed-By-Admin-2026']))->assertOk();
+    $this->patchJson(route('admin.users.update', $staff), $payload(['smart_cabinet_access' => true, 'rpi_employee_id' => 'EMP-77']))->assertOk();
+    $this->patchJson(route('admin.users.update', $staff), $payload(['smart_cabinet_access' => false]))->assertOk();
+    $this->patchJson(route('admin.users.update', $staff), $payload(['name' => 'Renamed Only']))->assertOk();
+
+    $events = DB::table('administrative_audits')->where('target_user_id', $staff->id)->where('user_id', $captain->id)->orderBy('id')->pluck('action')->all();
+    expect($events)->toBe(['admin.users.suspended', 'admin.users.reactivated', 'admin.users.password-set', 'admin.users.cabinet-access-enabled', 'admin.users.cabinet-access-disabled']);
+    expect(DB::table('administrative_audits')->get()->toJson())->not->toContain('Changed-By-Admin-2026');
 });
