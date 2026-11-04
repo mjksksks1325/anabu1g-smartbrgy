@@ -5904,11 +5904,14 @@ async function loadResidentPortalAccount(residentId) {
     const account = resident.portal_account;
     panel.innerHTML = `<h3>Resident Portal account</h3><p>Resident record: ${escapeText(resident.status)}</p>`;
     if (account.registered) {
-      panel.innerHTML += `<p>Account: <strong>${account.is_active ? 'Active' : 'Suspended'}</strong></p><p>${escapeText(account.email)} &middot; Created ${escapeText(account.created_at)}</p><p>Last login: ${escapeText(account.last_login || 'Not yet recorded')}</p>`;
+      panel.innerHTML += `<p>Account: <strong>${account.is_active ? 'Active' : 'Suspended'}</strong></p><p>${escapeText(account.email)} &middot; Created ${escapeText(account.created_at)}</p><p>Last login: ${escapeText(account.last_login || 'Not yet recorded')}</p>
+        <p>Email confirmed: <strong>${account.email_verified ? 'Yes' : 'Not yet (document requests are closed until it is)'}</strong></p>
+        <p>Activated with: <strong>${escapeText(({ staff_code: 'Staff-issued code', email_self_service: 'Email self-service (identity not checked by staff)', unknown: 'Not recorded' })[account.activation] || 'Not recorded')}</strong></p>
+        ${account.activation === 'email_self_service' ? `<p class="resident-detail-hint">${escapeText('This account was created through the removed email self-service step. Check the resident\'s valid ID in person; suspend the account if their identity cannot be confirmed.')}</p>` : ''}`;
       if (currentUserRole === 'admin') panel.innerHTML += `<button class="btn btn-sm" onclick="changePortalAccountStatus(${residentId}, ${!account.is_active}, this)">${account.is_active ? 'Suspend' : 'Reactivate'} portal account</button>`;
     } else {
       panel.innerHTML += '<p>Not registered. Verify the resident in person before issuing their private activation code.</p>';
-      if (resident.status === 'active') panel.innerHTML += `<button class="btn btn-sm btn-primary" onclick="issuePortalActivation(${residentId}, this)">Issue activation code</button><div id="resident-activation-result"></div>`;
+      if (resident.status === 'active' && hasStaffPermission('records.activate')) panel.innerHTML += `<button class="btn btn-sm btn-primary" onclick="issuePortalActivation(${residentId}, this)">Issue activation code</button><div id="resident-activation-result"></div>`;
     }
   } catch (error) { if (panel?.isConnected) panel.textContent = error.message; }
 }
@@ -5916,13 +5919,13 @@ async function loadResidentPortalAccount(residentId) {
 async function issuePortalActivation(residentId, button) {
   if (button.disabled) return;
   button.disabled = true;
-  if (!(await confirmAction('Issue a private activation code for this resident after verifying their identity? Any previous code will stop working.', { title: 'Issue activation code', confirmLabel: 'Issue code' }))) {
+  if (!(await confirmAction('Confirm that you checked this resident\'s valid ID in person. The code works once and expires in 24 hours; any previous code stops working.', { title: 'Issue activation code', confirmLabel: 'I checked the ID, issue code' }))) {
     button.disabled = false;
     return;
   }
   const output = document.getElementById('resident-activation-result');
   try {
-    const result = await adminRequest(`/staff/residents/${residentId}/portal-activation`, { method: 'POST' });
+    const result = await adminRequest(`/staff/residents/${residentId}/portal-activation`, { method: 'POST', body: JSON.stringify({ identity_checked: true }) });
     if (output?.isConnected && button.closest('.modal-overlay')?.classList.contains('show')) output.innerHTML = `<p>${escapeText(result.message)}</p><label for="resident-activation-code">Private activation code</label><input id="resident-activation-code" class="form-input" readonly autocomplete="off" value="${escapeText(result.activation_code)}"><p>Expires: ${escapeText(result.expires_at)}</p>`;
   } catch (error) { showToast(error.message, 'red'); }
   finally { button.disabled = false; }

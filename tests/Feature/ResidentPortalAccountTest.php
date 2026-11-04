@@ -3,6 +3,7 @@
 use App\Models\DocumentRequest;
 use App\Models\Resident;
 use App\Models\User;
+use App\Notifications\ResidentEmailVerificationNotification;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\UploadedFile;
@@ -21,7 +22,7 @@ function portalRegistrationResident(array $attributes = []): Resident
 
 function portalAccountInput(array $attributes = []): array
 {
-    return ['email' => 'resident@example.test', 'password' => 'ResidentPassword123!', 'password_confirmation' => 'ResidentPassword123!', 'photo' => UploadedFile::fake()->image('resident.jpg'), ...$attributes];
+    return ['email' => 'resident@example.test', 'password' => 'ResidentPassword123!', 'password_confirmation' => 'ResidentPassword123!', ...$attributes];
 }
 
 function portalRequestFor(Resident $resident, string $code): DocumentRequest
@@ -33,29 +34,32 @@ function portalRequestFor(Resident $resident, string $code): DocumentRequest
 }
 
 test('registration links an existing resident without changing their record or trusting account privileges', function () {
-    Storage::fake('local');
-    Storage::fake('public');
-    $resident = portalRegistrationResident();
+    Notification::fake();
+    $resident = portalRegistrationResident(['photo_path' => 'resident-photos/staff-captured.jpg']);
     $this->post(route('portal.register.verify'), ['resident_number' => strtolower($resident->resident_number), 'activation_code' => 'private-test-activation-code'])
         ->assertRedirect(route('portal.register'));
-    $this->get(route('portal.register'))->assertSee('Step 4 of 4')->assertSee('name="photo"', false)
-        ->assertSee('enctype="multipart/form-data"', false);
+    $this->get(route('portal.register'))->assertSee('Step 2 of 3')->assertSee('name="email"', false)
+        ->assertDontSee('name="photo"', false);
 
-    $this->post(route('portal.register.store'), portalAccountInput(['role' => 'admin', 'resident_id' => 999, 'name' => 'Someone else', 'is_active' => false]))
+    $this->post(route('portal.register.store'), portalAccountInput(['role' => 'admin', 'resident_id' => 999, 'name' => 'Someone else', 'is_active' => false, 'email_verified_at' => now()->toDateTimeString()]))
         ->assertRedirect(route('portal.login'));
 
     $this->assertDatabaseCount('residents', 1);
     $account = User::query()->sole();
-    expect($account->resident_id)->toBe($resident->id);
-    expect($account->role)->toBe('resident');
-    expect($account->name)->toBe($resident->full_name);
-    expect(Hash::check('ResidentPassword123!', $account->password))->toBeTrue();
+    expect($account->resident_id)->toBe($resident->id)
+        ->and($account->role)->toBe('resident')
+        ->and($account->name)->toBe($resident->full_name)
+        ->and($account->email_verified_at)->toBeNull()
+        ->and(Hash::check('ResidentPassword123!', $account->password))->toBeTrue();
+    expect($resident->fresh())
+        ->photo_path->toBe('resident-photos/staff-captured.jpg')
+        ->portal_registration_hash->toBeNull()
+        ->portal_registration_expires_at->toBeNull();
     $this->assertDatabaseHas('administrative_audits', ['user_id' => $account->id, 'action' => 'portal.account.registered', 'record' => null]);
+    $this->assertDatabaseHas('administrative_audits', ['action' => 'portal.activation.verified', 'record' => 'resident:'.$resident->id]);
+    Notification::assertSentTo($account, ResidentEmailVerificationNotification::class);
+    $this->get(route('portal.login'))->assertSee('Open the confirmation link we sent to your email, then sign in to request documents.');
     $this->assertGuest();
-    $photoPath = $resident->fresh()->photo_path;
-    expect($photoPath)->toStartWith('resident-photos/');
-    Storage::disk('local')->assertExists($photoPath);
-    Storage::disk('public')->assertMissing($photoPath);
 });
 
 test('unverified clients cannot create an account or choose a resident id', function () {
@@ -68,26 +72,19 @@ test('unverified clients cannot create an account or choose a resident id', func
     expect(Storage::disk('local')->allFiles())->toBeEmpty();
 });
 
-test('account creation requires a valid resident photo and preserves the existing photo on rejection', function (string $kind) {
+test('account creation asks for no photo and never replaces the staff-captured photo', function () {
+    Notification::fake();
     Storage::fake('local');
     Storage::disk('local')->put('resident-photos/existing.jpg', 'existing-photo');
     $resident = portalRegistrationResident(['photo_path' => 'resident-photos/existing.jpg']);
-    $this->post(route('portal.register.verify'), ['resident_number' => $resident->resident_number, 'activation_code' => 'private-test-activation-code'])
-        ->assertRedirect(route('portal.register'));
-    $photo = match ($kind) {
-        'missing' => null,
-        'type' => UploadedFile::fake()->create('document.pdf', 1, 'application/pdf'),
-        'size' => UploadedFile::fake()->image('large.jpg')->size(5121),
-        'dimensions' => UploadedFile::fake()->image('wide.jpg', 6001, 1),
-    };
+    $this->post(route('portal.register.verify'), ['resident_number' => $resident->resident_number, 'activation_code' => 'private-test-activation-code']);
 
-    $this->post(route('portal.register.store'), portalAccountInput(['photo' => $photo]))
-        ->assertSessionHasErrors('photo');
+    $this->post(route('portal.register.store'), portalAccountInput(['photo' => UploadedFile::fake()->image('someone-else.jpg')]))
+        ->assertRedirect(route('portal.login'));
 
-    $this->assertDatabaseEmpty('users');
-    expect($resident->fresh()->photo_path)->toBe('resident-photos/existing.jpg');
-    expect(Storage::disk('local')->allFiles())->toBe(['resident-photos/existing.jpg']);
-})->with(['missing', 'type', 'size', 'dimensions']);
+    expect($resident->fresh()->photo_path)->toBe('resident-photos/existing.jpg')
+        ->and(Storage::disk('local')->allFiles())->toBe(['resident-photos/existing.jpg']);
+});
 
 test('verification denies unknown inactive archived expired and incorrect codes without revealing identity', function (string $condition) {
     $resident = portalRegistrationResident();
@@ -136,17 +133,21 @@ test('registration rechecks eligibility expiration and code rotation after verif
     $this->assertDatabaseEmpty('users');
 })->with(['archived', 'inactive', 'rotated', 'expired']);
 
-test('an already linked record offers login and recovery without exposing its email', function () {
-    Storage::fake('local');
+test('a used code cannot be reused and a linked record cannot receive another code', function () {
+    Notification::fake();
     $resident = portalRegistrationResident();
     $this->post(route('portal.register.verify'), ['resident_number' => $resident->resident_number, 'activation_code' => 'private-test-activation-code']);
     $this->post(route('portal.register.store'), portalAccountInput())->assertRedirect(route('portal.login'));
     $account = User::query()->sole();
+
     $this->post(route('portal.register.verify'), ['resident_number' => $resident->resident_number, 'activation_code' => 'private-test-activation-code'])
-        ->assertRedirect(route('portal.registration.denied'))->assertSessionHas('existing_account', true);
-    $this->get(route('portal.registration.denied'))->assertSee('May online account na para sa resident record na ito')
-        ->assertSee(route('portal.login'))->assertSee(route('password.request'))->assertDontSee($account->email);
-    $this->assertDatabaseCount('users', 1);
+        ->assertRedirect(route('portal.registration.denied'))->assertSessionMissing('resident_verification');
+    $this->get(route('portal.registration.denied'))->assertSee(route('portal.login'))->assertSee(route('password.request'))->assertDontSee($account->email);
+    $this->actingAs(User::factory()->assignedOperations()->create(['role' => 'staff']))
+        ->postJson(route('staff.residents.portal-activation', $resident), ['identity_checked' => true])->assertUnprocessable();
+    expect($resident->fresh()->portal_registration_hash)->toBeNull();
+    $this->assertDatabaseCount('users', 2);
+    expect(User::query()->where('resident_id', $resident->id)->count())->toBe(1);
 });
 
 test('the database rejects a second account even when application checks are bypassed', function () {
@@ -178,8 +179,11 @@ test('public verification attempts are rate limited', function () {
 test('staff can issue a private expiring code but no activation secrets appear in resident feeds or audits', function () {
     $resident = Resident::factory()->create();
     $this->actingAs(User::factory()->assignedOperations()->create(['role' => 'staff']));
-    $response = $this->postJson(route('staff.residents.portal-activation', $resident))->assertOk();
+    $this->postJson(route('staff.residents.portal-activation', $resident))->assertJsonValidationErrors('identity_checked');
+    expect($resident->fresh()->portal_registration_hash)->toBeNull();
+    $response = $this->postJson(route('staff.residents.portal-activation', $resident), ['identity_checked' => true])->assertOk();
     $code = $response->json('activation_code');
+    $this->assertDatabaseHas('administrative_audits', ['action' => 'admin.residents.portal-activation', 'type' => 'security', 'record' => (string) $resident->id]);
     expect($resident->fresh()->portal_registration_hash)->toBe(hash('sha256', $code));
     $this->getJson(route('staff.residents.index'))->assertDontSee($code)->assertDontSee(hash('sha256', $code));
     $this->getJson(route('staff.residents.show', $resident))->assertJsonPath('portal_account.registered', false)->assertDontSee(hash('sha256', $code));
@@ -554,7 +558,7 @@ test('activation code rotation invalidates the previous code and pending proof',
     $resident = portalRegistrationResident();
     $staff = User::factory()->assignedOperations()->create(['role' => 'staff']);
     $oldHash = $resident->portal_registration_hash;
-    $response = $this->actingAs($staff)->postJson(route('staff.residents.portal-activation', $resident))->assertOk();
+    $response = $this->actingAs($staff)->postJson(route('staff.residents.portal-activation', $resident), ['identity_checked' => true])->assertOk();
     expect($response->json('activation_code'))->toHaveLength(8)->toMatch('/^[A-Z0-9]{8}$/');
     expect($resident->fresh()->portal_registration_hash)->not->toBe($oldHash);
     expect($resident->fresh()->portal_registration_hash)->toBe(hash('sha256', $response->json('activation_code')));

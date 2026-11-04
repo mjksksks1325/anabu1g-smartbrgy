@@ -2,199 +2,111 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\RecordPortalAccountEvent;
 use App\Http\Requests\RegisterResidentAccountRequest;
 use App\Http\Requests\VerifyResidentAccountRequest;
 use App\Models\Resident;
 use App\Models\User;
-use App\Notifications\ResidentPortalActivationNotification;
-use Illuminate\Database\Eloquent\Collection;
+use App\Notifications\ResidentEmailVerificationNotification;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
-use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 use Throwable;
 
+/**
+ * Resident Portal activation for residents who are already in the barangay database.
+ *
+ * Identity is proven only by an activation code that authorized staff issue after checking the resident in
+ * person (Resident details → Issue activation code). Codes expire after 24 hours, are cleared when used,
+ * and are invalidated after MAX_FAILED_ATTEMPTS wrong entries. Every refusal leads to the same generic
+ * page, so these steps never reveal whether a resident number exists. After the account is created the
+ * resident must confirm their email address before requesting documents (EnsureResidentEmailVerified).
+ */
 class ResidentRegistrationController extends Controller
 {
+    public const MAX_FAILED_ATTEMPTS = 5;
+
+    public function __construct(private RecordPortalAccountEvent $events) {}
+
     public function create(Request $request): View
     {
         if (! $request->session()->pull('resident_registration_continue', false) && ! $request->session()->has('errors')) {
-            $request->session()->forget([
-                'resident_name_check', 'resident_identity', 'resident_code_sent', 'resident_verification',
-                '_old_input',
-            ]);
+            $request->session()->forget(['resident_verification', '_old_input']);
         }
-
         $resident = $this->verifiedResident($request);
-        $identity = $this->identityProof($request);
-        $name = $this->nameProof($request);
-        $codeSent = $request->session()->get('resident_code_sent');
-        $sentAt = is_array($codeSent) ? ($codeSent['sent_at'] ?? null) : $codeSent;
-        $codeSent = is_int($sentAt) && $sentAt > now()->subDay()->timestamp;
-        $stage = $resident && ! $resident->portalAccount()->exists() ? 'account'
-            : ($request->query('step') === 'activation' || $codeSent ? 'code' : ($identity ? 'email' : ($name ? 'details' : 'name')));
 
         return view('portal.register', [
-            'verified' => $stage === 'account',
-            'stage' => $stage,
-            'registrationEmail' => $stage === 'account' ? $resident->portal_registration_email : null,
-            'emailDeliveryAvailable' => $this->emailDeliveryAvailable(),
+            'stage' => $resident && ! $resident->portalAccount()->exists() ? 'account' : 'code',
         ]);
     }
 
     public function reset(Request $request): RedirectResponse
     {
-        $pendingCode = $request->session()->get('resident_code_sent');
-        if (is_array($pendingCode) && is_int($pendingCode['resident_id'] ?? null) && is_string($pendingCode['hash'] ?? null)) {
-            DB::transaction(function () use ($pendingCode): void {
-                $resident = Resident::query()->lockForUpdate()->find($pendingCode['resident_id']);
-                if ($resident && is_string($resident->portal_registration_hash)
-                    && hash_equals($resident->portal_registration_hash, $pendingCode['hash'])) {
-                    $resident->portal_registration_hash = null;
-                    $resident->portal_registration_expires_at = null;
-                    $resident->portal_registration_email = null;
-                    $resident->portal_registration_sent_at = null;
-                    $resident->save();
-                }
-            });
-        }
-        $request->session()->forget([
-            'resident_name_check', 'resident_identity', 'resident_code_sent', 'resident_verification',
-            'resident_registration_continue', '_old_input', 'errors',
-        ]);
+        $request->session()->forget(['resident_verification', 'resident_registration_continue', '_old_input', 'errors']);
 
         return redirect()->route('portal.register');
-    }
-
-    public function verifyName(Request $request): RedirectResponse
-    {
-        $request->session()->forget(['resident_name_check', 'resident_identity', 'resident_code_sent', 'resident_verification']);
-        $validated = $request->validate([
-            'full_name' => ['required', 'string', 'min:3', 'max:255', 'regex:/\A[\pL\pM][\pL\pM\s.\'-]*\z/u'],
-        ]);
-        $name = Str::lower(Str::squish($validated['full_name']));
-        if ($this->matchingResidents($name)->isEmpty()) {
-            return redirect()->route('portal.registration.denied');
-        }
-
-        $request->session()->put('resident_name_check', ['name' => $name, 'expires_at' => now()->addMinutes(10)->timestamp]);
-        $request->session()->flash('resident_registration_continue', true);
-
-        return redirect()->route('portal.register');
-    }
-
-    public function confirmRecord(Request $request): RedirectResponse
-    {
-        $name = $this->nameProof($request);
-        if ($name === null) {
-            return redirect()->route('portal.register');
-        }
-        $validated = $request->validate([
-            'date_of_birth' => ['required', 'date_format:Y-m-d'],
-        ]);
-        $matches = $this->matchingResidents($name)->filter(
-            fn (Resident $resident): bool => $resident->date_of_birth->toDateString() === $validated['date_of_birth'],
-        );
-        if ($matches->isEmpty()) {
-            throw ValidationException::withMessages([
-                'date_of_birth' => __('Hindi tugma ang petsa ng kapanganakan sa barangay record. Suriin ang buwan, araw, at taon, o magpatulong sa barangay staff.'),
-            ]);
-        }
-        $request->session()->forget('resident_name_check');
-        if ($matches->count() !== 1) {
-            return redirect()->route('portal.registration.denied');
-        }
-        if ($matches->first()->portalAccount()->exists()) {
-            return redirect()->route('portal.registration.denied')->with('existing_account', true);
-        }
-        $request->session()->regenerate();
-        $request->session()->put('resident_identity', [
-            'resident_id' => $matches->first()->id,
-            'expires_at' => now()->addMinutes(10)->timestamp,
-        ]);
-        $request->session()->flash('resident_registration_continue', true);
-
-        return redirect()->route('portal.register');
-    }
-
-    public function sendCode(Request $request): RedirectResponse
-    {
-        $residentId = $this->identityProof($request);
-        if ($residentId === null) {
-            return redirect()->route('portal.registration.denied');
-        }
-        if (is_string($request->input('email'))) {
-            $request->merge(['email' => Str::lower(trim($request->input('email')))]);
-        }
-        $validated = $request->validate(['email' => ['required', 'string', 'email', 'max:255']]);
-        $email = $validated['email'];
-        if (! $this->emailDeliveryAvailable()) {
-            throw ValidationException::withMessages(['email' => __('Email delivery is not available. Please request an activation code from barangay staff.')]);
-        }
-
-        try {
-            $sentHash = DB::transaction(function () use ($residentId, $email): ?string {
-                $resident = Resident::query()->lockForUpdate()->find($residentId);
-                if (! $resident || $resident->status !== 'active' || $resident->portalAccount()->exists()
-                    || $resident->portal_registration_sent_at?->greaterThan(now()->subMinute())) {
-                    return null;
-                }
-                if (User::query()->whereRaw('LOWER(email) = ?', [$email])->exists()) {
-                    throw ValidationException::withMessages(['email' => __('This email cannot be used. Sign in or use account recovery if you already have an account.')]);
-                }
-                $code = Str::upper(Str::random(8));
-                $hash = hash('sha256', $code);
-                $resident->portal_registration_hash = $hash;
-                $resident->portal_registration_expires_at = now()->addDay();
-                $resident->portal_registration_email = $email;
-                $resident->portal_registration_sent_at = now();
-                $resident->save();
-                Notification::route('mail', $email)->notify((new ResidentPortalActivationNotification($resident->resident_number, $code))->locale(app()->getLocale()));
-
-                return $hash;
-            });
-        } catch (TransportExceptionInterface) {
-            throw ValidationException::withMessages(['email' => __('We could not send the activation email. Please try again later or request an activation code from barangay staff.')]);
-        }
-        if ($sentHash === null) {
-            return redirect()->route('portal.registration.denied');
-        }
-
-        $request->session()->forget('resident_identity');
-        $request->session()->put('resident_code_sent', [
-            'resident_id' => $residentId,
-            'hash' => $sentHash,
-            'sent_at' => now()->timestamp,
-        ]);
-        $request->session()->flash('resident_registration_continue', true);
-
-        return redirect()->route('portal.register')->with('status', __('If the details are eligible, an activation email has been sent. Check your inbox to continue.'));
     }
 
     public function verify(VerifyResidentAccountRequest $request): RedirectResponse
     {
-        $resident = Resident::query()->where('resident_number', $request->validated('resident_number'))->first();
         $code = trim($request->validated('activation_code'));
         $hash = hash('sha256', strlen($code) === 8 ? Str::upper($code) : $code);
-        if (! $resident || $resident->status !== 'active' || ! $resident->portal_registration_expires_at?->isFuture()
-            || ! hash_equals($resident->portal_registration_hash ?? '', $hash)) {
-            return redirect()->route('portal.registration.denied');
+
+        $outcome = DB::transaction(function () use ($request, $hash): string|Resident {
+            $resident = Resident::query()->where('resident_number', $request->validated('resident_number'))->lockForUpdate()->first();
+            if (! $resident || $resident->status !== 'active' || $resident->portal_registration_hash === null) {
+                return 'denied';
+            }
+            // Codes from the removed email self-service path carry a send time; staff-issued codes do not.
+            if ($resident->portal_registration_sent_at !== null) {
+                $this->clearCode($resident);
+                $this->events->handle('portal.activation.self-service-code-rejected', $resident->id);
+
+                return 'denied';
+            }
+            if (! $resident->portal_registration_expires_at?->isFuture()) {
+                $this->clearCode($resident);
+                $this->events->handle('portal.activation.expired', $resident->id);
+
+                return 'denied';
+            }
+            if (! hash_equals($resident->portal_registration_hash, $hash)) {
+                $key = $this->failureKey($resident);
+                Cache::add($key, 0, $resident->portal_registration_expires_at);
+                $failures = (int) Cache::increment($key);
+                $this->events->handle('portal.activation.failed', $resident->id);
+                if ($failures >= self::MAX_FAILED_ATTEMPTS) {
+                    Cache::forget($key);
+                    $this->clearCode($resident);
+                    $this->events->handle('portal.activation.locked', $resident->id);
+                }
+
+                return 'denied';
+            }
+            if ($resident->portalAccount()->exists()) {
+                return 'existing';
+            }
+            Cache::forget($this->failureKey($resident));
+            $this->events->handle('portal.activation.verified', $resident->id);
+
+            return $resident;
+        });
+
+        if (! $outcome instanceof Resident) {
+            $denied = redirect()->route('portal.registration.denied');
+
+            return $outcome === 'existing' ? $denied->with('existing_account', true) : $denied;
         }
-        if ($resident->portalAccount()->exists()) {
-            return redirect()->route('portal.registration.denied')->with('existing_account', true);
-        }
+
         $request->session()->regenerate();
         $request->session()->put('resident_verification', [
-            'resident_id' => $resident->id, 'hash' => $hash, 'expires_at' => now()->addMinutes(10)->timestamp,
+            'resident_id' => $outcome->id, 'hash' => $hash, 'expires_at' => now()->addMinutes(10)->timestamp,
         ]);
-        $request->session()->forget(['resident_name_check', 'resident_identity', 'resident_code_sent']);
         $request->session()->flash('resident_registration_continue', true);
 
         return redirect()->route('portal.register');
@@ -202,36 +114,21 @@ class ResidentRegistrationController extends Controller
 
     public function store(RegisterResidentAccountRequest $request): RedirectResponse
     {
-        $photoPath = null;
-        $oldPhotoPath = null;
         try {
-            $account = DB::transaction(function () use ($request, &$photoPath, &$oldPhotoPath): ?User {
+            $account = DB::transaction(function () use ($request): ?User {
                 $resident = $this->verifiedResident($request, true);
                 if (! $resident || $resident->portalAccount()->exists()) {
                     return null;
                 }
                 $email = $request->validated('email');
-                if ($resident->portal_registration_email !== null && $resident->portal_registration_email !== $email) {
-                    throw ValidationException::withMessages(['email' => __('Use the email address that received your activation code.')]);
-                }
                 if (User::query()->whereRaw('LOWER(email) = ?', [$email])->exists()) {
                     throw ValidationException::withMessages(['email' => __('This email cannot be used. Sign in or use account recovery if you already have an account.')]);
                 }
-                /** @var UploadedFile $photo */
-                $photo = $request->file('photo');
-                $storedPath = $photo->store('resident-photos', 'local');
-                if ($storedPath === false) {
-                    throw ValidationException::withMessages(['photo' => __('Hindi ma-save ang larawan. Pakisubukan ulit.')]);
-                }
-                $photoPath = $storedPath;
-                $oldPhotoPath = $resident->photo_path;
-                $resident->photo_path = $photoPath;
                 $account = new User(['name' => $resident->full_name, 'email' => $email, 'password' => $request->validated('password')]);
                 $account->role = 'resident';
                 $account->resident()->associate($resident);
                 $account->save();
-                $resident->portal_registration_email = null;
-                $resident->save();
+                $this->clearCode($resident);
                 DB::table('administrative_audits')->insert([
                     'user_id' => $account->id, 'actor' => $account->name, 'action' => 'portal.account.registered',
                     'type' => 'auth', 'record' => null, 'created_at' => now(), 'updated_at' => now(),
@@ -240,25 +137,36 @@ class ResidentRegistrationController extends Controller
                 return $account;
             });
         } catch (UniqueConstraintViolationException) {
-            if ($photoPath !== null) {
-                Storage::disk('local')->delete($photoPath);
-            }
             $account = null;
-        } catch (Throwable $exception) {
-            if ($photoPath !== null) {
-                Storage::disk('local')->delete($photoPath);
-            }
-            throw $exception;
         }
         $request->session()->forget('resident_verification');
         if (! $account) {
             return redirect()->route('portal.registration.denied');
         }
-        if ($oldPhotoPath !== null) {
-            DB::afterCommit(fn () => Storage::disk('local')->delete($oldPhotoPath));
+
+        try {
+            $account->notify((new ResidentEmailVerificationNotification)->locale(app()->getLocale()));
+        } catch (Throwable $exception) {
+            report($exception);
         }
 
-        return redirect()->route('portal.login')->with('status', __('Your resident account is ready. Sign in to request documents.'));
+        return redirect()->route('portal.login')
+            ->with('status', 'Your resident account is ready. Open the confirmation link we sent to your email, then sign in to request documents.');
+    }
+
+    /** A single-use code: cleared when it is used, expires, is rejected, or reaches the attempt limit. */
+    private function clearCode(Resident $resident): void
+    {
+        $resident->forceFill([
+            'portal_registration_hash' => null,
+            'portal_registration_expires_at' => null,
+            'portal_registration_email' => null,
+        ])->save();
+    }
+
+    private function failureKey(Resident $resident): string
+    {
+        return 'portal-activation-failures:'.$resident->id.':'.$resident->portal_registration_hash;
     }
 
     private function verifiedResident(Request $request, bool $lock = false): ?Resident
@@ -273,43 +181,5 @@ class ResidentRegistrationController extends Controller
 
         return $resident && $resident->status === 'active' && $resident->portal_registration_expires_at?->isFuture()
             && hash_equals($resident->portal_registration_hash ?? '', $proof['hash']) ? $resident : null;
-    }
-
-    private function nameProof(Request $request): ?string
-    {
-        $proof = $request->session()->get('resident_name_check');
-
-        return is_array($proof) && is_string($proof['name'] ?? null)
-            && is_int($proof['expires_at'] ?? null) && $proof['expires_at'] > now()->timestamp
-                ? $proof['name'] : null;
-    }
-
-    private function identityProof(Request $request): ?int
-    {
-        $proof = $request->session()->get('resident_identity');
-
-        return is_array($proof) && is_int($proof['resident_id'] ?? null) && $proof['resident_id'] > 0
-            && is_int($proof['expires_at'] ?? null) && $proof['expires_at'] > now()->timestamp
-                ? $proof['resident_id'] : null;
-    }
-
-    private function emailDeliveryAvailable(): bool
-    {
-        $transport = config('mail.mailers.'.config('mail.default').'.transport');
-
-        return in_array($transport, ['smtp', 'ses', 'ses-v2', 'postmark', 'resend', 'sendmail'], true);
-    }
-
-    /** @return Collection<int, Resident> */
-    private function matchingResidents(string $name): Collection
-    {
-        $firstWord = explode(' ', $name)[0];
-        $query = Resident::query()->where('status', 'active');
-        if (preg_match('/[^\x00-\x7F]/', $firstWord) !== 1) {
-            $query->whereRaw('LOWER(TRIM(first_name)) LIKE ?', [$firstWord.'%']);
-        }
-
-        return $query->get(['id', 'first_name', 'middle_name', 'last_name', 'suffix', 'date_of_birth'])
-            ->filter(fn (Resident $resident): bool => Str::lower(Str::squish($resident->full_name)) === $name);
     }
 }

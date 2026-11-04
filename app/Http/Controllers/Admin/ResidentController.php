@@ -115,6 +115,8 @@ class ResidentController extends Controller
             'is_active' => $account->is_active,
             'email' => Str::mask($account->email, '*', 1, max(1, strpos($account->email, '@') - 1)),
             'created_at' => $account->created_at?->toDateString(),
+            'email_verified' => $account->email_verified_at !== null,
+            'activation' => $account->portalActivationPath(),
             'last_login' => DB::table('administrative_audits')->where('user_id', $account->id)->where('action', 'auth.login')->max('created_at'),
         ] : ['registered' => false]);
 

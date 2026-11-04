@@ -12,7 +12,7 @@
                     <strong class="new-resident-reference">{{ $application->reference }}</strong>
                     @if($application->remarks)<div class="new-resident-review-note"><span data-portal-i18n="Review remarks">{{ __('Review remarks') }}</span><p>{{ $application->remarks }}</p></div>@endif
                     @if($application->status === 'approved')
-                        <p><span data-portal-i18n="Your resident registration is approved. Complete your portal account registration to receive an activation code.">{{ __('Your resident registration is approved. Complete your portal account registration to receive an activation code.') }}</span></p>
+                        <p><span data-portal-i18n="Your resident registration is approved. To open your portal account, visit the Barangay Hall with a valid ID. Staff will verify your identity and give you an activation code to enter on the registration page.">{{ __('Your resident registration is approved. To open your portal account, visit the Barangay Hall with a valid ID. Staff will verify your identity and give you an activation code to enter on the registration page.') }}</span></p>
                     @elseif($application->status === 'pending')
                         <p><span data-portal-i18n="No portal account has been created yet. Save your reference and return here using the same browser session to check the review.">{{ __('No portal account has been created yet. Save your reference and return here using the same browser session to check the review.') }}</span></p>
                     @endif

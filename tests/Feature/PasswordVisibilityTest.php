@@ -33,7 +33,7 @@ test('resident login passwords have localized visibility controls', function (st
 test('resident account setup has independent password and confirmation controls', function () {
     $resident = Resident::factory()->create(['status' => 'active', 'portal_registration_hash' => hash('sha256', 'ABCD1234'), 'portal_registration_expires_at' => now()->addDay()]);
     $this->post(route('portal.register.verify'), ['resident_number' => $resident->resident_number, 'activation_code' => 'ABCD1234']);
-    $response = $this->withCookie(config('session.cookie'), session()->getId())->get(route('portal.register'))->assertOk()->assertViewHas('verified', true);
+    $response = $this->withCookie(config('session.cookie'), session()->getId())->get(route('portal.register'))->assertOk()->assertViewHas('stage', 'account');
     assertPasswordToggleCoverage($response);
     $response->assertSee('data-password-toggle="registration-password"', false)->assertSee('data-password-toggle="registration-confirmation"', false);
 });

@@ -245,6 +245,38 @@ test('a private activation code cannot appear in another resident modal after na
   assert.equal(button.disabled, false);
 });
 
+test('issuing an activation code asks staff to confirm the in-person ID check and sends that confirmation', async () => {
+  const { context, fields } = await client();
+  const output = { isConnected: true, innerHTML: '' };
+  fields.set('resident-activation-result', output);
+  let prompt;
+  context.confirmAction = async (message, options) => { prompt = { message, options }; return true; };
+  let sent;
+  context.fetch = async (url, options) => { sent = { url, options }; return { ok: true, json: async () => ({ activation_code: 'ABCD2345', message: 'Code issued', expires_at: 'tomorrow' }) }; };
+  const button = { disabled: false, closest: () => ({ classList: { contains: () => true } }) };
+
+  await context.issuePortalActivation(7, button);
+
+  assert.match(prompt.message, /checked this resident's valid ID in person/);
+  assert.equal(prompt.options.confirmLabel, 'I checked the ID, issue code');
+  assert.equal(sent.url, '/staff/residents/7/portal-activation');
+  assert.deepEqual(JSON.parse(sent.options.body), { identity_checked: true });
+  assert.match(output.innerHTML, /ABCD2345/);
+});
+
+test('the portal account panel shows email confirmation and flags self-service activations for review', async () => {
+  const { context, fields } = await client();
+  const panel = { isConnected: true, innerHTML: '' };
+  fields.set('resident-portal-account', panel);
+  context.fetch = async () => ({ ok: true, json: async () => ({ status: 'active', portal_account: { registered: true, is_active: true, email: 'j***@example.test', created_at: '2026-11-01', last_login: null, email_verified: false, activation: 'email_self_service' } }) });
+
+  await context.loadResidentPortalAccount(3);
+
+  assert.match(panel.innerHTML, /Email confirmed: <strong>Not yet/);
+  assert.match(panel.innerHTML, /Activated with: <strong>Email self-service \(identity not checked by staff\)/);
+  assert.match(panel.innerHTML, /Check the resident&#39;s valid ID in person|Check the resident's valid ID in person/);
+});
+
 test('failed account save keeps the form open and releases the submit button', async () => {
   const { context, fields } = await client();
   for (const [id, value] of Object.entries({

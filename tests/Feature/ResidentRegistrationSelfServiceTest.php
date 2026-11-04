@@ -1,503 +1,244 @@
 <?php
 
+use App\Http\Controllers\ResidentRegistrationController;
 use App\Models\Resident;
 use App\Models\User;
+use App\Notifications\ResidentEmailVerificationNotification;
 use App\Notifications\ResidentPortalActivationNotification;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Notifications\AnonymousNotifiable;
+use Illuminate\Routing\Middleware\ThrottleRequests;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Facades\Storage;
-use Symfony\Component\Mailer\Exception\TransportException;
-use Tests\TestCase;
 
-test('account registration rejects a photo with a PDF filename extension', function () {
-    Storage::fake('local');
-    $resident = selfServiceResident([
-        'portal_registration_hash' => hash('sha256', 'ABCD1234'),
-        'portal_registration_expires_at' => now()->addHour(),
-    ]);
-    $this->post(route('portal.register.verify'), ['resident_number' => $resident->resident_number, 'activation_code' => 'ABCD1234'])
-        ->assertRedirect(route('portal.register'));
-    $photo = UploadedFile::fake()->image('photo.jpg');
-    $photo->name = 'photo.pdf';
-    $this->post(route('portal.register.store'), [
-        'email' => 'jane@example.test', 'password' => 'ResidentPassword123!',
-        'password_confirmation' => 'ResidentPassword123!', 'photo' => $photo,
-    ])->assertSessionHasErrors('photo');
-    expect($resident->portalAccount()->exists())->toBeFalse();
-    expect(Storage::disk('local')->allFiles())->toBeEmpty();
-});
+/*
+ * Resident Portal activation is staff-verified only. The former self-service path (full name → birth date →
+ * code sent to any email) let anyone who knew a resident's name and birth date take over that record; it was
+ * removed. These tests pin the closed path, the single-use staff code, and email confirmation before requests.
+ */
 
-test('email continuation opens activation inputs across refresh without granting verification', function () {
-    $url = route('portal.register', ['step' => 'activation']);
-    foreach (range(1, 2) as $visit) {
-        $this->get($url)->assertOk()->assertViewHas('stage', 'code')
-            ->assertSee('name="resident_number"', false)->assertSee('name="activation_code"', false)
-            ->assertDontSee('name="full_name"', false)->assertDontSee('name="password"', false)
-            ->assertSessionMissing('resident_verification');
-    }
-    $this->get(route('portal.register', ['step' => 'account']))->assertViewHas('stage', 'name');
-});
-
-test('activation continuation requires a valid code before opening account setup', function () {
-    $resident = selfServiceResident([
-        'portal_registration_hash' => hash('sha256', 'ABCD1234'),
-        'portal_registration_expires_at' => now()->addHour(),
-    ]);
-    $this->get(route('portal.register', ['step' => 'activation']))->assertViewHas('stage', 'code');
-    $this->post(route('portal.register.verify'), [
-        'resident_number' => $resident->resident_number, 'activation_code' => 'WRONG123',
-    ])->assertRedirect(route('portal.registration.denied'))->assertSessionMissing('resident_verification');
-    $this->post(route('portal.register.verify'), [
-        'resident_number' => $resident->resident_number, 'activation_code' => 'ABCD1234',
-    ])->assertRedirect(route('portal.register'));
-    $this->get(route('portal.register'))->assertViewHas('stage', 'account')->assertSee('name="password"', false);
-});
-
-function selfServiceResident(array $attributes = []): Resident
+function staffCodeResident(string $code = 'ABCD2345', array $attributes = []): Resident
 {
     return Resident::factory()->create([
-        'first_name' => 'Jane', 'middle_name' => 'A', 'last_name' => 'Santos',
-        'date_of_birth' => '1990-02-03', 'contact_number' => '0917-123-4567',
+        'first_name' => 'Jane', 'middle_name' => 'A', 'last_name' => 'Santos', 'date_of_birth' => '1990-02-03', 'status' => 'active',
+        'portal_registration_hash' => hash('sha256', $code), 'portal_registration_expires_at' => now()->addDay(),
         ...$attributes,
     ]);
 }
 
-function confirmSelfServiceRecord(TestCase $test): void
+function activationAttempt(Resident|string $resident, string $code): array
 {
-    $test->post(route('portal.register.name'), ['full_name' => '  jAnE   A   SANTOS  '])->assertRedirect(route('portal.register'));
-    $test->post(route('portal.register.confirm-record'), [
-        'date_of_birth' => '1990-02-03',
-    ])->assertRedirect(route('portal.register'));
+    return ['resident_number' => $resident instanceof Resident ? $resident->resident_number : $resident, 'activation_code' => $code];
 }
 
-test('existing record reaches email step after normalized name and official-detail confirmation', function () {
-    $resident = selfServiceResident();
-    config()->set('mail.default', 'smtp');
-
-    $this->get(route('portal.register'))->assertOk()->assertSee('Full name')->assertDontSee('name="email"', false);
-    $this->post(route('portal.register.name'), ['full_name' => '  jAnE   A   SANTOS  '])->assertRedirect(route('portal.register'));
-    $this->get(route('portal.register'))->assertSee('May nakitang record na posibleng sa inyo')->assertDontSee($resident->resident_number)
-        ->assertSee('name="date_of_birth"', false)->assertDontSee('name="contact_last_four"', false)
-        ->assertDontSee('Huling 4 na digit');
-    $this->post(route('portal.register.confirm-record'), [
-        'date_of_birth' => '1990-02-03',
-    ])->assertRedirect(route('portal.register'));
-    $this->get(route('portal.register'))->assertSee('Na-verify na ang resident record')->assertSee('Send activation code')
-        ->assertSee('Email verification')->assertSee('name="email"', false);
-    $this->assertDatabaseCount('residents', 1);
-    $this->assertDatabaseEmpty('users');
-});
-
-test('unavailable email delivery offers staff activation without an unusable send button', function () {
-    selfServiceResident();
-    config()->set('mail.default', 'log');
-    confirmSelfServiceRecord($this);
-
-    $this->get(route('portal.register'))->assertOk()
-        ->assertSee('Hindi makapagpadala ng activation code sa email ngayon')
-        ->assertSee('Email verification')
-        ->assertSee('Verify activation code')
-        ->assertDontSee('Send activation code')
-        ->assertDontSee('name="email"', false);
-});
-
-test('Unicode name case variants still match the official record', function () {
-    selfServiceResident(['first_name' => 'José']);
-    $this->post(route('portal.register.name'), ['full_name' => 'JOSÉ A SANTOS'])
-        ->assertRedirect(route('portal.register'));
-    $this->get(route('portal.register'))->assertSee('May nakitang record na posibleng sa inyo');
-});
-
-test('eligible resident receives a bound activation email and creates an account linked to the existing record', function () {
-    Storage::fake('local');
-    $resident = selfServiceResident();
+test('the removed self-service steps cannot be reached and look up no resident', function (string $path, array $input) {
     Notification::fake();
-    config()->set('mail.default', 'smtp');
-    confirmSelfServiceRecord($this);
+    config(['mail.default' => 'smtp']);
+    Resident::factory()->create(['first_name' => 'Jane', 'middle_name' => 'A', 'last_name' => 'Santos', 'date_of_birth' => '1990-02-03', 'status' => 'active']);
 
-    $this->post(route('portal.register.send-code'), ['email' => '  JANE@example.test  '])
-        ->assertRedirect(route('portal.register'));
-    $code = null;
-    Notification::assertSentOnDemand(ResidentPortalActivationNotification::class, function ($notification, $channels, AnonymousNotifiable $notifiable) use ($resident, &$code): bool {
-        $code = $notification->activationCode;
+    $real = $this->post($path, $input)->assertNotFound();
+    $fake = $this->post($path, ['full_name' => 'Nobody Here', 'date_of_birth' => '2000-01-01', 'email' => 'other@example.test'])->assertNotFound();
 
-        $mail = $notification->toMail($notifiable);
-
-        return $notifiable->routeNotificationFor('mail') === 'jane@example.test'
-            && $notification->residentNumber === $resident->resident_number
-            && $mail->viewData['residentNumber'] === $resident->resident_number
-            && $mail->viewData['activationCode'] === $notification->activationCode
-            && $mail->viewData['registrationUrl'] === route('portal.register', ['step' => 'activation'])
-            && in_array('mail', $channels, true);
-    });
-    expect($code)->toBeString()->toHaveLength(8)->toMatch('/^[A-Z0-9]{8}$/');
-    expect($resident->fresh()->portal_registration_hash)->toBe(hash('sha256', $code));
-    expect($resident->fresh()->portal_registration_email)->toBe('jane@example.test');
-    $this->assertDatabaseMissing('residents', ['id' => $resident->id, 'portal_registration_email' => 'jane@example.test']);
-    $this->get(route('portal.register'))->assertSee('I-check ang email ninyo')->assertDontSee($resident->resident_number)->assertDontSee($code);
-
-    $this->post(route('portal.register.verify'), ['resident_number' => $resident->resident_number, 'activation_code' => $code])
-        ->assertRedirect(route('portal.register'));
-    $this->get(route('portal.register'))->assertSee('Step 4 of 4')->assertSee('jane@example.test');
-    $this->post(route('portal.register.store'), [
-        'email' => 'jane@example.test', 'password' => 'ResidentPassword123!',
-        'password_confirmation' => 'ResidentPassword123!', 'photo' => UploadedFile::fake()->image('resident.jpg'),
-    ])->assertRedirect(route('portal.login'));
-
-    $this->assertDatabaseCount('residents', 1);
-    $this->assertDatabaseHas('users', ['resident_id' => $resident->id, 'email' => 'jane@example.test', 'role' => 'resident']);
-    expect($resident->fresh()->portal_registration_email)->toBeNull();
-});
-
-test('a resident can restart registration from the code screen without ending a staff session', function () {
-    $resident = selfServiceResident();
-    $staff = User::factory()->assignedOperations()->create(['role' => 'staff']);
-    $this->actingAs($staff);
-    Notification::fake();
-    config()->set('mail.default', 'smtp');
-    confirmSelfServiceRecord($this);
-    $this->post(route('portal.register.send-code'), ['email' => 'jane@example.test'])
-        ->assertRedirect(route('portal.register'));
-    $this->get(route('portal.register'))->assertSee('I-check ang email ninyo')->assertSee('Use a different email');
-    $this->post(route('portal.register.reset'))->assertRedirect(route('portal.register'));
-    $this->get(route('portal.register'))->assertSee('Full name')->assertDontSee('I-check ang email ninyo')
-        ->assertSessionMissing('resident_code_sent')
-        ->assertSessionMissing('resident_identity')
-        ->assertSessionMissing('resident_verification');
-    $this->assertAuthenticatedAs($staff);
-    expect($resident->fresh()->portal_registration_hash)->toBeNull()
-        ->and($resident->fresh()->portal_registration_email)->toBeNull()
-        ->and($resident->fresh()->portal_registration_sent_at)->toBeNull();
-
-    confirmSelfServiceRecord($this);
-    $this->post(route('portal.register.send-code'), ['email' => 'jane+new@example.test'])
-        ->assertRedirect(route('portal.register'));
-    expect($resident->fresh()->portal_registration_hash)->toBeString();
-    Notification::assertSentOnDemandTimes(ResidentPortalActivationNotification::class, 2);
-});
-
-test('refreshing registration clears the old step without revoking an emailed activation code', function () {
-    $resident = selfServiceResident();
-    $staff = User::factory()->assignedOperations()->create(['role' => 'staff']);
-    $this->actingAs($staff);
-    Notification::fake();
-    config()->set('mail.default', 'smtp');
-    confirmSelfServiceRecord($this);
-    $this->post(route('portal.register.send-code'), ['email' => 'jane@example.test'])
-        ->assertRedirect(route('portal.register'));
-    $code = null;
-    Notification::assertSentOnDemand(ResidentPortalActivationNotification::class, function ($notification) use (&$code): bool {
-        $code = $notification->activationCode;
-
-        return true;
-    });
-
-    $this->get(route('portal.register'))->assertSee('I-check ang email ninyo');
-    $this->get(route('portal.register'))->assertSee('Full name')->assertDontSee('I-check ang email ninyo')
-        ->assertSessionMissing('resident_name_check')
-        ->assertSessionMissing('resident_identity')
-        ->assertSessionMissing('resident_code_sent')
-        ->assertSessionMissing('resident_verification')
-        ->assertHeader('Cache-Control', 'max-age=0, must-revalidate, no-store, private');
-    $this->assertAuthenticatedAs($staff);
-    expect($resident->fresh()->portal_registration_hash)->toBe(hash('sha256', $code));
-
-    $this->post(route('portal.register.verify'), ['resident_number' => $resident->resident_number, 'activation_code' => $code])
-        ->assertRedirect(route('portal.register'));
-    $this->get(route('portal.register'))->assertSee('Step 4 of 4');
-});
-
-test('refreshing the account creation step removes the pending registration proof', function () {
-    $resident = selfServiceResident();
-    $code = 'staff-issued-code';
-    $resident->forceFill([
-        'portal_registration_hash' => hash('sha256', $code),
-        'portal_registration_expires_at' => now()->addHour(),
-    ])->save();
-    $this->post(route('portal.register.verify'), ['resident_number' => $resident->resident_number, 'activation_code' => $code])
-        ->assertRedirect(route('portal.register'));
-
-    $this->get(route('portal.register'))->assertSee('Step 4 of 4');
-    $this->get(route('portal.register'))->assertSee('Full name')->assertDontSee('Step 4 of 4')
-        ->assertSessionMissing('resident_verification');
-    $this->post(route('portal.register.store'), [
-        'email' => 'jane@example.test', 'password' => 'ResidentPassword123!',
-        'password_confirmation' => 'ResidentPassword123!', 'photo' => UploadedFile::fake()->image('resident.jpg'),
-    ])->assertRedirect(route('portal.registration.denied'));
-    $this->assertDatabaseEmpty('users');
-});
-
-test('registration validation errors show the current step once before a refresh clears it', function () {
-    selfServiceResident();
-    config()->set('mail.default', 'smtp');
-    confirmSelfServiceRecord($this);
-
-    $this->post(route('portal.register.send-code'), ['email' => 'not-an-email'])
-        ->assertSessionHasErrors('email');
-    $this->get(route('portal.register'))->assertSee('Send activation code');
-    $this->get(route('portal.register'))->assertSee('Full name')->assertDontSee('Send activation code')
-        ->assertSessionMissing('resident_identity');
-});
-
-test('starting over does not revoke a newer activation code from another session', function () {
-    $resident = selfServiceResident();
-    $newerHash = hash('sha256', 'newer-code');
-    $resident->portal_registration_hash = $newerHash;
-    $resident->portal_registration_expires_at = now()->addHours(2);
-    $resident->save();
-
-    $this->withSession(['resident_code_sent' => [
-        'resident_id' => $resident->id,
-        'hash' => hash('sha256', 'older-code'),
-        'sent_at' => now()->timestamp,
-    ]])->post(route('portal.register.reset'))->assertRedirect(route('portal.register'));
-
-    expect($resident->fresh()->portal_registration_hash)->toBe($newerHash);
-});
-
-test('unknown names reach assistance without creating residents or exposing record details', function () {
-    $resident = selfServiceResident();
-    $this->post(route('portal.register.name'), ['full_name' => 'Unknown Citizen'])
-        ->assertRedirect(route('portal.registration.denied'));
-    $this->get(route('portal.registration.denied'))
-        ->assertSee('Bagong lipat')->assertSee('valid ID')->assertDontSee($resident->full_name)
-        ->assertDontSee($resident->resident_number)->assertDontSee($resident->contact_number);
-    $this->post(route('portal.register.send-code'), ['email' => 'unknown@example.test'])
-        ->assertRedirect(route('portal.registration.denied'));
-    $this->assertDatabaseCount('residents', 1);
-    $this->assertDatabaseEmpty('users');
-});
-
-test('public name checks are rate limited before records can be enumerated', function () {
-    for ($attempt = 0; $attempt < 5; $attempt++) {
-        $this->post(route('portal.register.name'), ['full_name' => 'Unknown Citizen'])
-            ->assertRedirect(route('portal.registration.denied'));
-    }
-    $this->post(route('portal.register.name'), ['full_name' => 'Unknown Citizen'])->assertTooManyRequests();
-});
-
-test('an expired name confirmation cannot advance to email', function () {
-    selfServiceResident();
-    $this->post(route('portal.register.name'), ['full_name' => 'Jane A Santos'])->assertRedirect(route('portal.register'));
-    $this->travel(11)->minutes();
-    $this->post(route('portal.register.confirm-record'), ['date_of_birth' => '1990-02-03'])
-        ->assertRedirect(route('portal.register'));
-    $this->get(route('portal.register'))->assertSee('Full name')->assertDontSee('Send activation code');
-});
-
-test('inactive and archived residents cannot pass the public name check', function (string $condition) {
-    $resident = selfServiceResident();
-    if ($condition === 'inactive') {
-        $resident->update(['status' => 'inactive']);
-    } else {
-        $resident->delete();
-    }
-
-    $this->post(route('portal.register.name'), ['full_name' => 'Jane A Santos'])
-        ->assertRedirect(route('portal.registration.denied'));
-    $this->assertDatabaseEmpty('users');
-})->with(['inactive', 'archived']);
-
-test('wrong official details and identical records cannot select a resident arbitrarily', function (string $condition) {
-    selfServiceResident();
-    if ($condition === 'ambiguous') {
-        selfServiceResident(['contact_number' => '0999-888-1111']);
-    }
-    $this->post(route('portal.register.name'), ['full_name' => 'Jane A Santos'])->assertRedirect(route('portal.register'));
-    $response = $this->from(route('portal.register'))->post(route('portal.register.confirm-record'), [
-        'date_of_birth' => $condition === 'wrong' ? '1990-02-04' : '1990-02-03',
-    ]);
-    if ($condition === 'wrong') {
-        $response->assertRedirect(route('portal.register'))->assertSessionHasErrors('date_of_birth');
-    } else {
-        $response->assertRedirect(route('portal.registration.denied'));
-    }
-    $this->post(route('portal.register.send-code'), ['email' => 'jane@example.test'])
-        ->assertRedirect(route('portal.registration.denied'));
-    $this->assertDatabaseEmpty('users');
-})->with(['wrong', 'ambiguous']);
-
-test('a mismatched birthday stays on confirmation and can be corrected without repeating the name', function () {
-    selfServiceResident();
-    config()->set('mail.default', 'smtp');
-    $this->post(route('portal.register.name'), ['full_name' => 'Jane A Santos'])->assertRedirect(route('portal.register'));
-    $this->from(route('portal.register'))->post(route('portal.register.confirm-record'), ['date_of_birth' => '1990-02-04'])
-        ->assertRedirect(route('portal.register'))->assertSessionHasErrors([
-            'date_of_birth' => 'Your date of birth does not match the barangay record. Check the month, day, and year, or ask barangay staff for help.',
-        ]);
-    $this->get(route('portal.register'))->assertSee('Kumpirmahin ang details')->assertSee('value="1990-02-04"', false);
-    $this->post(route('portal.register.confirm-record'), ['date_of_birth' => '1990-02-03'])
-        ->assertRedirect(route('portal.register'));
-    $this->get(route('portal.register'))->assertSee('Na-verify na ang resident record')->assertSee('Send activation code');
-});
-
-test('same-name residents can be distinguished without disclosing matching records', function () {
-    $resident = selfServiceResident();
-    selfServiceResident(['date_of_birth' => '1981-01-01', 'contact_number' => '0999-888-1111']);
-    confirmSelfServiceRecord($this);
-
-    $this->get(route('portal.register'))->assertSee('Na-verify na ang resident record')
-        ->assertDontSee($resident->resident_number)->assertDontSee($resident->contact_number);
-});
-
-test('records without a contact number can confirm their birthday and reach email verification', function () {
-    $resident = selfServiceResident(['contact_number' => null]);
-    config()->set('mail.default', 'smtp');
-    confirmSelfServiceRecord($this);
-
-    $this->get(route('portal.register'))->assertSee('Na-verify na ang resident record')->assertSee('Send activation code')
-        ->assertSessionHas('resident_identity.resident_id', $resident->id);
-    $this->assertDatabaseEmpty('users');
-});
-
-test('birthday confirmation requires a valid date before email verification', function (array $details) {
-    selfServiceResident();
-    $this->post(route('portal.register.name'), ['full_name' => 'Jane A Santos'])->assertRedirect(route('portal.register'));
-    $this->post(route('portal.register.confirm-record'), $details)->assertSessionHasErrors('date_of_birth');
-    $this->post(route('portal.register.send-code'), ['email' => 'jane@example.test'])
-        ->assertRedirect(route('portal.registration.denied'));
+    expect($real->getContent())->toBe($fake->getContent());
+    expect(Resident::query()->whereNotNull('portal_registration_hash')->exists())->toBeFalse();
+    Notification::assertNothingSent();
     $this->assertDatabaseEmpty('users');
 })->with([
-    'missing birthday' => [[]],
-    'invalid birthday' => [['date_of_birth' => 'not-a-date']],
+    'name step' => ['/portal/register/name', ['full_name' => 'Jane A Santos']],
+    'birth date step' => ['/portal/register/confirm-record', ['date_of_birth' => '1990-02-03']],
+    'email code step' => ['/portal/register/send-code', ['email' => 'attacker@example.test']],
 ]);
 
-test('already linked residents and duplicate email addresses cannot receive a self-service code', function (string $condition) {
-    $resident = selfServiceResident();
-    if ($condition === 'account') {
-        User::factory()->resident()->create(['resident_id' => $resident->id]);
-        $this->post(route('portal.register.name'), ['full_name' => 'Jane A Santos'])->assertRedirect(route('portal.register'));
-        $this->post(route('portal.register.confirm-record'), ['date_of_birth' => '1990-02-03'])
-            ->assertRedirect(route('portal.registration.denied'))->assertSessionHas('existing_account', true);
-        $this->get(route('portal.registration.denied'))->assertSee('May online account na')
-            ->assertDontSee('Bagong lipat kayo at wala pa ang record');
-    } else {
-        User::factory()->assignedOperations()->create(['email' => 'JANE@example.test']);
-        Notification::fake();
-        config()->set('mail.default', 'smtp');
-        confirmSelfServiceRecord($this);
-        $this->post(route('portal.register.send-code'), ['email' => 'jane@example.test'])
-            ->assertSessionHasErrors('email');
-        Notification::assertNothingSent();
-    }
-    expect($resident->fresh()->portal_registration_hash)->toBeNull();
-})->with(['account', 'email']);
-
-test('email issuance rechecks the resident if an account was linked after confirmation', function () {
-    $resident = selfServiceResident();
+test('a forged session from the old flow cannot obtain a code or an account', function () {
     Notification::fake();
-    config()->set('mail.default', 'smtp');
-    confirmSelfServiceRecord($this);
-    User::factory()->resident()->create(['resident_id' => $resident->id]);
-
-    $this->post(route('portal.register.send-code'), ['email' => 'jane@example.test'])
+    $resident = Resident::factory()->create(['status' => 'active']);
+    $this->withSession(['resident_identity' => ['resident_id' => $resident->id, 'expires_at' => now()->addMinutes(10)->timestamp]])
+        ->post('/portal/register/send-code', ['email' => 'attacker@example.test'])->assertNotFound();
+    $this->withSession(['resident_identity' => ['resident_id' => $resident->id, 'expires_at' => now()->addMinutes(10)->timestamp]])
+        ->post(route('portal.register.store'), ['email' => 'attacker@example.test', 'password' => 'ResidentPassword123!', 'password_confirmation' => 'ResidentPassword123!'])
         ->assertRedirect(route('portal.registration.denied'));
+
+    expect($resident->fresh()->portal_registration_hash)->toBeNull();
+    $this->assertDatabaseEmpty('users');
     Notification::assertNothingSent();
-    expect($resident->fresh()->portal_registration_hash)->toBeNull();
 });
 
-test('the log mail transport never writes an activation code to application logs', function () {
-    $resident = selfServiceResident();
-    confirmSelfServiceRecord($this);
-    $this->post(route('portal.register.send-code'), ['email' => 'jane@example.test'])
-        ->assertSessionHasErrors('email');
-    expect($resident->fresh()->portal_registration_hash)->toBeNull();
-});
+test('the registration page offers only the staff-issued activation code path', function (string $locale) {
+    $response = $this->withCookie('portal_locale', $locale)->get(route('portal.register'))->assertOk()->assertViewHas('stage', 'code');
+    $document = new DOMDocument;
+    @$document->loadHTML($response->getContent());
+    $xpath = new DOMXPath($document);
+    $fields = collect($xpath->query('//section[contains(@class,"rp-form-card")]//form//input[not(@type="hidden")]'))->map(fn (DOMElement $input): string => $input->getAttribute('name'))->all();
 
-test('SMTP failure shows a safe error and preserves an existing activation code', function () {
-    $resident = selfServiceResident();
-    $previousHash = hash('sha256', 'previous-staff-code');
-    $resident->portal_registration_hash = $previousHash;
-    $resident->portal_registration_expires_at = now()->addHours(2);
-    $resident->save();
-    config()->set('mail.default', 'smtp');
-    confirmSelfServiceRecord($this);
-    Notification::shouldReceive('send')->once()
-        ->andThrow(new TransportException('535 Username and Password not accepted'));
+    expect($fields)->toBe(['resident_number', 'activation_code'])
+        ->and($xpath->query('//input[@name="full_name" or @name="date_of_birth" or @name="photo"]'))->toHaveCount(0)
+        ->and($xpath->query('//label[@for="resident-number"]'))->toHaveCount(1)
+        ->and($xpath->query('//label[@for="activation-code"]'))->toHaveCount(1);
+    $response->assertSee($locale === 'fil' ? 'Ive-verify ng awtorisadong barangay staff ang identity ninyo.' : 'Authorized barangay staff will verify your identity.')
+        ->assertSee($locale === 'fil' ? 'Isang beses lang ito magagamit at valid nang 24 oras.' : 'The code works once and is valid for 24 hours.')
+        ->assertSee(route('portal.new-resident.create'));
+})->with(['en', 'fil']);
 
-    $this->from(route('portal.register'))
-        ->post(route('portal.register.send-code'), ['email' => 'jane@example.test'])
-        ->assertRedirect(route('portal.register'))
-        ->assertSessionHasErrors(['email' => 'We could not send the activation email. Please try again later or request an activation code from barangay staff.']);
+test('every refused code looks the same, so a resident number cannot be confirmed', function () {
+    $this->withoutMiddleware(ThrottleRequests::class);
+    $withCode = staffCodeResident();
+    $withoutCode = Resident::factory()->create(['status' => 'active']);
+    $expired = staffCodeResident('EXPIRE11', ['portal_registration_expires_at' => now()->subMinute()]);
+    $inactive = staffCodeResident('INACTIVE', ['status' => 'inactive']);
 
-    expect($resident->fresh()->portal_registration_hash)->toBe($previousHash)
-        ->and($resident->fresh()->portal_registration_email)->toBeNull()
-        ->and($resident->fresh()->portal_registration_sent_at)->toBeNull();
-});
+    $responses = collect([
+        activationAttempt('ANB-2026-DOESNOTEXIST', 'ABCD2345'),
+        activationAttempt($withoutCode, 'ABCD2345'),
+        activationAttempt($withCode, 'WRONG999'),
+        activationAttempt($expired, 'EXPIRE11'),
+        activationAttempt($inactive, 'INACTIVE'),
+    ])->map(function (array $attempt): array {
+        $response = $this->post(route('portal.register.verify'), $attempt);
 
-test('publicly issued codes remain bound to the receiving email and expire', function () {
-    $resident = selfServiceResident();
-    Notification::fake();
-    config()->set('mail.default', 'smtp');
-    confirmSelfServiceRecord($this);
-    $this->post(route('portal.register.send-code'), ['email' => 'jane@example.test'])->assertRedirect(route('portal.register'));
-    $code = null;
-    Notification::assertSentOnDemand(ResidentPortalActivationNotification::class, function ($notification) use (&$code): bool {
-        $code = $notification->activationCode;
-
-        return true;
+        return [$response->getStatusCode(), $response->headers->get('Location'), session()->has('existing_account'), session()->has('resident_verification')];
     });
-    $this->post(route('portal.register.verify'), ['resident_number' => $resident->resident_number, 'activation_code' => 'wrong-code'])
-        ->assertRedirect(route('portal.registration.denied'));
-    $this->post(route('portal.register.verify'), ['resident_number' => $resident->resident_number, 'activation_code' => $code])
-        ->assertRedirect(route('portal.register'));
-    $this->post(route('portal.register.store'), [
-        'email' => 'other@example.test', 'password' => 'ResidentPassword123!',
-        'password_confirmation' => 'ResidentPassword123!', 'photo' => UploadedFile::fake()->image('resident.jpg'),
-    ])->assertSessionHasErrors('email');
+
+    expect($responses->unique()->values()->all())->toBe([[302, route('portal.registration.denied'), false, false]]);
+    $this->get(route('portal.registration.denied'))->assertOk()
+        ->assertDontSee($withCode->full_name)->assertDontSee('1990-02-03')->assertDontSee($withCode->resident_number);
+});
+
+test('a code stops working after five wrong attempts, and attempts are audited without the code', function () {
+    $this->withoutMiddleware(ThrottleRequests::class);
+    $resident = staffCodeResident('RIGHT234');
+
+    for ($attempt = 1; $attempt <= ResidentRegistrationController::MAX_FAILED_ATTEMPTS; $attempt++) {
+        $this->post(route('portal.register.verify'), activationAttempt($resident, 'WRONG'.$attempt))->assertRedirect(route('portal.registration.denied'));
+    }
+    $this->post(route('portal.register.verify'), activationAttempt($resident, 'RIGHT234'))
+        ->assertRedirect(route('portal.registration.denied'))->assertSessionMissing('resident_verification');
+
+    expect($resident->fresh()->portal_registration_hash)->toBeNull();
+    expect(DB::table('administrative_audits')->where('action', 'portal.activation.failed')->where('record', 'resident:'.$resident->id)->count())->toBe(5);
+    $this->assertDatabaseHas('administrative_audits', ['action' => 'portal.activation.locked', 'record' => 'resident:'.$resident->id]);
+    expect(DB::table('administrative_audits')->get()->toJson())->not->toContain('RIGHT234')->not->toContain('WRONG1')->not->toContain(hash('sha256', 'RIGHT234'));
+});
+
+test('the public verification step is rate limited per address', function () {
+    for ($attempt = 0; $attempt < 5; $attempt++) {
+        $this->post(route('portal.register.verify'), activationAttempt('UNKNOWN', 'UNKNOWN1'))->assertRedirect();
+    }
+    $this->post(route('portal.register.verify'), activationAttempt('UNKNOWN', 'UNKNOWN1'))->assertTooManyRequests();
+});
+
+test('an expired code is rejected, cleared and audited', function () {
+    $resident = staffCodeResident('LATE2345');
+    $this->travel(25)->hours();
+
+    $this->post(route('portal.register.verify'), activationAttempt($resident, 'LATE2345'))->assertRedirect(route('portal.registration.denied'));
+
+    expect($resident->fresh()->portal_registration_hash)->toBeNull();
+    $this->assertDatabaseHas('administrative_audits', ['action' => 'portal.activation.expired', 'record' => 'resident:'.$resident->id]);
+});
+
+test('a code sent by the removed email self-service step no longer activates an account', function () {
+    $resident = staffCodeResident('EMAIL234', ['portal_registration_sent_at' => now()->subHour(), 'portal_registration_email' => 'attacker@example.test']);
+
+    $this->post(route('portal.register.verify'), activationAttempt($resident, 'EMAIL234'))
+        ->assertRedirect(route('portal.registration.denied'))->assertSessionMissing('resident_verification');
+
+    expect($resident->fresh())->portal_registration_hash->toBeNull()->portal_registration_email->toBeNull();
+    $this->assertDatabaseHas('administrative_audits', ['action' => 'portal.activation.self-service-code-rejected', 'record' => 'resident:'.$resident->id]);
     $this->assertDatabaseEmpty('users');
-
-    $resident->forceFill(['portal_registration_expires_at' => now()->subMinute()])->save();
-    $this->post(route('portal.register.store'), [
-        'email' => 'jane@example.test', 'password' => 'ResidentPassword123!',
-        'password_confirmation' => 'ResidentPassword123!', 'photo' => UploadedFile::fake()->image('resident.jpg'),
-    ])->assertRedirect(route('portal.registration.denied'));
-    $this->assertDatabaseEmpty('users');
 });
 
-test('self-service requests are throttled and cannot immediately rotate a code', function () {
-    $resident = selfServiceResident();
+test('two sessions holding the same code cannot both claim the record', function () {
     Notification::fake();
-    config()->set('mail.default', 'smtp');
-    confirmSelfServiceRecord($this);
-    $identityProof = session('resident_identity');
-    $this->post(route('portal.register.send-code'), ['email' => 'jane@example.test'])->assertRedirect(route('portal.register'));
-    $hash = $resident->fresh()->portal_registration_hash;
-    $this->withSession(['resident_identity' => $identityProof])->post(route('portal.register.send-code'), ['email' => 'jane@example.test'])
+    $resident = staffCodeResident('SHARED23');
+    $this->post(route('portal.register.verify'), activationAttempt($resident, 'SHARED23'))->assertRedirect(route('portal.register'));
+    $proof = session('resident_verification');
+    $input = ['password' => 'ResidentPassword123!', 'password_confirmation' => 'ResidentPassword123!'];
+
+    $this->post(route('portal.register.store'), ['email' => 'first@example.test', ...$input])->assertRedirect(route('portal.login'));
+    $this->withSession(['resident_verification' => $proof])->post(route('portal.register.store'), ['email' => 'second@example.test', ...$input])
         ->assertRedirect(route('portal.registration.denied'));
-    expect($resident->fresh()->portal_registration_hash)->toBe($hash);
-    Notification::assertSentOnDemandOnce(ResidentPortalActivationNotification::class);
+
+    expect(User::query()->where('resident_id', $resident->id)->pluck('email')->all())->toBe(['first@example.test']);
 });
 
-test('a later self-service request rotates the code and invalidates the previous one', function () {
-    $resident = selfServiceResident();
+test('staff need the activation permission and an in-person ID confirmation to issue a code', function () {
+    $resident = Resident::factory()->create(['status' => 'active']);
+    $this->actingAs(User::factory()->create(['role' => 'staff', 'staff_permissions' => ['records.view', 'records.update']]))
+        ->postJson(route('staff.residents.portal-activation', $resident), ['identity_checked' => true])->assertForbidden();
+    $this->actingAs(User::factory()->create(['role' => 'staff', 'staff_permissions' => ['records.view', 'records.activate']]))
+        ->postJson(route('staff.residents.portal-activation', $resident), ['identity_checked' => false])->assertJsonValidationErrors('identity_checked');
+    expect($resident->fresh()->portal_registration_hash)->toBeNull();
+
+    $code = $this->postJson(route('staff.residents.portal-activation', $resident), ['identity_checked' => true])->assertOk()->json('activation_code');
     Notification::fake();
-    config()->set('mail.default', 'smtp');
-    confirmSelfServiceRecord($this);
-    $this->post(route('portal.register.send-code'), ['email' => 'jane@example.test'])->assertRedirect(route('portal.register'));
-    $oldHash = $resident->fresh()->portal_registration_hash;
-
-    $this->travel(61)->seconds();
-    confirmSelfServiceRecord($this);
-    $this->post(route('portal.register.send-code'), ['email' => 'jane@example.test'])->assertRedirect(route('portal.register'));
-
-    expect($resident->fresh()->portal_registration_hash)->not->toBe($oldHash);
-    Notification::assertSentOnDemandTimes(ResidentPortalActivationNotification::class, 2);
+    $this->post(route('portal.register.verify'), activationAttempt($resident, $code))->assertRedirect(route('portal.register'));
+    $this->post(route('portal.register.store'), ['email' => 'jane@example.test', 'password' => 'ResidentPassword123!', 'password_confirmation' => 'ResidentPassword123!'])
+        ->assertRedirect(route('portal.login'));
+    expect($resident->fresh()->portalAccount()->sole()->email)->toBe('jane@example.test');
+    Notification::assertNotSentTo(new AnonymousNotifiable, ResidentPortalActivationNotification::class);
 });
 
-test('staff-issued activation replaces an emailed code without retaining its email binding', function () {
-    $resident = selfServiceResident();
+test('an unconfirmed email cannot request documents, and confirming it opens requests', function () {
+    $account = User::factory()->resident()->create(['email_verified_at' => null]);
+    $request = ['document_type' => 'Certificate of Residency', 'purpose' => 'Employment'];
+
+    $this->actingAs($account, 'resident')->get(route('portal.request.create'))->assertForbidden()
+        ->assertSee('Confirm your email address before requesting documents')->assertSee(route('portal.verification.send'));
+    $this->postJson(route('portal.request.store'), $request)->assertForbidden();
+    $this->assertDatabaseEmpty('document_requests');
+
+    $this->get(ResidentEmailVerificationNotification::verificationUrl($account))->assertRedirect(route('portal.request.create'));
+    expect($account->fresh()->email_verified_at)->not->toBeNull();
+    $this->assertDatabaseHas('administrative_audits', ['action' => 'portal.email.verified', 'user_id' => $account->id]);
+    $this->postJson(route('portal.request.store'), $request)->assertOk();
+    $this->assertDatabaseCount('document_requests', 1);
+});
+
+test('confirmation links must be signed, unexpired and match the account email', function (string $case) {
+    $account = User::factory()->resident()->create(['email_verified_at' => null, 'email' => 'jane@example.test']);
+    $url = match ($case) {
+        'unsigned' => route('portal.verification.verify', ['account' => $account->id, 'hash' => sha1('jane@example.test')]),
+        'other email' => ResidentEmailVerificationNotification::verificationUrl($account->replicate()->forceFill(['id' => $account->id, 'email' => 'old@example.test'])),
+        'expired' => ResidentEmailVerificationNotification::verificationUrl($account),
+        'staff account' => ResidentEmailVerificationNotification::verificationUrl(User::factory()->assignedOperations()->create(['email_verified_at' => null])),
+    };
+    if ($case === 'expired') {
+        $this->travel(61)->minutes();
+    }
+
+    $this->get($url)->assertForbidden();
+    expect($account->fresh()->email_verified_at)->toBeNull();
+})->with(['unsigned', 'other email', 'expired', 'staff account']);
+
+test('a signed-in resident can ask for a new confirmation link, within a limit', function () {
     Notification::fake();
-    config()->set('mail.default', 'smtp');
-    confirmSelfServiceRecord($this);
-    $this->post(route('portal.register.send-code'), ['email' => 'jane@example.test'])->assertRedirect(route('portal.register'));
-    $oldHash = $resident->fresh()->portal_registration_hash;
+    $account = User::factory()->resident()->create(['email_verified_at' => null]);
 
-    $staff = User::factory()->assignedOperations()->create(['role' => 'staff']);
-    $this->actingAs($staff)->postJson(route('staff.residents.portal-activation', $resident))->assertOk();
+    for ($attempt = 0; $attempt < 3; $attempt++) {
+        $this->actingAs($account, 'resident')->post(route('portal.verification.send'))->assertRedirect();
+    }
+    $this->post(route('portal.verification.send'))->assertTooManyRequests();
+    Notification::assertSentToTimes($account, ResidentEmailVerificationNotification::class, 3);
+    $this->post(route('portal.logout'));
+    $this->post(route('portal.verification.send'))->assertRedirect(route('portal.login'));
+});
 
-    expect($resident->fresh()->portal_registration_hash)->not->toBe($oldHash)
-        ->and($resident->fresh()->portal_registration_email)->toBeNull()
-        ->and($resident->fresh()->portal_registration_sent_at)->toBeNull();
+test('existing accounts are classified for staff review without names or emails', function () {
+    $selfService = User::factory()->resident()->create(['email' => 'self@example.test']);
+    $selfService->resident->forceFill(['portal_registration_sent_at' => now()->subDays(3)])->save();
+    $staffCode = User::factory()->resident()->create(['email' => 'staff-code@example.test']);
+    DB::table('administrative_audits')->insert(['user_id' => $staffCode->id, 'actor' => $staffCode->name, 'action' => 'portal.account.registered', 'type' => 'auth', 'record' => null, 'created_at' => now(), 'updated_at' => now()]);
+    $unknown = User::factory()->resident()->create(['email' => 'seeded@example.test']);
+
+    expect([$selfService->portalActivationPath(), $staffCode->portalActivationPath(), $unknown->portalActivationPath()])
+        ->toBe(['email_self_service', 'staff_code', 'unknown']);
+    $this->actingAs(User::factory()->assignedOperations()->create())->getJson(route('staff.residents.show', $selfService->resident))
+        ->assertJsonPath('portal_account.activation', 'email_self_service')->assertJsonPath('portal_account.email_verified', true);
+
+    Artisan::call('portal:unverified-accounts');
+    $output = Artisan::output();
+    expect($output)->toContain('email self-service: 1', 'not recorded: 1', $selfService->resident->resident_number, $unknown->resident->resident_number)
+        ->not->toContain($staffCode->resident->resident_number)
+        ->not->toContain('self@example.test', 'seeded@example.test', $selfService->name, $unknown->name);
+    expect($selfService->fresh()->is_active)->toBeTrue();
 });
