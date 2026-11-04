@@ -10,6 +10,14 @@ test('fee labels read as free or as formatted pesos', function () {
         ->and(CertificateType::BusinessClearance->feeLabel())->toBe('PHP 200.00');
 });
 
+test('Filipino mode shows each official document name exactly as printed on the certificate', function () {
+    $filipino = json_decode(file_get_contents(dirname(__DIR__, 2).'/lang/fil.json'), true, flags: JSON_THROW_ON_ERROR);
+
+    foreach (CertificateType::cases() as $type) {
+        expect($filipino[$type->value] ?? $type->value)->toBe($type->value);
+    }
+});
+
 test('the fee schedule lists every certificate and marks only the business clearance fee as unconfirmed', function () {
     $schedule = CertificateType::feeSchedule();
 

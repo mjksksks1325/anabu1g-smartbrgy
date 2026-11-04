@@ -520,6 +520,18 @@ The copy had 50 residents, 30 voters, 14 incidents and 12 file movements.
 - Resident Records, Incidents and Audit tables, and the Certificates Request Board, were not re-examined at component level this session.
 - The Resident Portal dark theme was not reviewed in this work group.
 
+## Role access and Filipino language (sessions 14–15, 2026-11-04)
+
+Full audit, matrix and exact proposals: [ROLE_ACCESS_AND_FILIPINO_AUDIT.md](ROLE_ACCESS_AND_FILIPINO_AUDIT.md).
+
+| Item | Status |
+|---|---|
+| **R1** Captain could change a Super Admin's email and password and sign in as Super Admin (probed). | `NEW` (approved). Non–Super Admins get 403 on Super Admin accounts, and the attempt is audited (`security.super-admin-account.change-denied`). Only the owner changes a Super Admin's email or password. UI hides or locks accordingly. Regression tests; browser-verified on an isolated copy. |
+| **R6** Add Purok shown to staff who cannot save it. | `NEW` (approved). Button requires `records.create`, as the server does. |
+| **R13** Two Filipino-only server messages in English mode. | `NEW`. |
+| Filipino style (simple Taglish, official document names as printed, consistent terms). | `NEW` for 98 high-visibility entries; remaining entries follow the same rules later. |
+| R2 VAWC by explicit assignment · R3 Captain admin scope · R4 password reset links · R5 four-eyes restrictions · R7 retire legacy roles · R8 Captain suspend button · R9 photos for demographics-only staff · R10 Kagawad/VAW desk split · R11 Secretary split · R12 paginated certificate board | `APPROVAL` — exact code changes listed in the audit document. |
+
 ## Decisions and proposals
 
 ### Import (approved 2026-11-03) — `NEW`

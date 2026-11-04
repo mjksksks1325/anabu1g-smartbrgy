@@ -1823,5 +1823,11 @@
     "New announcement": "New announcement",
     "Optional image · up to 5 MB. Drafts stay staff-only until published.": "Optional image · up to 5 MB. Drafts stay staff-only until published.",
     "Select New announcement to write one.": "Select New announcement to write one.",
-    "Published announcements appear on the resident portal.": "Published announcements appear on the resident portal."
+    "Published announcements appear on the resident portal.": "Published announcements appear on the resident portal.",
+    "Population Demographics": "Population Demographics",
+    "There is already an active Barangay Captain. Move that designation first before assigning another.": "There is already an active Barangay Captain. Move that designation first before assigning another.",
+    "You cannot remove or suspend your own Captain access. Ask another administrator to update it.": "You cannot remove or suspend your own Captain access. Ask another administrator to update it.",
+    "Only this Super Admin can change their own password. Use the password reset link or the server command.": "Only this Super Admin can change their own password. Use the password reset link or the server command.",
+    "Only this Super Admin can change their own email address.": "Only this Super Admin can change their own email address.",
+    "Only this Super Admin can change their own email address and password. Use the password reset link or the server command.": "Only this Super Admin can change their own email address and password. Use the password reset link or the server command."
 }

@@ -149,7 +149,7 @@ test('activation account setup login requests profile and logout retain language
     $this->postJson(route('portal.request.store'), ['document_type' => CertificateType::CertificateOfResidency->value, 'purpose' => 'Employment'])->assertForbidden();
     $this->get(ResidentEmailVerificationNotification::verificationUrl(User::query()->where('email', $input['email'])->sole()))
         ->assertRedirect(route('portal.request.create'));
-    $this->get(route('portal.request.create'))->assertOk()->assertSee($locale === 'fil' ? 'Katibayan ng Paninirahan' : 'Certificate of Residency');
+    $this->get(route('portal.request.create'))->assertOk()->assertSee('Certificate of Residency')->assertDontSee('Katibayan ng Paninirahan');
     $this->postJson(route('portal.request.store'), ['document_type' => CertificateType::CertificateOfResidency->value, 'purpose' => 'Employment'])
         ->assertOk()->assertJsonPath('message', $locale === 'fil' ? 'Matagumpay na na-submit ang request ng dokumento.' : 'Document request submitted successfully.');
     $request = $resident->documentRequests()->sole();
