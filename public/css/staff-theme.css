@@ -921,4 +921,12 @@ body[data-personnel-layout="admin"] .modal .form-conflict { margin: 0 0 16px; pa
 html[data-theme=dark] body[data-personnel-layout="admin"] .modal .form-conflict, body:not(.light-mode)[data-personnel-layout="admin"] .modal .form-conflict { border-color: #8a6a22; background: #3a2d0c; color: #f5dfa6; }
 body[data-personnel-layout="admin"] .modal .form-conflict p { margin: 0 0 8px; }
 body[data-personnel-layout="admin"] .modal .form-conflict-list { margin: 0 0 10px; padding-left: 18px; }
-body[data-personnel-layout="admin"] .modal .form-conflict-list span { color: inherit; opacity: .8; }
+body[data-personnel-layout="admin"] .modal .form-conflict-list span { color: inherit; opacity: .8; }/* Incident Reports: report counts per status; each chip applies that status filter. */
+body #app.admin-interface .incident-status-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 14px; }
+body #app.admin-interface .incident-status-strip:empty { display: none; }
+body #app.admin-interface .incident-status-strip-label { margin-right: 4px; color: var(--staff-muted, var(--text-muted)); font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+body #app.admin-interface .incident-status-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 5px 8px 5px 12px; border: 1px solid var(--staff-row, var(--border)); border-radius: 999px; background: var(--staff-card, var(--bg-card)); color: inherit; font: 600 13px var(--civic-font-body, inherit); cursor: pointer; }
+body #app.admin-interface .incident-status-chip:hover { border-color: var(--staff-quiet-border, var(--border)); background: var(--staff-soft, var(--bg-glass)); }
+body #app.admin-interface .incident-status-chip[aria-pressed="true"] { border-color: currentColor; box-shadow: inset 0 0 0 1px currentColor; }
+body #app.admin-interface .incident-status-chip:focus-visible { outline: 3px solid var(--staff-focus, #2563eb); outline-offset: 2px; }
+body #app.admin-interface .incident-status-chip .badge { min-width: 28px; justify-content: center; }

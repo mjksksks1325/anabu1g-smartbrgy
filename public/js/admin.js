@@ -3808,9 +3808,13 @@ function legacyEnglishSaveResident() {
   populateEligResidentDropdown(null);
 }
 
+/** Only the newest incident list request may render; a slower earlier one must not overwrite it. */
+let incidentLoadVersion = 0;
+
 async function loadIncidents(page = 1) {
   const tbody = document.getElementById('incidents-tbody');
   if (!tbody) return;
+  const version = ++incidentLoadVersion;
   tbody.innerHTML = '<tr><td colspan="8" class="resident-table-message">Loading incident reports...</td></tr>';
   const query = new URLSearchParams({ page: String(page), per_page: '15' });
   const search = document.getElementById('incident-search')?.value.trim();
@@ -3819,6 +3823,7 @@ async function loadIncidents(page = 1) {
   if (search) query.set('search', search);
   if (status) query.set('status', status);
   if (severity) query.set('severity', severity);
+  if (incidentProtectionOrderFilter) query.set('protection_order', '1');
   for (const [id, parameter] of [['incident-date-from', 'date_from'], ['incident-date-to', 'date_to'], ['incident-assignee-filter', 'assigned_to']]) {
     const value = document.getElementById(id)?.value;
     if (value) query.set(parameter, value);
@@ -3827,6 +3832,7 @@ async function loadIncidents(page = 1) {
   try {
     const response = await fetch(`/staff/incidents?${query}`, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
     const payload = await response.json();
+    if (version !== incidentLoadVersion) return;
     if (!response.ok) throw new Error(payload?.message || 'Hindi ma-load ang incident reports.');
     INCIDENTS.splice(0, INCIDENTS.length, ...(payload.data || []));
     incidentCurrentPage = Number(payload.current_page || 1);
@@ -3834,6 +3840,7 @@ async function loadIncidents(page = 1) {
     renderIncidents(payload.total || 0);
     updateIncidentSummary(payload.summary || {});
   } catch (error) {
+    if (version !== incidentLoadVersion) return;
     tbody.innerHTML = `<tr><td colspan="8" class="resident-table-message resident-table-error">${listErrorMarkup(error, 'loadIncidents(incidentCurrentPage)')}</td></tr>`;
     markStatsUnavailable(['inc-stat-pending', 'inc-stat-resolved', 'inc-stat-high']);
   }
@@ -3903,6 +3910,43 @@ function updateIncidentSummary(summary) {
   set('inc-stat-pending', summary.pending);
   set('inc-stat-resolved', summary.resolved_this_month);
   set('inc-stat-high', summary.high);
+  renderIncidentStatusStrip(summary);
+}
+
+/** Current statuses always show; legacy ones only when reports still carry them. */
+const INCIDENT_STATUS_CHIPS = [
+  ['open', 'Open'], ['under_review', 'Under review'], ['referred', 'Referred'], ['resolved', 'Resolved'], ['closed', 'Closed'],
+  ['pending', 'Pending (legacy)'], ['under_investigation', 'Under investigation (legacy)'], ['dismissed', 'Dismissed (legacy)'],
+];
+let incidentProtectionOrderFilter = false;
+
+/**
+ * Report counts per status (over every report the viewer may see, like the cards above). Each chip applies
+ * the matching status filter. The protection-order chip exists only when the server sends that count,
+ * which it does for staff with VAWC access.
+ */
+function renderIncidentStatusStrip(summary) {
+  const strip = document.getElementById('incident-status-strip');
+  if (!strip) return;
+  const counts = summary.by_status || {};
+  const current = document.getElementById('incident-status-filter')?.value || '';
+  const chip = (pressed, onclick, label, count, tone) => `<button type="button" class="incident-status-chip" aria-pressed="${pressed}" onclick="${onclick}">
+    <span>${escapeText(label)}</span><span class="badge ${tone}">${Number(count || 0).toLocaleString()}</span></button>`;
+  const chips = INCIDENT_STATUS_CHIPS
+    .filter(([status], index) => index < 5 || Number(counts[status]) > 0)
+    .map(([status, label]) => chip(!incidentProtectionOrderFilter && current === status, `showIncidentKpi('${status}', '')`, label, counts[status], incidentStatusBadge(status)));
+  if ('protection_orders' in summary) chips.push(chip(incidentProtectionOrderFilter, 'toggleProtectionOrderIncidents()', 'With a protection order', summary.protection_orders, 'badge-purple'));
+  strip.innerHTML = `<span class="incident-status-strip-label">${escapeText('By status')}</span>${chips.join('')}`;
+}
+
+/** Show only reports that have a protection order record (VAWC access only), or clear that filter. */
+function toggleProtectionOrderIncidents() {
+  const set = (id, value) => { const element = document.getElementById(id); if (element) element.value = value; };
+  ['incident-search', 'incident-status-filter', 'incident-severity-filter', 'incident-date-from', 'incident-date-to', 'incident-assignee-filter'].forEach(id => set(id, ''));
+  incidentProtectionOrderFilter = !incidentProtectionOrderFilter;
+  clearTimeout(incidentSearchTimer);
+  loadIncidents(1);
+  revealKpiResults(document.querySelector('#screen-incidents .incident-filter-bar'));
 }
 
 /** Bring a KPI's result list into view without animating when the user prefers reduced motion. */
@@ -3920,6 +3964,7 @@ function showIncidentKpi(status, severity) {
   ['incident-search', 'incident-date-from', 'incident-date-to', 'incident-assignee-filter'].forEach(id => set(id, ''));
   set('incident-status-filter', status);
   set('incident-severity-filter', severity);
+  incidentProtectionOrderFilter = false;
   clearTimeout(incidentSearchTimer);
   loadIncidents(1);
   revealKpiResults(document.querySelector('#screen-incidents .incident-filter-bar'));
@@ -4928,6 +4973,7 @@ async function openResidentIncident(incidentNumber) {
   const set = (id, value) => { const element = document.getElementById(id); if (element) element.value = value; };
   ['incident-status-filter', 'incident-severity-filter', 'incident-date-from', 'incident-date-to', 'incident-assignee-filter'].forEach(id => set(id, ''));
   set('incident-search', incidentNumber);
+  incidentProtectionOrderFilter = false;
   clearTimeout(incidentSearchTimer);
   loadIncidents(1);
 }

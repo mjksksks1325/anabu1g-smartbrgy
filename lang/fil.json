@@ -1939,5 +1939,12 @@
     "Shown to the resident on the request page. Do not mention incidents, complainants, VAWC or other people.": "Makikita ito ng residente sa request page. Huwag banggitin ang insidente, nagreklamo, VAWC o ibang tao.",
     "Ends at (optional, shown to the resident)": "Matatapos sa (opsyonal, makikita ng residente)",
     "Next review (optional, shown to the resident)": "Susunod na review (opsyonal, makikita ng residente)",
-    "Save as Pending Review. Review the decision before explicitly activating it. The resident sees only the optional message to the resident and the end and next review dates; never the reason category, the internal reason or a linked case.": "I-save bilang Pending Review. Repasuhin ang desisyon bago ito i-activate. Ang makikita lang ng residente ay ang opsyonal na mensahe sa residente at ang petsa ng pagtatapos at susunod na review; hindi kailanman ang reason category, ang internal na dahilan o ang naka-link na kaso."
+    "Save as Pending Review. Review the decision before explicitly activating it. The resident sees only the optional message to the resident and the end and next review dates; never the reason category, the internal reason or a linked case.": "I-save bilang Pending Review. Repasuhin ang desisyon bago ito i-activate. Ang makikita lang ng residente ay ang opsyonal na mensahe sa residente at ang petsa ng pagtatapos at susunod na review; hindi kailanman ang reason category, ang internal na dahilan o ang naka-link na kaso.",
+    "By status": "Ayon sa status",
+    "Under review": "Nire-review",
+    "Pending (legacy)": "Pending (luma)",
+    "Under investigation (legacy)": "Iniimbestigahan (luma)",
+    "Dismissed (legacy)": "Ibinasura (luma)",
+    "With a protection order": "May protection order",
+    "Incident reports by status": "Mga ulat ng insidente ayon sa status"
 }

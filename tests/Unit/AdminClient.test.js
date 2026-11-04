@@ -1248,6 +1248,35 @@ test('a resident save refused as stale keeps the typed values, loads the latest 
   assert.equal(context.residentFormPayload().expected_updated_at, '2026-11-04T01:05:00.000000Z');
 });
 
+test('incident status chips show counts, hide empty legacy statuses and apply the matching filters', async () => {
+  const { context, fields } = await client();
+  const strip = { innerHTML: '' };
+  fields.set('incident-status-strip', strip);
+  ['incident-search', 'incident-status-filter', 'incident-severity-filter', 'incident-date-from', 'incident-date-to', 'incident-assignee-filter'].forEach(id => fields.set(id, { value: '' }));
+  fields.set('incidents-tbody', { innerHTML: '' });
+  const requested = [];
+  context.fetch = async url => { requested.push(String(url)); return { ok: true, json: async () => ({ data: [], total: 0, summary: {} }) }; };
+  vm.runInContext('renderIncidents = () => {}; revealKpiResults = () => {};', context);
+  const byStatus = { open: 3, under_review: 1, referred: 0, resolved: 2, closed: 4, pending: 1, under_investigation: 0, dismissed: 0 };
+
+  context.renderIncidentStatusStrip({ by_status: byStatus });
+  assert.match(strip.innerHTML, /Open<\/span><span class="badge badge-blue">3</);
+  assert.match(strip.innerHTML, /Referred<\/span><span class="badge badge-purple">0</);
+  assert.match(strip.innerHTML, /Pending \(legacy\)/);
+  assert.doesNotMatch(strip.innerHTML, /Dismissed|With a protection order/);
+
+  context.renderIncidentStatusStrip({ by_status: byStatus, protection_orders: 2 });
+  assert.match(strip.innerHTML, /With a protection order<\/span><span class="badge badge-purple">2</);
+
+  context.toggleProtectionOrderIncidents();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.match(requested.at(-1), /protection_order=1/);
+  context.showIncidentKpi('closed', '');
+  await new Promise(resolve => setImmediate(resolve));
+  assert.match(requested.at(-1), /status=closed/);
+  assert.doesNotMatch(requested.at(-1), /protection_order/);
+});
+
 test('resident rows mark registered voters only, and a missing voter record adds no label', async () => {
   const { context, fields } = await client();
   const rows = [];

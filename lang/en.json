@@ -1757,5 +1757,14 @@
     "Shown to the resident on the request page. Do not mention incidents, complainants, VAWC or other people.": "Shown to the resident on the request page. Do not mention incidents, complainants, VAWC or other people.",
     "Ends at (optional, shown to the resident)": "Ends at (optional, shown to the resident)",
     "Next review (optional, shown to the resident)": "Next review (optional, shown to the resident)",
-    "Save as Pending Review. Review the decision before explicitly activating it. The resident sees only the optional message to the resident and the end and next review dates; never the reason category, the internal reason or a linked case.": "Save as Pending Review. Review the decision before explicitly activating it. The resident sees only the optional message to the resident and the end and next review dates; never the reason category, the internal reason or a linked case."
+    "Save as Pending Review. Review the decision before explicitly activating it. The resident sees only the optional message to the resident and the end and next review dates; never the reason category, the internal reason or a linked case.": "Save as Pending Review. Review the decision before explicitly activating it. The resident sees only the optional message to the resident and the end and next review dates; never the reason category, the internal reason or a linked case.",
+    "By status": "By status",
+    "Under review": "Under review",
+    "Resolved": "Resolved",
+    "Closed": "Closed",
+    "Pending (legacy)": "Pending (legacy)",
+    "Under investigation (legacy)": "Under investigation (legacy)",
+    "Dismissed (legacy)": "Dismissed (legacy)",
+    "With a protection order": "With a protection order",
+    "Incident reports by status": "Incident reports by status"
 }

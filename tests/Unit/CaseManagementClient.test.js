@@ -130,7 +130,7 @@ test('incident filters send server-side search date and assignment criteria', as
   const context = vm.createContext({ document: { getElementById: id => fields.get(id) }, URLSearchParams, INCIDENTS: [],
     fetch: async requested => { url = requested; return { ok: true, json: async () => ({ data: [], current_page: 1, last_page: 1 }) }; }, renderIncidents() {}, updateIncidentSummary() {}, escapeText: value => value,
   });
-  vm.runInContext('let incidentCurrentPage = 1; let incidentLastPage = 1;\n' + adminSource.slice(adminSource.indexOf('async function loadIncidents('), adminSource.indexOf('function renderIncidents(')), context);
+  vm.runInContext('let incidentCurrentPage = 1; let incidentLastPage = 1; let incidentLoadVersion = 0; let incidentProtectionOrderFilter = false;\n' + adminSource.slice(adminSource.indexOf('async function loadIncidents('), adminSource.indexOf('function renderIncidents(')), context);
   await context.loadIncidents(2);
   const params = new URL(url, 'https://example.test').searchParams;
   assert.equal(params.get('search'), 'Noise Complaint');

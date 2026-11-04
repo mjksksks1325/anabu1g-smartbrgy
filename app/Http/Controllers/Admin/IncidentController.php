@@ -47,8 +47,10 @@ class IncidentController extends Controller
             'assigned_to' => ['nullable', 'integer', 'exists:users,id'],
             'resident_id' => ['nullable', 'integer', 'exists:residents,id'],
             'severity' => ['nullable', 'in:low,medium,high'],
+            'protection_order' => ['nullable', 'boolean'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
+        $seesProtectionOrders = $request->user()->hasPermission('vawc.view');
         $query = Incident::query()->visibleTo($request->user())
             ->with(['reporter:id,name', 'assignee:id,name', 'complainant', 'respondent'])
             ->when($validated['incident_type'] ?? null, fn (Builder $query, string $type) => $query->where('incident_type', $type))
@@ -58,6 +60,7 @@ class IncidentController extends Controller
             ->when($validated['resident_id'] ?? null, fn (Builder $query, int $id) => $query->where(fn (Builder $query) => $query->where('complainant_resident_id', $id)->orWhere('respondent_resident_id', $id)))
             ->when($validated['status'] ?? null, fn (Builder $query, string $status) => $status === 'active' ? $query->whereIn('status', Incident::PENDING_STATUSES) : $query->where('status', $status))
             ->when($validated['severity'] ?? null, fn (Builder $query, string $severity) => $query->where('severity', $severity))
+            ->when($seesProtectionOrders && ($validated['protection_order'] ?? false), fn (Builder $query) => $query->whereHas('protectionOrders'))
             ->when($validated['search'] ?? null, function (Builder $query, string $search): void {
                 $term = '%'.trim($search).'%';
                 $query->where(function (Builder $query) use ($term): void {
@@ -81,6 +84,8 @@ class IncidentController extends Controller
                 'pending' => Incident::query()->visibleTo($request->user())->whereIn('status', Incident::PENDING_STATUSES)->count(),
                 'resolved_this_month' => Incident::query()->visibleTo($request->user())->where('status', 'resolved')->whereBetween('resolved_at', [now()->startOfMonth(), now()->endOfMonth()])->count(),
                 'high' => Incident::query()->visibleTo($request->user())->where('severity', 'high')->whereIn('status', Incident::PENDING_STATUSES)->count(),
+                'by_status' => $this->statusCounts($request),
+                ...($seesProtectionOrders ? ['protection_orders' => Incident::query()->visibleTo($request->user())->whereHas('protectionOrders')->count()] : []),
             ],
         ]);
     }
@@ -276,6 +281,19 @@ class IncidentController extends Controller
     }
 
     /** @return array<string, mixed> */
+    /**
+     * Reports per status among those the viewer may see (VAWC and other restricted cases only for `vawc.view`).
+     *
+     * @return array<string, int>
+     */
+    private function statusCounts(Request $request): array
+    {
+        $counts = Incident::query()->visibleTo($request->user())
+            ->selectRaw('status, COUNT(*) as aggregate')->groupBy('status')->pluck('aggregate', 'status');
+
+        return collect(Incident::STATUSES)->mapWithKeys(fn (string $status): array => [$status => (int) ($counts[$status] ?? 0)])->all();
+    }
+
     private function incidentData(Incident $incident): array
     {
         return [
