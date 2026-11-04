@@ -2,15 +2,19 @@
 
 namespace App\Providers;
 
+use App\Models\CabinetDevice;
 use App\Models\User;
 use App\StaffPermissions;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -30,6 +34,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+        RateLimiter::for('cabinet-device', function (Request $request): Limit {
+            $cabinet = $request->route('cabinet');
+
+            return Limit::perMinute(300)->by($cabinet instanceof CabinetDevice ? $cabinet->identifier : (string) $cabinet);
+        });
 
         Gate::define('access-personnel', fn (User $user): bool => $user->is_active && $user->resident_id === null && in_array($user->role, ['admin', 'captain', 'staff', 'viewer'], true));
         Gate::define('operate-personnel', fn (User $user): bool => $user->canLoginAsPersonnel());

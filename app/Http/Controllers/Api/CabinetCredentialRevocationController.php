@@ -18,6 +18,7 @@ class CabinetCredentialRevocationController extends Controller
         $revocations = CabinetCredentialRevocation::query()
             ->where('cabinet_device_id', $cabinet->id)
             ->whereNull('acknowledged_at')
+            ->whereNull('paused_at')
             ->oldest('id')
             ->limit(100)
             ->get(['request_id', 'rpi_employee_id', 'remove_rfid', 'remove_face', 'created_at'])
@@ -48,6 +49,7 @@ class CabinetCredentialRevocationController extends Controller
                 ->first();
 
             $revocation = $revocationQuery->lockForUpdate()->firstOrFail();
+            abort_if($revocation->paused_at !== null, 409, 'This credential removal request is on hold.');
             $revocation->acknowledged_at ??= now();
             $revocation->save();
 

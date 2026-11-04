@@ -3,11 +3,12 @@
 use App\Http\Controllers\Api\CabinetAccessEventController;
 use App\Http\Controllers\Api\CabinetCredentialRevocationController;
 use App\Http\Controllers\Api\CabinetEventController;
+use App\Http\Controllers\Api\CabinetFileEnrollmentController;
 use App\Http\Middleware\AuthenticateCabinetDevice;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('iot/cabinets/{cabinet:identifier}')
-    ->middleware([AuthenticateCabinetDevice::class, 'throttle:120,1'])
+    ->middleware([AuthenticateCabinetDevice::class, 'throttle:cabinet-device'])
     ->group(function (): void {
         Route::post('/heartbeat', [CabinetEventController::class, 'heartbeat'])->name('api.iot.cabinets.heartbeat');
         Route::post('/movements', [CabinetEventController::class, 'movement'])->name('api.iot.cabinets.movements');
@@ -27,4 +28,12 @@ Route::prefix('iot/cabinets/{cabinet:identifier}')
         Route::post('/employee-deprovisionments/{requestId}/acknowledge', [CabinetCredentialRevocationController::class, 'acknowledge'])
             ->whereUuid('requestId')
             ->name('api.iot.cabinets.employee-deprovisionments.acknowledge');
+
+        Route::get('/folder-enrollment/pending', [CabinetFileEnrollmentController::class, 'pending'])
+            ->name('api.iot.cabinets.folder-enrollment.pending');
+        Route::get('/folder-registry', [CabinetFileEnrollmentController::class, 'registry'])
+            ->name('api.iot.cabinets.folder-registry');
+        Route::post('/folder-enrollment/{requestId}/confirm', [CabinetFileEnrollmentController::class, 'confirm'])
+            ->whereUuid('requestId')
+            ->name('api.iot.cabinets.folder-enrollment.confirm');
     });

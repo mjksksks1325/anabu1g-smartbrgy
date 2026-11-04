@@ -38,7 +38,7 @@ class HouseholdProfilingImportController extends Controller
     {
         Gate::authorize('records.import');
         [$state, $input] = $this->state($request, $import);
-        $result = $import->save($import->preview($state['raw'], $input['mapping'], $input['purok'] ?? null, $input['rows'] ?? []));
+        $result = $import->save($import->preview($state['raw'], $input['mapping'], $input['purok'] ?? null, $input['rows'] ?? []), $request);
         $request->session()->forget('household_profiling_import');
 
         return response()->json(['message' => 'Household profiling imported successfully.', 'result' => $result], 201);
@@ -63,7 +63,7 @@ class HouseholdProfilingImportController extends Controller
             'rows.*.fields' => ['sometimes', 'array:'.implode(',', $import->fields())],
             'rows.*.fields.*' => ['nullable', 'string', 'max:1000'],
             'rows.*.is_head' => ['sometimes', 'boolean'],
-            'rows.*.action' => ['required', Rule::in(['create', 'link', 'skip', 'resolve'])],
+            'rows.*.action' => ['required', Rule::in(['create', 'link', 'skip', 'resolve', 'voter_only'])],
             'rows.*.resident_id' => ['nullable', 'integer'],
             'rows.*.confirm_duplicate' => ['sometimes', 'boolean'],
         ]);

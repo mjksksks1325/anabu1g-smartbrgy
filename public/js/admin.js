@@ -167,7 +167,7 @@ async function refreshDashboardStats() {
       return {
         id, type: item.type, title: item.title, detail: item.detail, time: item.time,
         read: previous.get(id) || storedRead.has(id),
-        screen: item.type === 'incident' ? 'incidents' : item.type === 'application' ? 'records' : 'certificates',
+        screen: item.type === 'file_movement' ? 'rfid' : item.type === 'incident' ? 'incidents' : item.type === 'application' ? 'records' : 'certificates',
         activityIndex,
       };
     }));
@@ -235,7 +235,7 @@ function renderDashboardActivity() {
       const index = start + offset;
       const identifier = item.reference || item.detail;
       return `<button type="button" class="dashboard-activity-item" title="${escapeText(identifier)}" onclick="openDashboardActivity(${index})">
-        <span class="dashboard-activity-mark ${item.type === 'incident' ? 'incident' : 'document'}" aria-hidden="true">${item.type === 'incident' ? '!' : '▤'}</span>
+        <span class="dashboard-activity-mark ${['incident', 'file_movement'].includes(item.type) ? 'incident' : 'document'}" aria-hidden="true">${['incident', 'file_movement'].includes(item.type) ? '!' : '▤'}</span>
         <span class="dashboard-activity-copy"><strong>${escapeText(item.title)}</strong><span>${escapeText(item.detail)}</span></span>
         <span class="dashboard-activity-time">${escapeText(item.time)}</span>
       </button>`;
@@ -390,6 +390,10 @@ function drawDashboardPie(state) {
 async function openDashboardActivity(index) {
   const activity = dashboardActivityItems[index];
   if (!activity) return;
+  if (activity.type === 'file_movement') {
+    window.location.assign(activity.url);
+    return;
+  }
   if (activity.type === 'application') {
     const target = new URL(window.ADMIN_RESIDENT_APPLICATIONS_URL, window.location.origin);
     target.searchParams.set('application', String(activity.record_id));

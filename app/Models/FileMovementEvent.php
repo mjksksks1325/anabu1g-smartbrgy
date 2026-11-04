@@ -16,7 +16,7 @@ use LogicException;
  * @property string|null $drawer_reference
  * @property string $action
  * @property Carbon $occurred_at
- * @property User $user
+ * @property User|null $user
  * @property CabinetDevice|null $cabinetDevice
  */
 class FileMovementEvent extends Model

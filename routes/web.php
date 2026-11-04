@@ -240,6 +240,9 @@ Route::middleware(['auth:web', 'can:access-personnel', RecordAdministrativeActio
         Route::patch('/smart-cabinet/{cabinet}/readers', [CabinetFileController::class, 'updateReaders'])->name('smart-cabinet.readers.update');
         Route::post('/smart-cabinet/folders', [CabinetFileController::class, 'store'])->name('smart-cabinet.folders.store');
         Route::patch('/smart-cabinet/folders/{cabinetFile}', [CabinetFileController::class, 'update'])->name('smart-cabinet.folders.update');
+        Route::post('/smart-cabinet/folders/{cabinetFile}/rfid-enrollment', [CabinetFileController::class, 'requestRfidEnrollment'])->name('smart-cabinet.folders.rfid-enrollment');
+        Route::post('/smart-cabinet/folders/{cabinetFile}/rfid-enrollment/replace', [CabinetFileController::class, 'replaceRfidTag'])->name('smart-cabinet.folders.rfid-replace');
+        Route::post('/smart-cabinet/folders/{cabinetFile}/rfid-enrollment/cancel', [CabinetFileController::class, 'cancelRfidEnrollment'])->name('smart-cabinet.folders.rfid-cancel');
         Route::post('/smart-cabinet/folders/{cabinetFile}/archive', [CabinetFileController::class, 'archive'])
             ->middleware(RequireSupervisorPassword::class)
             ->name('smart-cabinet.folders.archive');

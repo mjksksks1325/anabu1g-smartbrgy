@@ -13,6 +13,19 @@ const FEE_SCHEDULE = {
   'Business Clearance': { amount: 200, confirmed: false },
 };
 
+test('a folder movement alert opens the matching RFID movement history', async () => {
+  const { context, fields } = await client();
+  const destinations = [];
+  const activity = { innerHTML: '' };
+  fields.set('dash-recent-activity', activity);
+  context.window.location = { assign: url => destinations.push(url) };
+  vm.runInContext(`dashboardActivityItems = [{ type: 'file_movement', reference: 'F-005', title: 'Folder moved with no cabinet access', detail: 'F-005 — Removed', time: 'Just now', url: '/staff/rfid-file-tracking?search=F-005#movement-18' }];`, context);
+  context.renderDashboardActivity();
+  assert.match(activity.innerHTML, /dashboard-activity-mark incident/);
+  await context.openDashboardActivity(0);
+  assert.deepEqual(destinations, ['/staff/rfid-file-tracking?search=F-005#movement-18']);
+});
+
 async function client() {
   const fields = new Map();
   const windowEvents = new Map();

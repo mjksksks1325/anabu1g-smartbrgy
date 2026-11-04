@@ -94,6 +94,31 @@ test('changing column mapping rebuilds rows rather than reusing prior mapped fie
   assert.deepEqual(payload.rows, []);
 });
 
+test('voter-only review explains that existing households stay unchanged and shows voter counts', () => {
+  const { context, field } = profilingClient();
+  vm.runInContext(`profilingPreview.rows[0].action = 'voter_only'; profilingPreview.rows[0].is_head = false; profilingPreview.rows[0].matches = [{id: 8, exact: true, can_head: true, registered_voter: false, name: 'Juan Cruz', resident_number: 'RES-8'}]; profilingPreview.rows[0].resident_id = 8; profilingPreview.summary.voters = 1;`, context);
+  context.renderProfilingPreview();
+  assert.match(field('profiling-summary').innerHTML, /<strong>1<\/strong> <span>voter records to add<\/span>/);
+  assert.match(field('profiling-households').innerHTML, /Existing residents; household unchanged/);
+  assert.match(field('profiling-households').innerHTML, /value="voter_only"\s+selected/);
+  assert.match(field('profiling-households').innerHTML, /Only the voter record will be added/);
+  assert.ok(!field('profiling-households').innerHTML.includes('Select head'));
+});
+
+test('saving voter imports reports the added count and refreshes the voters list', async () => {
+  const { context, field } = profilingClient(async () => ({ ok: true, json: async () => ({ message: 'Imported.', result: {created: 0, linked: 0, skipped: 0, voters: 1} }) }));
+  let message;
+  const pages = [];
+  context.closeModal = () => {};
+  context.showToast = text => { message = text; };
+  context.loadResidents = context.loadPuroks = context.populateManualResidentDropdown = async () => {};
+  context.loadVoterRegistry = async page => { pages.push(page); };
+  await context.saveHouseholdProfiling();
+  assert.equal(message, 'Imported.');
+  assert.match(field('profiling-status').innerHTML, /1 voter records added/);
+  assert.deepEqual(pages, [1]);
+});
+
 test('selecting another upload clears the previous preview and disables save', () => {
   const { context, field } = profilingClient();
   context.clearProfilingUpload();

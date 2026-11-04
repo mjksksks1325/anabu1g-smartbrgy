@@ -111,7 +111,7 @@ function renderProfilingPreview() {
   const summary = profilingPreview.summary;
   const counts = [
     [summary.residents, 'residents in file', ''], [summary.households, 'households', ''], [summary.heads, 'heads', ''],
-    [summary.ready, 'ready to save', 'is-ready'], [Number(summary.existing || 0), 'already in the system (skipped)', ''],
+    [Number(summary.voters || 0), 'voter records to add', ''], [summary.ready, 'ready to save', 'is-ready'], [Number(summary.existing || 0), 'already in the system (skipped)', ''],
     [summary.duplicates, 'possible or exact duplicates', summary.duplicates ? 'is-warning' : ''], [summary.invalid, 'invalid or unresolved', summary.invalid ? 'is-error' : ''],
   ];
   document.getElementById('profiling-summary').innerHTML = counts.map(([count, label, tone]) => `<span class="profiling-summary-item ${tone}"><strong>${Number(count).toLocaleString()}</strong> <span>${label}</span></span>`).join('');
@@ -124,16 +124,19 @@ function renderProfilingPreview() {
   document.getElementById('profiling-households').innerHTML = [...groups].map(([group, rows]) => {
     const head = rows.find(row => row.is_head && row.action !== 'skip');
     const ready = rows.every(row => row.errors.length === 0);
-    return `<details class="resident-account-panel"><summary><strong>${escapeText(group)}</strong> — Head: ${escapeText(head ? `${head.fields.first_name} ${head.fields.last_name}` : 'Select head')} — Purok: ${escapeText(head?.fields.purok || rows[0].fields.purok || 'Missing')} — ${rows.length} residents — ${ready ? 'Ready' : 'Needs review'}</summary>${rows.map(renderProfilingRow).join('')}</details>`;
+    const existingOnly = rows.every(row => ['skip', 'voter_only'].includes(row.action));
+    return `<details class="resident-account-panel"><summary><strong>${escapeText(group)}</strong> — ${existingOnly ? 'Existing residents; household unchanged' : `Head: ${escapeText(head ? `${head.fields.first_name} ${head.fields.last_name}` : 'Select head')}`} — Purok: ${escapeText(head?.fields.purok || rows[0].fields.purok || 'Missing')} — ${rows.length} residents — ${ready ? 'Ready' : 'Needs review'}</summary>${rows.map(renderProfilingRow).join('')}</details>`;
   }).join('');
 }
 
 function renderProfilingRow(row) {
   const createDisabled = row.matches.some(match => match.exact);
-  return `<details class="resident-account-panel"><summary>Row ${Number(row.source_row)}: ${escapeText(`${row.fields.first_name} ${row.fields.last_name}`)} — ${row.is_head ? 'Head' : escapeText(row.fields.relationship_to_household_head || 'Relationship unspecified')} — ${row.already_exists && row.action === 'skip' ? 'Already in the system — skipped' : escapeText(row.action)}</summary>
+  const voterDisabled = !row.matches.some(match => !match.archived && match.can_head && !match.registered_voter);
+  return `<details class="resident-account-panel"><summary>Row ${Number(row.source_row)}: ${escapeText(`${row.fields.first_name} ${row.fields.last_name}`)} — ${row.is_head ? 'Head' : escapeText(row.fields.relationship_to_household_head || 'Relationship unspecified')} — ${row.action === 'voter_only' ? 'Add voter record only' : row.already_exists && row.action === 'skip' ? 'Already in the system — skipped' : escapeText(row.action)}</summary>
     <div class="resident-table-error">${row.errors.map(escapeText).join('<br>')}</div>
     <div class="form-group"><label class="form-label" for="profiling-action-${row.id}">Duplicate resolution / row action</label><select class="form-input" id="profiling-action-${row.id}" onchange="updateProfilingRow(${row.id},'action',this.value)">
-      <option value="resolve" ${row.action === 'resolve' ? 'selected' : ''}>Choose an action</option><option value="create" ${createDisabled ? 'disabled' : ''} ${row.action === 'create' ? 'selected' : ''}>Create as a new resident</option><option value="link" ${!row.matches.length ? 'disabled' : ''} ${row.action === 'link' ? 'selected' : ''}>Link existing resident</option><option value="skip" ${row.action === 'skip' ? 'selected' : ''}>Skip</option></select></div>
+      <option value="resolve" ${row.action === 'resolve' ? 'selected' : ''}>Choose an action</option><option value="create" ${createDisabled ? 'disabled' : ''} ${row.action === 'create' ? 'selected' : ''}>Create as a new resident</option><option value="link" ${!row.matches.length ? 'disabled' : ''} ${row.action === 'link' ? 'selected' : ''}>Link existing resident</option><option value="voter_only" ${voterDisabled ? 'disabled' : ''} ${row.action === 'voter_only' ? 'selected' : ''}>Add voter record only</option><option value="skip" ${row.action === 'skip' ? 'selected' : ''}>Skip</option></select></div>
+    ${row.action === 'voter_only' ? '<p>Only the voter record will be added. Existing resident details and household assignments will stay unchanged.</p>' : ''}
     <div class="form-group"><label class="form-label" for="profiling-link-${row.id}">Matching existing residents</label><select class="form-input" id="profiling-link-${row.id}" onchange="updateProfilingRow(${row.id},'resident_id',Number(this.value)||null)"><option value="">Select a record to link</option>${row.matches.map(match => `<option value="${match.id}" ${match.archived ? 'disabled' : ''} ${match.id === row.resident_id ? 'selected' : ''}>${escapeText(match.name)} — ${escapeText(match.resident_number)} — ${match.exact ? 'Exact' : 'Possible'}${match.archived ? ' (archived: restore first)' : ''}</option>`).join('')}</select></div>
     <label class="resident-standing"><input type="checkbox" ${row.confirm_duplicate ? 'checked' : ''} onchange="updateProfilingRow(${row.id},'confirm_duplicate',this.checked)"/> I reviewed the possible duplicate and confirm this is a separate resident.</label>
     <label class="resident-standing"><input type="checkbox" ${row.is_head ? 'checked' : ''} onchange="updateProfilingRow(${row.id},'is_head',this.checked)"/> Household head</label>
@@ -174,12 +177,13 @@ async function saveHouseholdProfiling() {
     // Keep the dialog open with a lasting result instead of a notification that fades.
     document.getElementById('profiling-preview').hidden = true;
     document.getElementById('profiling-file').value = '';
-    const { created, linked, skipped, households } = result.result;
-    document.getElementById('profiling-status').innerHTML = `<span class="profiling-result"><strong>${escapeText(result.message)}</strong> <span>${Number(created)} new residents created</span> · <span>${Number(linked)} linked to existing records</span> · <span>${Number(skipped)} skipped</span> · <span>${Number(households)} households saved</span></span>`;
+    const { created, linked, skipped, households, voters } = result.result;
+    document.getElementById('profiling-status').innerHTML = `<span class="profiling-result"><strong>${escapeText(result.message)}</strong> <span>${Number(created)} new residents created</span> · <span>${Number(linked)} linked to existing records</span> · <span>${Number(skipped)} skipped</span> · <span>${Number(households)} households saved</span> ? <span>${Number(voters || 0)} voter records added</span></span>`;
     showToast(result.message, 'green');
     await loadResidents(1);
     await loadPuroks();
     await populateManualResidentDropdown();
+    if (result.result.voters > 0 && typeof loadVoterRegistry === 'function') await loadVoterRegistry(1);
   } catch (error) { invalidateProfilingPreview(); document.getElementById('profiling-errors').textContent = error.message; }
   finally { setProfilingBusy(false); }
 }

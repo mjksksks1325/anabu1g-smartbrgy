@@ -58,6 +58,25 @@ class CabinetDevice extends Model
         return $this->reported_status;
     }
 
+    /** @return list<array{drawer_reference: string, label: string, status: string, tone: string}> */
+    public function folderReaderHealthItems(): array
+    {
+        $health = $this->component_health ?? [];
+        $items = [];
+        foreach ([CabinetFile::DRAWER_1 => 'Drawer 1', CabinetFile::DRAWER_2 => 'Drawer 2'] as $drawer => $label) {
+            $reported = $health['folder_rfid_'.$drawer] ?? null;
+            [$status, $tone] = match (true) {
+                ! in_array($reported, ['connected', 'disconnected'], true) => ['Not reported', 'neutral'],
+                $this->connectionStatus() !== 'online' => ['Not current', 'neutral'],
+                $reported === 'connected' => ['Connected', 'success'],
+                default => ['Disconnected', 'warning'],
+            };
+            $items[] = ['drawer_reference' => $drawer, 'label' => $label, 'status' => $status, 'tone' => $tone];
+        }
+
+        return $items;
+    }
+
     /**
      * Readable component health entries for the staff dashboard.
      *

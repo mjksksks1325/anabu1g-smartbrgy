@@ -29,16 +29,31 @@
     @forelse($cabinets as $cabinet)
         @php($drawerOneReader = $cabinet->readers->firstWhere('drawer_reference', App\Models\CabinetFile::DRAWER_1))
         @php($drawerTwoReader = $cabinet->readers->firstWhere('drawer_reference', App\Models\CabinetFile::DRAWER_2))
-        @php($readerAliasPrefix = Illuminate\Support\Str::slug($cabinet->identifier))
+        @php($readerHealth = $cabinet->component_health ?? [])
+        @php($drawerHealthItems = collect($cabinet->folderReaderHealthItems()))
+        @php($bothReadersConnected = $drawerHealthItems->every(fn ($item) => $item['status'] === 'Connected'))
+        @php($readerHealthSummary = $bothReadersConnected ? 'Both readers connected' : ($drawerHealthItems->contains('status', 'Not current') ? 'Reader status not current' : ($drawerHealthItems->contains('status', 'Not reported') ? 'Per-drawer status not reported' : 'Reader needs attention')))
         <article class="cabinet-reader-card">
-            <div class="cabinet-reader-heading"><div><h3>{{ $cabinet->name }}</h3><p>{{ $cabinet->identifier }} · Reader connection awaits Raspberry Pi code</p></div><span class="pill neutral">Not connected</span></div>
+            <div class="cabinet-reader-heading"><div><h3>{{ $cabinet->name }}</h3><p>{{ $cabinet->identifier }} · YRM100 hardware status reported by Raspberry Pi</p></div><span class="pill {{ $bothReadersConnected ? 'success' : ($drawerHealthItems->contains('tone', 'warning') ? 'warning' : 'neutral') }}">{{ $readerHealthSummary }}</span></div>
             <form class="filter-panel cabinet-reader-form" method="POST" action="{{ route('admin.smart-cabinet.readers.update', $cabinet) }}">
                 @csrf
                 @method('PATCH')
-                <label>Drawer 1 reader alias<input name="drawer_1_reader_identifier" required maxlength="80" pattern="[A-Za-z0-9][A-Za-z0-9._-]*" value="{{ old('drawer_1_reader_identifier', $drawerOneReader?->reader_identifier ?? $readerAliasPrefix.'-d1') }}" autocomplete="off"></label>
-                <label>Drawer 2 reader alias<input name="drawer_2_reader_identifier" required maxlength="80" pattern="[A-Za-z0-9][A-Za-z0-9._-]*" value="{{ old('drawer_2_reader_identifier', $drawerTwoReader?->reader_identifier ?? $readerAliasPrefix.'-d2') }}" autocomplete="off"></label>
+                <label>Drawer 1 reader alias<input name="drawer_1_reader_identifier" required maxlength="80" pattern="[A-Za-z0-9][A-Za-z0-9._-]*" value="{{ old('drawer_1_reader_identifier', $drawerOneReader?->reader_identifier ?? 'reader-one') }}" autocomplete="off"></label>
+                <label>Drawer 2 reader alias<input name="drawer_2_reader_identifier" required maxlength="80" pattern="[A-Za-z0-9][A-Za-z0-9._-]*" value="{{ old('drawer_2_reader_identifier', $drawerTwoReader?->reader_identifier ?? 'reader-two') }}" autocomplete="off"></label>
                 <button class="button" type="submit">Save reader mapping</button>
             </form>
+            <ul class="component-health-list cabinet-drawer-reader-health">
+                @foreach ($drawerHealthItems as $item)
+                    @php($mappedReader = $cabinet->readers->firstWhere('drawer_reference', $item['drawer_reference']))
+                    <li class="component-health-item is-{{ $item['tone'] }}"><span class="component-health-dot" aria-hidden="true"></span><strong>{{ $item['label'] }} · {{ $mappedReader?->reader_identifier ?? 'Not assigned' }}</strong><span class="pill {{ $item['tone'] }}">{{ $item['status'] }}</span></li>
+                @endforeach
+            </ul>
+            @if ($cabinet->connectionStatus() === 'online' && ($readerHealth['folder_rfid'] ?? null) === 'connected' && $drawerHealthItems->contains('status', 'Not reported'))
+                <p class="cabinet-reader-help">Folder RFID is connected overall. The Raspberry Pi has not reported a separate connection status for each drawer.</p>
+            @endif
+            @if (! $drawerOneReader || ! $drawerTwoReader)
+                <p class="cabinet-reader-help">Reader mapping has not been saved for every drawer. Check the aliases configured on the Raspberry Pi, then select Save reader mapping. Prefilled values are suggestions.</p>
+            @endif
             <p class="cabinet-reader-help">These are software aliases assigned to the two modules, not hardware serial numbers. The RPi code must report the matching alias so the website can identify the drawer.</p>
         </article>
     @empty
@@ -48,8 +63,9 @@
 
 <section class="panel cabinet-folder-panel" id="cabinet-folder-registry" aria-labelledby="cabinet-folder-title">
     <div class="panel-heading"><h2 id="cabinet-folder-title">Folder registry</h2><span>{{ $files->total() }} {{ \Illuminate\Support\Str::plural('folder', $files->total()) }}</span></div>
+    @error('rfid_enrollment')<div class="notice" role="alert">{{ $message }}</div>@enderror
     <div class="cabinet-folder-intro">
-        <p>Register folder details and assign each folder to its cabinet drawer. RFID enrollment is intentionally unavailable until the Raspberry Pi integration can confirm a real YRM100 scan.</p>
+        <p>Register a folder, assign it to a drawer, then enroll its UHF tag through the YRM100 reader mapped to that drawer. The tag is saved only after the Raspberry Pi reports a real scan.</p>
         <a class="button quiet" href="{{ route('admin.smart-cabinet.index', ['folder_status' => $folderStatus === 'active' ? 'archived' : 'active']) }}#cabinet-folder-registry">{{ $folderStatus === 'active' ? 'View archived folders' : 'View active folders' }}</a>
     </div>
     @if($cabinets->total() > 0)
@@ -66,7 +82,7 @@
     @endif
 
     @if($files->isEmpty())
-        <div class="empty-state"><strong>No {{ $folderStatus }} folders registered</strong><p>Folder movement logs will link to these records after the RPi enrollment flow is connected.</p></div>
+        <div class="empty-state"><strong>No {{ $folderStatus }} folders registered</strong><p>Registered folder details and confirmed RFID tags will appear here.</p></div>
     @else
         <div class="table-scroll">
             <table class="cabinet-folder-table">
@@ -85,7 +101,31 @@
                                 <button class="button quiet" type="submit">Save</button>
                             </form>
                         </td>
-                        <td><span class="pill neutral">{{ $file->isRfidEnrolled() ? 'Enrolled' : 'Awaiting RPi enrollment' }}</span></td>
+                        <td>
+                            @if ($file->isRfidEnrollmentPending())
+                                <span class="pill warning">Waiting for tag</span>
+                                <small>Place ONLY this folder's tag inside Drawer {{ $file->drawer_reference === 'drawer_1' ? '1' : '2' }}.</small>
+                                <small>Expires {{ $file->latestEnrollmentRequest->expires_at->format('g:i A') }}</small>
+                                <form method="POST" action="{{ route('admin.smart-cabinet.folders.rfid-cancel', $file) }}">
+                                    @csrf
+                                    <input type="hidden" name="request_id" value="{{ $file->latestEnrollmentRequest->request_id }}">
+                                    <button class="button quiet" type="submit">Cancel enrollment</button>
+                                </form>
+                            @elseif ($file->isRfidEnrolled())
+                                <span class="pill success">Enrolled</span>
+                            @else
+                                <span class="pill neutral">Not enrolled</span>
+                            @endif
+                            @if (! $file->isRfidEnrollmentPending() && $file->latestEnrollmentRequest && $file->latestEnrollmentRequest->status !== 'enrolled')
+                                <small>Last enrollment: {{ ucfirst($file->latestEnrollmentRequest->status === 'pending' ? 'expired' : $file->latestEnrollmentRequest->status) }}</small>
+                            @endif
+                            @if ($file->is_active && ! $file->isRfidEnrollmentPending())
+                                <form method="POST" action="{{ route($file->isRfidEnrolled() ? 'admin.smart-cabinet.folders.rfid-replace' : 'admin.smart-cabinet.folders.rfid-enrollment', $file) }}">
+                                    @csrf
+                                    <button class="button quiet" type="submit">{{ $file->isRfidEnrolled() ? 'Replace tag' : 'Enroll RFID tag' }}</button>
+                                </form>
+                            @endif
+                        </td>
                         <td><span class="pill {{ $file->is_active ? 'success' : 'neutral' }}">{{ $file->is_active ? 'Active' : 'Archived' }}</span></td>
                         <td>
                             @if ($file->is_active)
