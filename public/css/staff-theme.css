@@ -916,4 +916,9 @@ body[data-personnel-layout="admin"] .modal .resident-incident-link .incident-ref
 body[data-personnel-layout="admin"] .modal .resident-incident-role { color: var(--text-muted); font-size: 12px; }
 @media (max-width: 640px) {
   body[data-personnel-layout="admin"] .modal .resident-incident-link { grid-template-columns: minmax(0, 1fr) auto; }
-}
+}/* Resident form: a save was refused because someone else saved first. */
+body[data-personnel-layout="admin"] .modal .form-conflict { margin: 0 0 16px; padding: 12px 14px; border: 1px solid #e0b252; border-left-width: 4px; border-radius: 8px; background: #fff7e6; color: #5c3d00; font-size: 13px; line-height: 1.5; }
+html[data-theme=dark] body[data-personnel-layout="admin"] .modal .form-conflict, body:not(.light-mode)[data-personnel-layout="admin"] .modal .form-conflict { border-color: #8a6a22; background: #3a2d0c; color: #f5dfa6; }
+body[data-personnel-layout="admin"] .modal .form-conflict p { margin: 0 0 8px; }
+body[data-personnel-layout="admin"] .modal .form-conflict-list { margin: 0 0 10px; padding-left: 18px; }
+body[data-personnel-layout="admin"] .modal .form-conflict-list span { color: inherit; opacity: .8; }

@@ -4406,7 +4406,8 @@ function residentFromApi(resident) {
     householdId: resident.household_id,
     relationshipToHead: resident.relationship_to_household_head || '',
     isHouseholdHead: Boolean(resident.is_household_head),
-    voterStatus: resident.voter_status || null
+    voterStatus: resident.voter_status || null,
+    version: resident.updated_at || null
   };
 }
 
@@ -4597,12 +4598,29 @@ function openAddResident() {
   setResidentPhotoPreview(null);
   setCheckedSpecialGroups([]);
   resetResidentHouseholdFields();
+  residentEditVersion = null;
+  hideResidentConflict();
   openModal('modal-resident');
 }
 
 function openEditResident(residentNumber) {
   const resident = RESIDENTS.find(item => item.id === residentNumber);
   if (!resident) return showToast('Resident not found.', 'red');
+  fillResidentForm(resident);
+  openModal('modal-resident');
+}
+
+/** Version of the record open in the edit form (its updated_at). The server refuses a save based on an older one. */
+let residentEditVersion = null;
+let residentConflictLatest = null;
+let residentConflictDraft = {};
+
+const RESIDENT_CONFLICT_FIELDS = ['res-lastname', 'res-name', 'res-middlename', 'res-suffix', 'res-dob', 'res-gender', 'res-civil', 'res-nationality', 'res-purok', 'res-address', 'res-contact', 'res-type', 'res-status'];
+const RESIDENT_CONFLICT_CHECKBOXES = ['res-good-standing', 'res-verified-indigent'];
+
+function fillResidentForm(resident) {
+  residentEditVersion = resident.version || null;
+  hideResidentConflict();
   syncPurokSelects(resident.purok);
   void ensurePuroksLoaded(resident.purok);
   document.querySelector('#modal-resident-title span').textContent = 'Edit Resident Record';
@@ -4626,11 +4644,78 @@ function openEditResident(residentNumber) {
   setResidentPhotoPreview(resident.hasPhoto ? resident.databaseId : null);
   setCheckedSpecialGroups(resident.specialGroups);
   resetResidentHouseholdFields(resident);
-  openModal('modal-resident');
+}
+
+/** The editable values in the resident form, keyed by field id, as plain text for comparing two versions. */
+function residentFormSnapshot() {
+  const snapshot = {};
+  RESIDENT_CONFLICT_FIELDS.forEach(id => { snapshot[id] = String(document.getElementById(id)?.value ?? '').trim(); });
+  RESIDENT_CONFLICT_CHECKBOXES.forEach(id => { snapshot[id] = document.getElementById(id)?.checked ? 'Yes' : 'No'; });
+  snapshot['special-groups'] = getCheckedSpecialGroups().join(', ');
+  return snapshot;
+}
+
+function residentFieldLabel(id) {
+  if (id === 'special-groups') return 'Special Groups';
+  return (document.querySelector(`label[for="${id}"]`)?.textContent || id).replace('*', '').trim();
+}
+
+function hideResidentConflict() {
+  residentConflictLatest = null;
+  residentConflictDraft = {};
+  const notice = document.getElementById('res-conflict');
+  if (notice) { notice.hidden = true; notice.innerHTML = ''; }
+}
+
+/** A save was refused because someone else saved first. The form keeps what this user typed. */
+function showResidentConflict(message, latest) {
+  residentConflictLatest = latest;
+  const notice = document.getElementById('res-conflict');
+  if (!notice) return showToast(message, 'red');
+  notice.innerHTML = `<p><strong>${escapeText(message)}</strong></p>
+    <p>${escapeText('Your edits are still in the form. Load the latest record to see what changed; you can then re-apply your edits.')}</p>
+    <button type="button" class="btn btn-sm" onclick="loadLatestResidentVersion()">Load the latest record</button>`;
+  notice.hidden = false;
+  notice.scrollIntoView?.({ block: 'nearest' });
+}
+
+/** Put the latest saved record in the form and list the fields where this user's unsaved value differs. */
+function loadLatestResidentVersion() {
+  const latest = residentConflictLatest;
+  if (!latest) return;
+  const draft = residentFormSnapshot();
+  const index = RESIDENTS.findIndex(item => item.databaseId === latest.databaseId);
+  if (index >= 0) RESIDENTS[index] = latest;
+  fillResidentForm(latest);
+  const current = residentFormSnapshot();
+  residentConflictDraft = Object.fromEntries(Object.keys(draft).filter(key => draft[key] !== current[key]).map(key => [key, draft[key]]));
+  const notice = document.getElementById('res-conflict');
+  const keys = Object.keys(residentConflictDraft);
+  notice.innerHTML = keys.length === 0
+    ? `<p>${escapeText('The latest record is in the form and already matches your edits. Review it, then save.')}</p>`
+    : `<p><strong>${escapeText('The latest record is in the form.')}</strong> ${escapeText('Your unsaved values that differ from it:')}</p>
+      <ul class="form-conflict-list">${keys.map(key => `<li><span>${escapeText(residentFieldLabel(key))}</span> <strong>${escapeText(residentConflictDraft[key] || '—')}</strong></li>`).join('')}</ul>
+      <button type="button" class="btn btn-sm" onclick="reapplyResidentDraft()">Re-apply my values</button>`;
+  notice.hidden = false;
+}
+
+/** Put this user's differing values back over the latest record; saving then replaces the latest values knowingly. */
+function reapplyResidentDraft() {
+  Object.entries(residentConflictDraft).forEach(([key, value]) => {
+    if (key === 'special-groups') return setCheckedSpecialGroups(value ? value.split(', ') : []);
+    const element = document.getElementById(key);
+    if (!element) return;
+    if (RESIDENT_CONFLICT_CHECKBOXES.includes(key)) element.checked = value === 'Yes';
+    else element.value = value;
+  });
+  hideResidentConflict();
+  showToast('Your values are back in the form. Review them, then save.', 'green');
 }
 
 function residentFormPayload(confirmDuplicate = false) {
+  const editing = Boolean(document.getElementById('res-edit-id')?.value);
   return {
+    ...(editing && residentEditVersion ? { expected_updated_at: residentEditVersion } : {}),
     first_name: document.getElementById('res-name')?.value.trim(),
     middle_name: document.getElementById('res-middlename')?.value.trim() || null,
     last_name: document.getElementById('res-lastname')?.value.trim(),
@@ -4716,6 +4801,10 @@ async function saveResidentRecord(confirmDuplicate = false) {
       if (await confirmAction(`${payload.errors.duplicate[0]} Save as a separate resident anyway?`, { title: 'Possible duplicate resident', confirmLabel: 'Save as separate resident' })) return saveResidentRecord(true);
       return;
     }
+    if (response.status === 409 && payload?.resident) {
+      showResidentConflict(payload.message || 'Someone else saved changes to this resident after you opened it. Your changes were not saved.', residentFromApi(payload.resident));
+      return;
+    }
     if (!response.ok) {
       const message = payload?.errors ? Object.values(payload.errors).flat()[0] : payload?.message;
       throw new Error(message || 'Unable to save the resident record.');
@@ -4728,6 +4817,7 @@ async function saveResidentRecord(confirmDuplicate = false) {
       if (index >= 0) RESIDENTS[index] = residentFromApi(saved);
       else RESIDENTS.push(residentFromApi(saved));
       document.getElementById('res-edit-id').value = saved.resident_number;
+      residentEditVersion = saved.updated_at || null;
       const form = new FormData();
       form.append('photo', photo);
       const photoResponse = await fetch(`/staff/residents/${saved.id}/photo`, { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', ...csrfRequestHeaders() }, body: form });

@@ -59,6 +59,7 @@ class UpdateResidentRequest extends FormRequest
             'status' => ['required', Rule::in(['active', 'inactive'])],
             'is_in_good_standing' => ['sometimes', 'boolean'],
             'confirm_duplicate' => ['sometimes', 'boolean'],
+            'expected_updated_at' => ['sometimes', 'nullable', 'date'],
             'household_id' => ['sometimes', 'nullable', 'integer', Rule::exists('households', 'id')],
             'relationship_to_household_head' => ['nullable', 'string', 'max:100'],
             'is_household_head' => ['sometimes', 'boolean'],

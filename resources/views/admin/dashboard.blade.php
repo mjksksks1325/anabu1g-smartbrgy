@@ -743,6 +743,7 @@
   <div class="modal">
     <div class="modal-header"><div class="modal-title" id="modal-resident-title"> <span>I-register ang Bagong Resident</span></div><button type="button" class="modal-close" onclick="closeModal('modal-resident')" aria-label="Close">&times;</button></div>
     <p class="form-required-note"><span class="required-mark" aria-hidden="true">*</span> Required field</p>
+    <div id="res-conflict" class="form-conflict" role="alert" hidden></div>
     <h3 class="form-section-heading">Personal information</h3>
     <div class="form-row">
       <div class="form-group"><label class="form-label" for="res-lastname">Last Name <span class="required-mark" aria-hidden="true">*</span></label><input class="form-input" id="res-lastname" name="last_name" placeholder="Santos" required aria-required="true" autocomplete="family-name"/></div>

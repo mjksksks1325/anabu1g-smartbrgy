@@ -5,6 +5,7 @@ use App\Models\DocumentRequest;
 use App\Models\Resident;
 use App\Models\User;
 use App\Models\VoterRegistration;
+use Illuminate\Support\Facades\DB;
 
 function residentPayload(array $overrides = []): array
 {
@@ -269,6 +270,31 @@ it('shows each resident voter record status, with null for no record and no COME
         $unrecorded->id => null,
     ]);
     expect($response->getContent())->not->toContain('comelec');
+});
+
+it('refuses a save based on an older version instead of overwriting another staff member', function () {
+    $first = User::factory()->assignedOperations()->create();
+    $second = User::factory()->assignedOperations()->create();
+    $this->travelTo(now()->subMinute());
+    $resident = Resident::factory()->create(residentPayload());
+    $this->travelBack();
+    $loadedVersion = $this->actingAs($first)->getJson(route('staff.residents.index'))->json('data.0.updated_at');
+    $audits = fn (): int => DB::table('administrative_audits')->where('action', 'admin.residents.update')->count();
+
+    $this->actingAs($first)->patchJson(route('staff.residents.update', $resident), residentPayload(['address' => 'Saved first', 'expected_updated_at' => $loadedVersion]))
+        ->assertOk();
+    $refused = $this->actingAs($second)->patchJson(route('staff.residents.update', $resident), residentPayload(['address' => 'Saved second', 'expected_updated_at' => $loadedVersion]));
+
+    $refused->assertStatus(409)
+        ->assertJsonPath('message', 'Someone else saved changes to this resident after you opened it. Your changes were not saved.')
+        ->assertJsonPath('resident.address', 'Saved first')
+        ->assertJsonPath('resident.voter_status', null);
+    expect($resident->fresh()->address)->toBe('Saved first')
+        ->and($audits())->toBe(1);
+
+    $this->patchJson(route('staff.residents.update', $resident), residentPayload(['address' => 'Saved second', 'expected_updated_at' => $refused->json('resident.updated_at')]))
+        ->assertOk()->assertJsonPath('resident.address', 'Saved second');
+    expect($audits())->toBe(2);
 });
 
 it('updates a resident without allowing a client to replace its resident number', function () {

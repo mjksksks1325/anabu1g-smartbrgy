@@ -2,8 +2,10 @@
 
 namespace App\Actions;
 
+use App\Exceptions\StaleRecordException;
 use App\Models\Household;
 use App\Models\Resident;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -66,12 +68,23 @@ class ManageHouseholds
         }, 3);
     }
 
-    /** @param array<string, mixed> $attributes */
-    public function saveResident(array $attributes, ?Resident $resident = null): Resident
+    /**
+     * Create or update a resident. When `$expectedUpdatedAt` is given, the update is refused if the stored
+     * record has changed since that version was loaded; the check runs under the same row lock as the write.
+     *
+     * @param  array<string, mixed>  $attributes
+     *
+     * @throws StaleRecordException
+     */
+    public function saveResident(array $attributes, ?Resident $resident = null, ?CarbonInterface $expectedUpdatedAt = null): Resident
     {
-        return DB::transaction(function () use ($attributes, $resident): Resident {
+        return DB::transaction(function () use ($attributes, $resident, $expectedUpdatedAt): Resident {
             $this->lock();
             $resident = $resident ? Resident::query()->lockForUpdate()->findOrFail($resident->id) : new Resident;
+            if ($expectedUpdatedAt !== null && $resident->exists
+                && $resident->updated_at?->getTimestamp() !== $expectedUpdatedAt->getTimestamp()) {
+                throw new StaleRecordException('The resident record changed after it was loaded.');
+            }
             $resident->fill(Arr::except($attributes, ['confirm_duplicate', 'household_id', 'is_household_head', 'relationship_to_household_head', 'new_household']));
             $resident->save();
 

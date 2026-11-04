@@ -1171,6 +1171,49 @@ test('clicking a resident row opens its details but its action buttons keep thei
   assert.equal(rows[1].listeners.click, undefined);
 });
 
+test('a resident save refused as stale keeps the typed values, loads the latest record and can re-apply them', async () => {
+  const { context, fields } = await client();
+  const ids = ['res-lastname', 'res-name', 'res-middlename', 'res-suffix', 'res-dob', 'res-gender', 'res-civil', 'res-nationality', 'res-purok', 'res-address', 'res-contact', 'res-type', 'res-status', 'res-edit-id', 'res-household-id', 'res-household-relationship'];
+  ids.forEach(id => fields.set(id, { value: '' }));
+  ['res-good-standing', 'res-verified-indigent', 'res-household-head', 'res-create-household'].forEach(id => fields.set(id, { checked: false }));
+  fields.set('res-photo', { value: '', files: [] });
+  const notice = { hidden: true, innerHTML: '', scrollIntoView() {} };
+  fields.set('res-conflict', notice);
+  context.document.querySelector = selector => (selector === '#modal-resident-title span' ? { textContent: '' } : null);
+  vm.runInContext(`syncPurokSelects = () => {}; ensurePuroksLoaded = async () => {}; setResidentPhotoPreview = () => {};
+    resetResidentHouseholdFields = () => {}; openModal = () => {}; checkedGroups = [];
+    setCheckedSpecialGroups = groups => { checkedGroups = [...groups]; }; getCheckedSpecialGroups = () => checkedGroups;`, context);
+  const record = extra => ({ id: 9, resident_number: 'ANB-9', first_name: 'Maria', last_name: 'Santos', date_of_birth: '1990-05-14', gender: 'Female', civil_status: 'Single', purok: 'Purok 1', address: 'Old address', contact_number: '09171111111', residency_type: 'Homeowner', status: 'active', is_in_good_standing: true, special_groups: [], ...extra });
+  context.loaded = record({ updated_at: '2026-11-04T01:00:00.000000Z' });
+  context.latest = record({ address: 'Their address', updated_at: '2026-11-04T01:05:00.000000Z' });
+  vm.runInContext('RESIDENTS.splice(0, RESIDENTS.length, residentFromApi(loaded));', context);
+
+  context.openEditResident('ANB-9');
+  fields.get('res-address').value = 'My address';
+  fields.get('res-contact').value = '09172222222';
+  let sent;
+  context.fetch = async (url, options) => { sent = JSON.parse(options.body); return { ok: false, status: 409, json: async () => ({ message: 'Someone else saved changes to this resident after you opened it. Your changes were not saved.', resident: context.latest }) }; };
+  await context.saveResidentRecord();
+
+  assert.equal(sent.expected_updated_at, '2026-11-04T01:00:00.000000Z');
+  assert.equal(notice.hidden, false);
+  assert.match(notice.innerHTML, /Load the latest record/);
+  assert.equal(fields.get('res-address').value, 'My address');
+
+  context.loadLatestResidentVersion();
+  assert.equal(fields.get('res-address').value, 'Their address');
+  assert.equal(fields.get('res-contact').value, '09171111111');
+  assert.match(notice.innerHTML, /res-address<\/span> <strong>My address<\/strong>/);
+  assert.match(notice.innerHTML, /res-contact<\/span> <strong>09172222222<\/strong>/);
+  assert.equal(context.residentFormPayload().expected_updated_at, '2026-11-04T01:05:00.000000Z');
+
+  context.reapplyResidentDraft();
+  assert.equal(fields.get('res-address').value, 'My address');
+  assert.equal(fields.get('res-contact').value, '09172222222');
+  assert.equal(notice.hidden, true);
+  assert.equal(context.residentFormPayload().expected_updated_at, '2026-11-04T01:05:00.000000Z');
+});
+
 test('resident rows mark registered voters only, and a missing voter record adds no label', async () => {
   const { context, fields } = await client();
   const rows = [];

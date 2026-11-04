@@ -1916,5 +1916,13 @@
     "active": "aktibo",
     "Showing the 5 most recent. Search Incident Reports by resident ID for the rest.": "Ipinapakita ang 5 pinakabago. Hanapin sa Incident Reports gamit ang resident ID para sa iba pa.",
     "A linked report does not by itself restrict document requests.": "Hindi mismo naglilimita sa document request ang isang kaugnay na ulat.",
-    "View :reference in Incident Reports": "Tingnan ang :reference sa Incident Reports"
+    "View :reference in Incident Reports": "Tingnan ang :reference sa Incident Reports",
+    "Someone else saved changes to this resident after you opened it. Your changes were not saved.": "May ibang nag-save ng pagbabago sa residenteng ito matapos ninyo itong buksan. Hindi na-save ang mga pagbabago ninyo.",
+    "Your edits are still in the form. Load the latest record to see what changed; you can then re-apply your edits.": "Nasa form pa rin ang mga binago ninyo. I-load ang pinakabagong record para makita ang nagbago; puwede ninyong ibalik pagkatapos ang mga binago ninyo.",
+    "Load the latest record": "I-load ang pinakabagong record",
+    "The latest record is in the form and already matches your edits. Review it, then save.": "Nasa form na ang pinakabagong record at tugma na ito sa mga binago ninyo. Suriin ito, saka i-save.",
+    "The latest record is in the form.": "Nasa form na ang pinakabagong record.",
+    "Your unsaved values that differ from it:": "Ang mga hindi pa na-save na value ninyo na iba rito:",
+    "Re-apply my values": "Ibalik ang mga value ko",
+    "Your values are back in the form. Review them, then save.": "Nasa form na ulit ang mga value ninyo. Suriin ang mga ito, saka i-save."
 }

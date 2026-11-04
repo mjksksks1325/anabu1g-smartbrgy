@@ -6,6 +6,7 @@ use App\Actions\ManageHouseholds;
 use App\Actions\ResidentIdentity;
 use App\Actions\WriteRecordsSpreadsheet;
 use App\CertificateType;
+use App\Exceptions\StaleRecordException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreResidentRequest;
 use App\Http\Requests\Admin\UpdateResidentRequest;
@@ -15,6 +16,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -134,11 +136,19 @@ class ResidentController extends Controller
     public function update(UpdateResidentRequest $request, Resident $resident): JsonResponse
     {
         $validated = $request->validated();
+        $expectedVersion = Arr::pull($validated, 'expected_updated_at');
         $validated['date_of_birth'] = Carbon::parse($validated['date_of_birth'])->toDateString();
-        Cache::lock($this->residentIdentityLockKey($validated), 15)->block(5, function () use ($request, $resident, $validated): void {
-            $this->rejectDuplicate($validated, $request->boolean('confirm_duplicate'), $resident);
-            $this->households->saveResident($validated, $resident);
-        });
+        try {
+            Cache::lock($this->residentIdentityLockKey($validated), 15)->block(5, function () use ($request, $resident, $validated, $expectedVersion): void {
+                $this->rejectDuplicate($validated, $request->boolean('confirm_duplicate'), $resident);
+                $this->households->saveResident($validated, $resident, $expectedVersion ? Carbon::parse($expectedVersion) : null);
+            });
+        } catch (StaleRecordException) {
+            return response()->json([
+                'message' => 'Someone else saved changes to this resident after you opened it. Your changes were not saved.',
+                'resident' => Resident::query()->with('household.head')->withVoterStatus()->findOrFail($resident->id),
+            ], 409);
+        }
 
         return response()->json([
             'message' => 'Resident record updated successfully.',

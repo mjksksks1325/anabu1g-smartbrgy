@@ -1734,5 +1734,13 @@
     "active": "active",
     "Showing the 5 most recent. Search Incident Reports by resident ID for the rest.": "Showing the 5 most recent. Search Incident Reports by resident ID for the rest.",
     "A linked report does not by itself restrict document requests.": "A linked report does not by itself restrict document requests.",
-    "View :reference in Incident Reports": "View :reference in Incident Reports"
+    "View :reference in Incident Reports": "View :reference in Incident Reports",
+    "Someone else saved changes to this resident after you opened it. Your changes were not saved.": "Someone else saved changes to this resident after you opened it. Your changes were not saved.",
+    "Your edits are still in the form. Load the latest record to see what changed; you can then re-apply your edits.": "Your edits are still in the form. Load the latest record to see what changed; you can then re-apply your edits.",
+    "Load the latest record": "Load the latest record",
+    "The latest record is in the form and already matches your edits. Review it, then save.": "The latest record is in the form and already matches your edits. Review it, then save.",
+    "The latest record is in the form.": "The latest record is in the form.",
+    "Your unsaved values that differ from it:": "Your unsaved values that differ from it:",
+    "Re-apply my values": "Re-apply my values",
+    "Your values are back in the form. Review them, then save.": "Your values are back in the form. Review them, then save."
 }
