@@ -1816,5 +1816,12 @@
     "Staff-issued code": "Staff-issued code",
     "Email self-service (identity not checked by staff)": "Email self-service (identity not checked by staff)",
     "This account was created through the removed email self-service step. Check the resident's valid ID in person; suspend the account if their identity cannot be confirmed.": "This account was created through the removed email self-service step. Check the resident's valid ID in person; suspend the account if their identity cannot be confirmed.",
-    "Confirm that you checked the resident's valid ID in person before issuing a code.": "Confirm that you checked the resident's valid ID in person before issuing a code."
+    "Confirm that you checked the resident's valid ID in person before issuing a code.": "Confirm that you checked the resident's valid ID in person before issuing a code.",
+    "Open resident records": "Open resident records",
+    "Open certificates": "Open certificates",
+    "Review pending requests": "Review pending requests",
+    "New announcement": "New announcement",
+    "Optional image · up to 5 MB. Drafts stay staff-only until published.": "Optional image · up to 5 MB. Drafts stay staff-only until published.",
+    "Select New announcement to write one.": "Select New announcement to write one.",
+    "Published announcements appear on the resident portal.": "Published announcements appear on the resident portal."
 }

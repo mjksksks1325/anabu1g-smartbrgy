@@ -23,6 +23,7 @@
   --staff-bg: #eef2ef;
   --staff-topbar: #ffffff;
   --staff-card: #ffffff;
+  --staff-raised: #ffffff;
   --staff-soft: #f5f8f6;
   --staff-input: #ffffff;
   --staff-border: #d5ddd8;
@@ -62,50 +63,55 @@
 }
 
 /* ── Tokens: dark (workspace, IoT pages, settings) ─────────────── */
+/*
+ * Neutral charcoal surfaces in four steps, each lighter step closer to the user: canvas → top bar → card →
+ * raised (dialogs, menus). Borders and a faint top highlight separate them; green is kept for the brand
+ * sidebar, primary actions, links and the current item.
+ */
 :root:has(body[data-personnel-layout="admin"]:not(.light-mode)),
 html[data-theme=dark], html.dark, body:not(.light-mode) #app.admin-interface.admin-interface {
-  --civic-blue: #9edbb5;
-  --civic-blue-strong: #c4ecd3;
-  --civic-blue-soft: #1e3a2b;
-  --civic-green-soft: #1b3a29;
-  --civic-ink: #eaf0ec;
-  --civic-muted: #b3beb8;
-  --civic-line: #3e4b45;
+  --civic-blue: #8fd4ab;
+  --civic-blue-strong: #bfe8cf;
+  --civic-blue-soft: #1b3226;
+  --civic-green-soft: #1b3226;
+  --civic-ink: #e6e9ec;
+  --civic-muted: #a7b0b8;
+  --civic-line: #353b41;
 
-  --staff-bg: #121715;
-  --staff-topbar: #1b2320;
-  --staff-card: #222b28;
-  --staff-soft: #2a342f;
-  --staff-input: #171d1a;
-  --staff-border: #3e4b45;
-  --staff-control-border: #7f8d86;
-  --staff-row: #333f39;
-  --staff-table-head: #2a342f;
-  --staff-ink: #eaf0ec;
-  --staff-muted: #b3beb8;
-  --staff-accent: #9edbb5;
-  --staff-accent-fill: #17663a;
-  --staff-accent-fill-hover: #1f7a49;
-  --staff-active-bg: #1e3a2b;
-  --staff-active-ink: #9edbb5;
-  --staff-hover-bg: #2c3832;
-  --staff-quiet-bg: #26302b;
-  --staff-quiet-border: #6b7a72;
-  --staff-quiet-ink: #eaf0ec;
-  --staff-quiet-hover: #303b36;
-  --staff-danger: #b42318;
-  --staff-danger-hover: #c8372b;
-  --staff-focus: #9edbb5;
-  --staff-shadow: 0 1px 2px rgba(0, 0, 0, .45), 0 6px 18px rgba(0, 0, 0, .3);
-  --staff-shadow-raised: 0 20px 48px rgba(0, 0, 0, .6);
-  --staff-sidebar: #0d1310;
-  --staff-side-line: rgba(255, 255, 255, .08);
-  --staff-side-active-bg: #1e3a2b;
+  --staff-bg: #111315;
+  --staff-topbar: #181b1e;
+  --staff-card: #1c2024;
+  --staff-raised: #24292e;
+  --staff-soft: #23282c;
+  --staff-input: #141619;
+  --staff-border: #30363c;
+  --staff-control-border: #66707a;
+  --staff-row: #2a2f35;
+  --staff-table-head: #21262a;
+  --staff-ink: #e6e9ec;
+  --staff-muted: #a7b0b8;
+  --staff-accent: #8fd4ab;
+  --staff-accent-fill: #1d7146;
+  --staff-accent-fill-hover: #23824f;
+  --staff-active-bg: #1b3226;
+  --staff-active-ink: #a9e2c0;
+  --staff-hover-bg: #262b30;
+  --staff-quiet-bg: #22272b;
+  --staff-quiet-border: #4d565f;
+  --staff-quiet-ink: #e6e9ec;
+  --staff-quiet-hover: #2b3136;
+  --staff-danger: #c2392d;
+  --staff-danger-hover: #d14a3e;
+  --staff-focus: #8fd4ab;
+  --staff-shadow: 0 1px 2px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .035);
+  --staff-shadow-raised: 0 24px 56px rgba(0, 0, 0, .6), 0 0 0 1px rgba(255, 255, 255, .04);
+  --staff-sidebar: #0f1a15;
+  --staff-side-line: rgba(255, 255, 255, .07);
+  --staff-side-active-bg: #1d3a2a;
   --staff-side-active-ink: #ffffff;
-  --staff-nav-active-bg: #1e3a2b;
+  --staff-nav-active-bg: #1d3a2a;
   --staff-nav-active-ink: #ffffff;
 }
-
 /* The workspace layer maps its own variables per theme on #app; point them at the tokens again. */
 body.light-mode #app.admin-interface.admin-interface, body:not(.light-mode) #app.admin-interface.admin-interface {
   --blue-700: var(--staff-accent-fill);
@@ -210,11 +216,7 @@ body[data-personnel-layout="iot"] .component-health-item { border-left: 4px soli
 body[data-personnel-layout="iot"] .component-health-dot { background: var(--staff-control-border); box-shadow: 0 0 0 3px var(--staff-soft); }
 
 /* Dashboard summary cards: one meaning per colour, value first. */
-body #app.admin-interface.admin-interface .stat-card { min-height: 0; padding: 18px 20px; border-top: 4px solid var(--staff-control-border); }
-body #app.admin-interface.admin-interface .stat-card.blue { border-top-color: #2f6f9f; }
-body #app.admin-interface.admin-interface .stat-card.green { border-top-color: #17663a; }
-body #app.admin-interface.admin-interface .stat-card.amber { border-top-color: #b7791f; }
-body #app.admin-interface.admin-interface .stat-card.red { border-top-color: #b42318; }
+body #app.admin-interface.admin-interface .stat-card { min-height: 0; }
 body #app.admin-interface.admin-interface .stat-card.blue .stat-icon { background: #e6eff6; color: #245a82; }
 body #app.admin-interface.admin-interface .stat-card.green .stat-icon { background: #dff1e6; color: #17663a; }
 body #app.admin-interface.admin-interface .stat-card.amber .stat-icon { background: #fbf0dc; color: #8a5a00; }
@@ -223,7 +225,6 @@ body:not(.light-mode) #app.admin-interface.admin-interface .stat-card.blue .stat
 body:not(.light-mode) #app.admin-interface.admin-interface .stat-card.green .stat-icon { background: #1e3a2b; color: #9edbb5; }
 body:not(.light-mode) #app.admin-interface.admin-interface .stat-card.amber .stat-icon { background: #3a2d0c; color: #f0c96a; }
 body:not(.light-mode) #app.admin-interface.admin-interface .stat-card.red .stat-icon { background: #3d1a17; color: #f2a49c; }
-body #app.admin-interface.admin-interface .stat-value { margin-top: 14px; font-size: 32px; }
 body #app.admin-interface.admin-interface .stat-sub { color: var(--staff-muted); }
 
 /* Quick actions are equal-weight shortcuts, not competing primary buttons. */
@@ -317,7 +318,7 @@ body[data-personnel-layout="iot"] .notice:not(.success):not(.error), html[data-t
 }
 html[data-theme=dark] body[data-personnel-layout="iot"] .notice:not(.success):not(.error) { border-color: #2b4a6b; background: #132a42; color: #cfe2f7; }
 body #app.admin-interface.admin-interface .modal, body[data-personnel-layout="iot"] .confirm-dialog, .personnel-password-dialog, .personnel-logout-dialog {
-  border: 1px solid var(--staff-border); background: var(--staff-card); color: var(--staff-ink); box-shadow: var(--staff-shadow-raised);
+  border: 1px solid var(--staff-border); background: var(--staff-raised); color: var(--staff-ink); box-shadow: var(--staff-shadow-raised);
 }
 :is(.personnel-password-dialog, .personnel-logout-dialog, body[data-personnel-layout="iot"] .confirm-dialog)::backdrop { background: rgba(10, 18, 14, .62); }
 body #app.admin-interface.admin-interface .modal-overlay { background: rgba(10, 18, 14, .62); }
@@ -377,7 +378,6 @@ html[data-theme=dark] .personnel-logout-dialog .personnel-logout-symbol, html.da
 body.light-mode, body[data-personnel-layout="admin"] { color: var(--staff-ink); }
 body #app.admin-interface.admin-interface { color: var(--staff-ink); }
 body #app.admin-interface.admin-interface .stat-icon { display: grid; opacity: 1; filter: none; }
-body #app.admin-interface.admin-interface .stat-card:is(.blue, .green, .amber, .red), body #app.admin-interface.admin-interface .stat-card { border-top-width: 4px; }
 body #app.admin-interface.admin-interface .badge-green { border-color: transparent; background: #dff1e6; color: #0f5130; }
 body #app.admin-interface.admin-interface .badge-blue { border-color: transparent; background: #e6eff6; color: #1d4f7a; }
 body #app.admin-interface.admin-interface .badge-amber { border-color: transparent; background: #fbf0dc; color: #7a4d00; }
@@ -386,18 +386,14 @@ body:not(.light-mode) #app.admin-interface.admin-interface .badge-green { backgr
 body:not(.light-mode) #app.admin-interface.admin-interface .badge-blue { background: #1b2d3c; color: #9cc7f5; }
 body:not(.light-mode) #app.admin-interface.admin-interface .badge-amber { background: #3a2d0c; color: #f0c96a; }
 body:not(.light-mode) #app.admin-interface.admin-interface .badge-red { background: #3d1a17; color: #f2a49c; }
-/* Legacy layer forces a 1px border with !important; the summary cards keep a 4px meaning stripe. */
-body #app.admin-interface.admin-interface .stat-card { border-top: 4px solid var(--staff-control-border) !important; }
-body #app.admin-interface.admin-interface .stat-card.blue { border-top-color: #2f6f9f !important; }
-body #app.admin-interface.admin-interface .stat-card.green { border-top-color: #17663a !important; }
-body #app.admin-interface.admin-interface .stat-card.amber { border-top-color: #b7791f !important; }
-body #app.admin-interface.admin-interface .stat-card.red { border-top-color: #b42318 !important; }
 body #app.admin-interface.admin-interface .dashboard-activity-mark { background: var(--staff-active-bg); color: var(--staff-active-ink); }
 body #app.admin-interface.admin-interface .dashboard-activity-mark.incident { background: #fbf0dc; color: #7a4d00; }
 body:not(.light-mode) #app.admin-interface.admin-interface .dashboard-activity-mark.incident { background: #3a2d0c; color: #f0c96a; }
-body #app.admin-interface.admin-interface .dashboard-quick-action-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); justify-content: stretch; gap: 12px; }
-body #app.admin-interface.admin-interface .dashboard-quick-action-list .btn { width: 100%; }
-body #app.admin-interface.admin-interface .dashboard-quick-actions { padding-bottom: 20px; }
+/* Quick actions: one compact row — the heading on the left, the shortcuts beside it; they stack on narrow screens. */
+body #app.admin-interface.admin-interface .dashboard-quick-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; padding: 16px 20px; }
+body #app.admin-interface.admin-interface .dashboard-quick-actions .card-header { flex: 0 1 220px; margin: 0; padding: 0; border: 0; }
+body #app.admin-interface.admin-interface .dashboard-quick-action-list { flex: 1 1 520px; display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); justify-content: stretch; gap: 10px; padding: 0; }
+body #app.admin-interface.admin-interface .dashboard-quick-action-list .btn { width: 100%; min-height: 44px; }
 
 /* Each page already has its own heading and the sidebar marks the current item, so the bar does not repeat the title. */
 body #app.admin-interface.admin-interface .topbar-status, body[data-personnel-layout="iot"] .workspace-title, .staff-settings-topbar-title { visibility: hidden; }
@@ -452,7 +448,7 @@ body[data-personnel-layout="iot"] .employee-status-chips .pill > span:first-chil
 body[data-personnel-layout="iot"] .employee-effective { flex: 0 0 auto; font-weight: 700; }
 html[data-theme=dark] body[data-personnel-layout="iot"] .pill.success { background: #16301f; color: #9edbb5; }
 html[data-theme=dark] body[data-personnel-layout="iot"] .pill.warning { background: #3a2d0c; color: #f0c96a; }
-html[data-theme=dark] body[data-personnel-layout="iot"] .pill.neutral { background: #26302b; color: #cbd5d0; }
+html[data-theme=dark] body[data-personnel-layout="iot"] .pill.neutral { background: #2b3136; color: #cdd3d9; }
 body[data-personnel-layout="iot"] .dialog-close { display: inline-grid; flex: 0 0 auto; place-items: center; width: 34px; height: 34px; border: 1px solid var(--staff-border); border-radius: 50%; background: var(--staff-card); color: var(--staff-muted); font-size: 20px; line-height: 1; cursor: pointer; }
 body[data-personnel-layout="iot"] .dialog-close:hover { background: var(--staff-hover-bg); color: var(--staff-ink); }
 @media (max-width: 760px) {
@@ -480,8 +476,6 @@ body[data-personnel-layout="admin"] .audit-detail-modal { overflow-x: hidden; }
 body:not(.light-mode) #app.admin-interface :is(.cert-flow-icon, .cert-flow-number) { color: color-mix(in srgb, var(--flow-accent, #2f9e62) 55%, #ffffff); }
 @media (max-width: 760px) {
   #app.admin-interface :is(#screen-incidents, #screen-request-records) .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  #app.admin-interface :is(#screen-incidents, #screen-request-records) .stat-card { padding: 14px; }
-  #app.admin-interface :is(#screen-incidents, #screen-request-records) .stat-value { margin-top: 8px; font-size: 26px; }
 }
 #app.admin-interface .incident-table .badge, #app.admin-interface .issued-history-table .badge { white-space: nowrap; }
 #app.admin-interface .card:has(> .card-header #elig-rules-toggle[aria-expanded="false"]) > .card-header { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
@@ -608,9 +602,7 @@ body:not(.light-mode) #app.admin-interface { --sex-male: #7aa7ff; --sex-female: 
 #app.admin-interface .senior-register-note { margin: 10px 0 0; color: var(--staff-muted); font-size: 12px; }
 @media (max-width: 760px) {
   /* Two summary cards per row on phones instead of six full-width cards. */
-  #app.admin-interface :is(#demographics-stats-grid, #voter-stats-grid, #cert-stats-grid) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-  #app.admin-interface :is(#demographics-stats-grid, #voter-stats-grid, #cert-stats-grid) .stat-card { padding: 14px; }
-  #app.admin-interface :is(#demographics-stats-grid, #voter-stats-grid, #cert-stats-grid) .stat-value { margin-top: 8px; font-size: 26px; }
+  #app.admin-interface :is(#demographics-stats-grid, #voter-stats-grid, #cert-stats-grid, .dashboard-stats-grid) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   #app.admin-interface :is(#demographics-stats-grid, #voter-stats-grid, #cert-stats-grid) .stat-sub { font-size: 11px; }
   #app.admin-interface .age-bar-item { grid-template-columns: minmax(0, 1fr) 84px; }
   #app.admin-interface .age-bar-track { grid-column: 1 / -1; grid-row: 2; }
@@ -664,7 +656,7 @@ body.light-mode #app.admin-interface.admin-interface .sidebar .nav-item.active .
 }
 /* Summary cards open their module; the link stretches over the card so the whole card is a target. */
 body #app.admin-interface.admin-interface .stat-card:has(.stat-link) { position: relative; cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease; }
-body #app.admin-interface.admin-interface .stat-link { order: 4; align-self: flex-start; margin-top: 10px; padding: 0; border: 0; background: none; color: var(--staff-accent); font: inherit; font-size: 13px; font-weight: 700; text-align: left; text-decoration: none; cursor: pointer; }
+body #app.admin-interface.admin-interface .stat-link { grid-area: link; justify-self: start; margin-top: 8px; padding: 0; border: 0; background: none; color: var(--staff-accent); font: inherit; font-size: 12.5px; font-weight: 650; text-align: left; text-decoration: none; cursor: pointer; }
 body #app.admin-interface.admin-interface .stat-link::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
 body #app.admin-interface.admin-interface .stat-card:has(.stat-link):hover { border-color: var(--staff-accent); box-shadow: 0 2px 4px rgba(16, 32, 24, .08), 0 10px 24px rgba(16, 32, 24, .1); }
 body #app.admin-interface.admin-interface .stat-link:hover { text-decoration: underline; }
@@ -678,7 +670,7 @@ body #app.admin-interface.admin-interface .stat-link:focus-visible { outline: no
 .staff-auth-page .civic-auth-form .opacity-50 { color: #4f5e56; opacity: 1; }
 /* ── User Management: KPI meaning, one directory card, compact account rows ── */
 body #app.admin-interface.admin-interface .user-management-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-body #app.admin-interface.admin-interface .user-kpi { min-height: 0; border-top: 4px solid var(--user-kpi-color) !important; }
+body #app.admin-interface.admin-interface .user-kpi { min-height: 0; }
 body #app.admin-interface.admin-interface .user-kpi-total { --user-kpi-color: #2f6f9f; }
 body #app.admin-interface.admin-interface .user-kpi-2fa { --user-kpi-color: #a16207; }
 body #app.admin-interface.admin-interface .user-kpi .stat-value { color: var(--user-kpi-color); }
@@ -743,8 +735,6 @@ body #app.admin-interface.admin-interface .user-actions .user-action-suspend:hov
 }
 @media (max-width: 560px) {
   body #app.admin-interface.admin-interface .user-management-kpis { gap: 10px; }
-  body #app.admin-interface.admin-interface .user-kpi { padding: 14px; }
-  body #app.admin-interface.admin-interface .user-kpi .stat-value { font-size: 26px; }
   body #app.admin-interface.admin-interface .user-kpi .stat-icon { display: none; }
 }
 /* Account details dialog: grouped sections instead of one long grid. */

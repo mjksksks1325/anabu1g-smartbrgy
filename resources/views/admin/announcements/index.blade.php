@@ -4,14 +4,19 @@
 <div class="eyebrow">Public Information</div>
 <div class="page-heading">
     <div><h1>Announcements</h1><p>Create barangay updates for residents. Drafts stay staff-only; published announcements appear on the resident portal.</p></div>
+    @can('announcements.create')<button class="button" type="button" data-announcement-create-open aria-haspopup="dialog">New announcement</button>@endcan
 </div>
 
 @can('announcements.create')
-<section class="panel announcement-create-panel" aria-labelledby="announcement-create-title">
-    <div class="panel-heading"><h2 id="announcement-create-title">Create an announcement</h2><span>Optional image · up to 5 MB</span></div>
+@php($creating = old('_announcement') === null)
+{{-- Creating is an occasional, focused task, so the form lives in a dialog; it reopens with the typed values after a validation error. --}}
+<dialog class="announcement-dialog announcement-create-dialog" data-announcement-create-dialog aria-labelledby="announcement-create-title" @if($creating && $errors->hasAny(['title', 'body', 'image', 'status'])) data-open-on-load @endif>
+    <div class="announcement-dialog-header">
+        <div><h2 id="announcement-create-title">New announcement</h2><p>Optional image · up to 5 MB. Drafts stay staff-only until published.</p></div>
+        <button class="announcement-dialog-close" type="button" data-announcement-create-close aria-label="Close">&times;</button>
+    </div>
     <form class="announcement-form" method="POST" enctype="multipart/form-data" action="{{ route('staff.announcements.store') }}">
         @csrf
-        @php($creating = old('_announcement') === null)
         <label>Title<input name="title" maxlength="180" required value="{{ $creating ? old('title') : '' }}" placeholder="Announcement title" @if($creating && $errors->has('title')) aria-invalid="true" @endif></label>
         @if($creating)@error('title')<span class="field-feedback-message">{{ $message }}</span>@enderror @endif
         <label>Announcement<textarea name="body" maxlength="12000" rows="6" required placeholder="Write the details residents need to know." @if($creating && $errors->has('body')) aria-invalid="true" @endif>{{ $creating ? old('body') : '' }}</textarea></label>
@@ -24,10 +29,11 @@
                     @can('announcements.publish')<option value="published" @selected(old('status') === 'published')>Publish now</option>@endcan
                 </select>
             </label>
+            <button class="button quiet" type="button" data-announcement-create-close>Cancel</button>
             <button class="button" type="submit">Save announcement</button>
         </div>
     </form>
-</section>
+</dialog>
 @endcan
 
 <section class="panel announcement-list-panel" aria-labelledby="announcement-list-title">
@@ -79,12 +85,12 @@
             @endif
         </article>
     @empty
-        <div class="empty-state"><strong>No announcements here yet</strong><p>Create an announcement above. Published posts will appear in the resident portal.</p></div>
+        <div class="empty-state"><strong>No announcements here yet</strong><p>@can('announcements.create')Select New announcement to write one. @endcan Published announcements appear on the resident portal.</p></div>
     @endforelse
     @if($announcements->hasPages())<div class="announcement-pagination">{{ $announcements->links() }}</div>@endif
 </section>
 <div class="notice success announcement-feedback" data-announcement-feedback role="status" hidden></div>
-<dialog class="announcement-archive-dialog" data-announcement-archive-dialog aria-labelledby="announcement-archive-title" aria-describedby="announcement-archive-description">
+<dialog class="announcement-dialog announcement-archive-dialog" data-announcement-archive-dialog aria-labelledby="announcement-archive-title" aria-describedby="announcement-archive-description">
     <form data-announcement-archive-form>
         <h2 id="announcement-archive-title">Archive announcement</h2>
         <p id="announcement-archive-description">This removes the announcement from the resident portal while retaining its record. Confirm with the active Barangay Captain or Super Admin password.</p>

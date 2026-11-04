@@ -2,6 +2,48 @@
     let archiveUrl = null;
     let archiveRecord = null;
 
+    /*
+     * New announcement dialog. Closing it keeps what was typed (the form is not reset), so reopening continues
+     * the draft; after a server validation error the page reopens it with the fields and messages filled in.
+     */
+    const createDialog = () => document.querySelector('[data-announcement-create-dialog]');
+    const openCreateDialog = () => {
+        const dialog = createDialog();
+        if (!dialog || dialog.open) {
+            return;
+        }
+        dialog.showModal();
+        (dialog.querySelector('[aria-invalid="true"]') || dialog.querySelector('[name="title"]'))?.focus();
+    };
+
+    document.addEventListener('click', (event) => {
+        if (event.target.closest?.('[data-announcement-create-open]')) {
+            openCreateDialog();
+            return;
+        }
+        if (event.target.closest?.('[data-announcement-create-close]')) {
+            createDialog()?.close();
+            return;
+        }
+    });
+
+    document.addEventListener('close', (event) => {
+        if (event.target.matches?.('[data-announcement-create-dialog]')) {
+            document.querySelector('[data-announcement-create-open]')?.focus();
+        }
+    }, true);
+
+    const openOnLoad = () => {
+        if (createDialog()?.hasAttribute('data-open-on-load')) {
+            openCreateDialog();
+        }
+    };
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', openOnLoad, { once: true });
+    } else {
+        openOnLoad();
+    }
+
     document.addEventListener('click', (event) => {
         const archiveButton = event.target.closest?.('[data-announcement-archive]');
         const dialog = document.querySelector('[data-announcement-archive-dialog]');

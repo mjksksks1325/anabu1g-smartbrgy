@@ -17,10 +17,10 @@ Update it at the end of every session. Statuses come from the source code, not f
 - Tests: Pest and Node (`node --test tests/Unit/*.test.js`). The full Pest suite needs more memory than the default: `php -d memory_limit=1G vendor/pestphp/pest/bin/pest --compact`. Destructive-route tests send `supervisorApproval()` (see `tests/Pest.php`).
 - Browser checks: run the app against a **copy** of `database/database.sqlite` (set `DB_DATABASE` and start `php -S 127.0.0.1:8010 ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php` from `public/`; `artisan serve` drops the override) and sign in with a seeded local staff account. Never seed test data into the real local database.
 
-## Test status (2026-11-04, session 12)
+## Test status (2026-11-04, session 13)
 
 - Node: 206 pass, 0 fail.
-- Pest: 1023 pass, 0 fail, 2 skipped. The count fell from 1039 because session 12 replaced the ~30 tests of the removed self-service flow with 15 tests of the secure flow, and the four-case photo test with one. The skipped tests are the starter kit's open staff registration tests, intentionally off; see Final review.
+- Pest: 1025 pass, 0 fail, 2 skipped (session 13 added two announcement dialog tests). In session 12 the count fell from 1039 because session 12 replaced the ~30 tests of the removed self-service flow with 15 tests of the secure flow, and the four-case photo test with one. The skipped tests are the starter kit's open staff registration tests, intentionally off; see Final review.
 - The 14 earlier failures were resolved as follows:
   - **Outdated tests (11):** they expected UI a teammate removed on purpose (`8e4e1a0`, `e7f1aa7`): the IoT status chip, the "My profile" and "Account security" items, 16 menu icons, and the raw role `admin` instead of `Super Admin`. One test also checked for `wire:navigate` where the link now uses `wire:navigate.hover`. These tests now assert the consolidated design.
   - **Real bugs (2):**
@@ -483,6 +483,43 @@ The copy had 50 residents, 30 voters, 14 incidents and 12 file movements.
 - Re-apply could revert a field that only the other person had changed. It now compares with the record the form opened from.
 - The hold notice sat above the request flow, which the page scrolls past; it now opens the flow.
 
+## UI/UX redesign — work group 1 (session 13, 2026-11-04)
+
+**Method:**
+- Every staff screen rendered in Chrome as the Captain, light and dark, at 1440 px (28 views), on the seeded isolated copy.
+- Spot checks at 768 and 390 px in Filipino.
+- Real clicks and keys for the changed interactions.
+
+**Findings and status:**
+
+| # | Problem found | Decision | Status |
+|---|---|---|---|
+| U1 | **KPI cards 158–187 px tall** for a number and a label. Each stacked an icon tile, a caption pinned to the top-right corner, the number, the label and a link, plus a 4 px coloured top stripe (or gradient on Demographics, Voters, Certificates and Users). The colour rules were split across three stylesheets, some with `!important`. | One compact grid in the shared rule (`figma-admin.css`): icon tile left; number (26 px), label, one-line context and the optional link stacked beside it. Colour lives in the icon tile (and the number where it already did); stripes and gradients removed at their source, not overridden. KPIs stay clickable only where they already had a destination. Phones: no icon column, two cards per row, Dashboard included. | `NEW` — 83–132 px at desktop |
+| U2 | **Dark mode flat:** page `#121715`, top bar `#1b2320` and cards `#222b28` were all the same green hue a few lightness steps apart; workspace and IoT pages looked like different products. | Neutral charcoal scale in the shared tokens (`staff-theme.css`): page `#111315` → top bar `#181b1e` → card `#1c2024` → raised `#24292e` (new `--staff-raised` for dialogs). Borders `#30363c`, a faint top highlight on cards, text `#e6e9ec` / `#a7b0b8`. Green kept for the brand sidebar, primary actions, links and the current item. Control borders ≥ 3:1 against inputs. Workspace, IoT and settings pages share it automatically. | `NEW` |
+| U3 | **Announcements:** the full create form filled the first screen; records started below the fold. | "New announcement" button in the page heading opens a native dialog with the same fields, endpoint and permissions. Cancel, X and Esc keep the typed text; a server validation error reopens the dialog with values, error and focus on the field; focus returns to the button. Editing stays as the inline disclosure on each record (contextual, beside the published text). Both announcement dialogs share one raised style. | `NEW` |
+| U4 | **Competing primaries:** Dashboard "Refresh" and User Management "Export" were primary green beside the real primary action. | Both secondary. | `NEW` |
+| U5 | **Dashboard Quick Actions:** a 190 px card for three shortcuts. | One row: heading left, shortcuts beside it; stacks on narrow screens. | `NEW` |
+| U6 | **IoT empty states:** 65 px padding and a 19 px heading made "nothing yet" fill half the screen. | 32 px padding, 16 px heading; RFID list keeps a 160 px stable minimum. | `NEW` |
+| U7 | Three Dashboard KPI links stayed English in Filipino mode. | Catalogued. | `NEW` |
+
+**Verified (isolated copy):**
+- All 28 views: no horizontal overflow, no JavaScript errors.
+- Announcements by real input:
+  - the dialog opens with focus on Title; Esc closes it and focus returns to the button;
+  - reopening keeps the typed title;
+  - a server error (body of spaces) reopens it with Title kept and the error on Body;
+  - a valid save created the draft, and the archive dialog still works;
+  - fits at 390 px.
+- 390 and 768 px in Filipino, light and dark: no clipping.
+
+**Remaining UI/UX concerns (next work groups):**
+- Button sizes and radii differ between workspace `.btn` and IoT `.button`. The Certificates "Certificates & Fees" header button stretches to 280 px.
+- Page headers differ: IoT pages use an eyebrow plus a 26 px title; workspace pages have no eyebrow.
+- Validation errors show twice on IoT pages (page banner and field).
+- User Management lists each account as a tall card with three buttons; a denser table row would scan better.
+- Resident Records, Incidents and Audit tables, and the Certificates Request Board, were not re-examined at component level this session.
+- The Resident Portal dark theme was not reviewed in this work group.
+
 ## Decisions and proposals
 
 ### Import (approved 2026-11-03) — `NEW`
@@ -681,3 +718,4 @@ Option (b) was applied: no staff role can delete its own account; staff accounts
     - Delete the now-unused `ResidentPortalActivationNotification`, its two mail views and `ResidentActivationEmailTest` (kept because deleting tests needs approval).
     - The optional "Mark identity verified" action.
     - A16 (Captains suspending portal accounts).
+- **Session 13 (2026-11-04)** — UI/UX redesign, work group 1 (section above): compact KPI cards, charcoal dark theme with a raised surface token, the Announcements create dialog, button hierarchy, compact Quick Actions and empty states. UI only; no endpoints, permissions or rules changed.

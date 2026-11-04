@@ -1996,5 +1996,12 @@
     "Staff-issued code": "Code mula sa staff",
     "Email self-service (identity not checked by staff)": "Email self-service (hindi na-verify ng staff ang identity)",
     "This account was created through the removed email self-service step. Check the resident's valid ID in person; suspend the account if their identity cannot be confirmed.": "Ginawa ang account na ito sa inalis nang email self-service. Personal na tingnan ang valid ID ng residente; i-suspend ang account kung hindi makumpirma ang identity niya.",
-    "Confirm that you checked the resident's valid ID in person before issuing a code.": "Kumpirmahin muna na personal ninyong tiningnan ang valid ID ng residente bago magbigay ng code."
+    "Confirm that you checked the resident's valid ID in person before issuing a code.": "Kumpirmahin muna na personal ninyong tiningnan ang valid ID ng residente bago magbigay ng code.",
+    "Open resident records": "Buksan ang resident records",
+    "Open certificates": "Buksan ang mga sertipiko",
+    "Review pending requests": "Suriin ang mga nakabinbing request",
+    "New announcement": "Bagong anunsyo",
+    "Optional image · up to 5 MB. Drafts stay staff-only until published.": "Opsyonal na larawan · hanggang 5 MB. Para sa staff lang ang draft hangga't hindi pa nailalathala.",
+    "Select New announcement to write one.": "Piliin ang Bagong anunsyo para gumawa nito.",
+    "Published announcements appear on the resident portal.": "Lumalabas sa resident portal ang mga nailathalang anunsyo."
 }

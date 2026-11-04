@@ -159,7 +159,7 @@
       <div class="page-header-row">
         <div class="page-header"><h1><span>Dashboard</span></h1><p>Real-time overview — Barangay Anabu I-G, Imus City</p></div>
         <div class="dashboard-refresh-actions" style="display:flex;gap:8px;">
-          <button class="btn btn-primary btn-sm" onclick="refreshDashboardStats()">⟳ Refresh</button>
+          <button class="btn btn-sm" onclick="refreshDashboardStats()">⟳ Refresh</button>
         </div>
       </div>
       @php($dashboardStatCount = (int) auth()->user()->hasAnyPermission(['records.view', 'demographics.view']) + (2 * (int) auth()->user()->hasAnyPermission(['documents.view'])) + (int) auth()->user()->hasAnyPermission(['incidents.view', 'vawc.view']))
@@ -553,7 +553,7 @@
       <div class="page-header-row">
         <div class="page-header"><h1>User Management</h1><p>Manage authorized accounts and access to barangay records.</p></div>
         <div style="display:flex;gap:8px;">
-          <button class="btn btn-primary btn-sm" onclick="exportUsers()"><x-staff-icon name="download" />Export</button>
+          <button class="btn btn-sm" onclick="exportUsers()"><x-staff-icon name="download" />Export</button>
           <button class="btn btn-green" onclick="openAddUser()"><x-staff-icon name="plus" />Add New User</button>
         </div>
       </div>
