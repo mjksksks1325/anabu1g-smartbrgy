@@ -134,4 +134,18 @@
         <li><span><span data-portal-i18n="Bureau of Fire Protection">{{ __('Bureau of Fire Protection') }}</span></span><a href="tel:+639155283256">0915 528 3256</a></li>
     </ul>
 </section>
+
+@if ($complaintHotline)
+<section class="home-section complaint-section" aria-labelledby="complaint-title">
+    <div>
+        <p class="eyebrow"><span data-portal-i18n="Pambansang serbisyo ng gobyerno">{{ __('Pambansang serbisyo ng gobyerno') }}</span></p>
+        <h2 id="complaint-title"><span data-portal-i18n="{{ $complaintHotline['title'] }}">{{ __($complaintHotline['title']) }}</span></h2>
+        <p><span data-portal-i18n="Para sa reklamo o feedback tungkol sa serbisyo ng mga ahensya ng national government. Hindi ito pinapatakbo ng barangay, at hindi ito para sa emergency o sa incident report sa barangay.">{{ __('Para sa reklamo o feedback tungkol sa serbisyo ng mga ahensya ng national government. Hindi ito pinapatakbo ng barangay, at hindi ito para sa emergency o sa incident report sa barangay.') }}</span></p>
+    </div>
+    <div class="complaint-actions">
+        <p><span data-portal-i18n="Tumawag o mag-text sa">{{ __('Tumawag o mag-text sa') }}</span> <a href="tel:8888">8888</a></p>
+        <a class="btn btn-outline btn-small" href="{{ $complaintHotline['url'] }}" target="_blank" rel="noopener noreferrer"><span data-portal-i18n="{{ $complaintHotline['link_label'] }}">{{ __($complaintHotline['link_label']) }}</span> <span class="sr-only"><span data-portal-i18n="(opens in a new tab)">{{ __('(opens in a new tab)') }}</span></span></a>
+    </div>
+</section>
+@endif
 @endsection

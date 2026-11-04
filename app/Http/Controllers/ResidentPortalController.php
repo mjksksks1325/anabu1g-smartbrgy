@@ -22,6 +22,7 @@ class ResidentPortalController extends Controller
         return view('portal.index', [
             'services' => CertificateType::cases(),
             'announcements' => Announcement::published()->orderByDesc('published_at')->orderByDesc('id')->limit(3)->get(),
+            'complaintHotline' => collect(config('portal.resources', []))->firstWhere('id', '8888'),
         ]);
     }
 

@@ -24,6 +24,8 @@ return [
 
     'resources' => [
         [
+            // Verified 2026-11-04: EO No. 6 (2016) and PNA; call or text 8888, or file at 8888.gov.ph.
+            'id' => '8888',
             'title' => "8888 Citizens' Complaint Hotline",
             'description' => '8888 Citizens\' Complaint Hotline website para sa mga reklamo at feedback tungkol sa serbisyo ng gobyerno.',
             'url' => 'https://8888.gov.ph/',

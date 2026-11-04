@@ -83,6 +83,20 @@ test('portal home lists confirmed document fees and flags the business clearance
         ->assertDontSee('Regular Barangay ID: PHP 100');
 });
 
+test('portal home lists the national 8888 complaint channel apart from emergency hotlines', function () {
+    $document = new DOMDocument;
+    @$document->loadHTML($this->get(route('home'))->assertOk()->getContent());
+    $xpath = new DOMXPath($document);
+    $section = $xpath->query('//section[contains(@class, "complaint-section")]');
+
+    expect($section)->toHaveCount(1)
+        ->and($section->item(0)->textContent)->toContain("8888 Citizens' Complaint Hotline", 'not run by the barangay', 'not for emergencies or barangay incident reports')
+        ->and($xpath->query('.//a[@href="tel:8888"]', $section->item(0)))->toHaveCount(1)
+        ->and($xpath->query('.//a[@href="https://8888.gov.ph/"][@target="_blank"][contains(@rel, "noopener")]', $section->item(0)))->toHaveCount(1)
+        ->and($xpath->query('//ul[@class="hotline-list"]//a[contains(@href, "8888")]'))->toHaveCount(0)
+        ->and($xpath->query('//a[@href="https://8888.gov.ph/"]'))->toHaveCount(1);
+});
+
 test('only an unconfirmed fee carries the to-be-confirmed tag on the portal home', function () {
     $document = new DOMDocument;
     @$document->loadHTML($this->get(route('home'))->assertOk()->getContent());
