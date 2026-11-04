@@ -9,29 +9,28 @@
 <div id="toast-wrap" role="status" aria-live="polite"></div>
 <div id="loader" style="display:none;"><div class="spinner"></div><p><span data-portal-i18n="Sandali lang...">{{ __('Sandali lang...') }}</span></p></div>
 
-@if ($requestHolds->isNotEmpty())
-  <section class="alert alert-yellow request-holds" role="status" aria-labelledby="request-holds-title">
-    <h2 id="request-holds-title"><span data-portal-i18n="Some requests are on hold">{{ __('Some requests are on hold') }}</span></h2>
-    <ul>
-      @foreach ($requestHolds as $hold)
-        <li>
-          <strong>@if ($hold['documents'])<span data-portal-i18n="{{ $hold['documents'] }}">{{ __($hold['documents']) }}</span>@else<span data-portal-i18n="All document requests">{{ __('All document requests') }}</span>@endif</strong>
-          @if ($hold['message'])<p><span data-portal-i18n="Message from the barangay:">{{ __('Message from the barangay:') }}</span> {{ $hold['message'] }}</p>@endif
-          @if ($hold['ends_at'])<p><span data-portal-i18n="Hold ends:">{{ __('Hold ends:') }}</span> <time datetime="{{ $hold['ends_at']->toIso8601String() }}">{{ $hold['ends_at']->format('F j, Y g:i A') }}</time></p>@endif
-          @if ($hold['next_review_at'])<p><span data-portal-i18n="Next review by barangay staff:">{{ __('Next review by barangay staff:') }}</span> <time datetime="{{ $hold['next_review_at']->toIso8601String() }}">{{ $hold['next_review_at']->format('F j, Y g:i A') }}</time></p>@endif
-          @if (! $hold['ends_at'] && ! $hold['next_review_at'])<p><span data-portal-i18n="No end date has been set. Barangay staff will review it; ask at the Barangay Hall for help.">{{ __('No end date has been set. Barangay staff will review it; ask at the Barangay Hall for help.') }}</span></p>@endif
-        </li>
-      @endforeach
-    </ul>
-  </section>
-@endif
-
 @if ($hasPendingOrdinaryIncidentReport)
   <p class="alert alert-blue" role="status" data-portal-i18n="A pending incident report has been linked to your resident record and is awaiting barangay review. This does not mean that a violation has been established. You may continue with your document request.">{{ __('A pending incident report has been linked to your resident record and is awaiting barangay review. This does not mean that a violation has been established. You may continue with your document request.') }}</p>
 @endif
 
 <div class="request-layout v2-request">
   <section class="portal-request-flow" id="request-flow" aria-label="{{ __('Document request') }}" data-portal-i18n-aria-label="Document request">
+  @if ($requestHolds->isNotEmpty())
+    <section class="alert alert-yellow request-holds" role="status" aria-labelledby="request-holds-title">
+      <h2 id="request-holds-title"><span data-portal-i18n="Some requests are on hold">{{ __('Some requests are on hold') }}</span></h2>
+      <ul>
+        @foreach ($requestHolds as $hold)
+          <li>
+            <strong>@if ($hold['documents'])<span data-portal-i18n="{{ $hold['documents'] }}">{{ __($hold['documents']) }}</span>@else<span data-portal-i18n="All document requests">{{ __('All document requests') }}</span>@endif</strong>
+            @if ($hold['message'])<p><span data-portal-i18n="Message from the barangay:">{{ __('Message from the barangay:') }}</span> {{ $hold['message'] }}</p>@endif
+            @if ($hold['ends_at'])<p><span data-portal-i18n="Hold ends:">{{ __('Hold ends:') }}</span> <time datetime="{{ $hold['ends_at']->toIso8601String() }}">{{ $hold['ends_at']->format('F j, Y g:i A') }}</time></p>@endif
+            @if ($hold['next_review_at'])<p><span data-portal-i18n="Next review by barangay staff:">{{ __('Next review by barangay staff:') }}</span> <time datetime="{{ $hold['next_review_at']->toIso8601String() }}">{{ $hold['next_review_at']->format('F j, Y g:i A') }}</time></p>@endif
+            @if (! $hold['ends_at'] && ! $hold['next_review_at'])<p><span data-portal-i18n="No end date has been set. Barangay staff will review it; ask at the Barangay Hall for help.">{{ __('No end date has been set. Barangay staff will review it; ask at the Barangay Hall for help.') }}</span></p>@endif
+          </li>
+        @endforeach
+      </ul>
+    </section>
+  @endif
 
   <div class="screen active" id="screen-terms">
     @include('portal.partials.request-steps', ['current' => 1, 'title' => 'Basahin ang terms'])

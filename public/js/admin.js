@@ -4644,8 +4644,12 @@ let residentConflictDraft = {};
 const RESIDENT_CONFLICT_FIELDS = ['res-lastname', 'res-name', 'res-middlename', 'res-suffix', 'res-dob', 'res-gender', 'res-civil', 'res-nationality', 'res-purok', 'res-address', 'res-contact', 'res-type', 'res-status'];
 const RESIDENT_CONFLICT_CHECKBOXES = ['res-good-standing', 'res-verified-indigent'];
 
+/** The record the edit form was filled from, so a conflict can tell this user's edits from the other save's. */
+let residentEditOriginal = null;
+
 function fillResidentForm(resident) {
   residentEditVersion = resident.version || null;
+  residentEditOriginal = resident;
   hideResidentConflict();
   syncPurokSelects(resident.purok);
   void ensurePuroksLoaded(resident.purok);
@@ -4681,6 +4685,19 @@ function residentFormSnapshot() {
   return snapshot;
 }
 
+/** The same fields as residentFormSnapshot(), read from a record instead of the form. */
+function residentRecordSnapshot(resident) {
+  const text = value => String(value ?? '').trim();
+  return {
+    'res-lastname': text(resident.lastName), 'res-name': text(resident.firstName), 'res-middlename': text(resident.middleName),
+    'res-suffix': text(resident.suffix), 'res-dob': text(resident.dob), 'res-gender': text(resident.gender), 'res-civil': text(resident.civil),
+    'res-nationality': text(resident.nationality), 'res-purok': text(resident.purok), 'res-address': text(resident.address),
+    'res-contact': text(resident.contact), 'res-type': text(resident.type), 'res-status': text(resident.status).toLowerCase(),
+    'res-good-standing': resident.goodStanding ? 'Yes' : 'No', 'res-verified-indigent': resident.verifiedIndigent ? 'Yes' : 'No',
+    'special-groups': (resident.specialGroups || []).join(', '),
+  };
+}
+
 function residentFieldLabel(id) {
   if (id === 'special-groups') return 'Special Groups';
   return (document.querySelector(`label[for="${id}"]`)?.textContent || id).replace('*', '').trim();
@@ -4705,21 +4722,32 @@ function showResidentConflict(message, latest) {
   notice.scrollIntoView?.({ block: 'nearest' });
 }
 
-/** Put the latest saved record in the form and list the fields where this user's unsaved value differs. */
+/**
+ * Put the latest saved record in the form. Only fields this user changed (compared with the record the form
+ * was opened from) are offered for re-applying; fields only the other save changed keep the latest value.
+ */
 function loadLatestResidentVersion() {
   const latest = residentConflictLatest;
   if (!latest) return;
   const draft = residentFormSnapshot();
+  const original = residentRecordSnapshot(residentEditOriginal || latest);
+  const saved = residentRecordSnapshot(latest);
   const index = RESIDENTS.findIndex(item => item.databaseId === latest.databaseId);
   if (index >= 0) RESIDENTS[index] = latest;
   fillResidentForm(latest);
-  const current = residentFormSnapshot();
-  residentConflictDraft = Object.fromEntries(Object.keys(draft).filter(key => draft[key] !== current[key]).map(key => [key, draft[key]]));
+  residentConflictDraft = Object.fromEntries(Object.keys(draft)
+    .filter(key => draft[key] !== original[key] && draft[key] !== saved[key])
+    .map(key => [key, draft[key]]));
+  const changedByOthers = Object.keys(saved).filter(key => saved[key] !== original[key]);
   const notice = document.getElementById('res-conflict');
   const keys = Object.keys(residentConflictDraft);
+  const othersLine = changedByOthers.length
+    ? `<p><span>${escapeText('Changed in the latest record:')}</span> <strong>${changedByOthers.map(key => escapeText(residentFieldLabel(key))).join(', ')}</strong></p>`
+    : '';
   notice.innerHTML = keys.length === 0
-    ? `<p>${escapeText('The latest record is in the form and already matches your edits. Review it, then save.')}</p>`
-    : `<p><strong>${escapeText('The latest record is in the form.')}</strong> ${escapeText('Your unsaved values that differ from it:')}</p>
+    ? `${othersLine}<p>${escapeText('The latest record is in the form and already matches your edits. Review it, then save.')}</p>`
+    : `<p><strong>${escapeText('The latest record is in the form.')}</strong></p>${othersLine}
+      <p>${escapeText('Your unsaved values that differ from it:')}</p>
       <ul class="form-conflict-list">${keys.map(key => `<li><span>${escapeText(residentFieldLabel(key))}</span> <strong>${escapeText(residentConflictDraft[key] || '—')}</strong></li>`).join('')}</ul>
       <button type="button" class="btn btn-sm" onclick="reapplyResidentDraft()">Re-apply my values</button>`;
   notice.hidden = false;
@@ -4949,8 +4977,10 @@ async function loadResidentIncidentLinks(residentId) {
     const rows = (recent.data || []).map(incident => {
       const role = Number(incident.complainant_resident_id) === Number(residentId) ? 'Complainant' : 'Respondent';
       return `<li class="resident-incident-link">
-        <span class="resident-number incident-ref" title="${escapeText(incident.incident_number)}">${incidentReferenceMarkup(incident.incident_number)}</span>
-        <span>${escapeText(incident.incident_type)}</span>
+        <span class="resident-incident-main">
+          <strong>${escapeText(incident.incident_type)}</strong>
+          <span class="resident-number incident-ref" title="${escapeText(incident.incident_number)}">${incidentReferenceMarkup(incident.incident_number)}</span>
+        </span>
         <span class="badge ${incidentStatusBadge(incident.status)}">${escapeText(incident.status_label)}</span>
         <span class="resident-incident-role">${escapeText(role)}</span>
         <button type="button" class="btn btn-xs" onclick="openResidentIncident('${escapeText(incident.incident_number)}')" aria-label="${escapeText(`View ${incident.incident_number} in Incident Reports`)}">View</button>

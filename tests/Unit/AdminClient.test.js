@@ -1219,7 +1219,7 @@ test('a resident save refused as stale keeps the typed values, loads the latest 
     setCheckedSpecialGroups = groups => { checkedGroups = [...groups]; }; getCheckedSpecialGroups = () => checkedGroups;`, context);
   const record = extra => ({ id: 9, resident_number: 'ANB-9', first_name: 'Maria', last_name: 'Santos', date_of_birth: '1990-05-14', gender: 'Female', civil_status: 'Single', purok: 'Purok 1', address: 'Old address', contact_number: '09171111111', residency_type: 'Homeowner', status: 'active', is_in_good_standing: true, special_groups: [], ...extra });
   context.loaded = record({ updated_at: '2026-11-04T01:00:00.000000Z' });
-  context.latest = record({ address: 'Their address', updated_at: '2026-11-04T01:05:00.000000Z' });
+  context.latest = record({ address: 'Their address', residency_type: 'Renter', updated_at: '2026-11-04T01:05:00.000000Z' });
   vm.runInContext('RESIDENTS.splice(0, RESIDENTS.length, residentFromApi(loaded));', context);
 
   context.openEditResident('ANB-9');
@@ -1237,13 +1237,17 @@ test('a resident save refused as stale keeps the typed values, loads the latest 
   context.loadLatestResidentVersion();
   assert.equal(fields.get('res-address').value, 'Their address');
   assert.equal(fields.get('res-contact').value, '09171111111');
+  assert.equal(fields.get('res-type').value, 'Renter');
+  assert.match(notice.innerHTML, /Changed in the latest record:<\/span> <strong>res-address, res-type<\/strong>/);
   assert.match(notice.innerHTML, /res-address<\/span> <strong>My address<\/strong>/);
   assert.match(notice.innerHTML, /res-contact<\/span> <strong>09172222222<\/strong>/);
+  assert.doesNotMatch(notice.innerHTML, /<li><span>res-type/);
   assert.equal(context.residentFormPayload().expected_updated_at, '2026-11-04T01:05:00.000000Z');
 
   context.reapplyResidentDraft();
   assert.equal(fields.get('res-address').value, 'My address');
   assert.equal(fields.get('res-contact').value, '09172222222');
+  assert.equal(fields.get('res-type').value, 'Renter', 'a field only the other save changed keeps the latest value');
   assert.equal(notice.hidden, true);
   assert.equal(context.residentFormPayload().expected_updated_at, '2026-11-04T01:05:00.000000Z');
 });
