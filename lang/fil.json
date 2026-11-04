@@ -1925,5 +1925,19 @@
     "Your values are back in the form. Review them, then save.": "Nasa form na ulit ang mga value ninyo. Suriin ang mga ito, saka i-save.",
     "not yet confirmed": "hindi pa kumpirmado",
     "PHP 200.00 (not yet confirmed)": "PHP 200.00 (hindi pa kumpirmado)",
-    "Sa Barangay Hall babayaran ang fee. Regular Barangay ID ang fee na nakalista. Hinihintay pa ang kumpirmasyon sa Business Clearance fee, requirements, at processing time.": "Sa Barangay Hall babayaran ang fee. Regular Barangay ID ang fee na nakalista. Hinihintay pa ang kumpirmasyon sa Business Clearance fee, requirements, at processing time."
+    "Sa Barangay Hall babayaran ang fee. Regular Barangay ID ang fee na nakalista. Hinihintay pa ang kumpirmasyon sa Business Clearance fee, requirements, at processing time.": "Sa Barangay Hall babayaran ang fee. Regular Barangay ID ang fee na nakalista. Hinihintay pa ang kumpirmasyon sa Business Clearance fee, requirements, at processing time.",
+    "Some requests are on hold": "May mga request na naka-hold",
+    "All document requests": "Lahat ng document request",
+    "Message from the barangay:": "Mensahe mula sa barangay:",
+    "Message from the barangay: :message": "Mensahe mula sa barangay: :message",
+    "Hold ends:": "Matatapos ang hold:",
+    "Next review by barangay staff:": "Susunod na review ng barangay staff:",
+    "The hold is set to end on :date.": "Nakatakdang matapos ang hold sa :date.",
+    "Barangay staff will review it on :date.": "Rerepasuhin ito ng barangay staff sa :date.",
+    "No end date has been set. Barangay staff will review it; ask at the Barangay Hall for help.": "Wala pang nakatakdang petsa ng pagtatapos. Rerepasuhin ito ng barangay staff; magtanong sa Barangay Hall para sa tulong.",
+    "Message to the resident (optional)": "Mensahe sa residente (opsyonal)",
+    "Shown to the resident on the request page. Do not mention incidents, complainants, VAWC or other people.": "Makikita ito ng residente sa request page. Huwag banggitin ang insidente, nagreklamo, VAWC o ibang tao.",
+    "Ends at (optional, shown to the resident)": "Matatapos sa (opsyonal, makikita ng residente)",
+    "Next review (optional, shown to the resident)": "Susunod na review (opsyonal, makikita ng residente)",
+    "Save as Pending Review. Review the decision before explicitly activating it. The resident sees only the optional message to the resident and the end and next review dates; never the reason category, the internal reason or a linked case.": "I-save bilang Pending Review. Repasuhin ang desisyon bago ito i-activate. Ang makikita lang ng residente ay ang opsyonal na mensahe sa residente at ang petsa ng pagtatapos at susunod na review; hindi kailanman ang reason category, ang internal na dahilan o ang naka-link na kaso."
 }

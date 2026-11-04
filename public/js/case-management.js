@@ -236,7 +236,10 @@ async function loadRestrictionCases() {
 function openRestrictionForm() {
   if (!document.getElementById('modal-request-restriction')) return;
   setCaseResident('restriction-person');
-  for (const id of ['restriction-document', 'restriction-category', 'restriction-reason', 'restriction-start', 'restriction-end', 'restriction-next-review']) document.getElementById(id).value = '';
+  for (const id of ['restriction-document', 'restriction-category', 'restriction-reason', 'restriction-resident-message', 'restriction-start', 'restriction-end', 'restriction-next-review']) {
+    const field = document.getElementById(id);
+    if (field) field.value = '';
+  }
   document.getElementById('restriction-case').innerHTML = '<option value="">No linked case</option>';
   document.getElementById('restriction-case-summary').textContent = '';
   ++linkedCaseVersion;
@@ -246,7 +249,7 @@ function openRestrictionForm() {
 async function saveRestriction(event) {
   await saveCaseForm(event, async () => {
     const value = id => document.getElementById(id).value || null;
-    const result = await householdApi('/staff/request-restrictions', 'POST', { resident_id: value('restriction-person-resident'), incident_id: value('restriction-case'), affected_document_type: value('restriction-document'), reason_category: value('restriction-category'), internal_reason: value('restriction-reason'), starts_at: value('restriction-start'), ends_at: value('restriction-end'), next_review_at: value('restriction-next-review') });
+    const result = await householdApi('/staff/request-restrictions', 'POST', { resident_id: value('restriction-person-resident'), incident_id: value('restriction-case'), affected_document_type: value('restriction-document'), reason_category: value('restriction-category'), internal_reason: value('restriction-reason'), resident_visible_reason: document.getElementById('restriction-resident-message')?.value.trim() || null, starts_at: value('restriction-start'), ends_at: value('restriction-end'), next_review_at: value('restriction-next-review') });
     closeModal('modal-request-restriction'); showToast(result.message, 'green'); await loadRestrictions();
   });
 }
@@ -260,7 +263,7 @@ async function loadRestrictions(page = 1) {
   try {
     const result = await householdApi(`/staff/request-restrictions?${new URLSearchParams({ page, search: document.getElementById('restriction-search')?.value.trim() || '' })}`);
     if (version !== restrictionListVersion) return;
-    container.innerHTML = (result.data || []).map(item => `<tr><td>${escapeText(item.resident?.full_name || 'Resident')}<br><small>${escapeText(item.resident?.resident_number)}</small></td><td>${escapeText(item.affected_document_type || 'All document requests')}</td><td><span class="badge ${item.status === 'active' ? 'badge-red' : 'badge-gray'}">${escapeText(item.status)}</span></td><td><details><summary>${escapeText(item.reason_category)}</summary><p>Start: ${escapeText(item.starts_at)} / End: ${escapeText(item.ends_at || 'Not set')}</p><p>Reviewed by staff #${Number(item.reviewed_by) || '?'} at ${escapeText(item.reviewed_at || 'Not reviewed')}</p><p>Next review: ${escapeText(item.next_review_at || 'Not set')}</p><p>${escapeText(item.internal_reason)}</p>${item.lifted_at ? `<p>Lifted by staff #${Number(item.lifted_by)} at ${escapeText(item.lifted_at)}: ${escapeText(item.lift_reason)}</p>` : ''}</details></td><td>${window.AUTHENTICATED_USER?.is_administrator || window.AUTHENTICATED_USER?.role === 'admin' ? `${item.status === 'pending_review' ? `<button class="btn btn-xs btn-primary" onclick="reviewRestriction(${Number(item.id)},this)">Review &amp; Activate</button>` : ''}${['active', 'pending_review'].includes(item.status) ? `<button class="btn btn-xs" onclick="openLiftRestriction(${Number(item.id)})">Lift</button>` : ''}` : 'Review by admin'}</td></tr>`).join('') || '<tr><td colspan="5" class="resident-table-message">No restrictions found.</td></tr>';
+    container.innerHTML = (result.data || []).map(item => `<tr><td>${escapeText(item.resident?.full_name || 'Resident')}<br><small>${escapeText(item.resident?.resident_number)}</small></td><td>${escapeText(item.affected_document_type || 'All document requests')}</td><td><span class="badge ${item.status === 'active' ? 'badge-red' : 'badge-gray'}">${escapeText(item.status)}</span></td><td><details><summary>${escapeText(item.reason_category)}</summary><p>Start: ${escapeText(item.starts_at)} / End: ${escapeText(item.ends_at || 'Not set')}</p><p>Reviewed by staff #${Number(item.reviewed_by) || '?'} at ${escapeText(item.reviewed_at || 'Not reviewed')}</p><p>Next review: ${escapeText(item.next_review_at || 'Not set')}</p><p>${escapeText(item.internal_reason)}</p>${'resident_visible_reason' in item ? `<p>Message to the resident: ${escapeText(item.resident_visible_reason || 'None (the resident sees the standard on-hold notice)')}</p>` : ''}${item.lifted_at ? `<p>Lifted by staff #${Number(item.lifted_by)} at ${escapeText(item.lifted_at)}: ${escapeText(item.lift_reason)}</p>` : ''}</details></td><td>${window.AUTHENTICATED_USER?.is_administrator || window.AUTHENTICATED_USER?.role === 'admin' ? `${item.status === 'pending_review' ? `<button class="btn btn-xs btn-primary" onclick="reviewRestriction(${Number(item.id)},this)">Review &amp; Activate</button>` : ''}${['active', 'pending_review'].includes(item.status) ? `<button class="btn btn-xs" onclick="openLiftRestriction(${Number(item.id)})">Lift</button>` : ''}` : 'Review by admin'}</td></tr>`).join('') || '<tr><td colspan="5" class="resident-table-message">No restrictions found.</td></tr>';
     renderPager('restrictions-pagination', { page: result.current_page, lastPage: result.last_page, total: result.total, perPage: Number(result.per_page) || 15, noun: ['restriction', 'restrictions'], loader: 'loadRestrictions' });
   } catch (error) { if (version === restrictionListVersion) container.textContent = error.message; }
 }

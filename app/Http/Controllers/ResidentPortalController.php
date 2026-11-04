@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\CheckRequestRestrictions;
 use App\CertificateType;
 use App\Models\Announcement;
 use App\Models\Incident;
@@ -43,9 +44,12 @@ class ResidentPortalController extends Controller
             ->whereIn('status', Incident::PENDING_STATUSES)
             ->exists();
 
+        $resident = $request->user()->resident;
+
         return view('portal.request', [
             'services' => CertificateType::cases(),
             'hasPendingOrdinaryIncidentReport' => $hasPendingOrdinaryIncidentReport,
+            'requestHolds' => $resident ? app(CheckRequestRestrictions::class)->allActive($resident)->map->residentNotice() : collect(),
         ]);
     }
 

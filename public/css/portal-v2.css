@@ -757,3 +757,12 @@ body.dark-mode .v2-verify-icon { color: var(--v2-forest-950); }
 .site-footer ul { gap: 2px; }
 .site-footer ul a, .site-footer p a { display: inline-flex; align-items: center; min-height: 36px; padding: 0; }
 .site-footer p:has(> a) { margin-bottom: 2px; }
+
+/* Request page: holds staff placed on document requests, with the staff message and dates. */
+.alert-yellow { background: var(--v2-warning-subtle); border-color: #c79a3a; color: var(--v2-ink); }
+body.dark-mode .alert-yellow { border-color: #8a6a22; }
+.request-holds { margin-bottom: 20px; }
+.request-holds h2 { margin: 0 0 6px; font-size: var(--v2-text-md, 1.05rem); }
+.request-holds ul { margin: 0; padding-left: 20px; }
+.request-holds li + li { margin-top: 10px; }
+.request-holds p { margin: 4px 0 0; }

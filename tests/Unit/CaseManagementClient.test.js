@@ -35,6 +35,29 @@ test('restriction list escapes internal decision text and shows explicit review 
   assert.ok(!field('restrictions-tbody').innerHTML.includes('reviewRestriction('));
 });
 
+test('a new restriction sends the optional message to the resident, and reviewers see what the resident will read', async () => {
+  const calls = [];
+  const { context, field } = caseClient(async (url, method, body) => {
+    calls.push({ url, method, body });
+    return method === 'POST'
+      ? { message: 'Restriction saved as Pending Review.' }
+      : { data: [{ id: 3, resident: { full_name: 'Maria Santos' }, status: 'pending_review', reason_category: 'Review', internal_reason: 'Internal note', resident_visible_reason: '<b>Visit the hall</b>' }, { id: 4, resident: { full_name: 'Juan Cruz' }, status: 'active', reason_category: 'Review', internal_reason: 'Internal note', resident_visible_reason: null }], total: 2, current_page: 1, last_page: 1 };
+  });
+  field('restriction-person-resident').value = '12';
+  field('restriction-category').value = 'Review';
+  field('restriction-reason').value = 'Internal note';
+  field('restriction-resident-message').value = '  Visit the hall  ';
+  field('restriction-start').value = '2026-11-04T09:00';
+
+  await context.saveRestriction({ preventDefault() {}, target: { querySelector: () => ({ disabled: false }) } });
+
+  assert.equal(calls[0].body.resident_visible_reason, 'Visit the hall');
+  assert.equal(calls[0].body.internal_reason, 'Internal note');
+  const rows = field('restrictions-tbody').innerHTML;
+  assert.match(rows, /Message to the resident: &lt;b&gt;Visit the hall&lt;\/b&gt;/);
+  assert.match(rows, /Message to the resident: None \(the resident sees the standard on-hold notice\)/);
+});
+
 test('case history escapes narrative and a slower previous case does not replace the selected case', async () => {
   const requests = [];
   const { context, field } = caseClient(url => new Promise(resolve => requests.push({ url, resolve })));

@@ -101,6 +101,55 @@ it('enforces reviewed restrictions during certificate issuance without changing 
     $this->get(route('certificate.verify', $issued->verification_code))->assertOk();
     $this->assertDatabaseCount('issued_certificates', 1);
 });
+it('explains a hold with the staff message and the dates staff set, without internal details or the case', function () {
+    $this->travelTo('2026-11-04 09:00:00');
+    $account = User::factory()->resident()->create();
+    $admin = User::factory()->superAdmin()->create(['role' => 'admin']);
+    $case = Incident::factory()->create(['respondent_resident_id' => $account->resident_id, 'details' => 'Secret case allegation']);
+    $this->actingAs($admin, 'web')->postJson(route('staff.request-restrictions.store'), phaseThreeRestriction($account->resident_id, [
+        'incident_id' => $case->id, 'affected_document_type' => 'Barangay Clearance',
+        'resident_visible_reason' => 'Please visit the Barangay Hall to update your record.',
+        'ends_at' => '2026-12-01 17:00:00', 'next_review_at' => '2026-11-20 09:00:00',
+    ]))->assertCreated();
+    $this->postJson(route('staff.request-restrictions.review', ResidentRequestRestriction::query()->sole()))->assertOk();
+
+    $refused = $this->actingAs($account, 'resident')->postJson(route('portal.request.store'), phaseThreeDocument());
+    $refused->assertUnprocessable()->assertJsonPath('errors.document_type.0', ResidentRequestRestriction::MESSAGE
+        .' Message from the barangay: Please visit the Barangay Hall to update your record.'
+        .' The hold is set to end on December 1, 2026 5:00 PM.'
+        .' Barangay staff will review it on November 20, 2026 9:00 AM.');
+    $page = $this->get(route('portal.request.create'))->assertOk()
+        ->assertSeeInOrder(['Some requests are on hold', 'Barangay Clearance', 'Message from the barangay:', 'Please visit the Barangay Hall to update your record.', 'Hold ends:', 'December 1, 2026 5:00 PM', 'Next review by barangay staff:', 'November 20, 2026 9:00 AM']);
+
+    foreach ([$refused, $page] as $response) {
+        $response->assertDontSee('Confidential reviewed allegations')->assertDontSee('Reviewed case decision')
+            ->assertDontSee($case->incident_number)->assertDontSee('Secret case allegation');
+    }
+});
+
+it('says no end date has been set instead of estimating one', function () {
+    $account = User::factory()->resident()->create();
+    ResidentRequestRestriction::factory()->reviewed()->create(['resident_id' => $account->resident_id, 'resident_visible_reason' => null, 'ends_at' => null, 'next_review_at' => null]);
+
+    $this->actingAs($account, 'resident')->postJson(route('portal.request.store'), phaseThreeDocument())
+        ->assertUnprocessable()
+        ->assertJsonPath('errors.document_type.0', ResidentRequestRestriction::MESSAGE.' No end date has been set. Barangay staff will review it; ask at the Barangay Hall for help.');
+    $this->get(route('portal.request.create'))->assertOk()
+        ->assertSeeInOrder(['Some requests are on hold', 'All document requests', 'No end date has been set.'])
+        ->assertDontSee('Hold ends:')->assertDontSee('Message from the barangay:');
+});
+
+it('lists on the request page only reviewed holds in force for the signed-in resident', function () {
+    $account = User::factory()->resident()->create();
+    ResidentRequestRestriction::factory()->create(['resident_id' => $account->resident_id, 'resident_visible_reason' => 'Pending decision message']);
+    ResidentRequestRestriction::factory()->reviewed()->create(['resident_id' => $account->resident_id, 'resident_visible_reason' => 'Ended hold message', 'ends_at' => now()->subMinute()]);
+    ResidentRequestRestriction::factory()->reviewed()->create(['resident_visible_reason' => 'Another resident message']);
+
+    $this->actingAs($account, 'resident')->get(route('portal.request.create'))->assertOk()
+        ->assertDontSee('Some requests are on hold')
+        ->assertDontSee('Pending decision message')->assertDontSee('Ended hold message')->assertDontSee('Another resident message');
+});
+
 it('keeps incident and BPO details out of resident pages exports and other residents requests', function () {
     $account = User::factory()->resident()->create();
     $other = User::factory()->resident()->create();

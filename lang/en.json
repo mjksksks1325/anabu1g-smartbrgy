@@ -1743,5 +1743,19 @@
     "Your values are back in the form. Review them, then save.": "Your values are back in the form. Review them, then save.",
     "not yet confirmed": "not yet confirmed",
     "PHP 200.00 (not yet confirmed)": "PHP 200.00 (not yet confirmed)",
-    "Sa Barangay Hall babayaran ang fee. Regular Barangay ID ang fee na nakalista. Hinihintay pa ang kumpirmasyon sa Business Clearance fee, requirements, at processing time.": "Fees are paid at the Barangay Hall. The fee listed is for the regular Barangay ID. The Business Clearance fee, requirements and processing time are still awaiting confirmation."
+    "Sa Barangay Hall babayaran ang fee. Regular Barangay ID ang fee na nakalista. Hinihintay pa ang kumpirmasyon sa Business Clearance fee, requirements, at processing time.": "Fees are paid at the Barangay Hall. The fee listed is for the regular Barangay ID. The Business Clearance fee, requirements and processing time are still awaiting confirmation.",
+    "Some requests are on hold": "Some requests are on hold",
+    "All document requests": "All document requests",
+    "Message from the barangay:": "Message from the barangay:",
+    "Message from the barangay: :message": "Message from the barangay: :message",
+    "Hold ends:": "Hold ends:",
+    "Next review by barangay staff:": "Next review by barangay staff:",
+    "The hold is set to end on :date.": "The hold is set to end on :date.",
+    "Barangay staff will review it on :date.": "Barangay staff will review it on :date.",
+    "No end date has been set. Barangay staff will review it; ask at the Barangay Hall for help.": "No end date has been set. Barangay staff will review it; ask at the Barangay Hall for help.",
+    "Message to the resident (optional)": "Message to the resident (optional)",
+    "Shown to the resident on the request page. Do not mention incidents, complainants, VAWC or other people.": "Shown to the resident on the request page. Do not mention incidents, complainants, VAWC or other people.",
+    "Ends at (optional, shown to the resident)": "Ends at (optional, shown to the resident)",
+    "Next review (optional, shown to the resident)": "Next review (optional, shown to the resident)",
+    "Save as Pending Review. Review the decision before explicitly activating it. The resident sees only the optional message to the resident and the end and next review dates; never the reason category, the internal reason or a linked case.": "Save as Pending Review. Review the decision before explicitly activating it. The resident sees only the optional message to the resident and the end and next review dates; never the reason category, the internal reason or a linked case."
 }
