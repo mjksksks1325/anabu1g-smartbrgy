@@ -390,9 +390,10 @@ async function openDashboardActivity(index) {
   showScreen('certificates', findNavItem('certificates'));
   const search = document.getElementById('cert-search');
   if (search) {
-    search.value = activity.reference || activity.detail.split(' ')[0];
-    filterCertBoard(search.value);
-    openViewCertReq(activity.reference || activity.detail.split(' ')[0]);
+    const reference = activity.reference || activity.detail.split(' ')[0];
+    search.value = reference;
+    await filterCertBoard(reference);
+    openViewCertReq(reference);
   }
 }
 
@@ -801,6 +802,7 @@ function showScreen(id, el, updateHistory = true) {
   if (id === 'request-records' && typeof loadRestrictions === 'function') void loadRestrictions(1);
   if (id === 'certificates') {
     renderCertKanban();
+    void loadCertBoard({ poll: true });
     const badge = document.getElementById('cert-nav-badge');
     if (badge) { badge.textContent = '0'; badge.style.display = 'none'; }
   }
@@ -2672,64 +2674,109 @@ async function advanceCertStatus(code, newStatus, event) {
   }
 }
 
-function renderCertKanban(filter = '') {
+/**
+ * The board loads each lane from the paginated request list instead of embedding every request in the page:
+ * a lane shows its newest requests first and "Show more" loads further; search runs on the server so older
+ * records are still found. Totals and the summary cards come from server counts, not from the loaded cards.
+ */
+const CERT_BOARD_PAGE_SIZE = 25;
+const CERT_BOARD_MAX_PER_LANE = 100;
+const certBoardLaneLimits = { online: CERT_BOARD_PAGE_SIZE, processing: CERT_BOARD_PAGE_SIZE, ready: CERT_BOARD_PAGE_SIZE, completed: CERT_BOARD_PAGE_SIZE };
+const certBoardMatching = { online: 0, processing: 0, ready: 0, completed: 0 };
+let certBoardCounts = null;
+let certBoardSearch = '';
+let certBoardLoadedSearch = null;
+let certBoardState = 'idle';
+let certBoardError = null;
+let certBoardLoadVersion = 0;
+let certBoardInFlight = null;
+let certBoardSearchTimer = null;
 
-  // Convert real Laravel/MySQL requests into the format
-  // expected by the original SmartBrgy Kanban UI
-  if (Array.isArray(window.LARAVEL_DOCUMENT_REQUESTS)) {
+/** Convert one request from the server into the card format the board uses. */
+function boardRequestFromServer(r) {
+  let uiStatus = 'Pending';
+  if (r.status === 'processing') uiStatus = 'In Progress';
+  if (r.status === 'approved' || r.status === 'ready_for_release') uiStatus = 'Ready to Print';
+  if (r.status === 'released') uiStatus = 'Completed';
 
-    const laravelRequests = window.LARAVEL_DOCUMENT_REQUESTS
-      .filter(r => r.status !== 'rejected')
-      .map(r => {
+  return {
+    id: r.id,
+    code: r.reference_code,
+    name: r.full_name,
+    type: r.document_type,
+    status: uiStatus,
+    via: r.source === 'online' ? 'Online' : 'Walk-in',
+    requested: r.created_at ? new Date(r.created_at).toLocaleString('en-PH') : null,
+    dateOfBirth: r.date_of_birth,
+    address: r.address,
+    email: r.email,
+    purpose: r.purpose,
+    businessName: r.business_name,
+    attachment: r.attachment_path,
+    remarks: r.remarks,
+    hidden: false,
+    laravelStatus: r.status
+  };
+}
 
-        let uiStatus = 'Pending';
+function isCertificatesScreenActive() {
+  return Boolean(document.getElementById('screen-certificates')?.classList.contains('active'));
+}
 
-        if (r.status === 'processing') {
-          uiStatus = 'In Progress';
-        }
+/** Load every lane (one page each) and the lane counts. A poll is skipped while a load is still running. */
+async function loadCertBoard({ poll = false } = {}) {
+  if (!hasStaffPermission('documents.view')) return;
+  if (poll && certBoardInFlight) return certBoardInFlight;
 
-        if (
-          r.status === 'approved' ||
-          r.status === 'ready_for_release'
-        ) {
-          uiStatus = 'Ready to Print';
-        }
+  const version = ++certBoardLoadVersion;
+  const search = certBoardSearch;
+  if (certBoardState === 'idle') certBoardState = 'loading';
 
-        if (r.status === 'released') {
-          uiStatus = 'Completed';
-        }
+  const load = (async () => {
+    try {
+      const payloads = await Promise.all(CERT_LANES.map(async (lane, index) => {
+        const query = new URLSearchParams({ lane: lane.id, per_page: String(certBoardLaneLimits[lane.id]) });
+        if (search) query.set('search', search);
+        if (index === 0) query.set('with_counts', '1');
+        const response = await fetch(`/staff/document-requests/list?${query}`, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload?.message || 'Unable to load certificate requests.');
+        return payload;
+      }));
+      if (version !== certBoardLoadVersion) return;
 
-        return {
-          id: r.id,
-          code: r.reference_code,
-          name: r.full_name,
-          type: r.document_type,
-          status: uiStatus,
-          via: r.source === 'online' ? 'Online' : 'Walk-in',
+      CERT_REQUESTS.splice(0, CERT_REQUESTS.length, ...payloads.flatMap(payload => (payload.data || []).map(boardRequestFromServer)));
+      CERT_LANES.forEach((lane, index) => { certBoardMatching[lane.id] = Number(payloads[index].total || 0); });
+      certBoardCounts = payloads[0].counts || null;
+      certBoardLoadedSearch = search;
+      certBoardState = 'ready';
+      certBoardError = null;
+      renderCertKanban();
+    } catch (error) {
+      if (version !== certBoardLoadVersion) return;
+      console.error('Certificate board refresh failed:', error);
+      if (certBoardState !== 'ready') {
+        certBoardState = 'error';
+        certBoardError = error;
+        renderCertKanban();
+      }
+    }
+  })();
 
-          requested: r.created_at
-            ? new Date(r.created_at).toLocaleString('en-PH')
-            : null,
-          dateOfBirth: r.date_of_birth,
-          address: r.address,
-          email: r.email,
-          purpose: r.purpose,
-          businessName: r.business_name,
-          attachment: r.attachment_path,
-          remarks: r.remarks,
-
-          hidden: false,
-          laravelStatus: r.status
-        };
-      });
-
-    CERT_REQUESTS.splice(
-      0,
-      CERT_REQUESTS.length,
-      ...laravelRequests
-    );
+  certBoardInFlight = load;
+  try {
+    await load;
+  } finally {
+    if (certBoardInFlight === load) certBoardInFlight = null;
   }
+}
 
+function showMoreCertLane(laneId) {
+  certBoardLaneLimits[laneId] = Math.min(CERT_BOARD_MAX_PER_LANE, (certBoardLaneLimits[laneId] || CERT_BOARD_PAGE_SIZE) + CERT_BOARD_PAGE_SIZE);
+  return loadCertBoard();
+}
+
+function renderCertKanban() {
   const board = document.getElementById('cert-kanban-board');
 
   if (!board) return;
@@ -2753,7 +2800,8 @@ function renderCertKanban(filter = '') {
 
     if (r.hidden) return;
 
-    const searchValue = (filter || '').toLowerCase().trim();
+    // The server already filtered by this search; filtering here too keeps the board in step while the next load runs.
+    const searchValue = certBoardSearch.toLowerCase();
 
     if (
       searchValue &&
@@ -2774,6 +2822,17 @@ function renderCertKanban(filter = '') {
   CERT_LANES.forEach(lane => {
 
     const items = grouped[lane.id] || [];
+    const laneTotal = certBoardState === 'ready' && !certBoardSearchPending() ? Math.max(certBoardMatching[lane.id], items.length) : items.length;
+    const emptyMessage = certBoardState === 'error'
+      ? listErrorMarkup(certBoardError, 'loadCertBoard()', 'Unable to load certificate requests.')
+      : escapeText(adminText(certBoardState === 'ready' ? 'No requests' : 'Loading requests...'));
+    let laneFooter = '';
+    if (laneTotal > items.length) {
+      const showing = escapeText(adminText('Showing :shown of :total', { shown: items.length, total: laneTotal }));
+      laneFooter = certBoardLaneLimits[lane.id] < CERT_BOARD_MAX_PER_LANE
+        ? `<div class="cert-lane-more"><span>${showing}</span><button type="button" class="btn btn-xs" onclick="showMoreCertLane('${lane.id}')">${escapeText(adminText('Show more'))}</button></div>`
+        : `<div class="cert-lane-more"><span>${showing}</span><span>${escapeText(adminText('Search by name or reference code to find older requests, or open the full request list.'))}</span><a class="btn btn-xs" href="/staff/document-requests/list">${escapeText(adminText('Full request list'))}</a></div>`;
+    }
 
     const laneEl = document.createElement('div');
 
@@ -2795,7 +2854,7 @@ function renderCertKanban(filter = '') {
             border-color:var(--border);
           "
         >
-          ${items.length}
+          ${laneTotal}
         </span>
 
       </div>
@@ -2804,15 +2863,8 @@ function renderCertKanban(filter = '') {
         items.length === 0
 
         ? `
-          <div
-            style="
-              text-align:center;
-              color:var(--text-muted);
-              font-size:11px;
-              padding:18px 0;
-            "
-          >
-            No requests
+          <div class="cert-lane-empty" ${certBoardState === 'error' ? 'role="alert"' : ''}>
+            ${emptyMessage}
           </div>
         `
 
@@ -2873,6 +2925,7 @@ function renderCertKanban(filter = '') {
             `;
           }).join('')
       }
+      ${laneFooter}
     `;
 
     board.appendChild(laneEl);
@@ -2895,9 +2948,9 @@ function renderCertKanban(filter = '') {
 
   };
 
-  // Each card counts one board lane, so the cards and the lanes below them always agree.
-  const laneCounts = { online: 0, processing: 0, ready: 0, completed: 0 };
-  CERT_REQUESTS.filter(r => !r.hidden).forEach(r => { laneCounts[getLane(r.status, r.via)]++; });
+  // Each card counts one board lane (all requests, not only the loaded ones), so the cards and the lanes agree.
+  if (certBoardState !== 'ready' || !certBoardCounts) return;
+  const laneCounts = certBoardCounts;
   setCount('cert-today', laneCounts.completed);
   setCount('cert-pending', laneCounts.processing);
   setCount('cert-ready', laneCounts.ready);
@@ -2914,7 +2967,24 @@ function showCertLane(laneId) {
   lane.focus({ preventScroll: true });
 }
 
-function filterCertBoard(val) { renderCertKanban(val.toLowerCase()); }
+/** True while the search box holds text the server has not filtered by yet. */
+function certBoardSearchPending() {
+  return certBoardLoadedSearch !== certBoardSearch;
+}
+
+/** Filter the loaded cards at once, then ask the server so older matching requests appear too. */
+function filterCertBoard(val) {
+  certBoardSearch = String(val || '').trim();
+  clearTimeout(certBoardSearchTimer);
+  renderCertKanban();
+  return new Promise(resolve => {
+    certBoardSearchTimer = setTimeout(async () => {
+      certBoardSearchTimer = null;
+      await loadCertBoard();
+      resolve();
+    }, 250);
+  });
+}
 
 function openViewCertReq(code) {
   const r = CERT_REQUESTS.find(x => x.code === code);
@@ -4284,22 +4354,10 @@ function filterRRStatus(status, element) {
   void loadRequestRecords(1);
 }
 
-async function refreshDocumentRequestsLive() {
-  if (!hasStaffPermission('documents.view')) return;
-  try {
-    const response = await fetch('/staff/document-requests-live', {
-      headers: { 'Accept': 'application/json' }
-    });
-
-    if (!response.ok) return;
-
-    const requests = await response.json();
-    window.LARAVEL_DOCUMENT_REQUESTS = requests;
-
-    renderCertKanban(document.getElementById('cert-search')?.value || '');
-  } catch (error) {
-    console.error('Live request refresh failed:', error);
-  }
+/** Reload the certificates board after a change, or on a poll while the board is on screen. */
+async function refreshDocumentRequestsLive({ poll = false } = {}) {
+  if (poll && !isCertificatesScreenActive()) return;
+  await loadCertBoard({ poll });
 }
 
 let documentRequestLiveTimer = null;
@@ -4324,14 +4382,15 @@ function startDocumentRequestLiveRefresh() {
 
   documentRequestLiveTimer = setInterval(() => {
     if (!document.hidden) {
-      refreshDocumentRequestsLive();
+      void refreshDocumentRequestsLive({ poll: true });
     }
   }, 3000);
+  void refreshDocumentRequestsLive({ poll: true });
 }
 
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && document.getElementById('app')) {
-    refreshDocumentRequestsLive();
+    void refreshDocumentRequestsLive({ poll: true });
     if (document.getElementById('screen-dashboard')?.classList.contains('active')) {
       void refreshDashboardStats();
     }

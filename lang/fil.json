@@ -2009,5 +2009,12 @@
     "You cannot remove or suspend your own Captain access. Ask another administrator to update it.": "Hindi puwedeng alisin o i-suspend ang sarili ninyong Captain access. Ipa-update ito sa ibang administrator.",
     "Only this Super Admin can change their own password. Use the password reset link or the server command.": "Ang Super Admin lang na ito ang puwedeng magpalit ng sarili niyang password. Gamitin ang password reset link o ang server command.",
     "Only this Super Admin can change their own email address.": "Ang Super Admin lang na ito ang puwedeng magpalit ng sarili niyang email address.",
-    "Only this Super Admin can change their own email address and password. Use the password reset link or the server command.": "Ang Super Admin lang na ito ang puwedeng magpalit ng sarili niyang email address at password. Gamitin ang password reset link o ang server command."
+    "Only this Super Admin can change their own email address and password. Use the password reset link or the server command.": "Ang Super Admin lang na ito ang puwedeng magpalit ng sarili niyang email address at password. Gamitin ang password reset link o ang server command.",
+    "No requests": "Walang request",
+    "Loading requests...": "Nilo-load ang mga request...",
+    "Showing :shown of :total": "Ipinapakita ang :shown sa :total",
+    "Show more": "Ipakita pa",
+    "Search by name or reference code to find older requests, or open the full request list.": "Hanapin ang pangalan o reference code para makita ang mas lumang request, o buksan ang buong listahan ng request.",
+    "Full request list": "Buong listahan ng request",
+    "Unable to load certificate requests.": "Hindi ma-load ang mga certificate request."
 }

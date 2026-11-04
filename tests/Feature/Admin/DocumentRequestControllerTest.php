@@ -43,6 +43,89 @@ test('authenticated users receive all available request detail fields', function
         ]);
 });
 
+/** @param array<string, mixed> $attributes */
+function boardRequest(array $attributes): DocumentRequest
+{
+    return DocumentRequest::query()->create([
+        'reference_code' => 'REQ-'.fake()->unique()->numerify('######'),
+        'document_type' => 'Barangay Clearance',
+        'full_name' => 'Juan Dela Cruz',
+        'address' => 'Anabu I-G, Imus City',
+        ...$attributes,
+    ]);
+}
+
+test('the certificates board loads one lane at a time with lane counts that skip rejected requests', function () {
+    boardRequest(['source' => 'online', 'status' => 'pending', 'full_name' => 'Online Pending']);
+    boardRequest(['source' => 'onsite', 'status' => 'pending', 'full_name' => 'Walk-in Pending']);
+    boardRequest(['source' => 'online', 'status' => 'processing']);
+    boardRequest(['status' => 'approved']);
+    boardRequest(['status' => 'ready_for_release']);
+    boardRequest(['status' => 'released']);
+    boardRequest(['source' => 'online', 'status' => 'rejected']);
+
+    $staff = User::factory()->create(['role' => 'staff', 'staff_permissions' => ['documents.view']]);
+
+    $this->actingAs($staff)
+        ->getJson(route('staff.document-requests.list', ['lane' => 'online', 'with_counts' => 1]))
+        ->assertOk()
+        ->assertJsonPath('total', 1)
+        ->assertJsonPath('data.0.full_name', 'Online Pending')
+        ->assertJsonPath('counts', ['online' => 1, 'processing' => 2, 'ready' => 2, 'completed' => 1]);
+
+    $this->getJson(route('staff.document-requests.list', ['lane' => 'processing']))
+        ->assertOk()
+        ->assertJsonPath('total', 2)
+        ->assertJsonFragment(['full_name' => 'Walk-in Pending'])
+        ->assertJsonMissingPath('counts');
+});
+
+test('board search reaches older requests beyond the first page of a lane', function () {
+    $oldest = boardRequest(['status' => 'released', 'full_name' => 'Lourdes Older Record', 'reference_code' => 'REQ-2019-OLDEST']);
+    $oldest->forceFill(['created_at' => now()->subYears(5)])->save();
+    foreach (range(1, 3) as $index) {
+        boardRequest(['status' => 'released']);
+    }
+
+    $staff = User::factory()->create(['role' => 'staff', 'staff_permissions' => ['documents.view']]);
+
+    $this->actingAs($staff)
+        ->getJson(route('staff.document-requests.list', ['lane' => 'completed', 'per_page' => 2]))
+        ->assertOk()
+        ->assertJsonCount(2, 'data')
+        ->assertJsonPath('total', 4)
+        ->assertJsonMissing(['reference_code' => 'REQ-2019-OLDEST']);
+
+    $this->getJson(route('staff.document-requests.list', ['lane' => 'completed', 'per_page' => 2, 'search' => '2019-OLDEST', 'with_counts' => 1]))
+        ->assertOk()
+        ->assertJsonPath('data.0.full_name', 'Lourdes Older Record')
+        ->assertJsonPath('matching.completed', 1)
+        ->assertJsonPath('counts.completed', 4);
+});
+
+test('the board list keeps its permission and rejects unbounded pages', function () {
+    $this->getJson(route('staff.document-requests.list', ['lane' => 'online']))->assertUnauthorized();
+
+    $this->actingAs(User::factory()->create(['role' => 'staff', 'staff_permissions' => ['records.view']]))
+        ->getJson(route('staff.document-requests.list', ['lane' => 'online']))
+        ->assertForbidden();
+
+    $this->actingAs(User::factory()->create(['role' => 'staff', 'staff_permissions' => ['documents.view']]))
+        ->getJson(route('staff.document-requests.list', ['per_page' => 500, 'lane' => 'archived']))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['per_page', 'lane']);
+});
+
+test('the certificates page no longer embeds every request in its HTML', function () {
+    boardRequest(['status' => 'released', 'full_name' => 'Embedded Name Check']);
+
+    $this->actingAs(User::factory()->create(['role' => 'staff', 'staff_permissions' => ['documents.view']]))
+        ->get(route('staff.document-requests.index'))
+        ->assertOk()
+        ->assertDontSee('Embedded Name Check')
+        ->assertDontSee('LARAVEL_DOCUMENT_REQUESTS');
+});
+
 test('requests cannot be marked released without issuing a certificate', function () {
     $user = User::factory()->assignedOperations()->create();
     $documentRequest = DocumentRequest::query()->create([

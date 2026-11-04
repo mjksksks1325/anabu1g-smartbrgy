@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\DocumentRequest;
 use App\Models\Incident;
 use App\Models\ResidentRegistrationApplication;
 use App\Models\ResidentRequestRestriction;
@@ -39,7 +38,7 @@ class WorkspaceController extends Controller
                 'records' => $request->routeIs('staff.households.page') ? app(HouseholdController::class)->index($request) : app(ResidentController::class)->index($request),
                 'incidents' => app(IncidentController::class)->index($request),
                 'users' => app(UserController::class)->index($request),
-                'certificates' => app(DocumentRequestController::class)->index(),
+                'certificates' => app(DocumentRequestController::class)->index($request),
                 default => null,
             };
             if ($dataResponse !== null) {
@@ -82,7 +81,6 @@ class WorkspaceController extends Controller
         return view('admin.dashboard', [
             'pendingRegistrationsCount' => $request->user()->hasPermission('records.review') && Schema::hasTable('resident_registration_applications')
                 ? ResidentRegistrationApplication::where('status', 'pending')->count() : 0,
-            'requests' => $request->user()->hasPermission('documents.view') ? DocumentRequest::latest()->get() : collect(),
             'activeScreen' => $screen,
             'screenRoutes' => array_map(fn (string $name): string => route($name), $screenRoutes),
         ]);

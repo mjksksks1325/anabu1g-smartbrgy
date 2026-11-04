@@ -1829,5 +1829,12 @@
     "You cannot remove or suspend your own Captain access. Ask another administrator to update it.": "You cannot remove or suspend your own Captain access. Ask another administrator to update it.",
     "Only this Super Admin can change their own password. Use the password reset link or the server command.": "Only this Super Admin can change their own password. Use the password reset link or the server command.",
     "Only this Super Admin can change their own email address.": "Only this Super Admin can change their own email address.",
-    "Only this Super Admin can change their own email address and password. Use the password reset link or the server command.": "Only this Super Admin can change their own email address and password. Use the password reset link or the server command."
+    "Only this Super Admin can change their own email address and password. Use the password reset link or the server command.": "Only this Super Admin can change their own email address and password. Use the password reset link or the server command.",
+    "No requests": "No requests",
+    "Loading requests...": "Loading requests...",
+    "Showing :shown of :total": "Showing :shown of :total",
+    "Show more": "Show more",
+    "Search by name or reference code to find older requests, or open the full request list.": "Search by name or reference code to find older requests, or open the full request list.",
+    "Full request list": "Full request list",
+    "Unable to load certificate requests.": "Unable to load certificate requests."
 }
