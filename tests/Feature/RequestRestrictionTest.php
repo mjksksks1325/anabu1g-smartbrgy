@@ -32,14 +32,15 @@ it('requires explicit authorized review before activating a restriction and pres
     $this->actingAs($admin, 'web')->postJson(route('staff.request-restrictions.store'), phaseThreeRestriction($account->resident_id, ['incident_id' => $case->id, 'affected_document_type' => 'Barangay Clearance']))->assertCreated()->assertJsonPath('restriction.status', 'pending_review')->assertJsonPath('restriction.reviewed_at', null);
     $restriction = ResidentRequestRestriction::query()->sole();
     $this->actingAs($account, 'resident')->postJson(route('portal.request.store'), phaseThreeDocument())->assertOk();
-    $this->actingAs($admin, 'web')->postJson(route('staff.request-restrictions.review', $restriction))->assertOk()->assertJsonPath('restriction.reviewed_by', $admin->id);
+    $captain = User::factory()->create(['role' => 'captain']);
+    $this->actingAs($captain, 'web')->postJson(route('staff.request-restrictions.review', $restriction))->assertOk()->assertJsonPath('restriction.reviewed_by', $captain->id);
     $response = $this->actingAs($account, 'resident')->postJson(route('portal.request.store'), phaseThreeDocument());
     $response->assertUnprocessable()->assertJsonValidationErrors('document_type')->assertSee(ResidentRequestRestriction::MESSAGE)->assertDontSee('Confidential reviewed allegations')->assertDontSee('Reviewed case decision');
     $this->postJson(route('portal.request.store'), phaseThreeDocument('Certificate of Residency'))->assertOk();
     $this->actingAs($admin, 'web')->postJson(route('staff.request-restrictions.lift', $restriction), ['lift_reason' => 'Decision lifted after review'])->assertOk();
     $this->actingAs($account, 'resident')->postJson(route('portal.request.store'), phaseThreeDocument())->assertOk();
     $this->assertDatabaseHas('resident_request_restrictions', ['id' => $restriction->id, 'status' => 'lifted', 'lifted_by' => $admin->id, 'lift_reason' => 'Decision lifted after review']);
-    $this->assertDatabaseHas('administrative_audits', ['action' => 'admin.request-restrictions.reviewed', 'user_id' => $admin->id]);
+    $this->assertDatabaseHas('administrative_audits', ['action' => 'admin.request-restrictions.reviewed', 'user_id' => $captain->id]);
     $this->assertDatabaseHas('administrative_audits', ['action' => 'admin.request-restrictions.lifted', 'user_id' => $admin->id]);
     $this->assertDatabaseCount('document_requests', 3);
 });
@@ -111,7 +112,7 @@ it('explains a hold with the staff message and the dates staff set, without inte
         'resident_visible_reason' => 'Please visit the Barangay Hall to update your record.',
         'ends_at' => '2026-12-01 17:00:00', 'next_review_at' => '2026-11-20 09:00:00',
     ]))->assertCreated();
-    $this->postJson(route('staff.request-restrictions.review', ResidentRequestRestriction::query()->sole()))->assertOk();
+    $this->actingAs(User::factory()->create(['role' => 'captain']), 'web')->postJson(route('staff.request-restrictions.review', ResidentRequestRestriction::query()->sole()))->assertOk();
 
     $refused = $this->actingAs($account, 'resident')->postJson(route('portal.request.store'), phaseThreeDocument());
     $refused->assertUnprocessable()->assertJsonPath('errors.document_type.0', ResidentRequestRestriction::MESSAGE
@@ -161,4 +162,59 @@ it('keeps incident and BPO details out of resident pages exports and other resid
     $this->getJson(route('portal.request.status', $request->reference_code))->assertNotFound();
     $export = spreadsheetSheetXml($this->actingAs(User::factory()->assignedOperations()->create(['role' => 'staff']), 'web')->get(route('staff.residents.export'))->assertOk());
     expect($export)->not->toContain('Secret case allegation')->not->toContain('Secret protection order')->not->toContain('Secret restriction notes');
+});
+
+it('refuses to let the administrator who created a restriction activate it, records the attempt, and keeps it pending', function () {
+    $account = User::factory()->resident()->create();
+    $creator = User::factory()->superAdmin()->create(['role' => 'admin']);
+    $this->actingAs($creator, 'web')->postJson(route('staff.request-restrictions.store'), phaseThreeRestriction($account->resident_id))->assertCreated();
+    $restriction = ResidentRequestRestriction::query()->sole();
+
+    $this->postJson(route('staff.request-restrictions.review', $restriction))
+        ->assertUnprocessable()
+        ->assertJsonPath('errors.restriction.0', 'You created this restriction, so another administrator (the Super Admin or the Barangay Captain) must review and activate it. It stays Pending Review until then.');
+
+    expect($restriction->fresh())->status->toBe('pending_review')->reviewed_by->toBeNull();
+    $this->assertDatabaseHas('administrative_audits', ['action' => 'admin.request-restrictions.self-review-denied', 'user_id' => $creator->id, 'record' => (string) $restriction->id]);
+    $this->actingAs($account, 'resident')->postJson(route('portal.request.store'), phaseThreeDocument())->assertOk();
+});
+
+it('activates with a second administrator and keeps both identities and times', function () {
+    $this->travelTo('2026-11-05 08:00:00');
+    $account = User::factory()->resident()->create();
+    $creator = User::factory()->create(['role' => 'captain']);
+    $reviewer = User::factory()->superAdmin()->create(['role' => 'admin']);
+    $this->actingAs($creator, 'web')->postJson(route('staff.request-restrictions.store'), phaseThreeRestriction($account->resident_id))->assertCreated();
+    $restriction = ResidentRequestRestriction::query()->sole();
+    $this->travelTo('2026-11-05 09:30:00');
+
+    $this->actingAs($reviewer, 'web')->postJson(route('staff.request-restrictions.review', $restriction))->assertOk()->assertJsonPath('restriction.status', 'active');
+
+    expect($restriction->fresh())
+        ->created_by->toBe($creator->id)->created_at->toDateTimeString()->toBe('2026-11-05 08:00:00')
+        ->reviewed_by->toBe($reviewer->id)->reviewed_at->toDateTimeString()->toBe('2026-11-05 09:30:00');
+});
+
+it('lets the creator turn down a pending restriction by lifting it with a reason', function () {
+    $account = User::factory()->resident()->create();
+    $creator = User::factory()->create(['role' => 'captain']);
+    $this->actingAs($creator, 'web')->postJson(route('staff.request-restrictions.store'), phaseThreeRestriction($account->resident_id))->assertCreated();
+    $restriction = ResidentRequestRestriction::query()->sole();
+
+    $this->postJson(route('staff.request-restrictions.lift', $restriction), ['lift_reason' => 'Created in error; not needed'])->assertOk();
+
+    expect($restriction->fresh())->status->toBe('lifted')->lifted_by->toBe($creator->id)->reviewed_by->toBeNull();
+});
+
+it('lists restrictions with resident names for administrators and limited columns for staff', function () {
+    $restriction = ResidentRequestRestriction::factory()->create(['internal_reason' => 'Internal reviewed reason']);
+
+    $this->actingAs(User::factory()->superAdmin()->create(['role' => 'admin']))->getJson(route('staff.request-restrictions.index'))->assertOk()
+        ->assertJsonPath('data.0.resident.full_name', $restriction->resident->full_name)
+        ->assertJsonPath('data.0.created_by', $restriction->created_by)
+        ->assertJsonPath('data.0.internal_reason', 'Internal reviewed reason');
+    $this->actingAs(User::factory()->create(['role' => 'staff', 'staff_permissions' => ['eligibility.view']]))->getJson(route('staff.request-restrictions.index'))->assertOk()
+        ->assertJsonPath('data.0.resident.full_name', $restriction->resident->full_name)
+        ->assertJsonMissingPath('data.0.internal_reason')
+        ->assertJsonMissingPath('data.0.resident.date_of_birth');
 });

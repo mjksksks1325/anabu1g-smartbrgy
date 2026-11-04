@@ -1969,5 +1969,7 @@
     "Review, submit and manage ordinary incident reports. No VAWC or BPO access.": "Review, submit and manage ordinary incident reports. No VAWC or BPO access.",
     "VAWC cases and BPOs only. Choose this only for personnel the barangay has formally designated; the preset itself grants no authority.": "VAWC cases and BPOs only. Choose this only for personnel the barangay has formally designated; the preset itself grants no authority.",
     "Submit incident reports only. Cannot read cases.": "Submit incident reports only. Cannot read cases.",
-    "Confidential VAWC and BPO case records. Assign only to personnel the barangay has formally designated for these cases. Ticking a box records access; it does not create that authority.": "Confidential VAWC and BPO case records. Assign only to personnel the barangay has formally designated for these cases. Ticking a box records access; it does not create that authority."
+    "Confidential VAWC and BPO case records. Assign only to personnel the barangay has formally designated for these cases. Ticking a box records access; it does not create that authority.": "Confidential VAWC and BPO case records. Assign only to personnel the barangay has formally designated for these cases. Ticking a box records access; it does not create that authority.",
+    "Needs another administrator to review": "Needs another administrator to review",
+    "You created this restriction, so another administrator (the Super Admin or the Barangay Captain) must review and activate it. It stays Pending Review until then.": "You created this restriction, so another administrator (the Super Admin or the Barangay Captain) must review and activate it. It stays Pending Review until then."
 }

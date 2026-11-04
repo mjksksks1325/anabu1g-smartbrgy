@@ -202,3 +202,20 @@ test('staff without incident access never request the incident staff list', asyn
   await new Promise(resolve => setTimeout(resolve));
   assert.deepEqual(calls, ['/staff/incident-options']);
 });
+
+test('the administrator who created a pending restriction sees that another administrator must review it', async () => {
+  const { context, field } = caseClient(async () => ({ data: [
+    { id: 7, created_by: 3, created_at: '2026-11-05T08:00:00Z', resident: { full_name: 'Maria Santos' }, status: 'pending_review', reason_category: 'Review', internal_reason: 'Note' },
+    { id: 8, created_by: 9, resident: { full_name: 'Juan Cruz' }, status: 'pending_review', reason_category: 'Review', internal_reason: 'Note' },
+  ], total: 2, current_page: 1, last_page: 1 }));
+  context.window.AUTHENTICATED_USER = { id: 3, role: 'captain', is_administrator: true };
+
+  await context.loadRestrictions();
+  const [own, other] = field('restrictions-tbody').innerHTML.split('</tr>');
+
+  assert.ok(!own.includes('reviewRestriction('));
+  assert.match(own, /Needs another administrator to review/);
+  assert.match(own, /Created by staff #3/);
+  assert.match(own, /openLiftRestriction\(7\)/);
+  assert.match(other, /reviewRestriction\(8,this\)/);
+});
