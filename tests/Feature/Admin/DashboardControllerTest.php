@@ -1,11 +1,13 @@
 <?php
 
+use App\CertificateType;
 use App\Models\DocumentRequest;
 use App\Models\Incident;
 use App\Models\IssuedCertificate;
 use App\Models\Resident;
 use App\Models\User;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Js;
 
 it('requires staff access for the dashboard summary', function () {
     $this->getJson(route('staff.dashboard.summary'))->assertUnauthorized();
@@ -122,6 +124,13 @@ it('renders the staff language toggle as inline links with an icon theme control
         ->assertSee('>Filipino</button>', false)
         ->assertSee('class="dark-mode-toggle staff-theme-icon"', false)
         ->assertSee('staff-theme-moon', false);
+});
+
+it('gives staff screens the server fee schedule, with the business clearance fee marked unconfirmed', function () {
+    $this->actingAs(User::factory()->assignedOperations()->create(['role' => 'staff']))
+        ->get(route('staff.dashboard'))
+        ->assertOk()
+        ->assertSee('window.CERTIFICATE_FEES = '.Js::from(CertificateType::feeSchedule()).';', false);
 });
 
 it('keeps certificate requests and recent activity in the original two-column dashboard layout', function () {

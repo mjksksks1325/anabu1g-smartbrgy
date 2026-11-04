@@ -130,7 +130,6 @@
     "Business Clearance": "Business Clearance",
     "Business Clearance fee at processing time. Regular Barangay ID ang fee na nakalista. Sa Barangay Hall babayaran ang fee.": "Business Clearance fees and processing time. The listed Barangay ID fee is for a regular ID. Pay fees at the Barangay Hall.",
     "Business Clearance fee, eksaktong requirements, at processing time. Regular Barangay ID ang fee na nakalista. Magtanong sa Barangay Hall bago kumuha.": "Business Clearance fees, exact requirements, and processing time. The listed Barangay ID fee is for a regular ID. Ask at the Barangay Hall before applying.",
-    "Business Clearance fee: To be confirmed": "Business Clearance fee: To be confirmed",
     "Business Clearance fees and processing time. The listed Barangay ID fee is for a regular ID. Pay fees at the Barangay Hall.": "Business Clearance fees and processing time. The listed Barangay ID fee is for a regular ID. Pay fees at the Barangay Hall.",
     "Business Clearance fees, exact requirements, and processing time. The listed Barangay ID fee is for a regular ID. Ask at the Barangay Hall before applying.": "Business Clearance fees, exact requirements, and processing time. The listed Barangay ID fee is for a regular ID. Ask at the Barangay Hall before applying.",
     "Business name": "Business name",
@@ -543,7 +542,6 @@
     "Para palitan ang password, magpapadala kami ng link sa inyong account email. Buksan ang link at gumawa ng bagong password.": "To change your password, we send a link to your account email. Open the link and create a new password.",
     "Password at seguridad": "Password and security",
     "Petsa lang ng pag-submit ang naitatala ng system, kaya walang petsa ang bawat yugto.": "The system records only the date you submitted, so the stages have no dates.",
-    "PHP 25 ang barangay clearance at certificate of residency. Libre ang indigency at first-time jobseeker. Regular Barangay ID: PHP 100. Hinihintay pa ang kumpirmasyon sa Business Clearance fee, requirements, at processing time.": "Barangay clearance and certificate of residency cost PHP 25. Indigency and first-time jobseeker certificates are free. Regular Barangay ID: PHP 100. Business Clearance fees, requirements, and processing time are awaiting confirmation.",
     "Pindutin ang \"Nakalimutan ang password?\" sa Log in page. Padadalhan kayo ng link sa email ng inyong account.": "Select \"Forgot your password?\" on the Log in page. We will send a link to your account email.",
     "Pindutin ang isang request para makita ang buong status.": "Select a request to see its full status.",
     "PSA data": "PSA data",
@@ -1742,5 +1740,8 @@
     "The latest record is in the form.": "The latest record is in the form.",
     "Your unsaved values that differ from it:": "Your unsaved values that differ from it:",
     "Re-apply my values": "Re-apply my values",
-    "Your values are back in the form. Review them, then save.": "Your values are back in the form. Review them, then save."
+    "Your values are back in the form. Review them, then save.": "Your values are back in the form. Review them, then save.",
+    "not yet confirmed": "not yet confirmed",
+    "PHP 200.00 (not yet confirmed)": "PHP 200.00 (not yet confirmed)",
+    "Sa Barangay Hall babayaran ang fee. Regular Barangay ID ang fee na nakalista. Hinihintay pa ang kumpirmasyon sa Business Clearance fee, requirements, at processing time.": "Fees are paid at the Barangay Hall. The fee listed is for the regular Barangay ID. The Business Clearance fee, requirements and processing time are still awaiting confirmation."
 }

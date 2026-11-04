@@ -653,15 +653,32 @@ loadCustomPuroks();
 // ═══════════════════════════════════════
 // CERTIFICATE TYPES
 // ═══════════════════════════════════════
+// Fees are not listed here: they come from the server (App\CertificateType, window.CERTIFICATE_FEES).
 const CERTIFICATE_TYPES = [
-  { id: 'RVC', label: 'Registered Voter Certification', icon: '', fee: 'PHP 25.00', days: 'Confirm with barangay' },
-  { id: 'BC',   label: 'Barangay Clearance',        icon: '', fee: 'PHP 25.00',  days: '1 day' },
-  { id: 'CR',   label: 'Certificate of Residency',  icon: '', fee: 'PHP 25.00',  days: '1 day' },
-  { id: 'CI',   label: 'Certificate of Indigency',  icon: '', fee: 'Free',       days: '1 day' },
-  { id: 'BID',  label: 'Barangay ID',               icon: '', fee: 'PHP 100.00', days: '3-5 days' },
-  { id: 'CTFJ', label: 'First Time Jobseeker',      icon: '', fee: 'Free',       days: '1 day' },
-  { id: 'BBC',  label: 'Business Clearance',        icon: '', fee: 'PHP 200.00+',days: '3-5 days' },
+  { id: 'RVC',  label: 'Registered Voter Certification', icon: '', days: 'Confirm with barangay' },
+  { id: 'BC',   label: 'Barangay Clearance',        icon: '', days: '1 day' },
+  { id: 'CR',   label: 'Certificate of Residency',  icon: '', days: '1 day' },
+  { id: 'CI',   label: 'Certificate of Indigency',  icon: '', days: '1 day' },
+  { id: 'BID',  label: 'Barangay ID',               icon: '', days: '3-5 days' },
+  { id: 'CTFJ', label: 'First Time Jobseeker',      icon: '', days: '1 day' },
+  { id: 'BBC',  label: 'Business Clearance',        icon: '', days: '3-5 days' },
 ];
+
+/** The server's fee entry for a certificate name; tolerant of case, spacing and "Job Seeker". */
+function certificateFee(type) {
+  const normalize = text => String(text || '').trim().toLowerCase().replace(/\s+/g, ' ').replace('job seeker', 'jobseeker');
+  const fees = window.CERTIFICATE_FEES || {};
+  const key = Object.keys(fees).find(name => normalize(name) === normalize(type));
+  return key ? fees[key] : null;
+}
+
+/** "PHP 25.00", "Free", or for a fee the barangay has not confirmed "PHP 200.00 (not yet confirmed)". */
+function certificateFeeText(type) {
+  const fee = certificateFee(type);
+  if (!fee) return '—';
+  const amount = Number(fee.amount) === 0 ? 'Free' : `PHP ${Number(fee.amount).toFixed(2)}`;
+  return fee.confirmed ? amount : `${amount} (${adminText('not yet confirmed')})`;
+}
 
 // ═══════════════════════════════════════
 // RFID TAGS — DOCUMENT/FOLDER TRACKING (no rfid in resident record)
@@ -1434,54 +1451,18 @@ function printCert(code) {
   const req = CERT_REQUESTS.find(r => r.code === code);
   if (!req) return;
 
-  const priceMap = {
-    'registered voter certification': 25,
-    'barangay clearance': 25,
-    'certificate of residency': 25,
-    'certificate of indigency': 0,
-    'barangay id': 100,
-    'first time jobseeker': 0,
-    'business clearance': 200
-  };
-
-  const normalizeType = (text) =>
-    (text || '')
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, ' ')
-      .replace('job seeker', 'jobseeker');
-
-  const requestType = normalizeType(req.type);
-  const amount = priceMap[requestType] ?? 0;
-
   document.getElementById('print-document-request-id').value = req.id || '';
   document.getElementById('print-certificate-type').value = req.type || '';
   document.getElementById('print-resident-name').value = req.name || '';
   document.getElementById('print-purpose').value = req.purpose || '';
-  document.getElementById('print-amount-paid').value =
-    amount === 0 ? 'FREE' : `PHP ${amount.toFixed(2)}`;
+  document.getElementById('print-amount-paid').value = certificateFeeText(req.type);
 
   openModal('modal-print-release');
 }
 
-const MANUAL_CERTIFICATE_FEES = {
-  'Registered Voter Certification': 25,
-  'Barangay Clearance': 25,
-  'Certificate of Residency': 25,
-  'Certificate of Indigency': 0,
-  'Barangay ID': 100,
-  'First Time Jobseeker': 0,
-  'Business Clearance': 200
-};
-
 function updateManualCertificateFee() {
-  const certificateType = document.getElementById('manual-certificate-type')?.value;
   const feeInput = document.getElementById('manual-certificate-fee');
-  const amount = MANUAL_CERTIFICATE_FEES[certificateType] ?? 0;
-
-  if (feeInput) {
-    feeInput.value = amount === 0 ? 'FREE' : `PHP ${amount.toFixed(2)}`;
-  }
+  if (feeInput) feeInput.value = certificateFeeText(document.getElementById('manual-certificate-type')?.value);
 }
 
 async function issueManualCertificate(event) {
@@ -1677,8 +1658,8 @@ function renderIssuedCertificates(certificates, meta = null) {
     const issuedTime = issuedAt ? issuedAt.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' }) : '';
     const fee = Number(certificate.amount_paid) > 0
       ? `PHP ${Number(certificate.amount_paid).toFixed(2)}`
-      : 'FREE';
-    const source = String(certificate.source || 'onsite').toLowerCase();
+      : 'Free';
+    const source =String(certificate.source || 'onsite').toLowerCase();
     const sourceBadgeClass = source === 'online' ? 'badge-purple' : 'badge-gray';
     const row = document.createElement('tr');
 
@@ -2972,7 +2953,7 @@ function renderCertTypesList() {
   if (!container) return;
   container.innerHTML = `<table class="tbl cert-fees-table">
     <thead><tr><th>Document</th><th>Processing</th><th>Fee</th></tr></thead>
-    <tbody>${CERTIFICATE_TYPES.map(ct => `<tr><td><strong>${escapeText(ct.label)}</strong></td><td>${escapeText(ct.days)}</td><td class="cert-fee">${escapeText(ct.fee)}</td></tr>`).join('')}</tbody>
+    <tbody>${CERTIFICATE_TYPES.map(ct => `<tr><td><strong>${escapeText(ct.label)}</strong></td><td>${escapeText(ct.days)}</td><td class="cert-fee">${escapeText(certificateFeeText(ct.label))}</td></tr>`).join('')}</tbody>
   </table>`;
 }
 
@@ -3524,7 +3505,7 @@ function renderEligRulesGrid() {
         <div style="color:${rule.needsGoodStanding ? '#EF4444' : 'var(--text-muted)'};">${rule.needsGoodStanding ? ' Requires clean record (no blotter)' : ' No clean record required'}</div>
         <div style="color:${rule.oneTimeOnly ? '#F59E0B' : 'var(--text-muted)'};">${rule.oneTimeOnly ? ' One-time only per resident' : ' Can be requested multiple times'}</div>
         <div style="color:${rule.requiresActive ? 'var(--green-500)' : 'var(--text-muted)'};"> Active resident status required</div>
-        <div style="color:var(--text-muted);margin-top:3px;">Fee: <strong style="color:var(--text-primary);">${ct?.fee || '—'}</strong> | Processing: ${ct?.days || '—'}</div>
+        <div style="color:var(--text-muted);margin-top:3px;">Fee: <strong style="color:var(--text-primary);">${escapeText(certificateFeeText(ct?.label || rule.label))}</strong> | Processing: ${ct?.days || '—'}</div>
       </div>
     </div>`;
   }).join('');

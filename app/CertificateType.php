@@ -31,6 +31,27 @@ enum CertificateType: string
         };
     }
 
+    /**
+     * Whether the barangay has confirmed this fee. Business Clearance (PHP 200) is still awaiting
+     * confirmation, so every screen that shows it must say so.
+     */
+    public function feeConfirmed(): bool
+    {
+        return $this !== self::BusinessClearance;
+    }
+
+    /**
+     * The one fee list every screen reads, keyed by certificate name.
+     *
+     * @return array<string, array{amount: int, confirmed: bool}>
+     */
+    public static function feeSchedule(): array
+    {
+        return collect(self::cases())->mapWithKeys(fn (self $type): array => [
+            $type->value => ['amount' => $type->fee(), 'confirmed' => $type->feeConfirmed()],
+        ])->all();
+    }
+
     public function validityPeriodInMonths(): int
     {
         return $this === self::BarangayId ? 12 : 3;

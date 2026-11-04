@@ -63,18 +63,17 @@
         <p class="eyebrow"><span data-portal-i18n="Transparent na bayarin">{{ __('Transparent na bayarin') }}</span></p>
         <div class="doc-rates-head">
             <h2 id="doc-rates-title"><span data-portal-i18n="Mga dokumento at fee">{{ __('Mga dokumento at fee') }}</span></h2>
-            <span class="tag-unconfirmed"><span data-portal-i18n="Business Clearance fee: To be confirmed">{{ __('Business Clearance fee: To be confirmed') }}</span></span>
         </div>
         <table class="doc-rates-table">
             <caption class="sr-only"><span data-portal-i18n="Fee ng bawat dokumento ayon sa system">{{ __('Fee ng bawat dokumento ayon sa system') }}</span></caption>
             <thead><tr><th scope="col"><span data-portal-i18n="Dokumento">{{ __('Dokumento') }}</span></th><th scope="col"><span data-portal-i18n="Fee">{{ __('Fee') }}</span></th></tr></thead>
             <tbody>
                 @foreach($services as $service)
-                    <tr><th scope="row"><span data-portal-i18n="{{ $service->value }}">{{ __($service->value) }}</span></th><td><span data-portal-i18n="{{ $service->feeLabel() }}">{{ __($service->feeLabel()) }}</span></td></tr>
+                    <tr><th scope="row"><span data-portal-i18n="{{ $service->value }}">{{ __($service->value) }}</span></th><td><span data-portal-i18n="{{ $service->feeLabel() }}">{{ __($service->feeLabel()) }}</span>@unless($service->feeConfirmed()) <span class="tag-unconfirmed"><span data-portal-i18n="To be confirmed">{{ __('To be confirmed') }}</span></span>@endunless</td></tr>
                 @endforeach
             </tbody>
         </table>
-        <p class="doc-rates-note"><span data-portal-i18n="PHP 25 ang barangay clearance at certificate of residency. Libre ang indigency at first-time jobseeker. Regular Barangay ID: PHP 100. Hinihintay pa ang kumpirmasyon sa Business Clearance fee, requirements, at processing time.">{{ __('PHP 25 ang barangay clearance at certificate of residency. Libre ang indigency at first-time jobseeker. Regular Barangay ID: PHP 100. Hinihintay pa ang kumpirmasyon sa Business Clearance fee, requirements, at processing time.') }}</span> <a href="{{ route('portal.information') }}#requirements"><span data-portal-i18n="Buong requirements at fees">{{ __('Buong requirements at fees') }}</span></a></p>
+        <p class="doc-rates-note"><span data-portal-i18n="Sa Barangay Hall babayaran ang fee. Regular Barangay ID ang fee na nakalista. Hinihintay pa ang kumpirmasyon sa Business Clearance fee, requirements, at processing time.">{{ __('Sa Barangay Hall babayaran ang fee. Regular Barangay ID ang fee na nakalista. Hinihintay pa ang kumpirmasyon sa Business Clearance fee, requirements, at processing time.') }}</span> <a href="{{ route('portal.information') }}#requirements"><span data-portal-i18n="Buong requirements at fees">{{ __('Buong requirements at fees') }}</span></a></p>
     </section>
 </div>
 

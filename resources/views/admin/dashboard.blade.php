@@ -1306,6 +1306,7 @@
     window.LARAVEL_DOCUMENT_REQUESTS = @json($requests);
         window.ADMIN_RESIDENT_APPLICATIONS_URL = @json(route('staff.resident-applications.index'));
     window.PERSONNEL_LOGIN_GREETING = {{ Illuminate\Support\Js::from(session()->pull('personnel_login_greeting', false)) }};
+    window.CERTIFICATE_FEES = {{ Illuminate\Support\Js::from(App\CertificateType::feeSchedule()) }};
     window.ADMIN_ACTIVE_SCREEN = {{ Illuminate\Support\Js::from($activeScreen) }};
     window.ADMIN_SCREEN_ROUTES = {{ Illuminate\Support\Js::from($screenRoutes) }};
     window.STAFF_PERMISSION_PRESETS = {{ Illuminate\Support\Js::from(App\StaffPermissions::presets()) }};

@@ -1,5 +1,6 @@
 <?php
 
+use App\CertificateType;
 use App\Models\Announcement;
 use App\Models\DocumentRequest;
 use App\Models\Resident;
@@ -77,7 +78,21 @@ test('public portal shows community information and usable service links', funct
 test('portal home lists confirmed document fees and flags the business clearance fee for confirmation', function () {
     $this->get(route('home'))
         ->assertOk()
-        ->assertSeeInOrder(['>Documents and fees</span>', '>Business Clearance fee: To be confirmed</span>', '>Barangay Clearance</span>', '>PHP 25.00</span>', '>Certificate of Residency</span>', '>PHP 25.00</span>', '>Certificate of Indigency</span>', '>Free</span>', '>Business Clearance</span>', '>PHP 200.00</span>'], false);
+        ->assertSeeInOrder(['>Documents and fees</span>', '>Barangay Clearance</span>', '>PHP 25.00</span>', '>Certificate of Residency</span>', '>PHP 25.00</span>', '>Certificate of Indigency</span>', '>Free</span>', '>Business Clearance</span>', '>PHP 200.00</span>', '>To be confirmed</span>'], false)
+        ->assertDontSee('PHP 25 ang barangay clearance')
+        ->assertDontSee('Regular Barangay ID: PHP 100');
+});
+
+test('only an unconfirmed fee carries the to-be-confirmed tag on the portal home', function () {
+    $document = new DOMDocument;
+    @$document->loadHTML($this->get(route('home'))->assertOk()->getContent());
+    $rows = (new DOMXPath($document))->query('//table[contains(@class, "doc-rates-table")]/tbody/tr');
+
+    expect($rows)->toHaveCount(count(CertificateType::cases()));
+    foreach ($rows as $row) {
+        $type = CertificateType::from(trim($row->getElementsByTagName('th')->item(0)->textContent));
+        expect(str_contains($row->textContent, 'To be confirmed'))->toBe(! $type->feeConfirmed(), $type->value);
+    }
 });
 
 test('requirements page lists confirmed document fees and flags the business clearance fee for confirmation', function () {

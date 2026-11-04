@@ -5,6 +5,14 @@ import { readFileSync } from 'node:fs';
 
 const script = readFileSync(new URL('../../public/js/admin.js', import.meta.url), 'utf8');
 
+/** Mirrors App\CertificateType::feeSchedule(), which the staff page passes as window.CERTIFICATE_FEES. */
+const FEE_SCHEDULE = {
+  'Barangay Clearance': { amount: 25, confirmed: true }, 'Certificate of Residency': { amount: 25, confirmed: true },
+  'Certificate of Indigency': { amount: 0, confirmed: true }, 'Registered Voter Certification': { amount: 25, confirmed: true },
+  'Barangay ID': { amount: 100, confirmed: true }, 'First Time Jobseeker': { amount: 0, confirmed: true },
+  'Business Clearance': { amount: 200, confirmed: false },
+};
+
 async function client() {
   const fields = new Map();
   const windowEvents = new Map();
@@ -96,6 +104,7 @@ test('workspace URL filter parameters initialize resident pagination and audit f
 
 test('manual issuance displays the confirmed clearance and residency fees', async () => {
   const { context, fields } = await client();
+  context.window.CERTIFICATE_FEES = FEE_SCHEDULE;
   const typeField = { value: 'Barangay Clearance' };
   const feeField = { value: '' };
   fields.set('manual-certificate-type', typeField);
@@ -125,10 +134,35 @@ test('resident editing only supplies explicit nationality and indigency verifica
 
 test('online release displays the voter certification fee without a custom expiration control', async () => {
   const { context, fields } = await client();
+  context.window.CERTIFICATE_FEES = FEE_SCHEDULE;
   for (const id of ['print-document-request-id', 'print-certificate-type', 'print-resident-name', 'print-purpose', 'print-amount-paid']) fields.set(id, { value: '2026-12-31' });
   vm.runInContext("CERT_REQUESTS.push({ code: 'TEST', id: 2, type: 'Registered Voter Certification' }); openModal = () => {};", context);
   context.printCert('TEST');
   assert.equal(fields.get('print-amount-paid').value, 'PHP 25.00');
+});
+
+test('staff fee displays read the server schedule and mark an unconfirmed fee everywhere', async () => {
+  const { context, fields } = await client();
+  context.window.CERTIFICATE_FEES = FEE_SCHEDULE;
+  const typeField = { value: 'Business Clearance' };
+  const feeField = { value: '' };
+  const table = { innerHTML: '' };
+  fields.set('manual-certificate-type', typeField);
+  fields.set('manual-certificate-fee', feeField);
+  fields.set('cert-types-list', table);
+
+  context.updateManualCertificateFee();
+  assert.equal(feeField.value, 'PHP 200.00 (not yet confirmed)');
+  typeField.value = 'First Time Job Seeker';
+  context.updateManualCertificateFee();
+  assert.equal(feeField.value, 'Free');
+  context.renderCertTypesList();
+  assert.match(table.innerHTML, /Business Clearance[\s\S]*PHP 200\.00 \(not yet confirmed\)/);
+  assert.match(table.innerHTML, /Barangay ID[\s\S]*PHP 100\.00/);
+  assert.doesNotMatch(table.innerHTML, /200\.00\+/);
+
+  context.window.CERTIFICATE_FEES = undefined;
+  assert.equal(context.certificateFeeText('Barangay Clearance'), '—');
 });
 
 test('a double-clicked Save Record sends one request and keeps the button busy until it finishes', async () => {

@@ -66,7 +66,7 @@
                 <div><dt><span data-portal-i18n="Purpose">{{ __('Purpose') }}</span></dt><dd>{{ $item->purpose ?: '—' }}</dd></div>
                 @if($item->business_name)<div><dt><span data-portal-i18n="Business name">{{ __('Business name') }}</span></dt><dd>{{ $item->business_name }}</dd></div>@endif
                 @if($certificateType)
-                    <div><dt><span data-portal-i18n="Fee">{{ __('Fee') }}</span></dt><dd><span data-portal-i18n="{{ $certificateType->feeLabel() }}">{{ __($certificateType->feeLabel()) }}</span>@if($certificateType->fee() > 0) · <span data-portal-i18n="babayaran sa Barangay Hall">{{ __('babayaran sa Barangay Hall') }}</span>@endif @if($certificateType === App\CertificateType::BusinessClearance)<span class="tag-unconfirmed"><span data-portal-i18n="To be confirmed">{{ __('To be confirmed') }}</span></span>@endif</dd></div>
+                    <div><dt><span data-portal-i18n="Fee">{{ __('Fee') }}</span></dt><dd><span data-portal-i18n="{{ $certificateType->feeLabel() }}">{{ __($certificateType->feeLabel()) }}</span>@if($certificateType->fee() > 0) · <span data-portal-i18n="babayaran sa Barangay Hall">{{ __('babayaran sa Barangay Hall') }}</span>@endif @if(! $certificateType->feeConfirmed())<span class="tag-unconfirmed"><span data-portal-i18n="To be confirmed">{{ __('To be confirmed') }}</span></span>@endif</dd></div>
                 @endif
             </dl>
         </section>
