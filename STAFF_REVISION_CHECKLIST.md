@@ -14,13 +14,13 @@ Update it at the end of every session. Statuses come from the source code, not f
 - Account settings: Livewire pages under `/staff/settings/*` (`routes/settings.php`).
 - Language: `lang/en.json` and `lang/fil.json`; `public/js/admin-localization.js` translates rendered text by matching it against both catalogs (`:placeholder` patterns allowed; keep patterns specific, because a broad one such as `:count households` rewrites unrelated text). `tests/Unit/AdminLocalizationCatalog.test.js` checks `admin.js` and `household-profiling.js` messages.
 - Shared helpers in `admin.js`: `openModal` / `closeModal` / `topOpenModal` (dialog stack), `confirmAction` / `confirmDestructiveAction`, `showToast`, `renderPager` (list pager), `hasStaffPermission`. Field validation: `public/js/form-feedback.js`.
-- Tests: Pest and Node (`node --test tests/Unit/*.test.js`). The full Pest suite needs more memory than the default: `php -d memory_limit=1G vendor/pestphp/pest/bin/pest --compact`. Destructive-route tests send `supervisorApproval()` (see `tests/Pest.php`).
+- Tests: Pest and Node (`node --test tests/Unit/*.test.js`). `phpunit.xml` sets a 512M memory limit, so `php artisan test --compact` runs the full suite (it peaks around 120 MB, just under the old 128M default). Destructive-route tests send `supervisorApproval()` (see `tests/Pest.php`).
 - Browser checks: run the app against a **copy** of `database/database.sqlite` (set `DB_DATABASE` and start `php -S 127.0.0.1:8010 ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php` from `public/`; `artisan serve` drops the override) and sign in with a seeded local staff account. Never seed test data into the real local database.
 
-## Test status (2026-11-04, session 13)
+## Test status (2026-11-05, session 16)
 
-- Node: 206 pass, 0 fail.
-- Pest: 1025 pass, 0 fail, 2 skipped (session 13 added two announcement dialog tests). In session 12 the count fell from 1039 because session 12 replaced the ~30 tests of the removed self-service flow with 15 tests of the secure flow, and the four-case photo test with one. The skipped tests are the starter kit's open staff registration tests, intentionally off; see Final review.
+- Node: 208 pass, 0 fail.
+- Pest: 1038 pass, 0 fail, 2 skipped (sessions 14–16 added the R1, Add Purok, document-name, certificates-board and localization tests). In session 12 the count fell from 1039 because session 12 replaced the ~30 tests of the removed self-service flow with 15 tests of the secure flow, and the four-case photo test with one. The skipped tests are the starter kit's open staff registration tests, intentionally off; see Final review.
 - The 14 earlier failures were resolved as follows:
   - **Outdated tests (11):** they expected UI a teammate removed on purpose (`8e4e1a0`, `e7f1aa7`): the IoT status chip, the "My profile" and "Account security" items, 16 menu icons, and the raw role `admin` instead of `Super Admin`. One test also checked for `wire:navigate` where the link now uses `wire:navigate.hover`. These tests now assert the consolidated design.
   - **Real bugs (2):**
@@ -528,9 +528,10 @@ Full audit, matrix and exact proposals: [ROLE_ACCESS_AND_FILIPINO_AUDIT.md](ROLE
 |---|---|
 | **R1** Captain could change a Super Admin's email and password and sign in as Super Admin (probed). | `NEW` (approved). Non–Super Admins get 403 on Super Admin accounts, and the attempt is audited (`security.super-admin-account.change-denied`). Only the owner changes a Super Admin's email or password. UI hides or locks accordingly. Regression tests; browser-verified on an isolated copy. |
 | **R6** Add Purok shown to staff who cannot save it. | `NEW` (approved). Button requires `records.create`, as the server does. |
-| **R13** Two Filipino-only server messages in English mode. | `NEW`. |
-| Filipino style (simple Taglish, official document names as printed, consistent terms). | `NEW` for 98 high-visibility entries; remaining entries follow the same rules later. |
-| R2 VAWC by explicit assignment · R3 Captain admin scope · R4 password reset links · R5 four-eyes restrictions · R7 retire legacy roles · R8 Captain suspend button · R9 photos for demographics-only staff · R10 Kagawad/VAW desk split · R11 Secretary split · R12 paginated certificate board | `APPROVAL` — exact code changes listed in the audit document. |
+| **R12** The certificates page embedded every document request in its HTML, and the 3-second poll downloaded all of them. | `NEW` (approved, `ade3bda`). Each lane loads from the paginated `staff.document-requests.list` endpoint (newest 25, "Show more" up to 100, then a link to the full list). Counts from one grouped query. Search runs on the server, so old records are found. Polling only while the board is open. Permissions unchanged. |
+| **R13** Filipino-only server messages in English mode. | `NEW`. Also the Smart Cabinet archive label (`d6a71a8`). |
+| Filipino style (simple Taglish, official document names as printed, consistent terms). | `NEW`: 98 high-visibility entries, then the remaining formal wording reviewed in context (127 changed), and 120 staff labels that showed in English added (`d6a71a8`). Toggle labels and required-field messages now follow the chosen language. |
+| R2 VAWC by explicit assignment · R3 Captain admin scope · R4 password reset links · R5 four-eyes restrictions · R7 retire legacy roles · R8 Captain suspend button · R9 photos for demographics-only staff · R10 Kagawad/VAW desk split · R11 Secretary split · R14 incident staff list for staff without incident access | `APPROVAL`. Full plan per item (current, recommended, affected accounts, backend, frontend, security, rollout risk, tests, rollback) and decisions D1–D10 in the audit document. |
 
 ## Decisions and proposals
 
@@ -731,3 +732,21 @@ Option (b) was applied: no staff role can delete its own account; staff accounts
     - The optional "Mark identity verified" action.
     - A16 (Captains suspending portal accounts).
 - **Session 13 (2026-11-04)** — UI/UX redesign, work group 1 (section above): compact KPI cards, charcoal dark theme with a raised surface token, the Announcements create dialog, button hierarchy, compact Quick Actions and empty states. UI only; no endpoints, permissions or rules changed.
+- **Session 16 (2026-11-05)**: R12, the Filipino pass and the permission plan.
+  - **R12:** the certificates board loads lanes from the paginated list (section above).
+    - Browser check on an isolated copy with 160 added requests:
+      - the page HTML holds no requests;
+      - lane totals and cards match the server counts;
+      - "Show more" works;
+      - a search for a 5-year-old record finds it and opens it;
+      - Process, Mark ready, and Print & release move a request and update the counts;
+      - the view-only account sees no action buttons;
+      - an account without documents access gets 403;
+      - no polling on other screens;
+      - checked in Filipino at 390 px.
+  - **Filipino:** contextual review, new entries, one English-mode leak, and toggle and validation language (section above).
+    - English mode: no Filipino interface text on any staff screen, dialog or portal page checked. The only Filipino found was a staff-written announcement, which is content.
+    - No horizontal overflow at 1440 or 390 px.
+    - Known limit: the browser's own small "Please fill out this field" bubble follows the browser language.
+  - **Role probe:** every screen for Secretary, Kagawad, VAW desk and Captain. The only refused request was `incident-options` for staff without incident access (R14, proposed).
+  - **Tests:** `phpunit.xml` now sets a 512M memory limit. The suite had reached Herd's 128M default and stopped with a fatal error; no test was failing.
