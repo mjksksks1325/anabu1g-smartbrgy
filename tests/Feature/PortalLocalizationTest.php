@@ -195,7 +195,7 @@ test('existing activation notification uses its selected locale without translat
     expect($mail->subject)->toBe('Pag-activate ng Resident Portal ng Barangay Anabu I-G');
     $this->assertStringContainsString('ABCD1234', view('mail.resident-activation-text', $mail->viewData)->render());
     $this->assertStringContainsString('ANB-UNCHANGED', view('mail.resident-activation-text', $mail->viewData)->render());
-    $this->assertStringContainsString('Ipagpatuloy ang pagpaparehistro', view('mail.resident-activation-text', $mail->viewData)->render());
+    $this->assertStringContainsString('Ituloy ang registration', view('mail.resident-activation-text', $mail->viewData)->render());
 });
 
 test('the email confirmation mail captures the resident locale', function () {

@@ -175,9 +175,16 @@
     document.addEventListener('pointerdown', event => { lastInteraction = event.target; }, true);
     document.addEventListener('submit', event => { lastInteraction = event.submitter ?? event.target; }, true);
 
+    /** The browser words "required" in its own language; staff pages use the catalogued message so it follows the chosen language. */
+    function validityMessage(field) {
+        const missing = field.validity?.valueMissing && !field.validity.customError;
+
+        return missing && typeof window.adminTranslate === 'function' ? translated('This field is required.') : field.validationMessage;
+    }
+
     document.addEventListener('invalid', event => {
         const field = event.target;
-        markInvalid(field, field.validationMessage);
+        markInvalid(field, validityMessage(field));
         if (!pendingInvalid) {
             pendingInvalid = [];
             requestAnimationFrame(() => {

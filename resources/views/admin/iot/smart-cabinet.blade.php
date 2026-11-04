@@ -111,7 +111,7 @@
         <h2 id="cabinet-folder-archive-title">Archive folder</h2>
         <p id="cabinet-folder-archive-description">This keeps the folder and its movement history in the records. Confirm with the active Barangay Captain or Super Admin password.</p>
         <p class="cabinet-folder-archive-reference" data-folder-archive-reference></p>
-        <label for="cabinet-folder-archive-password">Password ng Barangay Captain o Super Admin</label>
+        <label for="cabinet-folder-archive-password">Barangay Captain or Super Admin password</label>
         <input id="cabinet-folder-archive-password" name="super_admin_password" type="password" autocomplete="current-password" required>
         <p class="cabinet-folder-archive-error" data-folder-archive-error role="alert" hidden></p>
         <div class="cabinet-folder-archive-actions">

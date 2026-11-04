@@ -61,3 +61,42 @@ test('a label that a script changes after translation is translated again instea
   handlers['admin:locale-changed']();
   assert.equal(attributes.get('aria-label'), 'Mga abiso, 3 ang hindi pa nababasa');
 });
+
+test('a label that a script sets after the page loads is translated without waiting for another pass', () => {
+  const handlers = {};
+  const attributes = new Map([['aria-label', 'Light Mode'], ['title', 'Light Mode']]);
+  const toggle = {
+    nodeType: 1,
+    matches: () => false,
+    hasAttribute: name => attributes.has(name),
+    getAttribute: name => attributes.get(name) ?? null,
+    setAttribute: (name, value) => attributes.set(name, value),
+    querySelectorAll: () => [],
+  };
+  let observerCallback;
+  let observerOptions;
+  const document = {
+    body: { hasAttribute: () => true },
+    nodeType: 9,
+    addEventListener: (type, handler) => { handlers[type] = handler; },
+    createTreeWalker: () => ({ nextNode: () => null }),
+    querySelectorAll: () => [toggle],
+  };
+  class MutationObserver {
+    constructor(callback) { observerCallback = callback; }
+    observe(target, options) { observerOptions = options; }
+  }
+  const window = { ADMIN_I18N: { locale: 'fil', catalogs: { en: english, fil: filipino } } };
+  vm.runInContext(read('public/js/admin-localization.js'), vm.createContext({ window, document, MutationObserver, Node: { ELEMENT_NODE: 1, TEXT_NODE: 3 }, NodeFilter: { SHOW_TEXT: 4 } }));
+
+  handlers.DOMContentLoaded();
+  assert.equal(attributes.get('aria-label'), filipino['Light Mode']);
+  assert.deepEqual([...observerOptions.attributeFilter].sort(), ['alt', 'aria-label', 'placeholder', 'title']);
+
+  // The theme script changes the label once its stylesheet loads.
+  attributes.set('aria-label', 'Dark Mode');
+  attributes.set('title', 'Dark Mode');
+  observerCallback([{ type: 'attributes', target: toggle, addedNodes: [] }]);
+  assert.equal(attributes.get('aria-label'), filipino['Dark Mode']);
+  assert.equal(attributes.get('title'), filipino['Dark Mode']);
+});

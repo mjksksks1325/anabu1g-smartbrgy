@@ -1149,8 +1149,8 @@ function renderDashPurokBreakdown() {
   const interpretation = document.getElementById('dash-purok-interpretation');
   if (interpretation) {
     interpretation.textContent = highest && total > 0
-      ? `${highest.label} has the largest registered population: ${highest.count.toLocaleString()} of ${total.toLocaleString()} residents (${Math.round(highest.count / total * 100)}%).`
-      : 'Purok interpretation will appear when resident records are available.';
+      ? adminText(':purok has the largest registered population: :count of :total residents (:percent%).', { purok: highest.label, count: highest.count.toLocaleString(), total: total.toLocaleString(), percent: Math.round(highest.count / total * 100) })
+      : adminText('Purok interpretation will appear when resident records are available.');
   }
 }
 

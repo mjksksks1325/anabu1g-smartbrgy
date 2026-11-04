@@ -155,14 +155,20 @@
         if (!document.body.hasAttribute('data-admin-localization')) return;
 
         translateAdminText();
+        // Labels a script sets later (theme toggle, password toggle) are translated too; a translated value is only
+        // written when it differs, so the observer settles after one extra pass.
         new MutationObserver(records => {
             for (const record of records) {
+                if (record.type === 'attributes') {
+                    translateAdminText(record.target);
+                    continue;
+                }
                 for (const addedNode of record.addedNodes) {
                     if (addedNode.nodeType === Node.ELEMENT_NODE) translateAdminText(addedNode);
                     else if (addedNode.nodeType === Node.TEXT_NODE) translateAdminText(addedNode.parentElement ?? document);
                 }
             }
-        }).observe(document.body, { childList: true, subtree: true });
+        }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['placeholder', 'title', 'aria-label', 'alt'] });
     });
 
     document.addEventListener('admin:locale-changed', () => translateAdminText());
