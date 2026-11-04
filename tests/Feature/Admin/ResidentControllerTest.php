@@ -4,6 +4,7 @@ use App\Actions\WriteRecordsSpreadsheet;
 use App\Models\DocumentRequest;
 use App\Models\Resident;
 use App\Models\User;
+use App\Models\VoterRegistration;
 
 function residentPayload(array $overrides = []): array
 {
@@ -221,6 +222,53 @@ it('searches and combines resident status filters with pagination', function () 
         ->assertJsonPath('data.0.full_name', 'Jose Rizal')
         ->assertJsonPath('total', 1)
         ->assertJsonPath('per_page', 1);
+});
+
+it('finds a resident by full name in any order, case, spacing or with an initial', function (string $search) {
+    $staff = User::factory()->assignedOperations()->create();
+    $juan = Resident::factory()->create(['first_name' => 'Juan', 'middle_name' => 'Dimaculangan', 'last_name' => 'Dela Cruz', 'suffix' => 'Jr.']);
+    Resident::factory()->create(['first_name' => 'Juan', 'middle_name' => null, 'last_name' => 'Santos', 'suffix' => null]);
+    Resident::factory()->create(['first_name' => 'Pedro', 'middle_name' => null, 'last_name' => 'Dela Cruz', 'suffix' => null]);
+
+    $this->actingAs($staff)->getJson(route('staff.residents.index', ['search' => $search]))
+        ->assertOk()
+        ->assertJsonPath('total', 1)
+        ->assertJsonPath('data.0.id', $juan->id);
+})->with([
+    'first then last' => 'Juan Dela Cruz',
+    'last, first' => 'Dela Cruz, Juan',
+    'mixed case and extra spaces' => '  jUAN   dela   CRUZ ',
+    'middle initial' => 'Juan D. Cruz',
+    'with suffix' => 'Juan Cruz Jr.',
+]);
+
+it('applies the same name search to request records and the case resident lookup', function () {
+    $staff = User::factory()->assignedOperations()->create();
+    $juan = Resident::factory()->create(['first_name' => 'Juan', 'middle_name' => null, 'last_name' => 'Dela Cruz']);
+    Resident::factory()->create(['first_name' => 'Pedro', 'middle_name' => null, 'last_name' => 'Dela Cruz']);
+
+    $this->actingAs($staff)->getJson(route('staff.request-records.index', ['search' => 'Dela Cruz Juan']))
+        ->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.id', $juan->id);
+    $this->getJson(route('staff.case-residents', ['search' => 'Dela Cruz Juan']))
+        ->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.id', $juan->id);
+});
+
+it('shows each resident voter record status, with null for no record and no COMELEC number', function () {
+    $staff = User::factory()->assignedOperations()->create();
+    $registered = Resident::factory()->create(['last_name' => 'Aquino']);
+    $transferred = Resident::factory()->create(['last_name' => 'Bautista']);
+    $unrecorded = Resident::factory()->create(['last_name' => 'Castro']);
+    VoterRegistration::factory()->create(['resident_id' => $registered->id, 'status' => 'active']);
+    VoterRegistration::factory()->create(['resident_id' => $transferred->id, 'status' => 'transferred']);
+
+    $response = $this->actingAs($staff)->getJson(route('staff.residents.index'))->assertOk();
+
+    expect(collect($response->json('data'))->pluck('voter_status', 'id')->all())->toBe([
+        $registered->id => 'active',
+        $transferred->id => 'transferred',
+        $unrecorded->id => null,
+    ]);
+    expect($response->getContent())->not->toContain('comelec');
 });
 
 it('updates a resident without allowing a client to replace its resident number', function () {

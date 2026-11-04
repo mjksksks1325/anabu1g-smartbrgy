@@ -898,3 +898,22 @@ body[data-personnel-layout="iot"] .cabinet-state-list span { color: var(--staff-
 body #app.admin-interface.admin-interface .incident-ref { display: block; font-size: 11.5px; line-height: 1.45; overflow-wrap: normal; word-break: normal; }
 body #app.admin-interface.admin-interface .incident-ref-id { white-space: nowrap; }
 body #app.admin-interface.admin-interface .incident-table th:first-child, body #app.admin-interface.admin-interface .incident-table td.incident-cell-main { min-width: 215px; }
+
+/* Resident details: the grid styles every span as a small label, so badges and plain values inside a value need their own size and colour. */
+body[data-personnel-layout="admin"] .modal .resident-detail-grid strong .badge { font-size: 11px; letter-spacing: 0; text-transform: none; }
+body[data-personnel-layout="admin"] .modal .resident-detail-grid strong .badge-green { color: var(--green-500); }
+body[data-personnel-layout="admin"] .modal .resident-detail-grid strong .badge-gray { color: var(--text-secondary); }
+body[data-personnel-layout="admin"] .modal .resident-detail-grid strong .badge-blue { color: var(--blue-400); }
+body[data-personnel-layout="admin"] .modal .resident-detail-grid .voter-status-none { color: var(--text-secondary); font-size: 13px; letter-spacing: 0; text-transform: none; }
+body[data-personnel-layout="admin"] .modal .resident-detail-hint { display: block; color: var(--text-muted); font-size: 12px; line-height: 1.45; }
+/* Resident details: incident reports linked to the resident (number, type, status, role). */
+body[data-personnel-layout="admin"] .modal .resident-incident-summary { margin: 6px 0 10px; color: var(--text-secondary); }
+body[data-personnel-layout="admin"] .modal .resident-incident-list { margin: 0 0 8px; padding: 0; list-style: none; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+body[data-personnel-layout="admin"] .modal .resident-incident-link { display: grid; grid-template-columns: minmax(150px, 1.3fr) minmax(0, 1fr) auto auto auto; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
+body[data-personnel-layout="admin"] .modal .resident-incident-link:last-child { border-bottom: 0; }
+body[data-personnel-layout="admin"] .modal .resident-incident-link .incident-ref { font-size: 12px; overflow-wrap: normal; word-break: normal; }
+body[data-personnel-layout="admin"] .modal .resident-incident-link .incident-ref-id { white-space: nowrap; }
+body[data-personnel-layout="admin"] .modal .resident-incident-role { color: var(--text-muted); font-size: 12px; }
+@media (max-width: 640px) {
+  body[data-personnel-layout="admin"] .modal .resident-incident-link { grid-template-columns: minmax(0, 1fr) auto; }
+}

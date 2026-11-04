@@ -1171,6 +1171,59 @@ test('clicking a resident row opens its details but its action buttons keep thei
   assert.equal(rows[1].listeners.click, undefined);
 });
 
+test('resident rows mark registered voters only, and a missing voter record adds no label', async () => {
+  const { context, fields } = await client();
+  const rows = [];
+  fields.set('records-tbody', { innerHTML: '', appendChild: row => rows.push(row) });
+  context.document.createElement = () => ({ innerHTML: '', classList: { add() {} }, setAttribute() {}, addEventListener() {}, querySelectorAll: () => [] });
+  context.fetched = [
+    { id: 1, resident_number: 'ANB-1', full_name: 'Registered Person', date_of_birth: '1990-01-01', status: 'active', voter_status: 'active' },
+    { id: 2, resident_number: 'ANB-2', full_name: 'Unrecorded Person', date_of_birth: '1990-01-01', status: 'active', voter_status: null },
+  ];
+  vm.runInContext('RESIDENTS.splice(0, RESIDENTS.length, ...fetched.map(residentFromApi));', context);
+
+  context.renderResidentsTable();
+
+  assert.equal(vm.runInContext('RESIDENTS[0].voterStatus', context), 'active');
+  assert.equal(vm.runInContext('RESIDENTS[1].voterStatus', context), null);
+  assert.match(rows[0].innerHTML, /badge-green" title="Registered voter">Voter</);
+  assert.doesNotMatch(rows[1].innerHTML, /Voter/);
+});
+
+test('resident details list linked incident reports with number, type, status and role only', async () => {
+  const { context, fields } = await client();
+  const container = { innerHTML: 'Loading', removed: false, remove() { this.removed = true; } };
+  fields.set('resident-incident-links', container);
+  const requested = [];
+  context.fetch = async url => {
+    requested.push(String(url));
+    const active = String(url).includes('status=active');
+    return { ok: true, json: async () => (active ? { total: 1, data: [] } : { total: 2, data: [
+      { incident_number: 'INC-2026-01ABCDEFGHJKMNPQRSTVWXYZ00', incident_type: 'Noise Complaint', status: 'open', status_label: 'Open', complainant_resident_id: 7, respondent_resident_id: null, details: 'PRIVATE NARRATIVE', complainant_name: 'Hidden Party' },
+      { incident_number: 'INC-2026-01ABCDEFGHJKMNPQRSTVWXYZ01', incident_type: 'Property Dispute', status: 'resolved', status_label: 'Resolved', complainant_resident_id: 3, respondent_resident_id: 7, details: 'PRIVATE NARRATIVE', respondent_name: 'Hidden Party' },
+    ] }) };
+  };
+
+  await context.loadResidentIncidentLinks(7);
+
+  assert.ok(requested.every(url => url.startsWith('/staff/incidents?') && url.includes('resident_id=7')));
+  assert.match(container.innerHTML, /<strong>2<\/strong> <span>linked reports<\/span> · <strong>1<\/strong>/);
+  assert.match(container.innerHTML, /Noise Complaint[\s\S]*Complainant[\s\S]*Property Dispute[\s\S]*Respondent/);
+  assert.match(container.innerHTML, /does not by itself restrict document requests/);
+  assert.doesNotMatch(container.innerHTML, /PRIVATE NARRATIVE|Hidden Party/);
+});
+
+test('resident details drop the incident panel when the viewer may not list incidents', async () => {
+  const { context, fields } = await client();
+  const container = { innerHTML: 'Loading', removed: false, remove() { this.removed = true; } };
+  fields.set('resident-incident-links', container);
+  context.fetch = async () => ({ ok: false, status: 403, json: async () => ({ message: 'This action is unauthorized.' }) });
+
+  await context.loadResidentIncidentLinks(7);
+
+  assert.equal(container.removed, true);
+});
+
 test('confirmations use the workspace modal and resolve from its buttons', async () => {
   const { context, fields } = await client();
   const modal = { classList: { add() {}, remove() {} }, setAttribute() {}, querySelector: () => null };

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Household;
 use App\Models\Resident;
 use App\Models\User;
 use App\Models\VoterRegistration;
@@ -110,6 +111,18 @@ test('listing separates active voters by purok and age eligibility', function ()
         ->assertJsonPath('summary.sk_and_regular', 1)
         ->assertJsonPath('summary.regular_only', 1)
         ->assertJsonMissing(['comelec_voter_number' => '9999-8888-7777']);
+});
+
+test('the voter list finds a voter by full name in any word order', function () {
+    $user = User::factory()->assignedOperations()->create();
+    $adult = ['date_of_birth' => '1990-01-01', 'status' => 'active', 'middle_name' => null];
+    $juan = VoterRegistration::factory()->for(Resident::factory()->create([...$adult, 'first_name' => 'Juan', 'last_name' => 'Dela Cruz']))->create();
+    VoterRegistration::factory()->for(Resident::factory()->create([...$adult, 'first_name' => 'Pedro', 'last_name' => 'Dela Cruz']))->create();
+
+    $this->actingAs($user)->getJson(route('staff.voter-registrations.index', ['search' => 'Dela Cruz, Juan']))
+        ->assertOk()
+        ->assertJsonPath('total', 1)
+        ->assertJsonPath('data.0.id', $juan->id);
 });
 
 test('a 15 year old resident can be registered as an sk voter', function () {
@@ -258,5 +271,5 @@ test('demographics and the voter registry report the same registered-voter count
     $registry = $this->actingAs($staff)->getJson(route('staff.voter-registrations.index'))->assertOk();
 
     expect($registry->json('summary.total'))->toBe(1)
-        ->and(\App\Models\Household::demographics()['registered_voters'])->toBe(1);
+        ->and(Household::demographics()['registered_voters'])->toBe(1);
 });

@@ -131,6 +131,52 @@ class Resident extends Model
             ->whereDate('date_of_birth', '<=', today()->subYears(15));
     }
 
+    /**
+     * Adds `voter_status`: the status of the resident's voter record (active, transferred, deceased or
+     * deregistered), or null when the system holds no voter record. A null value means "not recorded here",
+     * not "not registered with COMELEC". Only the status is read; COMELEC numbers stay out of the payload.
+     *
+     * @param  Builder<Resident>  $query
+     * @return Builder<Resident>
+     */
+    public function scopeWithVoterStatus(Builder $query): Builder
+    {
+        return $query->addSelect(['voter_status' => VoterRegistration::query()
+            ->select('status')
+            ->whereColumn('voter_registrations.resident_id', 'residents.id')
+            ->limit(1)]);
+    }
+
+    /**
+     * Staff name search: every word must match the resident ID or a name part, so "Juan Dela Cruz",
+     * "dela cruz juan", "Cruz, Juan" and "Juan D. Cruz" all find Juan Dela Cruz. Extra spaces, commas and
+     * initials' full stops are ignored; letter case follows the database collation (case-insensitive on
+     * MySQL `_ci` and on SQLite for ASCII letters).
+     *
+     * @param  Builder<Resident>  $query
+     * @param  list<string>  $extraColumns
+     * @return Builder<Resident>
+     */
+    public function scopeMatchingSearch(Builder $query, string $search, array $extraColumns = []): Builder
+    {
+        $columns = ['resident_number', 'first_name', 'middle_name', 'last_name', 'suffix', ...$extraColumns];
+        $words = collect(preg_split('/[\s,]+/u', $search, -1, PREG_SPLIT_NO_EMPTY) ?: [])
+            ->map(fn (string $word): string => rtrim($word, '.'))
+            ->filter(fn (string $word): bool => $word !== '')
+            ->unique()
+            ->take(6);
+
+        foreach ($words as $word) {
+            $query->where(function (Builder $query) use ($columns, $word): void {
+                foreach ($columns as $column) {
+                    $query->orWhere($query->qualifyColumn($column), 'like', '%'.$word.'%');
+                }
+            });
+        }
+
+        return $query;
+    }
+
     /** @return array{eligible: bool, reasons: list<string>} */
     public function certificateEligibility(CertificateType $certificateType): array
     {

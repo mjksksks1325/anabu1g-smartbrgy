@@ -1720,5 +1720,19 @@
     "View archived folders": "View archived folders",
     "Folder reference": "Folder reference",
     "Folder name": "Folder name",
-    "Add folder": "Add folder"
+    "Add folder": "Add folder",
+    "Voter": "Voter",
+    "Registered voter": "Registered voter",
+    "No voter record": "No voter record",
+    "Voter registration": "Voter registration",
+    "No voter record has been entered in the Voters module. This does not mean the person is unregistered.": "No voter record has been entered in the Voters module. This does not mean the person is unregistered.",
+    "Loading linked incident reports...": "Loading linked incident reports...",
+    "Incident reports": "Incident reports",
+    "No incident reports are linked to this resident.": "No incident reports are linked to this resident.",
+    "linked report": "linked report",
+    "linked reports": "linked reports",
+    "active": "active",
+    "Showing the 5 most recent. Search Incident Reports by resident ID for the rest.": "Showing the 5 most recent. Search Incident Reports by resident ID for the rest.",
+    "A linked report does not by itself restrict document requests.": "A linked report does not by itself restrict document requests.",
+    "View :reference in Incident Reports": "View :reference in Incident Reports"
 }

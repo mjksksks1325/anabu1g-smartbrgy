@@ -195,15 +195,7 @@ class ResidentController extends Controller
 
         $residents = Resident::query()
             ->with(['documentRequests' => fn ($query) => $query->latest()->limit(50)])
-            ->when($validated['search'] ?? null, function (Builder $query, string $search): void {
-                $term = '%'.trim($search).'%';
-                $query->where(function (Builder $query) use ($term): void {
-                    $query->where('resident_number', 'like', $term)
-                        ->orWhere('first_name', 'like', $term)
-                        ->orWhere('middle_name', 'like', $term)
-                        ->orWhere('last_name', 'like', $term);
-                });
-            })
+            ->when($validated['search'] ?? null, fn (Builder $query, string $search) => $query->matchingSearch($search))
             ->when(($validated['eligibility'] ?? null) === 'eligible', fn (Builder $query) => $query
                 ->where('status', 'active')
                 ->where('is_in_good_standing', true))
@@ -264,17 +256,8 @@ class ResidentController extends Controller
             : Resident::query();
 
         return $query->with('household.head')
-            ->when($request->filled('search'), function (Builder $query) use ($request): void {
-                $search = '%'.$request->string('search')->trim()->toString().'%';
-
-                $query->where(function (Builder $query) use ($search): void {
-                    $query->where('resident_number', 'like', $search)
-                        ->orWhere('first_name', 'like', $search)
-                        ->orWhere('middle_name', 'like', $search)
-                        ->orWhere('last_name', 'like', $search)
-                        ->orWhere('purok', 'like', $search);
-                });
-            })
+            ->withVoterStatus()
+            ->when($request->filled('search'), fn (Builder $query) => $query->matchingSearch($request->string('search')->toString(), ['purok']))
             ->when(in_array($status, ['active', 'inactive'], true), fn (Builder $query) => $query->where('status', $status))
             ->when($status === 'senior', fn (Builder $query) => $query->whereDate('date_of_birth', '<=', today()->subYears(60)))
             ->when($request->filled('purok'), fn (Builder $query) => $query->where('purok', $request->string('purok')->toString()))

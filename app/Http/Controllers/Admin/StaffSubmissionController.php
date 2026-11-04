@@ -41,13 +41,8 @@ class StaffSubmissionController extends Controller
         $validated = $request->validate(['search' => ['nullable', 'string', 'max:100'], 'per_page' => ['nullable', 'integer', 'min:1', 'max:100']]);
         $residents = Resident::query()->select(['id', 'resident_number', 'first_name', 'middle_name', 'last_name', 'suffix', 'date_of_birth', 'gender', 'purok', 'address', 'status', 'household_id'])
             ->when($request->user()->hasPermission('households.view'), fn ($query) => $query->with('household:id,household_number,household_name'))
-            ->when($validated['search'] ?? null, function ($query, $search): void {
-                $query->where(function ($query) use ($search): void {
-                    foreach (['resident_number', 'first_name', 'middle_name', 'last_name'] as $column) {
-                        $query->orWhere($column, 'like', '%'.trim($search).'%');
-                    }
-                });
-            })->orderBy('last_name')->paginate((int) ($validated['per_page'] ?? 15));
+            ->when($validated['search'] ?? null, fn ($query, string $search) => $query->matchingSearch($search))
+            ->orderBy('last_name')->paginate((int) ($validated['per_page'] ?? 15));
 
         return response()->json($residents);
     }

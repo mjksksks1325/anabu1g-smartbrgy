@@ -173,7 +173,7 @@ async function loadProtectionOrders(page = 1) {
   try {
     const result = await householdApi(`/staff/protection-orders?${new URLSearchParams({ incident_id: caseId, page })}`);
     if (viewedCaseId !== caseId) return;
-    container.innerHTML = (result.data || []).map(order => `<details class="resident-account-panel"><summary>BPO record #${Number(order.id)} ? ${escapeText(order.status)}</summary><p>Protected person: ${escapeText(order.protected_person)}</p><p>Respondent: ${escapeText(order.respondent)}</p><p>Issued: ${escapeText(order.issued_on)} / Effective: ${escapeText(order.effective_on || 'Not supplied')} / End: ${escapeText(order.ends_on || 'Not supplied')}</p><p>Authority: ${escapeText(order.issuing_authority)}</p><p>Reference: ${escapeText(order.supporting_document_reference || 'None')}</p><p>${escapeText(order.internal_remarks || '')}</p><button data-action-permission="vawc.update" class="btn btn-xs" onclick="editProtectionOrder(${Number(order.id)})">Edit BPO record</button></details>`).join('') || '<p>No BPO records for this case.</p>';
+    container.innerHTML = (result.data || []).map(order => `<details class="resident-account-panel"><summary>BPO record #${Number(order.id)} · ${escapeText(order.status)}</summary><p>Protected person: ${escapeText(order.protected_person)}</p><p>Respondent: ${escapeText(order.respondent)}</p><p>Issued: ${escapeText(order.issued_on)} / Effective: ${escapeText(order.effective_on || 'Not supplied')} / End: ${escapeText(order.ends_on || 'Not supplied')}</p><p>Authority: ${escapeText(order.issuing_authority)}</p><p>Reference: ${escapeText(order.supporting_document_reference || 'None')}</p><p>${escapeText(order.internal_remarks || '')}</p><button data-action-permission="vawc.update" class="btn btn-xs" onclick="editProtectionOrder(${Number(order.id)})">Edit BPO record</button></details>`).join('') || '<p>No BPO records for this case.</p>';
     if (result.last_page > 1) container.innerHTML += `<div class="resident-pagination"><button class="btn btn-xs" ${result.current_page <= 1 ? 'disabled' : ''} onclick="loadProtectionOrders(${result.current_page - 1})">Previous</button><span>Page ${Number(result.current_page)} of ${Number(result.last_page)}</span><button class="btn btn-xs" ${result.current_page >= result.last_page ? 'disabled' : ''} onclick="loadProtectionOrders(${result.current_page + 1})">Next</button></div>`;
   } catch (error) { if (viewedCaseId === caseId) container.textContent = error.message; }
 }
@@ -224,7 +224,7 @@ async function loadRestrictionCases() {
     const result = await householdApi(`/staff/incidents?${new URLSearchParams({ resident_id: resident, per_page: 100 })}`);
     if (version !== linkedCaseVersion) return;
     restrictionCases = result.data || [];
-    select.innerHTML += restrictionCases.map(item => `<option value="${Number(item.id)}">${escapeText(item.incident_number)} ? ${escapeText(item.incident_type)} ? ${escapeText(item.status_label)}</option>`).join('');
+    select.innerHTML += restrictionCases.map(item => `<option value="${Number(item.id)}">${escapeText(item.incident_number)} · ${escapeText(item.incident_type)} · ${escapeText(item.status_label)}</option>`).join('');
     select.onchange = () => {
       const item = restrictionCases.find(item => String(item.id) === select.value);
       summary.textContent = item ? `${item.incident_number} / ${item.status_label} / ${item.occurred_at_display} / Assigned: ${item.assignee_name || 'Unassigned'}` : '';

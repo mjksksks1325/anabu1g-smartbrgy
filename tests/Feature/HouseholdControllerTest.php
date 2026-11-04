@@ -395,7 +395,10 @@ it('provides household size and demographic query support excluding archived mem
     app(ManageHouseholds::class)->assign($female, $household->id, 'Spouse', false);
 
     expect(Household::demographics())->toBe(['total_households' => 1, 'total_residents' => 2, 'male' => 1, 'female' => 1, 'registered_voters' => 1, 'average_household_size' => 2.0]);
-    $this->actingAs(User::factory()->assignedOperations()->create())->getJson(route('staff.residents.show', $female))->assertJsonPath('household_information.household_size', 2)->assertJsonPath('household_information.members.1.registered_voter', true);
+    $this->actingAs(User::factory()->assignedOperations()->create())->getJson(route('staff.residents.show', $female))->assertJsonPath('household_information.household_size', 2)->assertJsonPath('household_information.members.1.registered_voter', true)
+        ->assertJsonPath('household_information.members.1.voter_status', 'active')
+        ->assertJsonPath('household_information.members.0.registered_voter', false)
+        ->assertJsonPath('household_information.members.0.voter_status', null);
 });
 
 it('returns 422 for invalid household assignments and relationships', function (array $fields, string $error) {

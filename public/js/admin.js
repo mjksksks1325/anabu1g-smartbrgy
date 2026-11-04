@@ -4405,8 +4405,23 @@ function residentFromApi(resident) {
     household: resident.household || null,
     householdId: resident.household_id,
     relationshipToHead: resident.relationship_to_household_head || '',
-    isHouseholdHead: Boolean(resident.is_household_head)
+    isHouseholdHead: Boolean(resident.is_household_head),
+    voterStatus: resident.voter_status || null
   };
+}
+
+/**
+ * Voter registration as the Voters module records it. A missing record reads "No voter record": the
+ * system holds none, which is not the same as the person being unregistered with COMELEC.
+ */
+function voterStatusText(status) {
+  return ({ active: 'Registered voter', transferred: 'Transferred', deceased: 'Deceased', deregistered: 'Deregistered' })[status]
+    || (status ? String(status) : 'No voter record');
+}
+
+function voterStatusBadge(status) {
+  if (!status) return `<span class="voter-status-none">${escapeText(voterStatusText(status))}</span>`;
+  return `<span class="badge ${status === 'active' ? 'badge-green' : 'badge-gray'}">${escapeText(voterStatusText(status))}</span>`;
 }
 
 /** Only the newest resident list request may render; a slower earlier search must not overwrite it. */
@@ -4469,7 +4484,7 @@ function renderResidentsTable() {
 
     row.innerHTML = `
       <td><span class="resident-number">${escapeText(resident.id)}</span></td>
-      <td><strong>${escapeText(resident.name)}</strong>${calcAge(resident.dob) >= 60 ? '<span class="badge badge-senior">Senior</span>' : ''}</td>
+      <td><strong>${escapeText(resident.name)}</strong>${calcAge(resident.dob) >= 60 ? '<span class="badge badge-senior">Senior</span>' : ''}${resident.voterStatus === 'active' ? '<span class="badge badge-green" title="Registered voter">Voter</span>' : ''}</td>
       <td>${calcAge(resident.dob)}</td>
       <td>${escapeText(resident.purok)}</td>
       <td>${escapeText(resident.gender)}</td>
@@ -4782,6 +4797,7 @@ function openViewResident(residentNumber) {
       <div><span>Purok</span><strong>${escapeText(resident.purok)}</strong></div>
       <div><span>Contact</span><strong>${escapeText(resident.contact || 'None')}</strong></div>
       <div><span>Residency Type</span><strong>${escapeText(resident.type)}</strong></div>
+      <div class="resident-detail-wide"><span>Voter registration</span><strong>${voterStatusBadge(resident.voterStatus)}</strong>${resident.voterStatus ? '' : `<small class="resident-detail-hint">${escapeText('No voter record has been entered in the Voters module. This does not mean the person is unregistered.')}</small>`}</div>
       <div class="resident-detail-wide"><span>Address</span><strong>${escapeText(resident.address)}</strong></div>
       <div class="resident-detail-wide"><span>Special Groups</span><strong>${groups}</strong></div>
       ${hasStaffPermission('documents.view') ? `<div><span>Document Requests</span><strong>${resident.documentRequestsCount}</strong></div>
@@ -4790,9 +4806,59 @@ ${hasStaffPermission('documents.view') || hasStaffPermission('eligibility.view')
     </div>`;
   document.getElementById('view-resident-content').insertAdjacentHTML('beforeend', '<section id="resident-portal-account" class="resident-account-panel" aria-live="polite">Loading portal account...</section>');
   document.getElementById('view-resident-content').insertAdjacentHTML('beforeend', '<section id="resident-household-information" class="resident-account-panel" aria-live="polite">Loading household information...</section>');
+  const canSeeIncidents = hasStaffPermission('incidents.view') || hasStaffPermission('vawc.view');
+  if (canSeeIncidents) document.getElementById('view-resident-content').insertAdjacentHTML('beforeend', '<section id="resident-incident-links" class="resident-account-panel" aria-live="polite">Loading linked incident reports...</section>');
   openModal('modal-view-resident');
   void loadResidentPortalAccount(resident.databaseId);
   void loadResidentHouseholdInformation(resident.databaseId);
+  if (canSeeIncidents) void loadResidentIncidentLinks(resident.databaseId);
+}
+
+/**
+ * Incident reports naming this resident as complainant or respondent. The incident API applies the
+ * viewer's own visibility (ordinary versus VAWC/sensitive cases), so the panel lists only reports the
+ * viewer could already open in Incident Reports, and shows only number, type, status and role.
+ */
+async function loadResidentIncidentLinks(residentId) {
+  const container = document.getElementById('resident-incident-links');
+  const request = extra => householdApi(`/staff/incidents?${new URLSearchParams({ resident_id: residentId, ...extra })}`);
+  try {
+    const [recent, active] = await Promise.all([request({ per_page: 5 }), request({ status: 'active', per_page: 1 })]);
+    if (container !== document.getElementById('resident-incident-links')) return;
+    const total = Number(recent.total || 0);
+    if (total === 0) {
+      container.innerHTML = `<h3>Incident reports</h3><p class="resident-detail-hint">${escapeText('No incident reports are linked to this resident.')}</p>`;
+      return;
+    }
+    const rows = (recent.data || []).map(incident => {
+      const role = Number(incident.complainant_resident_id) === Number(residentId) ? 'Complainant' : 'Respondent';
+      return `<li class="resident-incident-link">
+        <span class="resident-number incident-ref" title="${escapeText(incident.incident_number)}">${incidentReferenceMarkup(incident.incident_number)}</span>
+        <span>${escapeText(incident.incident_type)}</span>
+        <span class="badge ${incidentStatusBadge(incident.status)}">${escapeText(incident.status_label)}</span>
+        <span class="resident-incident-role">${escapeText(role)}</span>
+        <button type="button" class="btn btn-xs" onclick="openResidentIncident('${escapeText(incident.incident_number)}')" aria-label="${escapeText(`View ${incident.incident_number} in Incident Reports`)}">View</button>
+      </li>`;
+    }).join('');
+    container.innerHTML = `<h3>Incident reports</h3>
+      <p class="resident-incident-summary"><strong>${total.toLocaleString()}</strong> <span>${escapeText(total === 1 ? 'linked report' : 'linked reports')}</span> · <strong>${Number(active.total || 0).toLocaleString()}</strong> <span>${escapeText('active')}</span></p>
+      <ul class="resident-incident-list">${rows}</ul>
+      ${total > 5 ? `<p class="resident-detail-hint">${escapeText('Showing the 5 most recent. Search Incident Reports by resident ID for the rest.')}</p>` : ''}
+      <p class="resident-detail-hint">${escapeText('A linked report does not by itself restrict document requests.')}</p>`;
+  } catch (error) {
+    if (container === document.getElementById('resident-incident-links')) container.remove();
+  }
+}
+
+/** Open Incident Reports narrowed to one report number, from the resident details dialog. */
+async function openResidentIncident(incidentNumber) {
+  closeModal('modal-view-resident');
+  await showScreen('incidents', findNavItem('incidents'));
+  const set = (id, value) => { const element = document.getElementById(id); if (element) element.value = value; };
+  ['incident-status-filter', 'incident-severity-filter', 'incident-date-from', 'incident-date-to', 'incident-assignee-filter'].forEach(id => set(id, ''));
+  set('incident-search', incidentNumber);
+  clearTimeout(incidentSearchTimer);
+  loadIncidents(1);
 }
 
 let householdLookupTimer = null;
@@ -4919,9 +4985,9 @@ async function openDemographicMember(id) {
 }
 function householdMembersMarkup(household, manageable = false) {
   if (!household.members.length) return '<p>No household members assigned.</p>';
-  return `<div class="table-scroll"><table class="tbl"><thead><tr><th>Name</th><th>Relationship</th><th>Gender</th><th>Registered voter</th>${manageable ? '<th>Actions</th>' : ''}</tr></thead><tbody>${household.members.map(member => `
+  return `<div class="table-scroll"><table class="tbl"><thead><tr><th>Name</th><th>Relationship</th><th>Gender</th><th>Voter registration</th>${manageable ? '<th>Actions</th>' : ''}</tr></thead><tbody>${household.members.map(member => `
     <tr><td>${hasStaffPermission('demographics.view') || hasStaffPermission('records.view') ? `<button class="btn btn-xs" onclick="openDemographicMember(${Number(member.id)})">${escapeText(member.full_name)}</button>` : escapeText(member.full_name)}${member.status !== 'active' ? ' <span class="badge badge-gray">Inactive</span>' : ''}</td>
-    <td>${escapeText(member.relationship_to_household_head || 'Unspecified')}</td><td>${escapeText(member.gender)}</td><td>${member.registered_voter ? 'Yes' : 'No'}</td>
+    <td>${escapeText(member.relationship_to_household_head || 'Unspecified')}</td><td>${escapeText(member.gender)}</td><td>${voterStatusBadge(member.voter_status ?? (member.registered_voter ? 'active' : null))}</td>
     ${manageable ? `<td>${hasStaffPermission('households.remove') ? `<button class="btn btn-xs btn-danger-outline" onclick="removeManagedHouseholdMember(${Number(household.id)}, ${Number(member.id)})">Remove</button>` : ''}</td>` : ''}</tr>`).join('')}</tbody></table></div>`;
 }
 

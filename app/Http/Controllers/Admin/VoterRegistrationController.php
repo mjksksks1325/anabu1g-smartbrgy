@@ -347,17 +347,11 @@ class VoterRegistrationController extends Controller
             })
             ->when($filters['search'] ?? null, function (Builder $query, string $search): void {
                 $term = '%'.trim($search).'%';
-                $query->where(function (Builder $query) use ($term): void {
+                $query->where(function (Builder $query) use ($search, $term): void {
                     $query->where('voter_number', 'like', $term)
                         ->orWhere('precinct_number', 'like', $term)
                         ->orWhere('cluster_number', 'like', $term)
-                        ->orWhereHas('resident', function (Builder $query) use ($term): void {
-                            $query->where('resident_number', 'like', $term)
-                                ->orWhere('first_name', 'like', $term)
-                                ->orWhere('middle_name', 'like', $term)
-                                ->orWhere('last_name', 'like', $term)
-                                ->orWhere('purok', 'like', $term);
-                        });
+                        ->orWhereHas('resident', fn (Builder $query) => $query->matchingSearch($search, ['purok']));
                 });
             })
             ->latest('registration_date')

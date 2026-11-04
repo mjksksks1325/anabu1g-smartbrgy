@@ -17,10 +17,10 @@ Update it at the end of every session. Statuses come from the source code, not f
 - Tests: Pest and Node (`node --test tests/Unit/*.test.js`). The full Pest suite needs more memory than the default: `php -d memory_limit=1G vendor/pestphp/pest/bin/pest --compact`. Destructive-route tests send `supervisorApproval()` (see `tests/Pest.php`).
 - Browser checks: run the app against a **copy** of `database/database.sqlite` (set `DB_DATABASE` and start `php -S 127.0.0.1:8010 ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php` from `public/`; `artisan serve` drops the override) and sign in with a seeded local staff account. Never seed test data into the real local database.
 
-## Test status (2026-11-04, session 9)
+## Test status (2026-11-04, session 10)
 
-- Node: 196 pass, 0 fail.
-- Pest: 1021 pass, 0 fail, 2 skipped. The skipped tests are the starter kit's open staff registration tests, intentionally off; see Final review.
+- Node: 200 pass, 0 fail.
+- Pest: 1030 pass, 0 fail, 2 skipped. The skipped tests are the starter kit's open staff registration tests, intentionally off; see Final review.
 - The 14 earlier failures were resolved as follows:
   - **Outdated tests (11):** they expected UI a teammate removed on purpose (`8e4e1a0`, `e7f1aa7`): the IoT status chip, the "My profile" and "Account security" items, 16 menu icons, and the raw role `admin` instead of `Super Admin`. One test also checked for `wire:navigate` where the link now uses `wire:navigate.hover`. These tests now assert the consolidated design.
   - **Real bugs (2):**
@@ -241,6 +241,112 @@ The copy had 50 residents, 30 voters, 14 incidents and 12 file movements.
 
 **Not verified:** physical cabinet, RFID or face hardware. Screen-reader output (only semantics and focus were checked). Automated contrast scanning.
 
+## Stakeholder voice-recorded revisions (session 10, 2026-11-04)
+
+**Source:** shorthand notes from a voice-recorded stakeholder discussion, audited against the code at `c682236`. Each note was checked against the code. External facts were checked on 2026-11-04; the sources are listed under V-F. **Statuses:** `DONE` · `PARTIAL` · `BUG` · `NOT IMPLEMENTED` · `APPROVAL` · `INFO` (needs data from the barangay) · `NEW` (fixed this session).
+
+### V-A. Resident records and demographics
+
+| # | Note | What exists | Status | Recommendation / fix | Needs |
+|---|---|---|---|---|---|
+| A1 | Hanap ng pangalan | Resident Records, request records, Voters, the case-resident lookup and the restriction search matched the whole query against each column separately. "Juan Dela Cruz" (first + last name), "Dela Cruz, Juan" and double spaces found nothing. | `BUG` → `NEW` | `Resident::matchingSearch`: every word must match the resident ID or a name part, in any order. Commas, extra spaces and initials' full stops are ignored, and letter case follows the database collation. Results already show ID, age and purok to tell same-name residents apart; no extra personal data was added. Filters and pagination unchanged. Cost: the same leading-wildcard `LIKE` as before, at most 6 words. | — |
+| A2 | Per family na register | Households have a number, name, address, purok and head. Members carry a free-text relationship to the head. Manage Households adds and removes members. The profiling import groups rows by household and checks duplicates by resident ID and by name + birth date. **There is no family entity:** the import even maps a `family_id` column onto the household group. | `APPROVAL` | Proposal V1. Households and families stay separate. | Migration approval |
+| A3 | Tag na registered voter | Household member tables showed Yes/No, so a resident with no voter record read as "No". Resident Records rows and details had no voter information. | `PARTIAL` → `NEW` | Rows show a green **Voter** tag for an active voter record. Details show **Voter registration**: Registered voter, Transferred, Deceased, Deregistered, or **No voter record**, with a note that no record does not mean unregistered. Household tables use the same labels. The source is the Voters module (`voter_registrations.status`); COMELEC numbers stay out of the payload. No new filter: the Voters screen is already the filtered list. | — |
+| A4 | Realtime na encoding | Saves are written immediately. After a save, the list, purok counts and resident pickers reload from the server. Double submits are blocked (A9), stale searches are ignored, an identity lock stops two simultaneous duplicate creations, and voter edits have a version check. **Resident edits have no conflict check** (last save wins). Other staff see changes on their next load or search. | `PARTIAL` | Read as "saved and visible right away", which is in place. Live multi-user sync is not needed for a barangay office, so no WebSockets or polling. Proposal V2 covers the edit-conflict gap. | V2 approval |
+| A5 | Family sa demographics | Demographics shows residents, male, female, seniors, households, registered voters, puroks and special groups. No family data is stored. | `APPROVAL` | Households are not relabelled as families. A family count becomes possible after V1. | Depends on V1 |
+| A6 | Separate male at female | Separate Male and Female KPI cards with a share of the population, plus a male/female split in the age panel. Sex is validated as Male or Female in the staff form, the application and the import, so no other value can be stored (local data has only these two). | `DONE` | — | Recording other values would be a data-model decision |
+| A7 | ID verification | **Existing residents** activate with: full name exactly as on record → birth date → a one-time code emailed to **any address they enter** → password and photo. The account works at once; the photo is stored, but no staff review exists. Staff can also issue an activation code from Resident details. **New residents** apply with a photo, and staff approve or decline. One account per record is enforced, the routes are rate-limited, and sign-ups are audited. Requests need an activated account; pickup needs an original valid ID at the hall (portal text). | `APPROVAL` | **Risk:** anyone who knows a resident's full name and birth date (a relative or neighbour) can claim an unclaimed record with their own email and request documents in that name. Proposal V3. No biometrics and no new ID-document storage. | V3 decision |
+
+### V-B. Public homepage and Resident Portal
+
+| # | Note | What exists | Status | Recommendation / fix | Needs |
+|---|---|---|---|---|---|
+| B1 | Presyo ng fee at docs | `CertificateType::fee()` is the server source. It feeds the portal fee tables, request status and the recorded `amount_paid`. Staff screens repeat the amounts in three places in `admin.js`: the fee table (~line 657), print and release (~1437) and manual issuance (~1467). **Current amounts:** Clearance, Residency and Voter Certification PHP 25; Barangay ID PHP 100; Indigency and First Time Jobseeker free; Business Clearance PHP 200. The portal shows "PHP 200.00" beside a "Business Clearance fee: To be confirmed" tag, and the staff table shows "PHP 200.00+". | `PARTIAL` | No amounts changed. Proposal V4: staff screens read `CertificateType`, so a confirmed change is entered in one place. | Official fee schedule, especially Business Clearance |
+| B2 | Anabu I-G map | Home and Information pages embed Google Maps searched by "Barangay Anabu I-G, Imus, Cavite", with an "Open in Google Maps" link. The hall entrance is marked unconfirmed. There is no hall marker and no boundary. | `PARTIAL` | Pin the hall once the barangay confirms its location (or a Google Maps place for the hall). Draw a boundary only from PSA or City GIS data. | Verified hall location; boundary data |
+| B3 | Sukat area | "Land Area: To be confirmed". No authoritative figure was found: PhilAtlas and citypopulation.de give population, not an official area. | `DONE` (correctly unpublished) | Publish with units (km² or ha) once the barangay or City Planning provides it. | Official figure |
+| B4 | Firetruck hotline | Bureau of Fire Protection 0915 528 3256 (tap to call), with 911, City emergency (046) 888 9911 and Imus PNP 0998 598 5601. All match cityofimus.gov.ph (checked 2026-11-04). The city site also lists BFP landlines 970-5161 and 416-3032 without an area code. | `DONE` | Optionally add the landlines after the area code is confirmed. | — |
+| B5 | Picture ng namumuno | `/portal/officials` (linked from Get help and the footer) renders cards from `config/portal.php`: photo, name, position and term. All four entries are placeholders with a neutral placeholder image. Officials are not on the homepage, and updates need a config change. | `INFO` | Supply approved photos and verified names, positions and terms. After that, consider a homepage strip and an admin-managed list (a new table, so it needs approval). | Photos and data |
+| B6 | Interactive name at term | Each card has a "View Details" disclosure (`<details>`), usable by keyboard and touch, that shows the term. No hover-only content. | `DONE` (structure) | Add responsibilities only when verified. | Data from B5 |
+| B7 | Pangalan at birthday lang | Existing-resident activation already asks only name and birth date before the email code. Requests take name, address, email and birth date read-only from the verified profile; residents type only purpose, business name (Business Clearance) and an optional attachment. New-resident applications ask for the full profile because they create a record for staff review. | `DONE` | Identity checks are not reduced (see A7). Finding: the form marks business name as required, but the server accepts it empty. | — |
+| B8 | 8888 hotline | Information → "Official resources and assistance" links to 8888.gov.ph and describes it as the national complaint channel. Verified through EO No. 6 (2016) and PNA; the site blocks automated fetches. It is not on the homepage. | `PARTIAL` | Add a compact "Government services" row on the homepage, reusing the same config entries and labelled as national, separate from barangay incident reports. | Approval of homepage placement |
+| B9 | Provincial page link | cavite.gov.ph is in the footer and in the resources list (correct jurisdiction for Imus). | `DONE` | — | — |
+| B10 | Medical / burial assistance | Both link to cavite.gov.ph/social-welfare-services. Verified 2026-11-04: it lists Assistance to Individuals in Crisis Situation, Burial Assistance for the Poor, Medical and Burial Endowment and Burial Assistance for Senior Citizens. These are provincial programmes. Smart Barangay has no application workflow for them and does not imply one. | `DONE` | Optionally add City or DSWD pages after verification, labelled by agency. | — |
+
+### V-C. Smart Cabinet
+
+| # | Note | What exists | Status | Recommendation | Needs |
+|---|---|---|---|---|---|
+| C1 | Backup kapag walang internet | **Server side:** the cabinet pulls `access-authorizations`: active staff with enrolled RFID **and** face, their effective drawers, and an `authorization_version`. It also pulls pending enrollments and credential revocations, which it acknowledges by request ID. It posts access and movement events with a device event ID and `occurred_at`; duplicates are ignored, so events can arrive late. Access decisions and credentials live on the Raspberry Pi, whose software is **not in this repository**. Offline behaviour (cached list, local log, fail-closed or fail-open) therefore cannot be verified here. | `APPROVAL` | Proposal V5. Nothing implemented. | Firmware review and approval |
+| C2 | Turnover ng bagong admin | Super Admin is granted or revoked only by a server command (`user:grant-super-admin`), which is audited and refuses to revoke the last active Super Admin. User Management cannot demote or deactivate a Super Admin, and a captain cannot demote themselves. Deleting a staff account queues RFID and face revocation on the cabinet. No turnover procedure is documented. | `APPROVAL` | Proposal V6: a procedure first. No automatic transfer of privileges. | Approval |
+
+### V-D. Incident reports and protection orders
+
+| # | Note | What exists | Status | Recommendation / fix | Needs |
+|---|---|---|---|---|---|
+| D1 | Barangay protection order | BPO records hang off incidents: protected person, respondent, issued/effective/end dates **as entered**, a free-text status, issuing authority, document reference and private remarks. They are restricted to `vawc.*` (Super Admin by default) and audited without narrative. Cases with a BPO are hidden from ordinary incident staff. There are no issuance stages, deadlines or reminders, and no dates are calculated. | `PARTIAL` | Keep it as record-keeping. Stages, a fixed status list or monitoring reminders must follow RA 9262 and its IRR as confirmed by the barangay VAW desk (proposal V7). **Fixed:** the BPO list title read "BPO record #3 ? recorded", and the restriction case picker read "INC-… ? Theft ? Open"; corrupted separators replaced with "·". | Legal requirements |
+| D2 | Counts ng cases | KPIs: Open/Under review (all active statuses), Resolved this month and High severity; all respect `visibleTo`. The status filter covers every status. There is no per-status breakdown and no BPO count. | `PARTIAL` | Add Under review, Referred, Resolved and Closed counts that apply the existing status filter, plus a BPO-linked count for `vawc.view` only. Safe; planned for next session. | — |
+| D3 | Case number / notif | Incident numbers exist, and the incident API filters by resident within the viewer's visibility. Resident details had no case information. | `PARTIAL` → `NEW` | Resident details now list linked reports for staff with `incidents.view` or `vawc.view`: number, type, status and the resident's role, plus total and active counts. View opens that report. No narrative and no other party's name. It states that a linked report does not by itself restrict requests. Staff without incident access do not get the panel (the server returns 403). | — |
+| D4 | Bakit hindi maprocess | **Staff:** the eligibility checker lists specific reasons: inactive record, not in good standing, voter registration needed, indigency not verified, Jobseeker already issued, or a restriction. **Residents:** a rejected request shows the staff's rejection reason. An active restriction blocks submission with a generic "on hold and requires barangay review". The restriction's `resident_visible_reason` column exists, but the staff form never sets it. A pending ordinary incident naming the resident as respondent shows a neutral, non-blocking notice. | `PARTIAL` | Proposal V8. | Approval |
+| D5 | Details ng pending case | Staff case details are behind `incidents.view` / `vawc.view`. Restriction internals are visible to administrators only. Residents see only their own request statuses and the neutral notice. | `DONE` | No change. | — |
+| D6 | Kailan makakapag-request ulit | Restrictions store start, end, next review, status, reviewer and the person who lifted them, and expire automatically at the end date. Residents are not told the end date. | `PARTIAL` | Part of V8: show the end date staff set (never a computed one). For open-ended holds, say staff will review the hold. | Approval |
+
+### V-E. Proposals for approval
+
+- **V1 Families inside households.**
+  - New `families` table: `household_id`, an optional family head, an optional label.
+  - New nullable `residents.family_id` and a relationship-to-family-head field.
+  - Workflow: in Manage Households, a "Families in this household" list where staff add a family and assign existing members.
+  - The import reads an optional `family_group` column, which today is an alias of the household group; this changes that alias.
+  - Demographics gains a family count from the table.
+  - Additive nullable columns, no backfill. `down()` drops them.
+- **V2 Edit conflicts.** The resident form sends the loaded record's `updated_at`. If the record changed since, the server returns 409: "Someone else updated this record. Reload to see their changes." No migration.
+- **V3 Account activation.** Pick one:
+  - (a) Self-activated accounts stay "pending review" until staff confirm the person, for example at the hall or against known contact details. Requests are blocked until then.
+  - (b) Send the code only to an email or contact number already on the resident record; otherwise require a staff-issued code.
+  - (c) Keep the current flow and accept the risk.
+
+  Recommended: (a) or (b). The existing staff-issued code path stays either way.
+- **V4 One fee source for staff screens.** Pass `CertificateType` fees to the staff page and remove the three JS copies. Amounts stay unchanged; confirmed amounts are entered in `app/CertificateType.php` only.
+- **V5 Cabinet offline plan** (firmware; needs testing on the cabinet).
+  - **Fail closed by default.**
+  - The Pi keeps the last authorization list with its version and a maximum offline age set by the barangay. Within that age:
+    - an internet outage still allows listed staff;
+    - credentials revoked during the outage cannot be honoured, which is why the age limit exists.
+  - Every event goes into a local append-only log with a device event ID and syncs on reconnection; the server already de-duplicates.
+  - Power, LAN or Pi failure: the physical key only.
+  - Emergency override: the physical key held by the Captain, logged on a paper form and entered afterwards. No software bypass.
+- **V6 Administrator turnover procedure.**
+  1. Written authority (Captain or council resolution) naming the incoming administrator.
+  2. Create the account and require 2FA.
+  3. `user:grant-super-admin <new>`, then verify access.
+  4. Enroll RFID and face for the incoming administrator.
+  5. Disable the outgoing person's cabinet access and confirm the Pi acknowledged the revocation.
+  6. `user:grant-super-admin <old> --revoke`. The guard keeps at least one Super Admin.
+  7. Review the audit log.
+  8. Sign over physical keys and recovery codes.
+
+  Optional later: a read-only "turnover report" listing active administrators, cabinet credentials and pending revocations.
+- **V7 BPO workflow.** Only after the VAW desk confirms the required fields and stages. Until then, record-keeping only.
+- **V8 Resident-facing hold message.**
+  - Add an optional "Message to the resident" field to the restriction form, using the existing `resident_visible_reason` column.
+  - The resident's hold message shows that text and, if staff set one, the end date.
+  - Otherwise it says "Barangay staff will review it. Ask at the Barangay Hall."
+  - It never mentions incidents. Restriction rules are unchanged.
+
+### V-F. Sources (checked 2026-11-04)
+
+- Hotlines: [cityofimus.gov.ph](https://cityofimus.gov.ph/) home page (BFP, PNP, city emergency, CDRRMO).
+- Medical and burial: [cavite.gov.ph/social-welfare-services](https://cavite.gov.ph/social-welfare-services/).
+- 8888: [8888.gov.ph](https://8888.gov.ph/) blocks automated fetches. Confirmed through [EO No. 6 (2016)](https://lawphil.net/executive/execord/eo2016/eo_6_2016.html) and the PNA.
+- Land area: no authoritative source found.
+- **To confirm:** the portal's "PSA data" link (`psa.gov.ph/classification/psgc/barangays/0402109000`) could not be opened (403), and citypopulation.de lists Anabu I-G as `042109034`. Confirm the link and the "2,345 (2024 Census)" figure with PSA.
+
+### V-G. Verification
+
+- Feature tests: name search in five forms (order, comma, case and spacing, initial, suffix) on Resident Records, request records, the case lookup and Voters; voter status for active, transferred and no record, with no COMELEC data; household member voter status; linked incidents limited by role (ordinary, VAWC, 403 for records-only staff).
+- Node tests: Voter tag only for active records; household labels never turn a missing record into "No"; the linked-incident panel shows number, type, status and role but no narrative or names, and is removed on 403.
+- **Not verified:** no browser tool was available this session, so the new labels and panel were not checked visually (light/dark, Filipino, 390 px). No hardware was exercised.
+
 ## Decisions and proposals
 
 ### Import (approved 2026-11-03) — `NEW`
@@ -398,3 +504,13 @@ Option (b) was applied: no staff role can delete its own account; staff accounts
     - A18 incident numbers.
   - **Open:** A16 recommendation only, awaiting a decision.
   - **Verification:** real clicks and keys on the isolated copy; desktop, tablet and phone; light, dark and Filipino.
+- **Session 10 (2026-11-04)** — Stakeholder voice-recorded revisions audited (section above).
+  - **Fixed:**
+    - A1 multi-word name search;
+    - A3 voter registration indicator;
+    - D3 linked incident reports in resident details;
+    - D1 corrupted "?" separators in the BPO and restriction-case lists.
+  - **For approval:** V1–V8 (families, edit conflicts, account activation, fee source, cabinet offline plan, admin turnover, BPO workflow, resident hold message).
+  - **Needs barangay data:** official fees (Business Clearance), hall location, land area, officials' photos and terms, PSA link confirmation.
+  - **Safe next steps:** D2 per-status incident counts, B8 homepage government-services row (placement approval), V4 single fee source.
+  - **Not verified:** visual browser check (no browser tool this session), hardware.

@@ -1902,5 +1902,19 @@
     "View archived folders": "Tingnan ang mga naka-archive na folder",
     "Folder reference": "Reference ng folder",
     "Folder name": "Pangalan ng folder",
-    "Add folder": "Magdagdag ng folder"
+    "Add folder": "Magdagdag ng folder",
+    "Voter": "Botante",
+    "Registered voter": "Rehistradong botante",
+    "No voter record": "Walang record ng botante",
+    "Voter registration": "Rehistro bilang botante",
+    "No voter record has been entered in the Voters module. This does not mean the person is unregistered.": "Wala pang record ng botante na nailagay sa Voters module. Hindi ito nangangahulugang hindi rehistrado ang tao.",
+    "Loading linked incident reports...": "Nilo-load ang mga kaugnay na ulat ng insidente...",
+    "Incident reports": "Mga ulat ng insidente",
+    "No incident reports are linked to this resident.": "Walang ulat ng insidente na naka-link sa residenteng ito.",
+    "linked report": "kaugnay na ulat",
+    "linked reports": "kaugnay na ulat",
+    "active": "aktibo",
+    "Showing the 5 most recent. Search Incident Reports by resident ID for the rest.": "Ipinapakita ang 5 pinakabago. Hanapin sa Incident Reports gamit ang resident ID para sa iba pa.",
+    "A linked report does not by itself restrict document requests.": "Hindi mismo naglilimita sa document request ang isang kaugnay na ulat.",
+    "View :reference in Incident Reports": "Tingnan ang :reference sa Incident Reports"
 }
