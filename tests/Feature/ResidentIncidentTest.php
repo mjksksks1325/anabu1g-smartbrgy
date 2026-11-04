@@ -52,13 +52,18 @@ test('resident sees a translated neutral notice for a linked pending ordinary in
         'details' => 'Private allegation details must stay hidden.',
     ]);
 
-    $this->withCookie(PortalLocalization::COOKIE, $locale)
+    $response = $this->withCookie(PortalLocalization::COOKIE, $locale)
         ->actingAs($resident, 'resident')
         ->get(route('portal.request.create'))
         ->assertOk()
         ->assertSee($notice, false)
         ->assertDontSee('INC-PRIVATE-REFERENCE')
         ->assertDontSee('Private allegation details');
+    // The page scrolls to the request flow, so the notice must be inside it, before the first step.
+    $document = new DOMDocument;
+    @$document->loadHTML($response->getContent());
+    $flowNotice = (new DOMXPath($document))->query('//section[@id="request-flow"]/p[contains(@class,"alert")]/following-sibling::div[@id="screen-terms"]');
+    expect($flowNotice)->toHaveCount(1);
 
     $this->postJson(route('portal.request.store'), [
         'document_type' => CertificateType::CertificateOfResidency->value,
