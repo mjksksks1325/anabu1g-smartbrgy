@@ -1187,6 +1187,7 @@
       <span class="password-visibility-field"><input class="form-input" id="adduser-password" type="password" minlength="12" autocomplete="new-password"><x-password-toggle target="adduser-password" /></span>
       <p class="card-sub" id="adduser-pass-label">At least 12 characters. Leave blank when editing to keep the current password.</p>
       <p class="card-sub" id="adduser-credential-lock" hidden>Only this Super Admin can change their own email address and password. Use the password reset link or the server command.</p>
+      <div class="user-reset-link" id="adduser-reset-link-row" hidden><button type="button" class="btn btn-sm" id="adduser-reset-link" onclick="sendUserPasswordResetLink(this)">Send password reset link</button><p class="card-sub">Emails the account owner a link that expires in 60 minutes. They choose their own password; you never see it.</p></div>
     </div>
     </div>
     </section>

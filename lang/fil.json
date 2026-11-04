@@ -2155,5 +2155,13 @@
     "Only the Super Admin can grant or remove VAWC/BPO access, and not on their own account.": "Ang Super Admin lang ang puwedeng magbigay o mag-alis ng VAWC/BPO access, at hindi sa sarili nilang account.",
     "Only the Super Admin can grant or remove VAWC/BPO access.": "Ang Super Admin lang ang puwedeng magbigay o mag-alis ng VAWC/BPO access.",
     "You cannot change your own VAWC/BPO access.": "Hindi ninyo puwedeng baguhin ang sarili ninyong VAWC/BPO access.",
-    "A Captain account already has every other module; only VAWC/BPO access can be assigned to it.": "Nasa Captain account na ang lahat ng iba pang module; VAWC/BPO access lang ang puwedeng i-assign dito."
+    "A Captain account already has every other module; only VAWC/BPO access can be assigned to it.": "Nasa Captain account na ang lahat ng iba pang module; VAWC/BPO access lang ang puwedeng i-assign dito.",
+    "Send password reset link": "Magpadala ng password reset link",
+    "Emails the account owner a link that expires in 60 minutes. They choose their own password; you never see it.": "Magpapadala ng link sa email ng may-ari ng account na mag-e-expire sa loob ng 60 minuto. Sila ang pipili ng sarili nilang password; hindi ninyo ito makikita.",
+    "Email this person a password reset link? They will choose a new password themselves; their current password keeps working until they do.": "Padalhan ang taong ito ng password reset link? Sila mismo ang pipili ng bagong password; gagana pa rin ang kasalukuyang password hanggang gawin nila iyon.",
+    "Send link": "Ipadala ang link",
+    "A password reset link was sent to the account owner's email address. It expires in 60 minutes.": "Naipadala na ang password reset link sa email ng may-ari ng account. Mag-e-expire ito sa loob ng 60 minuto.",
+    "A reset link was sent to this account recently. Wait a minute before sending another.": "Kapapadala lang ng reset link sa account na ito. Maghintay ng isang minuto bago magpadala ulit.",
+    "Reactivate this account before sending a password reset link.": "I-reactivate muna ang account na ito bago magpadala ng password reset link.",
+    "The reset link could not be sent. Check the mail settings and try again.": "Hindi naipadala ang reset link. Tingnan ang mail settings at subukan ulit."
 }

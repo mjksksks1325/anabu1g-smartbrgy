@@ -1633,3 +1633,23 @@ test('a Captain account shows only the VAWC boxes, and only a Super Admin editin
   assert.ok(vawc.inputs.every(item => !item.disabled));
   assert.equal(lock.hidden, true);
 });
+
+test('the reset-link action shows for active accounts the viewer may change, never for another Super Admin or a new account', async () => {
+  const { context, fields } = await client();
+  const row = { hidden: false };
+  fields.set('adduser-reset-link-row', row);
+  context.window.AUTHENTICATED_USER = { id: 2, role: 'captain', is_administrator: true };
+
+  for (const [user, hidden] of [
+    [null, true],
+    [{ id: 5, role: 'staff', is_active: true }, false],
+    [{ id: 6, role: 'staff', is_active: false }, true],
+    [{ id: 1, role: 'admin', is_super_admin: true, is_active: true }, true],
+  ]) {
+    context.showUserResetLink(user);
+    assert.equal(row.hidden, hidden, JSON.stringify(user));
+  }
+  context.window.AUTHENTICATED_USER = { id: 1, role: 'admin', is_super_admin: true, is_administrator: true };
+  context.showUserResetLink({ id: 1, role: 'admin', is_super_admin: true, is_active: true });
+  assert.equal(row.hidden, false);
+});

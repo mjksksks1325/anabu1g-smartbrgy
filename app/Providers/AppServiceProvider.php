@@ -6,6 +6,7 @@ use App\Models\User;
 use App\StaffPermissions;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -50,6 +51,23 @@ class AppServiceProvider extends ServiceProvider
                 'action' => 'auth.login',
                 'type' => 'auth',
                 'record' => $event->user->isResidentAccount() ? 'resident_portal' : null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        });
+
+        // The owner finished a reset through the emailed link. Recorded without the token or the new password.
+        Event::listen(PasswordReset::class, function (PasswordReset $event): void {
+            if (! $event->user instanceof User) {
+                return;
+            }
+
+            DB::table('administrative_audits')->insert([
+                'user_id' => $event->user->id,
+                'actor' => $event->user->name,
+                'action' => 'auth.password-reset-completed',
+                'type' => 'security',
+                'record' => $event->user->isResidentAccount() ? 'resident_portal' : (string) $event->user->id,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);

@@ -5,8 +5,11 @@ use App\Models\EmployeeCabinetAccess;
 use App\Models\FileMovementEvent;
 use App\Models\Incident;
 use App\Models\User;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password;
 
 it('requires authentication and administrator access to account management', function () {
     $this->getJson(route('admin.users.index'))->assertUnauthorized();
@@ -255,4 +258,48 @@ it('records suspension, reactivation, a password set by an administrator and cab
     $events = DB::table('administrative_audits')->where('target_user_id', $staff->id)->where('user_id', $captain->id)->orderBy('id')->pluck('action')->all();
     expect($events)->toBe(['admin.users.suspended', 'admin.users.reactivated', 'admin.users.password-set', 'admin.users.cabinet-access-enabled', 'admin.users.cabinet-access-disabled']);
     expect(DB::table('administrative_audits')->get()->toJson())->not->toContain('Changed-By-Admin-2026');
+});
+
+it('emails the owner a reset link the administrator never sees, refuses the wrong targets and audits it', function () {
+    Notification::fake();
+    $captain = User::factory()->create(['role' => 'captain']);
+    $staff = User::factory()->create(['role' => 'staff', 'staff_permissions' => ['dashboard.view']]);
+
+    $this->actingAs($captain)->postJson(route('admin.users.password-reset-link', $staff))->assertOk()
+        ->assertJsonPath('message', 'A password reset link was sent to the account owner\'s email address. It expires in 60 minutes.')
+        ->assertJsonMissingPath('token');
+    Notification::assertSentTo($staff, ResetPassword::class);
+    $this->assertDatabaseHas('administrative_audits', ['action' => 'admin.users.password-reset-link', 'user_id' => $captain->id, 'record' => (string) $staff->id]);
+    expect(DB::table('administrative_audits')->get()->toJson())->not->toContain(DB::table('password_reset_tokens')->value('token'));
+    expect(Hash::check('password', $staff->fresh()->password))->toBeTrue();
+
+    $this->postJson(route('admin.users.password-reset-link', $staff))->assertUnprocessable()
+        ->assertJsonPath('errors.user.0', 'A reset link was sent to this account recently. Wait a minute before sending another.');
+    $this->postJson(route('admin.users.password-reset-link', User::factory()->superAdmin()->create()))->assertForbidden();
+    $this->postJson(route('admin.users.password-reset-link', User::factory()->resident()->create()))->assertForbidden();
+    $this->postJson(route('admin.users.password-reset-link', User::factory()->create(['role' => 'staff', 'is_active' => false])))->assertUnprocessable()
+        ->assertJsonPath('errors.user.0', 'Reactivate this account before sending a password reset link.');
+    $this->actingAs($staff)->postJson(route('admin.users.password-reset-link', $captain))->assertForbidden();
+});
+
+it('lets a Super Admin send a reset link only to their own Super Admin account', function () {
+    Notification::fake();
+    $super = User::factory()->superAdmin()->create();
+
+    $this->actingAs($super)->postJson(route('admin.users.password-reset-link', $super))->assertOk();
+    $this->postJson(route('admin.users.password-reset-link', User::factory()->superAdmin()->create()))->assertForbidden();
+    Notification::assertSentToTimes($super, ResetPassword::class, 1);
+});
+
+it('records a completed reset and keeps two-factor authentication in place', function () {
+    $staff = User::factory()->withTwoFactor()->create(['role' => 'staff', 'staff_permissions' => ['dashboard.view']]);
+    $secret = $staff->two_factor_secret;
+    $token = Password::broker()->createToken($staff);
+
+    $this->post(route('password.update'), ['token' => $token, 'email' => $staff->email, 'password' => 'Owner-Chosen-2026!', 'password_confirmation' => 'Owner-Chosen-2026!'])->assertSessionHasNoErrors();
+
+    expect(Hash::check('Owner-Chosen-2026!', $staff->fresh()->password))->toBeTrue()
+        ->and($staff->fresh()->two_factor_secret)->toBe($secret);
+    $this->assertDatabaseHas('administrative_audits', ['action' => 'auth.password-reset-completed', 'user_id' => $staff->id]);
+    expect(DB::table('administrative_audits')->get()->toJson())->not->toContain('Owner-Chosen-2026!')->not->toContain($token);
 });

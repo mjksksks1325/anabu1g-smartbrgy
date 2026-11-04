@@ -3416,7 +3416,7 @@ function openAddUser() {
   document.getElementById('adduser-status').value = 'active';
   lockUserCredentials(null);
   document.getElementById('adduser-password').required = true;
-  lockUserCredentials(null);
+  showUserResetLink(null);
 
   document.getElementById('adduser-cabinet-access').checked = false;
   document.getElementById('adduser-enrollment-status').style.display = 'none';
@@ -3435,6 +3435,31 @@ function openAddUser() {
 /** Only a Super Admin may change a Super Admin account; the server refuses everyone else (403). */
 function canEditUserAccount(user) {
   return !user.is_super_admin || Boolean(window.AUTHENTICATED_USER?.is_super_admin);
+}
+
+/** The reset link goes to an existing, active account the viewer may edit; a Super Admin only sends one to themselves. */
+function showUserResetLink(user) {
+  const row = document.getElementById('adduser-reset-link-row');
+  if (!row) return;
+  row.hidden = !user || !user.is_active || (Boolean(user.is_super_admin) && Number(user.id) !== Number(window.AUTHENTICATED_USER?.id));
+}
+
+async function sendUserPasswordResetLink(button) {
+  const id = Number(document.getElementById('adduser-edit-id')?.value || 0);
+  if (!id || button.disabled) return;
+  button.disabled = true;
+  if (!(await confirmAction('Email this person a password reset link? They will choose a new password themselves; their current password keeps working until they do.', { title: 'Send password reset link', confirmLabel: 'Send link' }))) {
+    button.disabled = false;
+    return;
+  }
+  try {
+    const result = await adminRequest(`/admin/users/${id}/password-reset-link`, { method: 'POST', body: JSON.stringify({}) });
+    showToast(result.message, 'green');
+  } catch (error) {
+    showToast(error.message, 'red');
+  } finally {
+    button.disabled = false;
+  }
 }
 
 /** Another Super Admin's email and password change only through that person, the reset link or the server command. */
@@ -3472,7 +3497,7 @@ function openEditUser(id) {
   document.getElementById('adduser-password').value = '';
   document.getElementById('adduser-password').required = false;
   lockUserCredentials(user);
-  lockUserCredentials(user);
+  showUserResetLink(user);
 
   document.getElementById('adduser-cabinet-access').checked =
     Boolean(cabinetAccess?.is_active);

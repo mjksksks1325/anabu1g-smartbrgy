@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -185,6 +186,32 @@ class UserController extends Controller
         return response()->json([
             'message' => 'User account updated.',
         ]);
+    }
+
+    /**
+     * Email the account owner a time-limited reset link (Fortify's broker: single use, expires per config/auth.php).
+     * The administrator never sees or sets the new password. Only the owning Super Admin may send one to a Super Admin.
+     * The request is audited by RecordAdministrativeAction as admin.users.password-reset-link; the token is never stored there.
+     */
+    public function sendPasswordResetLink(Request $request, User $user): JsonResponse
+    {
+        abort_unless($request->user()->hasAdministrativeAccess(), 403);
+        abort_if($user->isResidentAccount() || $user->resident_id !== null, 403);
+        abort_if($user->is_super_admin && ! $request->user()->is($user), 403);
+
+        if (! $user->is_active) {
+            throw ValidationException::withMessages(['user' => 'Reactivate this account before sending a password reset link.']);
+        }
+
+        $status = Password::broker()->sendResetLink(['email' => $user->email]);
+        if ($status === Password::RESET_THROTTLED) {
+            throw ValidationException::withMessages(['user' => 'A reset link was sent to this account recently. Wait a minute before sending another.']);
+        }
+        if ($status !== Password::RESET_LINK_SENT) {
+            throw ValidationException::withMessages(['user' => 'The reset link could not be sent. Check the mail settings and try again.']);
+        }
+
+        return response()->json(['message' => 'A password reset link was sent to the account owner\'s email address. It expires in '.config('auth.passwords.users.expire').' minutes.']);
     }
 
     public function destroy(Request $request, User $user, DeleteStaffUser $deleteStaffUser): JsonResponse

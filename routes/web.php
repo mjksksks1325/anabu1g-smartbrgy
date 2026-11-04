@@ -254,6 +254,7 @@ Route::middleware(['auth:web', 'can:access-personnel', RecordAdministrativeActio
         Route::get('/users-export', [UserController::class, 'export'])->name('users.export');
         Route::post('/users', [UserController::class, 'store'])->name('users.store');
         Route::patch('/users/{user}', [UserController::class, 'update'])->name('users.update');
+        Route::post('/users/{user}/password-reset-link', [UserController::class, 'sendPasswordResetLink'])->middleware('throttle:10,1')->name('users.password-reset-link');
         Route::delete('/users/{user}', [UserController::class, 'destroy'])->middleware(RequireSupervisorPassword::class)->name('users.destroy');
         Route::patch('/residents/{resident}/portal-account', [ResidentPortalAccountController::class, 'update'])->name('residents.portal-account');
     });
