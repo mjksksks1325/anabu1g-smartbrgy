@@ -215,7 +215,7 @@
     <!-- DEMOGRAPHICS -->
     <div class="content{{ $activeScreen === 'demographics' ? ' active' : '' }}" id="screen-demographics">
       <div class="page-header-row">
-        <div class="page-header"><h1>Population <span>Demographics</span></h1><p>Census data — Barangay Anabu I-G, Imus City</p></div>
+        <div class="page-header"><h1>Population Demographics</h1><p>Census data — Barangay Anabu I-G, Imus City</p></div>
         <div style="display:flex;gap:8px;">
           <button class="btn btn-sm" onclick="refreshDemographics()">⟳ Refresh</button>
           <button class="btn btn-green btn-sm" data-action-permission="records.export" onclick="window.location.href='{{ route('staff.residents.export') }}'"> Export Census</button>
@@ -236,7 +236,7 @@
         <div class="card-header">
           <div><div class="card-title">Population per Purok / Subdivision</div><div class="card-sub">Resident count per zone including special group breakdown</div></div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
-            <button class="btn btn-green btn-sm" onclick="openAddPurok()">Add Purok</button>
+            <button class="btn btn-green btn-sm" data-action-permission="records.create" onclick="openAddPurok()" @if(!auth()->user()->hasAnyPermission(['records.create'])) hidden style="display:none;" @endif>Add Purok</button>
             <span class="live-badge"><span class="pulse-dot"></span>Live Count</span>
           </div>
         </div>
@@ -1186,6 +1186,7 @@
       <label for="adduser-password" class="form-label">Password</label>
       <span class="password-visibility-field"><input class="form-input" id="adduser-password" type="password" minlength="12" autocomplete="new-password"><x-password-toggle target="adduser-password" /></span>
       <p class="card-sub" id="adduser-pass-label">At least 12 characters. Leave blank when editing to keep the current password.</p>
+      <p class="card-sub" id="adduser-credential-lock" hidden>Only this Super Admin can change their own email address and password. Use the password reset link or the server command.</p>
     </div>
     </div>
     </section>

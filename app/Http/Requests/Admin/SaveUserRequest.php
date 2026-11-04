@@ -6,6 +6,7 @@ use App\Models\User;
 use App\StaffPermissions;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\Validator;
@@ -20,7 +21,25 @@ class SaveUserRequest extends FormRequest
         $target = $this->route('user');
 
         return ($this->user()?->hasAdministrativeAccess() ?? false)
-            && (! $target instanceof User || (! $target->isResidentAccount() && $target->resident_id === null));
+            && (! $target instanceof User || (! $target->isResidentAccount() && $target->resident_id === null))
+            && (! $target instanceof User || ! $target->is_super_admin || $this->user()->isSuperAdmin());
+    }
+
+    /**
+     * A refused attempt to change a Super Admin account by a non–Super Admin is a security event: record it,
+     * then refuse as usual. Captains and other administrators cannot change Super Admin accounts.
+     */
+    protected function failedAuthorization(): void
+    {
+        $target = $this->route('user');
+        if ($target instanceof User && $target->is_super_admin && ($this->user()?->hasAdministrativeAccess() ?? false)) {
+            DB::table('administrative_audits')->insert([
+                'user_id' => $this->user()->id, 'actor' => $this->user()->name, 'action' => 'security.super-admin-account.change-denied',
+                'type' => 'security', 'record' => (string) $target->id, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+
+        parent::failedAuthorization();
     }
 
     /**
@@ -80,6 +99,15 @@ class SaveUserRequest extends FormRequest
         return [function (Validator $validator): void {
             $permissions = $this->input('staff_permissions', []);
             $target = $this->route('user');
+            // A Super Admin's sign-in credentials change only through that Super Admin, the password reset link or the server command.
+            if ($target instanceof User && $target->is_super_admin && ! $this->user()->is($target)) {
+                if ($this->filled('password')) {
+                    $validator->errors()->add('password', 'Only this Super Admin can change their own password. Use the password reset link or the server command.');
+                }
+                if (strtolower(trim((string) $this->input('email'))) !== strtolower($target->email)) {
+                    $validator->errors()->add('email', 'Only this Super Admin can change their own email address.');
+                }
+            }
             if ($this->input('role') === 'captain' && $this->boolean('is_active')) {
                 $captainExists = User::query()
                     ->where('role', 'captain')
@@ -89,7 +117,7 @@ class SaveUserRequest extends FormRequest
                     ->exists();
 
                 if ($captainExists) {
-                    $validator->errors()->add('role', 'May active na Barangay Captain. Ilipat muna ang designation bago magtalaga ng iba.');
+                    $validator->errors()->add('role', 'There is already an active Barangay Captain. Move that designation first before assigning another.');
                 }
             }
 

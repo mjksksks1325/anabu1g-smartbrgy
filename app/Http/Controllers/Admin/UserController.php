@@ -115,7 +115,7 @@ class UserController extends Controller
                 )
             ) {
                 throw ValidationException::withMessages([
-                    'role' => 'Hindi maaaring alisin o suspindihin ang sariling Captain access. Ipa-update ito sa ibang administrator.',
+                    'role' => 'You cannot remove or suspend your own Captain access. Ask another administrator to update it.',
                 ]);
             }
 

@@ -3211,6 +3211,7 @@ function renderUsers() {
     const name = escapeText(user.name);
     const isSelf = id === currentUserId;
     const canChangeAccess = !isSelf && !user.is_super_admin;
+    const canEdit = canEditUserAccount(user);
     return `
     <article class="user-card ${user.is_active ? '' : 'suspended'}" data-user-card-id="${id}">
       <div class="user-avatar-lg user-avatar-${escapeText(staffRoleKey(user))}" aria-hidden="true">${escapeText(initials(user.name))}</div>
@@ -3224,7 +3225,7 @@ function renderUsers() {
         </div>
       </div>
       <div class="user-actions">
-        <button type="button" class="btn" onclick="event.stopPropagation();openEditUser(${id})" aria-label="${escapeText(adminText('Edit account of :name', { name: user.name }))}">Edit</button>
+        ${canEdit ? `<button type="button" class="btn" onclick="event.stopPropagation();openEditUser(${id})" aria-label="${escapeText(adminText('Edit account of :name', { name: user.name }))}">Edit</button>` : ''}
         ${canChangeAccess ? `<button type="button" class="btn ${user.is_active ? 'user-action-suspend' : 'user-action-activate'}" onclick="event.stopPropagation();setUserActive(${id}, ${!user.is_active})" aria-label="${escapeText(adminText(user.is_active ? 'Suspend :name' : 'Activate :name', { name: user.name }))}">${user.is_active ? 'Suspend' : 'Activate'}</button><button type="button" class="btn btn-danger" onclick="event.stopPropagation();deleteUser(${id})" aria-label="${escapeText(adminText('Delete account of :name', { name: user.name }))}">Delete</button>` : ''}
       </div>
     </article>`;
@@ -3296,7 +3297,10 @@ function openUserDetails(id) {
   document.getElementById('user-details-subtitle').textContent = user.email;
   fields.innerHTML = sections.map(([heading, values]) => `<section class="user-detail-section"><h3>${escapeText(adminText(heading))}</h3><dl class="user-detail-section-grid">${values.map(([label, value]) => `<div class="user-detail-field${label === 'Assigned operations' ? ' is-wide' : ''}"><dt>${escapeText(adminText(label))}</dt><dd>${escapeText(adminText(String(value ?? 'Not available')))}</dd></div>`).join('')}</dl></section>`).join('');
   const editButton = document.getElementById('user-details-edit');
-  if (editButton) editButton.onclick = () => { closeModal('modal-user-details'); openEditUser(Number(user.id)); };
+  if (editButton) {
+    editButton.hidden = !canEditUserAccount(user);
+    editButton.onclick = () => { closeModal('modal-user-details'); openEditUser(Number(user.id)); };
+  }
   openModal('modal-user-details');
 }
 
@@ -3315,7 +3319,9 @@ function openAddUser() {
 
   document.getElementById('adduser-role').value = 'staff';
   document.getElementById('adduser-status').value = 'active';
+  lockUserCredentials(null);
   document.getElementById('adduser-password').required = true;
+  lockUserCredentials(null);
 
   document.getElementById('adduser-cabinet-access').checked = false;
   document.getElementById('adduser-enrollment-status').style.display = 'none';
@@ -3330,9 +3336,25 @@ function openAddUser() {
   openModal('modal-adduser');
 }
 
+/** Only a Super Admin may change a Super Admin account; the server refuses everyone else (403). */
+function canEditUserAccount(user) {
+  return !user.is_super_admin || Boolean(window.AUTHENTICATED_USER?.is_super_admin);
+}
+
+/** Another Super Admin's email and password change only through that person, the reset link or the server command. */
+function lockUserCredentials(user) {
+  const locked = Boolean(user?.is_super_admin) && Number(user.id) !== Number(window.AUTHENTICATED_USER?.id);
+  const email = document.getElementById('adduser-email');
+  const password = document.getElementById('adduser-password');
+  if (email) email.readOnly = locked;
+  if (password) { password.disabled = locked; if (locked) password.value = ''; }
+  const note = document.getElementById('adduser-credential-lock');
+  if (note) note.hidden = !locked;
+}
+
 function openEditUser(id) {
   const user = USERS.find(item => item.id === id);
-  if (!user) return;
+  if (!user || !canEditUserAccount(user)) return;
 
   const cabinetAccess = user.cabinet_access || null;
 
@@ -3352,6 +3374,8 @@ function openEditUser(id) {
   document.getElementById('adduser-status').value = user.is_active ? 'active' : 'suspended';
   document.getElementById('adduser-password').value = '';
   document.getElementById('adduser-password').required = false;
+  lockUserCredentials(user);
+  lockUserCredentials(user);
 
   document.getElementById('adduser-cabinet-access').checked =
     Boolean(cabinetAccess?.is_active);

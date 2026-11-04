@@ -36,6 +36,20 @@ it('links each dashboard summary card only to a module the role may open', funct
     'secretary' => [StaffPermissions::presets()['Secretary / Assistant'], ['staff.residents.index', 'staff.document-requests.index', 'staff.document-requests.index']],
 ]);
 
+it('shows Add Purok only to staff whose permission lets them save a purok', function (array $permissions, bool $visible) {
+    $staff = User::factory()->create(['role' => 'staff', 'staff_permissions' => $permissions]);
+    $document = new DOMDocument;
+    @$document->loadHTML($this->actingAs($staff)->get(route('staff.demographics'))->assertOk()->getContent());
+    $button = (new DOMXPath($document))->query('//button[@onclick="openAddPurok()"]')->item(0);
+
+    expect($button->getAttribute('data-action-permission'))->toBe('records.create')
+        ->and($button->hasAttribute('hidden'))->toBe(! $visible);
+    $this->postJson(route('staff.puroks.store'), ['name' => 'Purok Probe', 'color' => '#22c55e'])->assertStatus($visible ? 201 : 403);
+})->with([
+    'kagawad (demographics only)' => [StaffPermissions::presets()['Authorized Kagawad'], false],
+    'secretary (can register residents)' => [StaffPermissions::presets()['Secretary / Assistant'], true],
+]);
+
 it('marks reversible archive actions with the outline danger style and keeps delete solid', function () {
     $script = file_get_contents(public_path('js/admin.js'));
 

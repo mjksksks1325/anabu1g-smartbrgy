@@ -137,6 +137,62 @@ it('updates accounts without replacing a blank password', function () {
     expect($target->fresh())->name->toBe('Updated Clerk')->is_active->toBeFalse()->password->toBe($password);
 });
 
+it('refuses a Captain any change to a Super Admin account and records the attempt', function (array $changes) {
+    $superAdmin = User::factory()->superAdmin()->create(['role' => 'admin', 'email' => 'owner@example.test']);
+    $captain = User::factory()->create(['role' => 'captain']);
+    $original = $superAdmin->only(['name', 'email', 'password']);
+
+    $this->actingAs($captain)->patchJson(route('admin.users.update', $superAdmin), [
+        'name' => $superAdmin->name, 'email' => $superAdmin->email, 'role' => 'admin', 'is_active' => true, ...$changes,
+    ])->assertForbidden();
+
+    expect($superAdmin->fresh()->only(['name', 'email', 'password']))->toBe($original);
+    $this->assertDatabaseHas('administrative_audits', ['action' => 'security.super-admin-account.change-denied', 'user_id' => $captain->id, 'record' => (string) $superAdmin->id]);
+    $this->assertDatabaseMissing('administrative_audits', ['action' => 'admin.users.update']);
+})->with([
+    'email and password' => [['email' => 'taken-over@example.test', 'password' => 'Takeover-Password-2026']],
+    'password only' => [['password' => 'Takeover-Password-2026']],
+    'name only' => [['name' => 'Renamed by captain']],
+]);
+
+it('lets a Super Admin manage their own account but not another Super Admin credentials', function () {
+    $superAdmin = User::factory()->superAdmin()->create(['role' => 'admin', 'email' => 'owner@example.test']);
+    $other = User::factory()->superAdmin()->create(['role' => 'admin', 'email' => 'second@example.test']);
+
+    $this->actingAs($superAdmin)->patchJson(route('admin.users.update', $superAdmin), [
+        'name' => 'Owner Renamed', 'email' => 'owner.new@example.test', 'role' => 'admin', 'is_active' => true, 'password' => 'Owner-New-Password-2026',
+    ])->assertOk();
+    expect($superAdmin->fresh())->email->toBe('owner.new@example.test')
+        ->and(Hash::check('Owner-New-Password-2026', $superAdmin->fresh()->password))->toBeTrue();
+
+    $before = $other->only(['email', 'password']);
+    $this->patchJson(route('admin.users.update', $other), [
+        'name' => $other->name, 'email' => 'hijack@example.test', 'role' => 'admin', 'is_active' => true, 'password' => 'Hijack-Password-2026',
+    ])->assertUnprocessable()->assertJsonValidationErrors(['email', 'password']);
+    expect($other->fresh()->only(['email', 'password']))->toBe($before);
+
+    $this->patchJson(route('admin.users.update', $other), [
+        'name' => 'Second Admin', 'email' => $other->email, 'role' => 'admin', 'is_active' => true,
+    ])->assertOk();
+    expect($other->fresh()->name)->toBe('Second Admin');
+});
+
+it('still lets a Captain manage ordinary staff accounts and keeps staff out', function () {
+    $captain = User::factory()->create(['role' => 'captain']);
+    $staff = User::factory()->create(['role' => 'staff']);
+    $superAdmin = User::factory()->superAdmin()->create(['role' => 'admin']);
+
+    $this->actingAs($captain)->patchJson(route('admin.users.update', $staff), [
+        'name' => 'Clerk Updated', 'email' => $staff->email, 'role' => 'staff', 'is_active' => true,
+    ])->assertOk();
+    expect($staff->fresh()->name)->toBe('Clerk Updated');
+
+    $this->actingAs($staff)->patchJson(route('admin.users.update', $superAdmin), [
+        'name' => $superAdmin->name, 'email' => 'staff-takeover@example.test', 'role' => 'admin', 'is_active' => true, 'password' => 'Takeover-Password-2026',
+    ])->assertForbidden();
+    expect($superAdmin->fresh()->email)->not->toBe('staff-takeover@example.test');
+});
+
 it('prevents administrators from removing their own access', function (array $changes) {
     $admin = User::factory()->superAdmin()->create(['role' => 'admin']);
 
