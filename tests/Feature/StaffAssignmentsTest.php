@@ -42,6 +42,17 @@ test('superadmin assigns editable presets and records actor target and before af
     $this->get(route('admin.users.index'))->assertOk()->assertSee('Staff access assignments')->assertSee('Tanod');
 });
 
+test('presets only pre-select access: VAWC comes only from the VAW Desk preset and focused presets leave out high-risk actions', function (string $preset) {
+    $user = assignedStaff(StaffPermissions::presets()[$preset]);
+
+    expect($user->hasPermission('vawc.view'))->toBe($preset === 'VAW Desk — Restricted Cases')
+        ->and(StaffPermissions::presetDescriptions())->toHaveKey($preset);
+    if ($preset !== 'Secretary / Assistant') {
+        foreach (['records.archive', 'records.import', 'records.export', 'records.activate', 'voters.import', 'voters.export', 'eligibility.export', 'households.remove', 'incidents.archive', 'vawc.archive'] as $highRisk) {
+            expect($user->hasPermission($highRisk))->toBeFalse();
+        }
+    }
+})->with(array_keys(StaffPermissions::presets()));
 test('superadmin account can store staff access assignments and retains full superadmin access', function () {
     $super = User::factory()->superAdmin()->create(['staff_permissions' => []]);
     $permissions = ['records.view', 'records.update'];
@@ -106,22 +117,37 @@ test('staff page assignment allows its page but denies data and actions in other
     $this->get(route('staff.incidents.index'))->assertForbidden();
 });
 
-test('demographics browsing works without record editing or full registry access', function () {
+test('demographics-only staff see population statistics but no individual resident, household or photo', function () {
     $purok = Purok::factory()->create();
     $household = Household::factory()->create(['purok_id' => $purok->id]);
-    $resident = Resident::factory()->create(['household_id' => $household->id, 'purok' => $purok->name]);
+    $resident = Resident::factory()->create(['household_id' => $household->id, 'purok' => $purok->name, 'date_of_birth' => now()->subYears(70)->toDateString(), 'status' => 'active']);
     DocumentRequest::query()->create(['reference_code' => 'REQ-DEMOGRAPHICS', 'document_type' => 'Barangay Clearance', 'full_name' => $resident->full_name, 'address' => 'Anabu', 'status' => 'pending', 'resident_id' => $resident->id]);
     $this->actingAs(assignedStaff(['demographics.view']))->get(route('staff.demographics'))->assertOk();
-    $this->getJson(route('staff.puroks.index'))->assertOk()->assertJsonStructure(['data', 'demographics']);
-    $this->getJson(route('staff.households.index', ['purok_id' => $purok->id, 'search' => $household->household_number, 'per_page' => 1]))->assertOk()->assertJsonPath('total', 1);
-    $this->getJson(route('staff.households.show', $household))->assertOk()->assertJsonPath('members.0.id', $resident->id);
-    $this->getJson(route('staff.residents.show', $resident))->assertOk()->assertJsonPath('full_name', $resident->full_name)->assertJsonMissingPath('portal_account')->assertJsonMissingPath('document_requests')->assertJsonMissingPath('contact_number');
+    $this->getJson(route('staff.puroks.index'))->assertOk()
+        ->assertJsonPath('demographics.seniors', 1)
+        ->assertJsonPath('demographics.senior_residents', null)
+        ->assertJsonMissing(['full_name' => $resident->full_name]);
+    $this->getJson(route('staff.households.index', ['purok_id' => $purok->id]))->assertForbidden();
+    $this->getJson(route('staff.households.show', $household))->assertForbidden();
+    $this->getJson(route('staff.residents.show', $resident))->assertForbidden();
+    $this->get(route('staff.residents.photo', $resident))->assertForbidden();
     $this->getJson(route('staff.residents.index'))->assertForbidden();
     $this->patchJson(route('staff.households.update', $household), [])->assertForbidden();
     $this->deleteJson(route('staff.households.members.destroy', [$household, $resident]))->assertForbidden();
     $this->postJson(route('staff.residents.store'), [])->assertForbidden();
 });
 
+test('resident records staff keep the senior register, resident details and photos', function () {
+    Storage::fake('local');
+    $resident = Resident::factory()->create(['date_of_birth' => now()->subYears(70)->toDateString(), 'status' => 'active', 'photo_path' => 'resident-photos/senior.jpg']);
+    Storage::disk('local')->put('resident-photos/senior.jpg', 'image');
+
+    $this->actingAs(assignedStaff(['demographics.view', 'records.view']))
+        ->getJson(route('staff.puroks.index'))->assertOk()
+        ->assertJsonPath('demographics.senior_residents.0.full_name', $resident->full_name);
+    $this->getJson(route('staff.residents.show', $resident))->assertOk()->assertJsonPath('id', $resident->id);
+    $this->get(route('staff.residents.photo', $resident))->assertOk();
+});
 test('tanod logs in to submission form and receives only a reference', function () {
     $tanod = assignedStaff(StaffPermissions::presets()['Tanod']);
     $this->post('/staff/login', ['email' => $tanod->email, 'password' => 'password'])->assertRedirect(route('staff.incidents.index'));
@@ -270,8 +296,8 @@ test('ordinary incidents and VAWC are isolated in lists counts direct URLs and p
     $this->getJson(route('staff.incidents.attachments.show', [$sensitive, 0]))->assertOk();
 });
 
-test('authorized kagawad manages restricted cases and BPO without administration access', function () {
-    $kagawad = assignedStaff(StaffPermissions::presets()['Authorized Kagawad']);
+test('the VAW desk preset manages restricted cases and BPO without administration access', function () {
+    $kagawad = assignedStaff(StaffPermissions::presets()['VAW Desk — Restricted Cases']);
     $this->actingAs($kagawad)->postJson(route('staff.incidents.store'), submissionPayload(['is_sensitive' => true]))->assertCreated();
     $incident = Incident::query()->sole();
     $this->postJson(route('staff.protection-orders.store'), ['incident_id' => $incident->id, 'protected_person' => 'Protected person', 'respondent' => 'Respondent', 'issued_on' => today()->toDateString(), 'status' => 'recorded', 'issuing_authority' => 'Barangay authority'])->assertCreated();

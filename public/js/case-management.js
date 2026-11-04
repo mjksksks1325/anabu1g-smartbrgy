@@ -102,9 +102,15 @@ async function loadCaseResidents(prefix, version = caseResidentVersions.get(pref
   }
 }
 
+/** The assignable staff list is incident data: only staff with incident access ask for it (others would get a 403). */
+function canLoadCaseStaff() {
+  const permissions = window.PERSONNEL_PERMISSIONS;
+  return !Array.isArray(permissions) || ['incidents.view', 'vawc.view'].some(permission => permissions.includes(permission));
+}
+
 async function loadCaseStaff() {
   const assignedSelect = document.getElementById('inc-assigned-to');
-  if (!assignedSelect) return false;
+  if (!assignedSelect || !canLoadCaseStaff()) return false;
   assignedSelect.replaceChildren(new Option('Loading staff…', ''));
   try {
     const result = await householdApi('/staff/incident-options');
@@ -293,5 +299,5 @@ async function liftRestriction(event) {
   });
 }
 
-void loadCaseStaff();
+if (canLoadCaseStaff()) void loadCaseStaff();
 if (window.ADMIN_ACTIVE_SCREEN === 'request-records') void loadRestrictions();

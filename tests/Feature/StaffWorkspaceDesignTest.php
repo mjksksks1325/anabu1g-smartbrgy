@@ -32,7 +32,7 @@ it('links each dashboard summary card only to a module the role may open', funct
 
     expect($visible)->toBe(array_map(fn (string $route): string => route($route), $links));
 })->with([
-    'kagawad' => [StaffPermissions::presets()['Authorized Kagawad'], ['staff.demographics', 'staff.incidents.index']],
+    'kagawad' => [StaffPermissions::presets()['Kagawad — Ordinary Incidents'], ['staff.demographics', 'staff.incidents.index']],
     'secretary' => [StaffPermissions::presets()['Secretary / Assistant'], ['staff.residents.index', 'staff.document-requests.index', 'staff.document-requests.index']],
 ]);
 
@@ -46,7 +46,7 @@ it('shows Add Purok only to staff whose permission lets them save a purok', func
         ->and($button->hasAttribute('hidden'))->toBe(! $visible);
     $this->postJson(route('staff.puroks.store'), ['name' => 'Purok Probe', 'color' => '#22c55e'])->assertStatus($visible ? 201 : 403);
 })->with([
-    'kagawad (demographics only)' => [StaffPermissions::presets()['Authorized Kagawad'], false],
+    'kagawad (demographics only)' => [StaffPermissions::presets()['Kagawad — Ordinary Incidents'], false],
     'secretary (can register residents)' => [StaffPermissions::presets()['Secretary / Assistant'], true],
 ]);
 

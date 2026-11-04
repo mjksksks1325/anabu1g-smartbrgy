@@ -175,3 +175,30 @@ test('authorized editing retains a custom submitted category which is absent fro
   await context.openEditIncident(1);
   assert.equal(select.options.length, 2);
 });
+
+test('staff without incident access never request the incident staff list', async () => {
+  const calls = [];
+  const api = async url => { calls.push(url); return { staff: [] }; };
+  const select = { value: '', innerHTML: '', replaceChildren() {} };
+  const load = permissions => {
+    calls.length = 0;
+    const context = vm.createContext({
+      document: { getElementById: id => (id === 'inc-assigned-to' ? select : null) },
+      window: { PERSONNEL_PERMISSIONS: permissions },
+      URLSearchParams, setTimeout, clearTimeout, householdApi: api, showToast() {}, Option: class { constructor(text, value) { this.text = text; this.value = value; } },
+      escapeText: value => String(value ?? ''),
+    });
+    vm.runInContext(source, context);
+    return context;
+  };
+
+  const secretary = load(['dashboard.view', 'records.view', 'documents.view']);
+  await new Promise(resolve => setTimeout(resolve));
+  assert.deepEqual(calls, []);
+  assert.equal(await secretary.loadCaseStaff(), false);
+  assert.deepEqual(calls, []);
+
+  load(['incidents.view']);
+  await new Promise(resolve => setTimeout(resolve));
+  assert.deepEqual(calls, ['/staff/incident-options']);
+});

@@ -1198,10 +1198,10 @@
       <label class="form-label" for="staff-access-preset">Start from a preset</label>
       <select id="staff-access-preset" class="form-input" onchange="applyStaffPreset(this.value)">
         <option value="">Custom assignments</option>
-        @foreach(App\StaffPermissions::presets() as $name => $keys)<option value="{{ $name }}">{{ $name }}</option>@endforeach
+        @foreach(App\StaffPermissions::presets() as $name => $keys)<option value="{{ $name }}" data-description="{{ App\StaffPermissions::presetDescriptions()[$name] ?? '' }}">{{ $name }}</option>@endforeach
       </select>
       </div><button type="button" class="btn btn-sm" onclick="setStaffAssignments([])">Clear all access</button></div>
-      <p class="card-sub staff-preset-help">Adjust any selections before saving.</p>
+      <p class="card-sub staff-preset-help" id="staff-preset-description" aria-live="polite">Adjust any selections before saving.</p>
       @foreach([
         ['title' => 'General pages', 'layout' => 'pages', 'modules' => ['dashboard', 'demographics', 'rfid']],
         ['title' => 'Records & services', 'layout' => 'services', 'modules' => ['records', 'households', 'documents', 'announcements', 'eligibility', 'voters']],
@@ -1214,7 +1214,8 @@
             @php($definition = App\StaffPermissions::modules()[$module])
             <fieldset class="staff-permission-module">
               <legend>{{ $definition['label'] }}</legend>
-              <div class="staff-permission-options">
+              @if($module === 'vawc')<p class="staff-permission-warning" id="vawc-permission-warning">Confidential VAWC and BPO case records. Assign only to personnel the barangay has formally designated for these cases. Ticking a box records access; it does not create that authority.</p>@endif
+              <div class="staff-permission-options"@if($module === 'vawc') aria-describedby="vawc-permission-warning"@endif>
               @foreach($definition['actions'] as $action => $label)
                 <label class="staff-permission-option"><input type="checkbox" data-staff-permission="{{ $module.'.'.$action }}" onchange="changeStaffAssignment(this)"><span>{{ $label }}</span></label>
               @endforeach

@@ -22,8 +22,17 @@ function toggleStaffAssignmentFields() {
 function setStaffAssignments(keys) {
   document.querySelectorAll('[data-staff-permission]').forEach(input => { input.checked = keys.includes(input.dataset.staffPermission); });
 }
+/** Tick a preset's checkboxes and say what it covers; the administrator still reviews every box before saving. */
 function applyStaffPreset(name) {
   if (name && window.STAFF_PERMISSION_PRESETS?.[name]) setStaffAssignments(window.STAFF_PERMISSION_PRESETS[name]);
+  showStaffPresetDescription(name);
+}
+function showStaffPresetDescription(name) {
+  const help = document.getElementById('staff-preset-description');
+  if (!help) return;
+  const option = [...(document.getElementById('staff-access-preset')?.options || [])].find(item => item.value === name);
+  const description = name && option?.dataset.description ? option.dataset.description : '';
+  help.textContent = description ? `${adminText(description)} ${adminText('Adjust any selections before saving.')}` : adminText('Adjust any selections before saving.');
 }
 function changeStaffAssignment(input) {
   const [module, action] = input.dataset.staffPermission.split('.');
@@ -37,6 +46,7 @@ function changeStaffAssignment(input) {
     });
   }
   document.getElementById('staff-access-preset').value = '';
+  showStaffPresetDescription('');
 }
 'use strict';
 
@@ -2453,6 +2463,7 @@ function renderPurokCards() {
     if (groups.includes('4Ps Beneficiary')) beneByPurok[r.purok] = (beneByPurok[r.purok] || 0) + 1;
   });
   const total = Number(DEMOGRAPHIC_SUMMARY?.total ?? RESIDENTS.length);
+  const canOpenHouseholds = hasStaffPermission('households.view') || hasStaffPermission('records.view');
   PUROK_DATA.forEach(p => {
     const count = Number(p.residentsCount ?? countByPurok[p.key] ?? 0);
     const pct = total > 0 ? ((count / total) * 100).toFixed(1) : '0.0';
@@ -2460,8 +2471,10 @@ function renderPurokCards() {
     const seniors = Number(p.seniorCount ?? seniorByPurok[p.key] ?? 0);
     const pwd = Number(p.pwdCount ?? pwdByPurok[p.key] ?? 0);
     const bene = Number(p.fourPsCount ?? beneByPurok[p.key] ?? 0);
+    // Opening a purok lists its households by name, so the card is a button only for staff who may see households.
+    const opensHouseholds = canOpenHouseholds && p.databaseId;
     grid.innerHTML += `
-      <div class="demo-purok-card" role="button" tabindex="0" onclick="openPurokHouseholds(${Number(p.databaseId)})" onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openPurokHouseholds(${Number(p.databaseId)}); }" aria-label="${escapeText(p.label)}: ${Number(p.householdsCount || 0)} households">
+      <div class="demo-purok-card" ${opensHouseholds ? `role="button" tabindex="0" onclick="openPurokHouseholds(${Number(p.databaseId)})" onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openPurokHouseholds(${Number(p.databaseId)}); }"` : ''} aria-label="${escapeText(p.label)}: ${Number(p.householdsCount || 0)} households">
         <div class="demo-purok-name"> ${escapeText(p.label)}</div>
         <div class="demo-purok-pop" style="color:${p.color};">${count.toLocaleString()}</div>
         <div class="demo-purok-pct">${pct}% of total population</div>
@@ -3400,6 +3413,7 @@ function openAddUser() {
 
   setStaffAssignments([]);
   document.getElementById('staff-access-preset').value = '';
+  showStaffPresetDescription('');
   toggleStaffAssignmentFields();
   document.getElementById('adduser-role').querySelectorAll('option:not([value=staff])').forEach(option => { option.disabled = true; option.hidden = true; });
   document.getElementById('adduser-modal-title').textContent = 'New user account';
@@ -3440,6 +3454,7 @@ function openEditUser(id) {
   document.getElementById('adduser-role').value = user.role;
   setStaffAssignments(user.staff_permissions || []);
   document.getElementById('staff-access-preset').value = '';
+  showStaffPresetDescription('');
   toggleStaffAssignmentFields();
   document.getElementById('adduser-status').value = user.is_active ? 'active' : 'suspended';
   document.getElementById('adduser-password').value = '';
@@ -3726,6 +3741,12 @@ function renderSeniorList() {
     : RESIDENTS.filter(r => isSenior(r.dob));
   const countEl = document.getElementById('demo-senior-count');
   if (countEl) countEl.textContent = Number(DEMOGRAPHIC_SUMMARY?.seniors ?? seniors.length).toLocaleString();
+  // Staff with population statistics only get the count; names and birth dates need Resident Records access.
+  if (DEMOGRAPHIC_SUMMARY && DEMOGRAPHIC_SUMMARY.senior_residents === null) {
+    container.innerHTML = `<div class="resident-table-message">${escapeText(adminText('Senior citizen names are in Resident Records. Your access shows the count only.'))}</div>`;
+    renderPager('senior-citizens-pagination', { total: 0 });
+    return;
+  }
   if (seniors.length === 0) {
     container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;">No registered senior citizens.</div>';
     renderPager('senior-citizens-pagination', { total: 0 });
@@ -5126,7 +5147,8 @@ async function householdApi(url, method = 'GET', body) {
     ...(body !== undefined ? { body: JSON.stringify(body) } : {})
   });
   const payload = await response.json();
-  if (!response.ok) throw new Error(payload.errors ? Object.values(payload.errors).flat()[0] : payload.message || 'Unable to load household records.');
+  // A refusal carries no message of its own; say so plainly instead of blaming household records.
+  if (!response.ok) throw new Error(payload.errors ? Object.values(payload.errors).flat()[0] : payload.message || (response.status === 403 ? 'You do not have access to this information.' : 'Unable to load household records.'));
   return payload;
 }
 
@@ -5216,7 +5238,7 @@ async function openDemographicMember(id) {
 function householdMembersMarkup(household, manageable = false) {
   if (!household.members.length) return '<p>No household members assigned.</p>';
   return `<div class="table-scroll"><table class="tbl"><thead><tr><th>Name</th><th>Relationship</th><th>Gender</th><th>Voter registration</th>${manageable ? '<th>Actions</th>' : ''}</tr></thead><tbody>${household.members.map(member => `
-    <tr><td>${hasStaffPermission('demographics.view') || hasStaffPermission('records.view') ? `<button class="btn btn-xs" onclick="openDemographicMember(${Number(member.id)})">${escapeText(member.full_name)}</button>` : escapeText(member.full_name)}${member.status !== 'active' ? ' <span class="badge badge-gray">Inactive</span>' : ''}</td>
+    <tr><td>${hasStaffPermission('records.view') ? `<button class="btn btn-xs" onclick="openDemographicMember(${Number(member.id)})">${escapeText(member.full_name)}</button>` : escapeText(member.full_name)}${member.status !== 'active' ? ' <span class="badge badge-gray">Inactive</span>' : ''}</td>
     <td>${escapeText(member.relationship_to_household_head || 'Unspecified')}</td><td>${escapeText(member.gender)}</td><td>${voterStatusBadge(member.voter_status ?? (member.registered_voter ? 'active' : null))}</td>
     ${manageable ? `<td>${hasStaffPermission('households.remove') ? `<button class="btn btn-xs btn-danger-outline" onclick="removeManagedHouseholdMember(${Number(household.id)}, ${Number(member.id)})">Remove</button>` : ''}</td>` : ''}</tr>`).join('')}</tbody></table></div>`;
 }
@@ -5299,7 +5321,7 @@ function renderDraftHouseholdMembers(selectedHead = document.getElementById('hou
   const candidates = new Map([...householdResidentOptions, ...draftHouseholdMembers]);
   [...candidates.values()].filter(member => member.status === 'active').forEach(member => head.add(new Option(member.full_name, String(member.id))));
   head.value = draftHouseholdMembers.has(Number(selectedHead)) ? String(selectedHead) : '';
-  document.getElementById('household-members').innerHTML = members.length ? `<h4>Selected existing residents</h4><div class="table-scroll"><table class="tbl"><thead><tr><th>Name</th><th>Relationship to head</th><th>Actions</th></tr></thead><tbody>${members.map(member => `<tr><td>${hasStaffPermission('demographics.view') || hasStaffPermission('records.view') ? `<button class="btn btn-xs" onclick="openDemographicMember(${Number(member.id)})">${escapeText(member.full_name)}</button>` : escapeText(member.full_name)}</td><td><input class="form-input" aria-label="Relationship for ${escapeText(member.full_name)}" maxlength="100" value="${escapeText(member.relationship_to_household_head)}" oninput="updateDraftHouseholdRelationship(${Number(member.id)}, this.value)"/></td><td><button class="btn btn-xs btn-danger-outline" onclick="removeDraftHouseholdMember(${Number(member.id)})">Remove</button></td></tr>`).join('')}</tbody></table></div>` : '<p>No residents selected yet.</p>';
+  document.getElementById('household-members').innerHTML = members.length ? `<h4>Selected existing residents</h4><div class="table-scroll"><table class="tbl"><thead><tr><th>Name</th><th>Relationship to head</th><th>Actions</th></tr></thead><tbody>${members.map(member => `<tr><td>${hasStaffPermission('records.view') ? `<button class="btn btn-xs" onclick="openDemographicMember(${Number(member.id)})">${escapeText(member.full_name)}</button>` : escapeText(member.full_name)}</td><td><input class="form-input" aria-label="Relationship for ${escapeText(member.full_name)}" maxlength="100" value="${escapeText(member.relationship_to_household_head)}" oninput="updateDraftHouseholdRelationship(${Number(member.id)}, this.value)"/></td><td><button class="btn btn-xs btn-danger-outline" onclick="removeDraftHouseholdMember(${Number(member.id)})">Remove</button></td></tr>`).join('')}</tbody></table></div>` : '<p>No residents selected yet.</p>';
 }
 
 async function selectManagedHouseholdHead(residentId) {
@@ -5991,7 +6013,8 @@ async function loadResidentPortalAccount(residentId) {
         <p>Email confirmed: <strong>${account.email_verified ? 'Yes' : 'Not yet (document requests are closed until it is)'}</strong></p>
         <p>Activated with: <strong>${escapeText(({ staff_code: 'Staff-issued code', email_self_service: 'Email self-service (identity not checked by staff)', unknown: 'Not recorded' })[account.activation] || 'Not recorded')}</strong></p>
         ${account.activation === 'email_self_service' ? `<p class="resident-detail-hint">${escapeText('This account was created through the removed email self-service step. Check the resident\'s valid ID in person; suspend the account if their identity cannot be confirmed.')}</p>` : ''}`;
-      if (currentUserRole === 'admin') panel.innerHTML += `<button class="btn btn-sm" onclick="changePortalAccountStatus(${residentId}, ${!account.is_active}, this)">${account.is_active ? 'Suspend' : 'Reactivate'} portal account</button>`;
+      // The server lets every administrator (Super Admin or active Captain) suspend or reactivate; show the button to both.
+      if (window.AUTHENTICATED_USER?.is_administrator) panel.innerHTML += `<button class="btn btn-sm" onclick="changePortalAccountStatus(${residentId}, ${!account.is_active}, this)">${account.is_active ? 'Suspend' : 'Reactivate'} portal account</button>`;
     } else {
       panel.innerHTML += '<p>Not registered. Verify the resident in person before issuing their private activation code.</p>';
       if (resident.status === 'active' && hasStaffPermission('records.activate')) panel.innerHTML += `<button class="btn btn-sm btn-primary" onclick="issuePortalActivation(${residentId}, this)">Issue activation code</button><div id="resident-activation-result"></div>`;

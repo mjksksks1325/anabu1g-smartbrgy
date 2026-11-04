@@ -329,6 +329,7 @@ body.light-mode #app.admin-interface .btn:not(.btn-primary, .btn-green, .btn-dan
 #modal-adduser .staff-preset-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: end; }
 #modal-adduser .staff-preset-toolbar .btn { min-height: 42px; white-space: nowrap; }
 #modal-adduser .staff-preset-help { margin: 8px 0 18px; }
+#modal-adduser .staff-permission-warning { margin: 0 0 10px; padding: 8px 10px; border-left: 3px solid var(--staff-danger, #b42318); border-radius: 4px; background: var(--staff-danger-soft, rgba(180, 35, 24, 0.08)); color: var(--staff-ink); font-size: 12px; line-height: 1.45; }
 #modal-adduser .staff-permission-grid { display: grid; align-items: stretch; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 #modal-adduser .staff-permission-module { min-width: 0; margin: 0; padding: 12px; border: 1px solid var(--staff-border); border-radius: 7px; }
 #modal-adduser .staff-permission-module legend { padding: 0 5px; font-size: 12px; font-weight: 700; color: var(--staff-ink); }

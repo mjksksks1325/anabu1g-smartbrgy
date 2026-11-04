@@ -245,6 +245,13 @@ test('purok cards show household counts and support click and keyboard access wi
   context.DEMOGRAPHIC_SUMMARY = { total: 0 };
   context.PUROK_DATA = [{ databaseId: 7, label: 'Purok 7', key: 'Purok 7', color: '#fff', householdsCount: 4 }];
   vm.runInContext(adminSource.slice(adminSource.indexOf('function renderPurokCards()'), adminSource.indexOf('function renderAgeDistribution()')), context);
+  // Demographics-only staff see the counts, but the card does not open the household list.
+  context.hasStaffPermission = permission => permission === 'demographics.view';
+  context.renderPurokCards();
+  assert.match(field('demo-purok-grid').innerHTML, />4 <span>households<\/span><\/div>/);
+  assert.ok(!field('demo-purok-grid').innerHTML.includes('openPurokHouseholds'));
+  assert.ok(!field('demo-purok-grid').innerHTML.includes('role="button"'));
+  context.hasStaffPermission = permission => permission === 'households.view';
   context.renderPurokCards();
   const html = field('demo-purok-grid').innerHTML;
   assert.match(html, />4 <span>households<\/span><\/div>/);

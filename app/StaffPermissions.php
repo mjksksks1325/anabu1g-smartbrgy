@@ -11,7 +11,7 @@ class StaffPermissions
     {
         return [
             'dashboard' => ['label' => 'Dashboard', 'actions' => ['view' => 'Access page']],
-            'demographics' => ['label' => 'Demographics (read only)', 'actions' => ['view' => 'Browse, search, filter and open details']],
+            'demographics' => ['label' => 'Demographics (read only)', 'actions' => ['view' => 'Population statistics only (no individual records)']],
             'rfid' => ['label' => 'RFID File Tracking', 'actions' => ['view' => 'View file movements']],
             'records' => ['label' => 'Resident Records', 'actions' => ['view' => 'View records', 'create' => 'Register', 'update' => 'Edit / upload photo', 'archive' => 'Archive / restore', 'import' => 'Import profiling', 'export' => 'Export', 'activate' => 'Issue portal activation', 'review' => 'Review / approve new resident applications']],
             'households' => ['label' => 'Households', 'actions' => ['view' => 'View households', 'create' => 'Create', 'update' => 'Edit / assign members', 'remove' => 'Remove members']],
@@ -47,10 +47,28 @@ class StaffPermissions
             }
         }
 
+        // Presets only pre-tick checkboxes; saving stores plain keys, so changing a preset never changes an existing account.
+        // Archive, import, export, portal activation and account work stay unticked: an administrator adds them deliberately.
         return [
             'Secretary / Assistant' => $secretary,
-            'Authorized Kagawad' => ['dashboard.view', 'demographics.view', 'rfid.view', 'incidents.view', 'incidents.submit', 'incidents.update', 'incidents.archive', 'vawc.view', 'vawc.submit', 'vawc.update', 'vawc.archive'],
+            'Records Clerk' => ['dashboard.view', 'demographics.view', 'records.view', 'records.create', 'records.update', 'records.review', 'households.view', 'households.create', 'households.update'],
+            'Documents Officer' => ['dashboard.view', 'documents.view', 'documents.process', 'documents.issue', 'documents.print', 'eligibility.view'],
+            'Kagawad — Ordinary Incidents' => ['dashboard.view', 'demographics.view', 'rfid.view', 'incidents.view', 'incidents.submit', 'incidents.update'],
+            'VAW Desk — Restricted Cases' => ['dashboard.view', 'vawc.view', 'vawc.submit', 'vawc.update'],
             'Tanod' => ['incidents.submit'],
+        ];
+    }
+
+    /** @return array<string, string> One line per preset, shown when it is chosen. */
+    public static function presetDescriptions(): array
+    {
+        return [
+            'Secretary / Assistant' => 'Every records, households, documents, announcements, voters and eligibility action, including import, export and publishing. Suits a one-clerk office.',
+            'Records Clerk' => 'Register and update residents, review new resident applications, and manage households. No archive, import, export or portal activation.',
+            'Documents Officer' => 'Process, issue and print certificates and check request eligibility. No resident editing or exports.',
+            'Kagawad — Ordinary Incidents' => 'Review, submit and manage ordinary incident reports. No VAWC or BPO access.',
+            'VAW Desk — Restricted Cases' => 'VAWC cases and BPOs only. Choose this only for personnel the barangay has formally designated; the preset itself grants no authority.',
+            'Tanod' => 'Submit incident reports only. Cannot read cases.',
         ];
     }
 
@@ -72,14 +90,14 @@ class StaffPermissions
             'staff.households.page' => ['households.view'],
             'staff.resident-applications.index', 'staff.resident-applications.update', 'staff.resident-applications.photo' => ['records.review'],
             'staff.residents.index' => ['records.view'],
-            'staff.residents.show', 'staff.residents.photo' => ['records.view', 'demographics.view'],
+            'staff.residents.show', 'staff.residents.photo' => ['records.view'],
             'staff.residents.store' => ['records.create'],
             'staff.residents.update', 'staff.residents.photo.store' => ['records.update'],
             'staff.residents.destroy', 'staff.residents.restore' => ['records.archive'],
             'staff.residents.export' => ['records.export'],
             'staff.residents.portal-activation' => ['records.activate'],
             'staff.resident-profiling-imports.preview', 'staff.resident-profiling-imports.review', 'staff.resident-profiling-imports.store' => ['records.import'],
-            'staff.households.index', 'staff.households.show' => ['households.view', 'demographics.view', 'records.view'],
+            'staff.households.index', 'staff.households.show' => ['households.view', 'records.view'],
             'staff.households.store' => ['households.create'],
             'staff.households.update', 'staff.households.members.update' => ['households.update'],
             'staff.households.members.destroy' => ['households.remove'],

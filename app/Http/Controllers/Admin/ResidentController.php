@@ -97,15 +97,6 @@ class ResidentController extends Controller
     {
         Gate::authorize('view', $resident);
 
-        if (! request()->user()->hasPermission('records.view')) {
-            return response()->json([
-                ...$resident->only(['id', 'resident_number', 'first_name', 'middle_name', 'last_name', 'suffix', 'date_of_birth', 'gender', 'civil_status', 'purok', 'address', 'status', 'household_id', 'relationship_to_household_head', 'is_household_head']),
-                'full_name' => $resident->full_name,
-                'age' => $resident->age,
-                'household_information' => $resident->household?->details(),
-            ]);
-        }
-
         $account = $resident->portalAccount()->first();
         $resident->load('household');
         $resident->setAttribute('household_information', $resident->household?->details());

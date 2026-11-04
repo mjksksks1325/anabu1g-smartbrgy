@@ -1581,3 +1581,20 @@ test('the audit log filters by category, pages with the shared pager, and shows 
   assert.ok(values.includes('Affected record=Staff account #4'));
   assert.ok(values.includes('Permissions after=records.view, records.update'));
 });
+
+test('every administrator, Captain included, gets the portal-account suspend button the server allows; staff do not', async () => {
+  const { context, fields } = await client();
+  const panel = { isConnected: true, innerHTML: '', textContent: '' };
+  fields.set('resident-portal-account', panel);
+  context.adminRequest = async () => ({ status: 'active', portal_account: { registered: true, is_active: true, email: 'm***@example.test', created_at: '2026-11-01', email_verified: true, activation: 'staff_code' } });
+
+  for (const [user, expected] of [
+    [{ role: 'captain', is_administrator: true }, true],
+    [{ role: 'admin', is_super_admin: true, is_administrator: true }, true],
+    [{ role: 'staff', is_administrator: false }, false],
+  ]) {
+    context.window.AUTHENTICATED_USER = user;
+    await context.loadResidentPortalAccount(5);
+    assert.equal(panel.innerHTML.includes('changePortalAccountStatus(5, false, this)'), expected, user.role);
+  }
+});
