@@ -1,204 +1,86 @@
 @extends('layouts.admin-iot')
 @section('title', 'Document Request Details')
+@section('staff-ui', 'true')
 @section('content')
-<div class="document-request-detail">
-    <div class="eyebrow">Records / Document Requests</div>
+<div data-ui class="text-zinc-800 dark:text-zinc-100 document-request-detail">
+    <x-ui.page-header eyebrow="Records / Document Requests" title="Document request details" description="Review and manage the resident's document request.">
+        <x-slot:actions>
+            <flux:button variant="outline" icon="arrow-left" :href="route('staff.document-requests.list')">All requests</flux:button>
+        </x-slot:actions>
+    </x-ui.page-header>
 
-    {{-- Page Header --}}
-    <div class="page-header-row" style="margin-bottom:20px;">
-        <div class="page-header" style="margin-bottom:0;">
-            <h1>Document Request <span>Details</span></h1>
-            <p>Review and manage the resident's document request</p>
-        </div>
-
-        <a href="{{ route(App\StaffPermissions::landing(auth()->user())) }}"
-           class="btn btn-outline"
-           style="text-decoration:none;">
-            ← Back to Dashboard
-        </a>
-    </div>
-
-    {{-- Success Message --}}
     @if (session('success'))
-        <div class="card request-success" role="status">
-            <span>
-                 {{ session('success') }}
-            </span>
-        </div>
+        <flux:callout variant="success" icon="check-circle" class="mb-5" role="status">
+            <flux:callout.text>{{ session('success') }}</flux:callout.text>
+        </flux:callout>
     @endif
 
     @if ($errors->any())
-        <div class="card" role="alert"><strong>Unable to update request</strong><ul>
-            @foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach
-        </ul></div>
+        <flux:callout variant="danger" icon="exclamation-triangle" class="mb-5" role="alert">
+            <flux:callout.heading>Unable to update request</flux:callout.heading>
+            <flux:callout.text>
+                <ul class="list-disc ps-5">
+                    @foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach
+                </ul>
+            </flux:callout.text>
+        </flux:callout>
     @endif
-    {{-- Request Details --}}
-    <div class="card" style="margin-bottom:18px;">
 
-        <div class="card-header">
-            <div>
-                <div class="card-title"> Request Information</div>
-                <div class="card-sub">
-                    Reference: {{ $documentRequest->reference_code }}
-                </div>
+    <div class="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_24rem]">
+        <x-ui.panel title="Request information" heading-id="request-information-title">
+            <x-slot:meta><x-staff.request-status :status="$documentRequest->status" /></x-slot:meta>
+            <div class="px-5 py-5">
+                <x-ui.details>
+                    <x-ui.detail label="Reference code" class="font-mono">{{ $documentRequest->reference_code }}</x-ui.detail>
+                    <x-ui.detail label="Resident name" data-no-admin-translate>{{ $documentRequest->full_name }}</x-ui.detail>
+                    <x-ui.detail label="Document type">{{ $documentRequest->document_type }}</x-ui.detail>
+                    <x-ui.detail label="Date submitted" class="tabular-nums">{{ $documentRequest->created_at->format('M d, Y h:i A') }}</x-ui.detail>
+                    <x-ui.detail label="Date of birth">{{ $documentRequest->date_of_birth ?? 'Not provided' }}</x-ui.detail>
+                    <x-ui.detail label="Email address" data-no-admin-translate>{{ $documentRequest->email ?? 'Not provided' }}</x-ui.detail>
+                    <x-ui.detail label="Address" wide data-no-admin-translate>{{ $documentRequest->address }}</x-ui.detail>
+                    <x-ui.detail label="Purpose" wide data-no-admin-translate>{{ $documentRequest->purpose ?? 'Not provided' }}</x-ui.detail>
+                    @if ($documentRequest->business_name)
+                        <x-ui.detail label="Business name" wide data-no-admin-translate>{{ $documentRequest->business_name }}</x-ui.detail>
+                    @endif
+                    @if ($documentRequest->status === 'rejected' && $documentRequest->rejection_reason)
+                        <x-ui.detail label="Reason for rejection" wide data-no-admin-translate>{{ $documentRequest->rejection_reason }}</x-ui.detail>
+                    @endif
+                </x-ui.details>
             </div>
+        </x-ui.panel>
 
-            <span class="badge badge-blue">
-                {{ ucwords(str_replace('_', ' ', $documentRequest->status)) }}
-            </span>
-        </div>
-
-        <div class="request-detail-grid">
-
-            <div>
-                <div class="stat-label">Reference Code</div>
-                <div style="font-family:var(--font-mono);">
-                    {{ $documentRequest->reference_code }}
-                </div>
-            </div>
-
-            <div>
-                <div class="stat-label">Resident Name</div>
-                <div>{{ $documentRequest->full_name }}</div>
-            </div>
-
-            <div>
-                <div class="stat-label">Document Type</div>
-                <div>{{ $documentRequest->document_type }}</div>
-            </div>
-
-            <div>
-                <div class="stat-label">Date of Birth</div>
-                <div>
-                    {{ $documentRequest->date_of_birth ?? 'Not provided' }}
-                </div>
-            </div>
-
-            <div>
-                <div class="stat-label">Email Address</div>
-                <div>
-                    {{ $documentRequest->email ?? 'Not provided' }}
-                </div>
-            </div>
-
-            <div>
-                <div class="stat-label">Date Submitted</div>
-                <div>
-                    {{ $documentRequest->created_at->format('M d, Y h:i A') }}
-                </div>
-            </div>
-
-            <div style="grid-column:1 / -1;">
-                <div class="stat-label">Address</div>
-                <div>{{ $documentRequest->address }}</div>
-            </div>
-
-            <div style="grid-column:1 / -1;">
-                <div class="stat-label">Purpose</div>
-                <div>
-                    {{ $documentRequest->purpose ?? 'Not provided' }}
-                </div>
-            </div>
-
-            @if ($documentRequest->business_name)
-                <div style="grid-column:1 / -1;">
-                    <div class="stat-label">Business Name</div>
-                    <div>{{ $documentRequest->business_name }}</div>
-                </div>
-            @endif
-
-        </div>
+        @can('documents.process')
+            <x-ui.panel title="Request status" description="Update the processing status and staff remarks." heading-id="request-status-title">
+                <form class="space-y-4 px-5 py-5" method="POST" action="{{ route('staff.document-requests.update-status', $documentRequest) }}" data-request-status-form>
+                    @csrf
+                    @method('PATCH')
+                    <flux:field>
+                        <flux:label>Status</flux:label>
+                        <flux:select name="status" required>
+                            @foreach (['pending' => 'Pending', 'processing' => 'Processing', 'approved' => 'Approved', 'ready_for_release' => 'Ready for Release', 'rejected' => 'Rejected'] as $value => $label)
+                                <flux:select.option :value="$value" :selected="old('status', $documentRequest->status) === $value">{{ $label }}</flux:select.option>
+                            @endforeach
+                        </flux:select>
+                        <flux:error name="status" />
+                    </flux:field>
+                    <flux:field>
+                        <flux:label>Remarks</flux:label>
+                        <flux:textarea name="remarks" rows="4" maxlength="1000" placeholder="Add optional staff remarks...">{{ old('remarks', $documentRequest->remarks) }}</flux:textarea>
+                        <flux:error name="remarks" />
+                    </flux:field>
+                    <flux:field>
+                        <flux:label>Reason for rejection (required when rejecting)</flux:label>
+                        <flux:textarea id="rejection_reason" name="rejection_reason" rows="3" maxlength="1000">{{ old('rejection_reason', $documentRequest->rejection_reason) }}</flux:textarea>
+                        <flux:description>Provide at least 10 characters explaining the decision.</flux:description>
+                        <flux:error name="rejection_reason" />
+                    </flux:field>
+                    <div class="flex flex-wrap justify-end gap-2 border-t border-zinc-200 pt-4 dark:border-zinc-700 document-request-actions">
+                        <flux:button variant="ghost" :href="route(App\StaffPermissions::landing(auth()->user()))">Cancel</flux:button>
+                        <flux:button type="submit" variant="primary">Update Request</flux:button>
+                    </div>
+                </form>
+            </x-ui.panel>
+        @endcan
     </div>
-
-    @can('documents.process')
-    {{-- Status Management --}}
-    <div class="card">
-
-        <div class="card-header">
-            <div>
-                <div class="card-title"> Request Status</div>
-                <div class="card-sub">
-                    Update the processing status and staff remarks
-                </div>
-            </div>
-        </div>
-
-        <form method="POST"
-              action="{{ route('staff.document-requests.update-status', $documentRequest) }}"
-              style="padding:18px;">
-
-            @csrf
-            @method('PATCH')
-
-            <div style="margin-bottom:16px;">
-                <label class="stat-label">Status</label>
-
-                <select name="status"
-                        class="form-input"
-                        style="width:100%; margin-top:6px;"
-                        required>
-
-                    <option value="pending"
-                        @selected($documentRequest->status === 'pending')>
-                        Pending
-                    </option>
-
-                    <option value="processing"
-                        @selected($documentRequest->status === 'processing')>
-                        Processing
-                    </option>
-
-                    <option value="approved"
-                        @selected($documentRequest->status === 'approved')>
-                        Approved
-                    </option>
-
-                    <option value="ready_for_release"
-                        @selected($documentRequest->status === 'ready_for_release')>
-                        Ready for Release
-                    </option>
-
-                    <option value="rejected"
-                        @selected($documentRequest->status === 'rejected')>
-                        Rejected
-                    </option>
-
-                </select>
-            </div>
-
-            <div style="margin-bottom:18px;">
-                <label class="stat-label">Remarks</label>
-
-                <textarea name="remarks"
-                          class="form-input"
-                          rows="4"
-                          style="width:100%; margin-top:6px;"
-                          placeholder="Add optional staff remarks...">{{ old('remarks', $documentRequest->remarks) }}</textarea>
-            </div>
-
-            <div class="form-group">
-                <label for="rejection_reason" class="form-label">Reason for rejection (required when rejecting)</label>
-                <textarea id="rejection_reason" name="rejection_reason" class="form-input" rows="3" maxlength="1000">{{ old('rejection_reason', $documentRequest->rejection_reason) }}</textarea>
-                <p>Provide at least 10 characters explaining the decision.</p>
-            </div>
-            <div class="document-request-actions">
-
-                <a href="{{ route(App\StaffPermissions::landing(auth()->user())) }}"
-                   class="btn btn-outline"
-                   style="text-decoration:none;">
-                    Cancel
-                </a>
-
-                <button type="submit" class="btn btn-green">
-                     Update Request
-                </button>
-
-            </div>
-
-        </form>
-
-    </div>
-
 </div>
-@endcan
 @endsection

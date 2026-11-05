@@ -6,11 +6,6 @@
     $creating = old('_announcement') === null;
     $allErrors = $errors;
     $noErrors = new \Illuminate\Support\ViewErrorBag;
-    // Folded Flux components read this template's $errors; the others read the shared bag. Scope both.
-    $scopeErrors = function (\Illuminate\Support\ViewErrorBag $bag) use (&$errors): void {
-        $errors = $bag;
-        view()->share('errors', $bag);
-    };
     $imageTypes = '.jpg,.jpeg,.png,.gif,.bmp,.webp,.avif,.heic,.heif,image/jpeg,image/png,image/gif,image/bmp,image/webp,image/avif,image/heic,image/heif';
     $filters = [
         'all' => ['label' => 'All', 'hint' => 'Every record', 'icon' => 'newspaper', 'tone' => 'brand', 'count' => array_sum($statusCounts)],
@@ -126,7 +121,7 @@
         failed request was a create, an edit form when it was that announcement's edit.
     --}}
     @can('announcements.create')
-        @php($scopeErrors($creating ? $allErrors : $noErrors))
+        @scopeErrors($creating ? $allErrors : $noErrors)
         {{-- Creating is an occasional, focused task, so the form lives in a dialog; it reopens with the typed values after a validation error. --}}
         <flux:modal name="announcement-create" class="w-full max-w-xl" data-announcement-create-dialog data-labelledby="announcement-create-title" :data-open-on-load="$creating && $allErrors->hasAny(['title', 'body', 'image', 'status']) ? '' : null">
             <form class="space-y-5" method="POST" enctype="multipart/form-data" action="{{ route('staff.announcements.store') }}">
@@ -169,14 +164,14 @@
                 </div>
             </form>
         </flux:modal>
-        @php($scopeErrors($allErrors))
+        @scopeErrors($allErrors)
     @endcan
 
     @can('announcements.update')
         @foreach ($announcements as $announcement)
             @continue($announcement->status === 'archived')
             @php($editingThis = (string) old('_announcement') === (string) $announcement->id)
-            @php($scopeErrors($editingThis ? $allErrors : $noErrors))
+            @scopeErrors($editingThis ? $allErrors : $noErrors)
             {{-- Editing opens beside the list (a flyout), so the record being changed stays in view. --}}
             <flux:modal flyout name="announcement-edit-{{ $announcement->id }}" class="w-full md:w-[34rem]" data-announcement-edit-dialog="{{ $announcement->id }}" data-labelledby="announcement-edit-{{ $announcement->id }}-title" :data-open-on-load="$editingThis && $allErrors->any() ? '' : null">
                 <form class="space-y-5" method="POST" enctype="multipart/form-data" action="{{ route('staff.announcements.update', $announcement) }}">
@@ -220,7 +215,7 @@
                 </form>
             </flux:modal>
         @endforeach
-        @php($scopeErrors($allErrors))
+        @scopeErrors($allErrors)
     @endcan
 
     <flux:modal name="announcement-archive" class="w-full max-w-md" data-announcement-archive-dialog data-labelledby="announcement-archive-title">

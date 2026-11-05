@@ -1,18 +1,28 @@
 (() => {
     let searchTimer;
     let archiveUrl = null;
+    let archiveTrigger = null;
+
+    // The archive confirmation is a native <dialog>, or a Flux modal (<ui-modal>) wrapping one on migrated pages.
+    const archiveDialog = () => {
+        const host = document.getElementById('cabinet-folder-archive-dialog');
+
+        return host instanceof HTMLDialogElement ? host : host?.querySelector('dialog') ?? null;
+    };
 
     document.addEventListener('click', (event) => {
         const archiveButton = event.target.closest?.('[data-folder-archive]');
         if (archiveButton) {
-            const dialog = document.getElementById('cabinet-folder-archive-dialog');
+            const dialog = archiveDialog();
             const form = dialog?.querySelector('[data-folder-archive-form]');
             if (!dialog || !form) {
                 return;
             }
 
             archiveUrl = archiveButton.dataset.archiveUrl;
+            archiveTrigger = archiveButton;
             form.reset();
+            window.FormFeedback?.clearInvalid(form.querySelector('[name="super_admin_password"]'));
             dialog.querySelector('[data-folder-archive-reference]').textContent = archiveButton.dataset.fileReference || '';
             const error = dialog.querySelector('[data-folder-archive-error]');
             error.hidden = true;
@@ -23,9 +33,19 @@
         }
 
         if (event.target.closest?.('[data-folder-archive-cancel]')) {
-            document.getElementById('cabinet-folder-archive-dialog')?.close();
+            archiveDialog()?.close();
         }
     });
+
+    document.addEventListener('close', (event) => {
+        if (event.target === archiveDialog()) {
+            window.PasswordVisibility?.hide(event.target);
+            if (archiveTrigger?.isConnected) {
+                archiveTrigger.focus();
+            }
+            archiveTrigger = null;
+        }
+    }, true);
 
     document.addEventListener('submit', async (event) => {
         const form = event.target.closest?.('[data-folder-archive-form]');
@@ -59,8 +79,11 @@
             const payload = await response.json().catch(() => ({}));
 
             if (!response.ok) {
-                error.textContent = payload.message || 'Hindi na-archive ang folder. Pakisubukan ulit.';
-                error.hidden = false;
+                // A password error is shown under the field by form-feedback.js; anything else is shown here.
+                if (!payload.errors?.super_admin_password || !window.FormFeedback) {
+                    error.textContent = payload.message || 'Hindi na-archive ang folder. Pakisubukan ulit.';
+                    error.hidden = false;
+                }
                 passwordInput.focus();
                 return;
             }
@@ -96,7 +119,14 @@
             if (!region) {
                 throw new Error('filter');
             }
-            section.querySelector('[data-filter-region]')?.replaceWith(region);
+            const currentRegion = section.querySelector('[data-filter-region]');
+            // Tear down Alpine/Flux on the outgoing results first, so a replaced side panel stops listening for its name.
+            if (currentRegion) {
+                window.Alpine?.destroyTree?.(currentRegion);
+            }
+            currentRegion?.replaceWith(region);
+            // Name any dialogs that came in with the new results (Flux side panels on migrated pages).
+            window.StaffUi?.prepare(region);
             const count = page.querySelector('[data-filter-count]');
             const currentCount = section.querySelector('[data-filter-count]');
             if (count && currentCount) {
@@ -169,7 +199,7 @@
 
     // Pager links inside a filtered region load in place too.
     document.addEventListener('click', (event) => {
-        const link = event.target.closest?.('[data-filter-results] [data-filter-region] .staff-pager a[href]');
+        const link = event.target.closest?.('[data-filter-results] [data-filter-region] :is(.staff-pager, [data-ui-pager]) a[href]');
         if (!link || event.ctrlKey || event.metaKey || event.shiftKey) {
             return;
         }

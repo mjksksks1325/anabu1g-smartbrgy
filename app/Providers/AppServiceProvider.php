@@ -10,6 +10,7 @@ use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -29,11 +30,22 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
+     * `@scopeErrors($bag)` sets the validation errors that the following form controls see, until the next `@scopeErrors`.
+     * Pages with several forms sharing field names (one per record) give each form only its own errors.
+     * Flux reads both the template's `$errors` and the shared bag, so both are set.
+     */
+    protected function registerBladeDirectives(): void
+    {
+        Blade::directive('scopeErrors', fn (string $expression): string => "<?php \$errors = {$expression}; \$__env->share('errors', \$errors); ?>");
+    }
+
+    /**
      * Bootstrap any application services.
      */
     public function boot(): void
     {
         $this->configureDefaults();
+        $this->registerBladeDirectives();
         RateLimiter::for('cabinet-device', function (Request $request): Limit {
             $cabinet = $request->route('cabinet');
 

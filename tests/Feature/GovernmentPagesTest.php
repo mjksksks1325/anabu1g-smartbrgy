@@ -299,3 +299,20 @@ it('uses Livewire navigation for staff page links to avoid full document reloads
 })->with(['admin.dashboard', 'staff.residents.index', 'admin.audit', 'admin.users.index', 'admin.settings',
     'staff.rfid-files.index', 'staff.resident-applications.index', 'admin.smart-cabinet.index', 'admin.cabinet-access.index',
     'profile.edit', 'security.edit', 'appearance.edit']);
+
+it('filters the request list by board stage and search, and keeps the status form for processors only', function () {
+    $processor = User::factory()->assignedOperations()->create();
+    DocumentRequest::create(['reference_code' => 'REQ-ONLINE-1', 'source' => 'online', 'document_type' => 'Barangay Clearance', 'full_name' => 'Lorna Online', 'address' => 'Anabu I-G', 'status' => 'pending']);
+    DocumentRequest::create(['reference_code' => 'REQ-READY-1', 'document_type' => 'Certificate of Residency', 'full_name' => 'Rico Ready', 'address' => 'Anabu I-G', 'status' => 'ready_for_release']);
+    $viewOnly = DocumentRequest::create(['reference_code' => 'REQ-VIEW-1', 'document_type' => 'Barangay Clearance', 'full_name' => 'Vina View', 'address' => 'Anabu I-G', 'status' => 'processing']);
+
+    $this->actingAs($processor)->get(route('staff.document-requests.list', ['lane' => 'ready']))
+        ->assertSee('REQ-READY-1')->assertDontSee('REQ-ONLINE-1');
+    $this->get(route('staff.document-requests.list', ['search' => 'Lorna']))
+        ->assertSee('REQ-ONLINE-1')->assertDontSee('REQ-READY-1');
+
+    $viewer = User::factory()->create(['staff_permissions' => ['documents.view']]);
+    $this->actingAs($viewer)->get(route('staff.document-requests.show', $viewOnly))->assertOk()
+        ->assertSee('REQ-VIEW-1')->assertDontSee('name="status"', false)->assertDontSee('Update Request');
+    $this->patch(route('staff.document-requests.update-status', $viewOnly), ['status' => 'approved'])->assertForbidden();
+});

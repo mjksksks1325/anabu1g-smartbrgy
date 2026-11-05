@@ -77,7 +77,8 @@ it('links the staff UI bundle after the legacy sheets and enables it only on pag
 })->with([
     'workspace (not migrated)' => ['staff.dashboard', true, false],
     'announcements (pilot)' => ['staff.announcements.index', true, true],
-    'resident applications (not migrated)' => ['staff.resident-applications.index', true, false],
+    'resident applications (migrated in Work Group 2)' => ['staff.resident-applications.index', true, true],
+    'access pending (not migrated)' => ['staff.access-pending', true, false],
     'account settings (own Flux bundle)' => ['profile.edit', false, false],
 ]);
 

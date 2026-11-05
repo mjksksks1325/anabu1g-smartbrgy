@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\CabinetDevice;
+use App\Models\CabinetFile;
 use App\Models\EmployeeCabinetAccess;
 use App\Models\FileMovementEvent;
 use App\Models\User;
@@ -60,7 +61,7 @@ it('shows a compact cabinet access list without empty pagination', function () {
     $response->assertSee('3 employees')
         ->assertSee('Details')
         ->assertDontSee('<div class="pagination">', false);
-    expect(substr_count($response->getContent(), '<article class="employee-card">'))->toBe(3);
+    expect(substr_count($response->getContent(), '<tr data-employee-row='))->toBe(3);
 });
 
 it('keeps pagination for a cabinet access list with more than one page', function () {
@@ -70,8 +71,8 @@ it('keeps pagination for a cabinet access list with more than one page', functio
     $response = $this->actingAs($superAdmin)->get(route('admin.cabinet-access.index'));
 
     $response->assertSee('16 employees')
-        ->assertSee('<div class="pagination">', false);
-    expect(substr_count($response->getContent(), '<article class="employee-card">'))->toBe(15);
+        ->assertSee('data-ui-pager', false)->assertSee('Page 1 of 2')->assertSee('rel="next"', false);
+    expect(substr_count($response->getContent(), '<tr data-employee-row='))->toBe(15);
 });
 
 it('uses saved file movements and filters instead of browser simulation', function () {
@@ -304,4 +305,23 @@ it('shows the reported cabinet state as readable labels instead of raw JSON', fu
         ->assertSee('<ul class="cabinet-state-list">', false)
         ->assertSeeInOrder(['Door', 'closed', 'Drawer 1 Locked', 'Yes'])
         ->assertDontSee('{"door":"closed"', false);
+});
+
+it('keeps a failed folder edit in its own row instead of the new-folder form', function () {
+    $cabinet = CabinetDevice::factory()->create(['name' => 'Records Cabinet']);
+    $folder = CabinetFile::factory()->create(['file_reference' => 'DOC-EDIT-1', 'file_name' => 'Original name', 'cabinet_device_id' => $cabinet->id, 'drawer_reference' => CabinetFile::DRAWER_1]);
+
+    $content = $this->actingAs(User::factory()->superAdmin()->create())->from(route('admin.smart-cabinet.index'))->followingRedirects()
+        ->patch(route('admin.smart-cabinet.folders.update', $folder), ['_form' => 'folder-'.$folder->id, 'file_name' => '', 'cabinet_device_id' => $cabinet->id, 'drawer_reference' => CabinetFile::DRAWER_1])
+        ->assertOk()->getContent();
+    $document = new DOMDocument;
+    @$document->loadHTML($content);
+    $xpath = new DOMXPath($document);
+    $create = $xpath->query('//form[@data-folder-create-form]')->item(0);
+
+    expect($xpath->query('//tr[@data-folder-row="'.$folder->id.'"]//input[@name="file_name" and @aria-invalid="true"]'))->toHaveCount(1)
+        ->and($xpath->query('//tr[@data-folder-row="'.$folder->id.'"]//*[@role="alert"]'))->toHaveCount(1)
+        ->and($xpath->query('.//*[@aria-invalid="true"]', $create))->toHaveCount(0)
+        ->and($xpath->query('.//input[@name="file_name"]', $create)->item(0)->getAttribute('value'))->toBe('')
+        ->and($folder->fresh()->file_name)->toBe('Original name');
 });

@@ -50,6 +50,7 @@
 </div>
 @livewireScripts
 @fluxScripts
+<script defer data-navigate-once src="{{ asset('js/staff-ui.js') }}?v={{ filemtime(public_path('js/staff-ui.js')) }}"></script>
 @include('partials.personnel-password-confirmation')
 @include('partials.personnel-logout-confirmation')
 </body>

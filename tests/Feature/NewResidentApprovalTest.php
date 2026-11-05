@@ -227,8 +227,12 @@ test('review interface separates the private photo details status and decision c
     $document = new DOMDocument;
     @$document->loadHTML($response->getContent());
     $xpath = new DOMXPath($document);
-    expect($xpath->query('//details[@open]/summary//span[@data-application-state="pending"]'))->toHaveCount(1);
-    expect($xpath->query('//figure/img[@src="'.route('staff.resident-applications.photo', $application).'"]'))->toHaveCount(1);
+    // The list shows each status; the photo, details and decision open in that application's side panel.
+    expect($xpath->query('//tr[@data-application-row]//*[@data-application-state="pending"]'))->toHaveCount(1);
+    $panel = $xpath->query('//ui-modal[@data-application-dialog="'.$application->id.'"]')->item(0);
+    expect($panel)->not->toBeNull()
+        ->and($panel->hasAttribute('data-open-on-load'))->toBeFalse();
+    expect($xpath->query('.//figure/img[@src="'.route('staff.resident-applications.photo', $application).'"]', $panel))->toHaveCount(1);
     expect($xpath->query('//form[@action="'.route('staff.resident-applications.update', $application).'" and @method="POST"]//select[@name="decision"]'))->toHaveCount(1);
     $response->assertSee('Review decision')->assertSee('Required when requesting correction or declining an application.');
 });
@@ -311,4 +315,34 @@ test('invalid or unauthorized reviews send no result emails', function () {
     $this->post(route('staff.resident-applications.update', $application), ['decision' => 'approved'])->assertSessionHasErrors('decision');
     Notification::assertNothingSent();
     expect($application->fresh()->status)->toBe('pending');
+});
+
+test('review list filters by status and search, and reopens only the application whose review failed', function () {
+    $pending = ResidentRegistrationApplication::factory()->create(['details' => [...ResidentRegistrationApplication::factory()->raw()['details'], 'first_name' => 'Marisol', 'last_name' => 'Zamora']]);
+    $other = ResidentRegistrationApplication::factory()->create();
+    ResidentRegistrationApplication::factory()->create(['status' => 'declined', 'remarks' => 'Not a resident.']);
+    $this->actingAs(User::factory()->superAdmin()->create());
+    $page = function (string $url): DOMXPath {
+        $document = new DOMDocument;
+        @$document->loadHTML($this->get($url)->assertOk()->getContent());
+
+        return new DOMXPath($document);
+    };
+
+    $document = new DOMDocument;
+    @$document->loadHTML($this->from(route('staff.resident-applications.index'))->followingRedirects()
+        ->post(route('staff.resident-applications.update', $pending), ['_application' => $pending->id, 'decision' => 'declined'])
+        ->assertOk()->assertSee('The remarks field is required unless decision is in approved.')->getContent());
+    $xpath = new DOMXPath($document);
+    $failed = $xpath->query('//ui-modal[@data-application-dialog="'.$pending->id.'"][@data-open-on-load]')->item(0);
+
+    expect($failed)->not->toBeNull()
+        ->and($xpath->query('.//textarea[@name="remarks" and @aria-invalid="true"]', $failed))->toHaveCount(1)
+        ->and($xpath->query('//ui-modal[@data-application-dialog="'.$other->id.'"]//*[@aria-invalid="true"]'))->toHaveCount(0)
+        ->and($pending->fresh()->status)->toBe('pending');
+
+    expect($page(route('staff.resident-applications.index', ['status' => 'declined']))->query('//tr[@data-application-row]//*[@data-application-state]'))->toHaveCount(1)
+        ->and($page(route('staff.resident-applications.index', ['search' => 'Zamora']))->query('//tr[@data-application-row]'))->toHaveCount(1)
+        ->and($page(route('staff.resident-applications.index', ['application' => $other->id]))->query('//ui-modal[@data-application-dialog="'.$other->id.'"][@data-open-on-load]'))->toHaveCount(1);
+    $this->get(route('staff.resident-applications.index', ['status' => 'unknown']))->assertNotFound();
 });

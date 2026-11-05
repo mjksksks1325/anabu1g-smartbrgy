@@ -117,3 +117,23 @@ it('keeps the stable Pi mapping and file history after cabinet access is disable
         ->and($access->fresh()->rpi_employee_id)->toBe('EMP004');
     $this->assertModelExists($movement);
 });
+
+it('reopens only the employee panel whose RPi ID was rejected and keeps deactivation behind a confirmation', function () {
+    $superAdmin = User::factory()->superAdmin()->create();
+    $rejected = User::factory()->create(['role' => 'staff', 'name' => 'Rejected Employee']);
+    $enabled = User::factory()->create(['role' => 'staff', 'name' => 'Enabled Employee']);
+    EmployeeCabinetAccess::factory()->create(['user_id' => $enabled->id, 'is_active' => true]);
+
+    $content = $this->actingAs($superAdmin)->from(route('admin.cabinet-access.index'))->followingRedirects()
+        ->patch(route('admin.cabinet-access.rpi-employee-id.update', $rejected), ['_employee' => $rejected->id, 'rpi_employee_id' => '9 not valid'])
+        ->assertOk()->getContent();
+    $document = new DOMDocument;
+    @$document->loadHTML($content);
+    $xpath = new DOMXPath($document);
+
+    expect($xpath->query('//ui-modal[@data-employee-dialog="'.$rejected->id.'"][@data-open-on-load]//*[@data-flux-error and normalize-space()]'))->toHaveCount(1)
+        ->and($xpath->query('//ui-modal[@data-employee-dialog="'.$enabled->id.'"][@data-open-on-load]'))->toHaveCount(0)
+        ->and($xpath->query('//ui-modal[@data-employee-dialog="'.$enabled->id.'"]//*[@data-flux-error and normalize-space()]'))->toHaveCount(0)
+        ->and($xpath->query('//ui-modal[@data-flux-modal][.//*[normalize-space()="Deactivate cabinet access?"]]//form[@action="'.route('admin.cabinet-access.update', $enabled).'"]/input[@name="is_active" and @value="0"]'))->toHaveCount(1)
+        ->and($rejected->cabinetAccess)->toBeNull();
+});

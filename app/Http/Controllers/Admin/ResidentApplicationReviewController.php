@@ -21,12 +21,39 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ResidentApplicationReviewController extends Controller
 {
-    public function index(): View
+    /** Application states, in the order the review page lists its filters. */
+    private const STATUSES = ['pending', 'needs_correction', 'approved', 'declined'];
+
+    public function index(Request $request): View
     {
         Gate::authorize('records.review');
         abort_unless(Schema::hasTable('resident_registration_applications'), 503);
 
-        return view('admin.resident-applications', ['applications' => ResidentRegistrationApplication::orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")->latest()->paginate(10)]);
+        $status = $request->string('status', 'all')->toString();
+        abort_unless(in_array($status, ['all', ...self::STATUSES], true), 404);
+        $search = trim($request->string('search')->limit(100, '')->toString());
+
+        return view('admin.resident-applications', [
+            'applications' => ResidentRegistrationApplication::query()
+                ->when($status !== 'all', fn ($query) => $query->where('status', $status))
+                ->when($search !== '', fn ($query) => $query->where(fn ($query) => $query
+                    ->where('reference', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('details', 'like', "%{$search}%")))
+                ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
+                ->latest()
+                ->paginate(10)
+                ->withQueryString(),
+            'status' => $status,
+            'search' => $search,
+            'statusCounts' => ResidentRegistrationApplication::query()
+                ->toBase()
+                ->selectRaw('status, count(*) as aggregate')
+                ->groupBy('status')
+                ->pluck('aggregate', 'status')
+                ->map(fn (mixed $count): int => (int) $count)
+                ->all(),
+        ]);
     }
 
     public function photo(ResidentRegistrationApplication $application): StreamedResponse

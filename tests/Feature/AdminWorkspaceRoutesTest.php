@@ -68,7 +68,7 @@ test('audit pages accept legitimate filter queries and retain the protected JSON
     $this->actingAs(User::factory()->assignedOperations()->create(['role' => 'admin']))->getJson(route('admin.audit.index'))->assertForbidden();
 });
 
-test('the existing standalone request list remains available without redesigning its view', function () {
+test('the standalone request list remains available to document staff only', function () {
     $this->actingAs(User::factory()->assignedOperations()->create())->get(route('staff.document-requests.list'))
         ->assertOk()->assertViewIs('admin.document-requests.index');
     $this->actingAs(User::factory()->resident()->create())->get(route('staff.document-requests.list'))->assertForbidden();

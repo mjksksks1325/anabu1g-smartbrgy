@@ -38,9 +38,24 @@ class DocumentRequestController extends Controller
         Gate::authorize('viewAny', DocumentRequest::class);
 
         if (! $request->expectsJson()) {
-            $requests = DocumentRequest::query()->latest()->latest('id')->paginate(25);
+            // The full list page filters with the same lane and search rules as the certificates board.
+            $lane = in_array($request->query('lane'), self::BOARD_LANES, true) ? $request->query('lane') : null;
+            $search = trim($request->string('search')->limit(100, '')->toString());
+            $requests = DocumentRequest::query()
+                ->when($lane, fn (Builder $query, string $lane) => $this->whereLane($query, $lane))
+                ->tap(fn (Builder $query) => $this->whereSearch($query, $search))
+                ->latest()
+                ->latest('id')
+                ->paginate(25)
+                ->withQueryString();
 
-            return view('admin.document-requests.index', compact('requests'));
+            return view('admin.document-requests.index', [
+                'requests' => $requests,
+                'lane' => $lane,
+                'search' => $search,
+                'laneCounts' => $this->laneCounts(''),
+                'totalRequests' => DocumentRequest::query()->count(),
+            ]);
         }
 
         $filters = $request->validate([
