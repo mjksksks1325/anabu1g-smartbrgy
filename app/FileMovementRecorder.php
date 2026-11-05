@@ -12,7 +12,7 @@ class FileMovementRecorder
 {
     public function record(
         string $fileReference,
-        User $employee,
+        ?User $employee,
         string $action,
         CarbonInterface $occurredAt,
         ?CabinetDevice $cabinet = null,
@@ -25,7 +25,7 @@ class FileMovementRecorder
             throw new InvalidArgumentException('Unsupported file movement action.');
         }
 
-        if ($employee->isResidentAccount() || $employee->resident_id !== null) {
+        if ($employee !== null && ($employee->isResidentAccount() || $employee->resident_id !== null)) {
             throw new InvalidArgumentException('A barangay employee is required.');
         }
 
@@ -35,7 +35,7 @@ class FileMovementRecorder
             'rfid_tag' => $rfidTag,
             'cabinet_device_id' => $cabinet?->id,
             'drawer_reference' => $drawerReference,
-            'user_id' => $employee->id,
+            'user_id' => $employee?->id,
             'action' => $action,
             'occurred_at' => $occurredAt,
             'device_event_id' => $deviceEventId,

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\CabinetDevice;
 use App\Models\CabinetFile;
+use App\Models\CabinetFileEnrollmentRequest;
 use App\Models\CabinetReader;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -54,7 +55,11 @@ class CabinetFileController extends Controller
         ]);
 
         DB::transaction(function () use ($data, $request, $cabinetFile): void {
+            CabinetDevice::query()->whereIn('id', [$cabinetFile->cabinet_device_id, $data['cabinet_device_id']])->orderBy('id')->lockForUpdate()->get();
             $file = CabinetFile::query()->lockForUpdate()->findOrFail($cabinetFile->id);
+            if ($file->cabinet_device_id !== $cabinetFile->cabinet_device_id || $file->isRfidEnrollmentPending()) {
+                throw ValidationException::withMessages(['rfid_enrollment' => 'Cancel the pending enrollment and reload the folder before editing its details.']);
+            }
             $before = $file->only(['file_name', 'cabinet_device_id', 'drawer_reference', 'rfid_epc']);
             $file->fill([
                 'file_name' => trim($data['file_name']),
@@ -67,12 +72,94 @@ class CabinetFileController extends Controller
         return back()->with('status', 'Folder details updated.');
     }
 
+    public function requestRfidEnrollment(Request $request, CabinetFile $cabinetFile): RedirectResponse
+    {
+        return $this->queueRfidEnrollment($request, $cabinetFile, false);
+    }
+
+    public function replaceRfidTag(Request $request, CabinetFile $cabinetFile): RedirectResponse
+    {
+        return $this->queueRfidEnrollment($request, $cabinetFile, true);
+    }
+
+    private function queueRfidEnrollment(Request $request, CabinetFile $cabinetFile, bool $replace): RedirectResponse
+    {
+        abort_unless($request->user()->hasAdministrativeAccess(), 403);
+
+        DB::transaction(function () use ($request, $cabinetFile, $replace): void {
+            CabinetDevice::query()->whereKey($cabinetFile->cabinet_device_id)->lockForUpdate()->firstOrFail();
+            $file = CabinetFile::query()->lockForUpdate()->findOrFail($cabinetFile->id);
+            if ($file->cabinet_device_id !== $cabinetFile->cabinet_device_id || ! $file->is_active || $file->isRfidEnrolled() !== $replace) {
+                throw ValidationException::withMessages(['rfid_enrollment' => 'Use Enroll RFID tag for an active unregistered folder, or Replace tag for an enrolled folder.']);
+            }
+            CabinetFileEnrollmentRequest::expireForCabinet($file->cabinet_device_id);
+            if (CabinetFileEnrollmentRequest::query()->where('cabinet_device_id', $file->cabinet_device_id)->where('status', CabinetFileEnrollmentRequest::PENDING)->where('expires_at', '>', now())->exists()) {
+                throw ValidationException::withMessages(['rfid_enrollment' => 'This cabinet already has a pending enrollment. Finish or cancel it before enrolling another folder.']);
+            }
+
+            $reader = CabinetReader::query()
+                ->where('cabinet_device_id', $file->cabinet_device_id)
+                ->where('drawer_reference', $file->drawer_reference)
+                ->where('is_active', true)
+                ->first();
+
+            if ($reader === null) {
+                throw ValidationException::withMessages([
+                    'rfid_enrollment' => 'Save an active YRM100 reader mapping for this drawer first.',
+                ]);
+            }
+
+            $enrollment = CabinetFileEnrollmentRequest::query()->create([
+                'request_id' => (string) Str::uuid(),
+                'cabinet_file_id' => $file->id,
+                'cabinet_device_id' => $file->cabinet_device_id,
+                'cabinet_reader_id' => $reader->id,
+                'reader_identifier' => $reader->reader_identifier,
+                'folder_snapshot' => ['file_reference' => Str::upper($file->file_reference), 'file_name' => $file->file_name, 'drawer_reference' => $file->drawer_reference],
+                'status' => CabinetFileEnrollmentRequest::PENDING,
+                'requested_by' => $request->user()->id,
+                'expires_at' => now()->addMinutes(10),
+            ]);
+            $this->recordAudit($request, 'admin.cabinet-files.enrollment-requested', $file->file_reference, null, [
+                'request_id' => $enrollment->request_id, 'drawer_reference' => $file->drawer_reference, 'replace_tag' => $replace,
+            ]);
+        });
+
+        return back()->with('status', 'RFID enrollment queued for 10 minutes. Place ONLY this folder tag inside its assigned drawer.');
+    }
+
+    public function cancelRfidEnrollment(Request $request, CabinetFile $cabinetFile): RedirectResponse
+    {
+        $data = $request->validate(['request_id' => ['required', 'uuid']]);
+        DB::transaction(function () use ($request, $cabinetFile, $data): void {
+            CabinetDevice::query()->whereKey($cabinetFile->cabinet_device_id)->lockForUpdate()->firstOrFail();
+            $enrollment = CabinetFileEnrollmentRequest::query()->where('cabinet_file_id', $cabinetFile->id)
+                ->where('cabinet_device_id', $cabinetFile->cabinet_device_id)->where('request_id', $data['request_id'])->lockForUpdate()->firstOrFail();
+            if ($enrollment->status === CabinetFileEnrollmentRequest::ENROLLED) {
+                throw ValidationException::withMessages(['rfid_enrollment' => 'An enrolled request cannot be cancelled. Use Replace tag to change its tag.']);
+            }
+            if ($enrollment->status === CabinetFileEnrollmentRequest::PENDING) {
+                $enrollment->status = $enrollment->isPending() ? CabinetFileEnrollmentRequest::CANCELLED : CabinetFileEnrollmentRequest::EXPIRED;
+                $enrollment->save();
+                $this->recordAudit($request, 'admin.cabinet-files.enrollment-cancelled', $cabinetFile->file_reference, null, ['request_id' => $enrollment->request_id, 'status' => $enrollment->status]);
+            }
+        });
+
+        return back()->with('status', 'RFID enrollment is no longer pending. The current tag was retained.');
+    }
+
     public function archive(Request $request, CabinetFile $cabinetFile): JsonResponse
     {
         DB::transaction(function () use ($request, $cabinetFile): void {
+            CabinetDevice::query()->whereKey($cabinetFile->cabinet_device_id)->lockForUpdate()->firstOrFail();
             $file = CabinetFile::query()->lockForUpdate()->findOrFail($cabinetFile->id);
+            abort_if($file->cabinet_device_id !== $cabinetFile->cabinet_device_id, 409, 'The folder changed. Reload it before archiving.');
             $before = ['is_active' => $file->is_active];
             $file->is_active = false;
+            if ($file->isRfidEnrollmentPending()) {
+                $file->latestEnrollmentRequest->update(['status' => CabinetFileEnrollmentRequest::CANCELLED]);
+                $this->recordAudit($request, 'admin.cabinet-files.enrollment-cancelled', $file->file_reference, null, ['request_id' => $file->latestEnrollmentRequest->request_id]);
+            }
             $file->save();
             $this->recordAudit($request, 'admin.cabinet-files.archived', $file->file_reference, $before, ['is_active' => false]);
         });
@@ -120,6 +207,10 @@ class CabinetFileController extends Controller
         }
 
         DB::transaction(function () use ($data, $request, $cabinet): void {
+            CabinetDevice::query()->whereKey($cabinet->id)->lockForUpdate()->firstOrFail();
+            if (CabinetFileEnrollmentRequest::query()->where('cabinet_device_id', $cabinet->id)->where('status', CabinetFileEnrollmentRequest::PENDING)->where('expires_at', '>', now())->exists()) {
+                throw ValidationException::withMessages(['rfid_enrollment' => 'Finish or cancel the pending enrollment before changing reader mapping.']);
+            }
             $before = $cabinet->readers()
                 ->orderBy('drawer_reference')
                 ->get(['reader_identifier', 'drawer_reference'])
@@ -144,10 +235,13 @@ class CabinetFileController extends Controller
             $this->recordAudit($request, 'admin.cabinet-readers.drawer-mapping-updated', $cabinet->identifier, $before, $after);
         });
 
-        return back()->with('status', 'YRM100 reader aliases are saved for each drawer. Hardware connection remains pending until the Raspberry Pi code is available.');
+        return back()->with('status', 'YRM100 reader aliases are saved for each drawer. Connection status will update after the Raspberry Pi reports both readers.');
     }
 
-    /** @param array<string, mixed>|null $before @param array<string, mixed>|null $after */
+    /**
+     * @param  array<string, mixed>|null  $before
+     * @param  array<string, mixed>|null  $after
+     */
     private function recordAudit(Request $request, string $action, string $record, ?array $before, ?array $after): void
     {
         DB::table('administrative_audits')->insert([

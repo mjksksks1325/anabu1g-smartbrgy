@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\DocumentRequest;
+use App\Models\FileMovementEvent;
 use App\Models\Incident;
 use App\Models\IssuedCertificate;
 use App\Models\Resident;
@@ -30,6 +31,15 @@ class DashboardController extends Controller
         $incidents = $user->hasAnyPermission(['incidents.view', 'vawc.view']);
 
         $recentRequests = $documents ? $this->recentDocumentRequestActivity() : [];
+        $recentFileAlerts = $user->canTrackRfidFiles() ? FileMovementEvent::query()->whereNull('user_id')
+            ->latest('occurred_at')->latest('id')->limit(30)->get()
+            ->map(fn (FileMovementEvent $movement): array => [
+                'type' => 'file_movement', 'record_id' => $movement->id, 'reference' => $movement->file_reference,
+                'title' => 'Folder moved with no cabinet access',
+                'detail' => $movement->file_reference.' — '.ucfirst($movement->action),
+                'url' => route('staff.rfid-files.index', ['search' => $movement->file_reference]).'#movement-'.$movement->id,
+                'occurred_at' => $movement->occurred_at,
+            ]) : collect();
         $recentIncidents = $incidents ? Incident::query()->visibleTo($user)
             ->latest()
             ->limit(30)
@@ -71,7 +81,7 @@ class DashboardController extends Controller
                 ->groupBy('document_type')
                 ->orderByDesc('aggregate')
                 ->pluck('aggregate', 'document_type') : [],
-            'recent_activity' => Collection::make([...$recentRequests, ...$recentIncidents, ...$recentApplications])
+            'recent_activity' => Collection::make([...$recentRequests, ...$recentIncidents, ...$recentApplications, ...$recentFileAlerts])
                 ->sortByDesc('occurred_at')
                 ->take(30)
                 ->values()

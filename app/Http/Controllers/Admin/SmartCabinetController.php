@@ -16,7 +16,7 @@ class SmartCabinetController extends Controller
             'cabinets' => CabinetDevice::query()->with('readers')->orderBy('identifier')->paginate(15),
             'cabinetOptions' => CabinetDevice::query()->orderBy('name')->get(['id', 'name']),
             'files' => CabinetFile::query()
-                ->with('cabinetDevice:id,identifier,name')
+                ->with(['cabinetDevice:id,identifier,name', 'latestEnrollmentRequest'])
                 ->when($request->query('folder_status') === 'archived', fn ($query) => $query->where('is_active', false), fn ($query) => $query->where('is_active', true))
                 ->orderBy('file_reference')
                 ->paginate(20, ['*'], 'folders_page')

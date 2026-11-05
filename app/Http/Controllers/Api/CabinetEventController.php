@@ -29,6 +29,8 @@ class CabinetEventController extends Controller
             'component_health.arduino' => ['sometimes', Rule::in(['connected', 'disconnected'])],
             'component_health.camera' => ['sometimes', Rule::in(['connected', 'disconnected'])],
             'component_health.folder_rfid' => ['sometimes', Rule::in(['connected', 'disconnected'])],
+            'component_health.folder_rfid_drawer_1' => ['sometimes', Rule::in(['connected', 'disconnected'])],
+            'component_health.folder_rfid_drawer_2' => ['sometimes', Rule::in(['connected', 'disconnected'])],
         ]);
 
         $state = $cabinet->cabinet_state ?? [];
@@ -72,21 +74,24 @@ class CabinetEventController extends Controller
             'file_reference' => ['required', 'string', 'max:255'],
             'file_name' => ['nullable', 'string', 'max:255'],
             'rfid_tag' => ['nullable', 'string', 'max:255'],
-            'drawer_reference' => ['nullable', 'string', 'max:255'],
-            'rpi_employee_id' => ['required', 'string', 'max:32', 'regex:/\A[A-Z][A-Z0-9_-]*\z/'],
+            'drawer_reference' => ['nullable', Rule::in(['drawer_1', 'drawer_2'])],
+            'rpi_employee_id' => ['nullable', 'string', 'max:32', 'regex:/\A[A-Z][A-Z0-9_-]*\z/'],
             'action' => ['required', Rule::in([FileMovementEvent::REMOVED, FileMovementEvent::RETURNED])],
             'occurred_at' => ['required', 'date'],
         ]);
 
-        $access = EmployeeCabinetAccess::query()
-            ->with('user')
-            ->where('rpi_employee_id', $data['rpi_employee_id'])
-            ->first();
-        $employee = $access?->user;
+        $employee = null;
+        if (isset($data['rpi_employee_id'])) {
+            $access = EmployeeCabinetAccess::query()
+                ->with('user')
+                ->where('rpi_employee_id', $data['rpi_employee_id'])
+                ->first();
+            $employee = $access?->user;
 
-        if (! $employee || ! in_array($employee->role, ['admin', 'captain', 'staff'], true)
-            || ! $access->isEffective()) {
-            throw ValidationException::withMessages(['rpi_employee_id' => 'An eligible cabinet employee is required.']);
+            if (! $employee || ! in_array($employee->role, ['admin', 'captain', 'staff'], true)
+                || ! $access->isEffective()) {
+                throw ValidationException::withMessages(['rpi_employee_id' => 'An eligible cabinet employee is required.']);
+            }
         }
 
         $movement = $recorder->record(
@@ -104,7 +109,7 @@ class CabinetEventController extends Controller
         if (! $movement->wasRecentlyCreated && (
             $movement->file_reference !== $data['file_reference']
             || $movement->action !== $data['action']
-            || $movement->user_id !== $employee->id
+            || $movement->user_id !== $employee?->id
             || $movement->cabinet_device_id !== $cabinet->id
         )) {
             abort(409, 'The event ID has already been used for a different movement.');
@@ -116,6 +121,7 @@ class CabinetEventController extends Controller
             'id' => $movement->id,
             'event_id' => $data['event_id'],
             'duplicate' => ! $movement->wasRecentlyCreated,
+            'is_unattributed' => $movement->user_id === null,
         ], $movement->wasRecentlyCreated ? 201 : 200);
     }
 

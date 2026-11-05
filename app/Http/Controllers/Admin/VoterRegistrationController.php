@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\CreateVoterRegistration;
 use App\Actions\ReadVotersCsv;
 use App\Actions\WriteRecordsSpreadsheet;
 use App\Http\Controllers\Controller;
@@ -17,7 +18,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
@@ -27,6 +27,8 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class VoterRegistrationController extends Controller
 {
+    public function __construct(private CreateVoterRegistration $createVoterRegistration) {}
+
     public function index(Request $request): JsonResponse
     {
         Gate::authorize('viewAny', VoterRegistration::class);
@@ -99,7 +101,7 @@ class VoterRegistrationController extends Controller
     public function store(StoreVoterRegistrationRequest $request): JsonResponse
     {
         $validated = $request->validated();
-        $registration = $this->createVoter($request, $validated);
+        $registration = $this->createVoterRegistration->handle($request, $validated);
 
         return response()->json([
             'message' => 'Voter record added securely.',
@@ -152,7 +154,7 @@ class VoterRegistrationController extends Controller
                     $rules = (new StoreVoterRegistrationRequest)->rules();
                     $rules['registration_date'] = ['required', 'date_format:Y-m-d', 'before_or_equal:today'];
                     $validated = Validator::make($data, $rules)->validate();
-                    $this->createVoter($request, $validated);
+                    $this->createVoterRegistration->handle($request, $validated);
                 }
             }, 3);
         } catch (ValidationException $exception) {
@@ -180,57 +182,6 @@ class VoterRegistrationController extends Controller
     {
         return VoterRegistration::query()->where('resident_id', $resident->id)->exists()
             || ($comelecVoterNumber !== '' && VoterRegistration::query()->where('comelec_voter_number_hash', VoterRegistration::identifierHash($comelecVoterNumber))->exists());
-    }
-
-    /** @param array<string, mixed> $validated */
-    private function createVoter(Request $request, array $validated): VoterRegistration
-    {
-        $identifier = $validated['comelec_voter_number'];
-        $identifierHash = VoterRegistration::identifierHash($identifier);
-
-        if (VoterRegistration::query()->where('comelec_voter_number_hash', $identifierHash)->exists()) {
-            throw ValidationException::withMessages([
-                'comelec_voter_number' => 'This COMELEC voter number is already registered.',
-            ]);
-        }
-
-        $registration = DB::transaction(function () use ($request, $validated, $identifier, $identifierHash): VoterRegistration {
-            $resident = Resident::query()
-                ->whereKey($validated['resident_id'])
-                ->lockForUpdate()
-                ->firstOrFail();
-            $registrationDate = Carbon::parse($validated['registration_date']);
-
-            if ($resident->date_of_birth->diffInYears($registrationDate) < 15) {
-                throw ValidationException::withMessages([
-                    'resident_id' => 'The resident must be at least 15 years old on the registration date.',
-                ]);
-            }
-
-            if ($resident->status !== 'active') {
-                throw ValidationException::withMessages([
-                    'resident_id' => 'Only active residents can be added to the voters list.',
-                ]);
-            }
-
-            $registration = VoterRegistration::query()->create([
-                ...$validated,
-                'comelec_voter_number' => $identifier,
-                'comelec_voter_number_hash' => $identifierHash,
-                'created_by' => $request->user()->id,
-            ]);
-
-            $this->recordAudit($request, $registration, 'created', [
-                'resident_id' => $resident->id,
-                'voter_number' => $registration->voter_number,
-                'masked_comelec_voter_number' => $registration->masked_comelec_voter_number,
-                'status' => $registration->status,
-            ]);
-
-            return $registration;
-        });
-
-        return $registration;
     }
 
     public function update(

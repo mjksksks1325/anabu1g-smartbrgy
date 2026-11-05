@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Carbon;
 
 /**
  * @property string $request_id
@@ -12,7 +12,8 @@ use Illuminate\Support\Carbon;
  * @property string $rpi_employee_id
  * @property bool $remove_rfid
  * @property bool $remove_face
- * @property Carbon|null $acknowledged_at
+ * @property CarbonInterface|null $acknowledged_at
+ * @property CarbonInterface|null $paused_at
  */
 class CabinetCredentialRevocation extends Model
 {
@@ -38,6 +39,7 @@ class CabinetCredentialRevocation extends Model
             'remove_rfid' => 'boolean',
             'remove_face' => 'boolean',
             'acknowledged_at' => 'datetime',
+            'paused_at' => 'datetime',
         ];
     }
 }

@@ -2,6 +2,7 @@
 
 use App\Models\CabinetDevice;
 use App\Models\EmployeeCabinetAccess;
+use App\Models\FileMovementEvent;
 use App\Models\Resident;
 use App\Models\User;
 
@@ -25,12 +26,39 @@ function cabinetMovementPayload(array $overrides = []): array
         'event_id' => 'scan-001',
         'file_reference' => 'F-001',
         'file_name' => 'Budget Folder',
-        'drawer_reference' => '2',
+        'drawer_reference' => 'drawer_2',
         'rpi_employee_id' => 'EMP001',
         'action' => 'removed',
         'occurred_at' => '2026-09-24T08:00:00+08:00',
     ], $overrides);
 }
+
+it('records unattributed folder movements as alerts and preserves duplicate event handling', function () {
+    $cabinet = CabinetDevice::factory()->create(['api_token_hash' => hash('sha256', 'device-token')]);
+    $payload = cabinetMovementPayload(['rpi_employee_id' => null, 'rfid_tag' => 'E280689400005031A1C4A97C']);
+    $this->withHeader('X-Device-Token', 'device-token')->postJson(route('api.iot.cabinets.movements', $cabinet), $payload)
+        ->assertCreated()->assertJsonPath('is_unattributed', true)->assertJsonPath('duplicate', false);
+    $movement = FileMovementEvent::query()->sole();
+    expect($movement)->user_id->toBeNull()->drawer_reference->toBe('drawer_2')->rfid_tag->toBe('E280689400005031A1C4A97C');
+    $this->postJson(route('api.iot.cabinets.movements', $cabinet), $payload)->assertOk()->assertJsonPath('duplicate', true);
+    $this->postJson(route('api.iot.cabinets.movements', $cabinet), cabinetMovementPayload(['rpi_employee_id' => null, 'action' => 'returned']))->assertConflict();
+    $this->assertDatabaseCount('file_movement_events', 1);
+
+    $this->actingAs(User::factory()->assignedOperations()->create())->get(route('staff.rfid-files.index'))->assertOk()
+        ->assertSee('Folder moved with no cabinet access')->assertSee('movement-'.$movement->id);
+    $this->getJson(route('staff.dashboard.summary'))->assertOk()->assertJsonPath('recent_activity.0.type', 'file_movement')
+        ->assertJsonPath('recent_activity.0.title', 'Folder moved with no cabinet access')
+        ->assertJsonPath('recent_activity.0.url', route('staff.rfid-files.index', ['search' => 'F-001']).'#movement-'.$movement->id);
+    $this->actingAs(User::factory()->create(['staff_permissions' => ['dashboard.view']]))->getJson(route('staff.dashboard.summary'))
+        ->assertOk()->assertJsonCount(0, 'recent_activity');
+});
+
+it('rejects legacy drawer labels while accepting the two configured drawer references', function () {
+    $cabinet = CabinetDevice::factory()->create(['api_token_hash' => hash('sha256', 'device-token')]);
+    $this->withHeader('X-Device-Token', 'device-token')->postJson(route('api.iot.cabinets.movements', $cabinet), cabinetMovementPayload(['rpi_employee_id' => null, 'drawer_reference' => '2']))
+        ->assertUnprocessable()->assertJsonValidationErrors('drawer_reference');
+    $this->postJson(route('api.iot.cabinets.movements', $cabinet), cabinetMovementPayload(['rpi_employee_id' => null, 'drawer_reference' => 'drawer_1']))->assertCreated();
+});
 
 it('records a mapped employee removal without a Laravel user ID or folder RFID tag', function () {
     $cabinet = CabinetDevice::factory()->create(['identifier' => 'CAB-01', 'api_token_hash' => hash('sha256', 'local-device-token')]);
@@ -201,6 +229,15 @@ it('accepts a heartbeat and updates the cabinet connection state', function () {
         ->assertOk()->assertJsonPath('state.drawers.A-1', 'open');
 
     $this->assertDatabaseEmpty('file_movement_events');
+});
+
+it('preserves individual drawer health from the authenticated Pi heartbeat', function () {
+    $cabinet = CabinetDevice::factory()->create(['api_token_hash' => hash('sha256', 'device-token')]);
+    $health = ['folder_rfid' => 'connected', 'folder_rfid_drawer_1' => 'connected', 'folder_rfid_drawer_2' => 'disconnected'];
+    $this->withHeader('X-Device-Token', 'device-token')->postJson(route('api.iot.cabinets.heartbeat', $cabinet), ['component_health' => $health])
+        ->assertOk();
+    expect($cabinet->fresh()->component_health)->toBe($health);
+    expect(array_column($cabinet->fresh()->folderReaderHealthItems(), 'status'))->toBe(['Connected', 'Disconnected']);
 });
 
 it('provisions a cabinet token and refuses accidental replacement', function () {

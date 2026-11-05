@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\VoterRegistration;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /** @return array<string, string> */
@@ -42,6 +43,140 @@ function profilingPayload(array $preview): array
 {
     return ['token' => $preview['token'], 'mapping' => $preview['mapping'], 'rows' => array_map(fn (array $row): array => Arr::only($row, ['id', 'fields', 'is_head', 'action', 'resident_id', 'confirm_duplicate']), $preview['rows'])];
 }
+
+/** @return array<string, string> */
+function profilingVoterRow(array $overrides = []): array
+{
+    return profilingRow(array_replace([
+        'is_registered_voter' => 'Yes', 'comelec_voter_number' => 'TEST-000001',
+        'precinct_number' => '0123A', 'cluster_number' => '045', 'registration_date' => '2026-05-12',
+    ], $overrides));
+}
+
+it('imports voters with household residents and leaves nonvoters out of the voter registry', function () {
+    $this->travelTo('2026-11-04');
+    $staff = User::factory()->assignedOperations()->create();
+    $this->actingAs($staff);
+    $preview = $this->postJson(route('staff.resident-profiling-imports.preview'), ['file' => profilingFile([
+        profilingVoterRow(),
+        profilingVoterRow(['first_name' => 'Maria', 'is_household_head' => 'no', 'relationship_to_household_head' => 'Spouse', 'is_registered_voter' => 'No', 'comelec_voter_number' => '', 'precinct_number' => '', 'cluster_number' => '', 'registration_date' => '']),
+    ])])->assertOk()->assertJsonPath('summary.voters', 1)->assertJsonPath('summary.invalid', 0)->json();
+    $this->assertDatabaseCount('voter_registrations', 0);
+
+    $this->postJson(route('staff.resident-profiling-imports.store'), profilingPayload($preview))
+        ->assertCreated()->assertJsonPath('result.created', 2)->assertJsonPath('result.voters', 1);
+
+    $this->assertDatabaseCount('residents', 2);
+    $this->assertDatabaseCount('voter_registrations', 1);
+    $registration = VoterRegistration::query()->sole();
+    expect($registration)->created_by->toBe($staff->id)->comelec_voter_number->toBe('TEST-000001')->integrity_valid->toBeTrue();
+    expect($registration->audits()->sole())->actor_id->toBe($staff->id)->action->toBe('created');
+    expect(DB::table('voter_registrations')->value('comelec_voter_number'))->not->toBe('TEST-000001');
+    $this->getJson(route('staff.voter-registrations.index'))->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.resident_name', 'Juan Dela Cruz');
+});
+
+it('adds only a voter record for a previously imported resident without changing the household', function () {
+    $this->travelTo('2026-11-04');
+    $household = Household::factory()->create();
+    $resident = Resident::factory()->create(['first_name' => 'Juan', 'middle_name' => null, 'last_name' => 'Dela Cruz', 'suffix' => null, 'date_of_birth' => '1980-05-14', 'household_id' => $household->id, 'is_household_head' => true, 'special_groups' => ['PWD'], 'address' => 'Verified address']);
+    $before = $resident->fresh()->getRawOriginal();
+    $this->actingAs(User::factory()->assignedOperations()->create());
+    $file = fn (): UploadedFile => profilingFile([profilingVoterRow(['household_group' => '', 'address' => 'Different upload address', 'special_groups' => '["Solo Parent"]'])]);
+    $preview = $this->postJson(route('staff.resident-profiling-imports.preview'), ['file' => $file()])->assertOk()
+        ->assertJsonPath('rows.0.action', 'voter_only')->assertJsonPath('summary.households', 0)->assertJsonPath('summary.invalid', 0)->json();
+
+    $this->postJson(route('staff.resident-profiling-imports.store'), profilingPayload($preview))->assertCreated()
+        ->assertJsonPath('result.created', 0)->assertJsonPath('result.linked', 0)->assertJsonPath('result.voters', 1);
+    expect($resident->fresh()->getRawOriginal())->toBe($before);
+    $this->assertDatabaseCount('households', 1);
+    $this->assertDatabaseCount('residents', 1);
+
+    $repeat = $this->postJson(route('staff.resident-profiling-imports.preview'), ['file' => $file()])->assertOk()
+        ->assertJsonPath('rows.0.action', 'skip')->assertJsonPath('summary.voters', 0)->json();
+    $this->postJson(route('staff.resident-profiling-imports.store'), profilingPayload($repeat))->assertCreated()->assertJsonPath('result.voters', 0);
+    $this->assertDatabaseCount('voter_registrations', 1);
+    $this->assertDatabaseCount('voter_registration_audits', 1);
+});
+
+it('preserves an existing voter record when an imported row says no', function () {
+    $resident = Resident::factory()->create(['first_name' => 'Juan', 'middle_name' => null, 'last_name' => 'Dela Cruz', 'suffix' => null, 'date_of_birth' => '1980-05-14']);
+    $voter = VoterRegistration::factory()->for($resident)->create(['status' => 'transferred', 'precinct_number' => 'VERIFIED']);
+    $before = $voter->fresh()->getRawOriginal();
+    $this->actingAs(User::factory()->assignedOperations()->create());
+    $preview = $this->postJson(route('staff.resident-profiling-imports.preview'), ['file' => profilingFile([profilingRow(['is_registered_voter' => 'No'])])])
+        ->assertOk()->assertJsonPath('rows.0.action', 'skip')->json();
+    $this->postJson(route('staff.resident-profiling-imports.store'), profilingPayload($preview))->assertCreated()->assertJsonPath('result.voters', 0);
+    expect($voter->fresh()->getRawOriginal())->toBe($before);
+});
+
+it('requires voter import permission even when resident import is permitted', function () {
+    $this->actingAs(User::factory()->create(['staff_permissions' => ['records.view', 'records.import']]));
+    $preview = $this->postJson(route('staff.resident-profiling-imports.preview'), ['file' => profilingFile([profilingVoterRow()])])->assertOk()
+        ->assertJsonPath('summary.invalid', 1)->assertJsonPath('rows.0.errors.0', 'Voters import permission is required to add voter records.')->json();
+    $this->postJson(route('staff.resident-profiling-imports.store'), profilingPayload($preview))->assertUnprocessable()->assertJsonValidationErrors('rows.0');
+    $this->assertDatabaseCount('residents', 0);
+    $this->assertDatabaseCount('voter_registrations', 0);
+});
+
+it('rejects incomplete invalid or underage household voter details before creating any records', function (array $changes) {
+    $this->travelTo('2026-11-04');
+    $this->actingAs(User::factory()->assignedOperations()->create());
+    $preview = $this->postJson(route('staff.resident-profiling-imports.preview'), ['file' => profilingFile([profilingVoterRow($changes)])])
+        ->assertOk()->assertJsonPath('summary.invalid', 1)->json();
+    $this->postJson(route('staff.resident-profiling-imports.store'), profilingPayload($preview))->assertUnprocessable()->assertJsonValidationErrors('rows.0');
+    $this->assertDatabaseCount('residents', 0);
+    $this->assertDatabaseCount('households', 0);
+    $this->assertDatabaseCount('voter_registrations', 0);
+})->with([
+    'missing registration fields' => [['comelec_voter_number' => '', 'precinct_number' => '', 'cluster_number' => '', 'registration_date' => '']],
+    'invalid identifier' => [['comelec_voter_number' => '<script>']],
+    'future registration' => [['registration_date' => '2026-11-05']],
+    'ambiguous date format' => [['registration_date' => '05/12/2026']],
+    'under fifteen at registration' => [['date_of_birth' => '2011-05-13']],
+    'unknown voter flag' => [['is_registered_voter' => 'Maybe']],
+    'details supplied for a nonvoter' => [['is_registered_voter' => 'No']],
+]);
+
+it('rejects duplicate voter identifiers within a profiling file or from an existing voter', function (bool $alreadyRegistered) {
+    $this->travelTo('2026-11-04');
+    $rows = [profilingVoterRow()];
+    if ($alreadyRegistered) {
+        VoterRegistration::factory()->create(['comelec_voter_number' => 'TEST-000001', 'comelec_voter_number_hash' => VoterRegistration::identifierHash('TEST-000001')]);
+    } else {
+        $rows[] = profilingVoterRow(['first_name' => 'Maria', 'is_household_head' => 'no', 'relationship_to_household_head' => 'Spouse']);
+    }
+    $this->actingAs(User::factory()->assignedOperations()->create());
+    $preview = $this->postJson(route('staff.resident-profiling-imports.preview'), ['file' => profilingFile($rows)])->assertOk()->assertJsonPath('summary.invalid', 1)->json();
+    $this->postJson(route('staff.resident-profiling-imports.store'), profilingPayload($preview))->assertUnprocessable();
+    $this->assertDatabaseCount('households', 0);
+    $this->assertDatabaseCount('voter_registrations', $alreadyRegistered ? 1 : 0);
+})->with([false, true]);
+
+it('rejects a voter only action that targets an unrelated resident', function () {
+    $resident = Resident::factory()->create();
+    $this->actingAs(User::factory()->assignedOperations()->create());
+    $preview = $this->postJson(route('staff.resident-profiling-imports.preview'), ['file' => profilingFile([profilingVoterRow()])])->json();
+    $payload = profilingPayload($preview);
+    $payload['rows'][0]['action'] = 'voter_only';
+    $payload['rows'][0]['resident_id'] = $resident->id;
+    $this->postJson(route('staff.resident-profiling-imports.store'), $payload)->assertUnprocessable()->assertJsonValidationErrors('rows.0');
+    $this->assertDatabaseCount('voter_registrations', 0);
+});
+
+it('rolls back residents households voters and audits if a voter becomes invalid after review', function () {
+    $this->travelTo('2026-11-04');
+    $resident = Resident::factory()->create(['first_name' => 'Existing', 'middle_name' => null, 'last_name' => 'Dela Cruz', 'suffix' => null, 'date_of_birth' => '1980-05-14']);
+    $this->actingAs(User::factory()->assignedOperations()->create());
+    $preview = $this->postJson(route('staff.resident-profiling-imports.preview'), ['file' => profilingFile([
+        profilingVoterRow(), profilingVoterRow(['first_name' => 'Existing', 'comelec_voter_number' => 'TEST-000002']),
+    ])])->assertJsonPath('summary.invalid', 0)->json();
+    $resident->update(['status' => 'inactive']);
+    expect(fn () => app(ImportHouseholdProfiling::class)->save($preview, request()))->toThrow(ValidationException::class);
+    $this->assertDatabaseCount('residents', 1);
+    $this->assertDatabaseCount('households', 0);
+    $this->assertDatabaseCount('voter_registrations', 0);
+    $this->assertDatabaseCount('voter_registration_audits', 0);
+});
 
 it('places import and management in Resident Records and keeps Demographics read only', function () {
     $response = $this->actingAs(User::factory()->assignedOperations()->create())->get(route('staff.dashboard'))->assertOk();
@@ -79,6 +214,64 @@ it('accepts browser multipart uploads with blank default purok and returns missi
 
     $this->assertDatabaseCount('residents', 0);
     $this->assertDatabaseCount('households', 0);
+});
+
+it('imports special groups from a mapped JSON CSV column and exposes them in resident filters', function () {
+    $groups = ['PWD', 'Solo Parent', 'Indigenous People', '4Ps Beneficiary', 'Teenage Mother', 'Out-of-School Youth', 'Unemployed Adult', 'Malnourished Child'];
+    $this->actingAs(User::factory()->assignedOperations()->create());
+    $preview = $this->postJson(route('staff.resident-profiling-imports.preview'), [
+        'file' => profilingFile([profilingRow(['special_groups' => json_encode($groups)])]),
+    ])->assertOk()->assertJsonPath('summary.invalid', 0)->json();
+
+    expect($preview['mapping'])->toHaveKey('special_groups');
+    $this->postJson(route('staff.resident-profiling-imports.review'), profilingPayload($preview))->assertOk()->assertJsonPath('summary.ready', 1);
+    $this->postJson(route('staff.resident-profiling-imports.store'), profilingPayload($preview))->assertCreated();
+
+    expect(Resident::query()->sole()->special_groups)->toBe($groups);
+    $this->getJson(route('staff.residents.index', ['special_group' => 'PWD']))->assertOk()->assertJsonPath('total', 1)->assertJsonPath('data.0.special_groups', $groups);
+});
+
+it('flags invalid special groups in preview and returns 422 without saving the import', function (string $groups, string $message) {
+    $this->actingAs(User::factory()->assignedOperations()->create());
+    $preview = $this->postJson(route('staff.resident-profiling-imports.preview'), [
+        'file' => profilingFile([profilingRow(['special_groups' => $groups])]),
+    ])->assertOk()->assertJsonPath('summary.invalid', 1)->json();
+
+    expect(implode(' ', $preview['rows'][0]['errors']))->toContain($message);
+    $this->postJson(route('staff.resident-profiling-imports.store'), profilingPayload($preview))->assertUnprocessable()->assertJsonValidationErrors('rows.0');
+    $this->assertDatabaseCount('residents', 0);
+    $this->assertDatabaseCount('households', 0);
+})->with([
+    'malformed JSON' => ['["PWD"', 'Special groups must be a JSON array'],
+    'JSON object' => ['{"group":"PWD"}', 'Special groups must be a JSON array'],
+    'JSON scalar' => ['"PWD"', 'Special groups must be a JSON array'],
+    'non-string member' => ['["PWD", 4]', 'Special groups must be a JSON array'],
+    'unsupported group' => ['["Unsupported Group"]', 'Special groups contains an unsupported group'],
+]);
+
+it('rejects invalid special groups edited after a valid preview', function () {
+    $this->actingAs(User::factory()->assignedOperations()->create());
+    $preview = $this->postJson(route('staff.resident-profiling-imports.preview'), [
+        'file' => profilingFile([profilingRow(['special_groups' => '["PWD"]'])]),
+    ])->assertOk()->assertJsonPath('summary.invalid', 0)->json();
+    $payload = profilingPayload($preview);
+    $payload['rows'][0]['fields']['special_groups'] = '["Administrator"]';
+
+    $this->postJson(route('staff.resident-profiling-imports.store'), $payload)->assertUnprocessable();
+    $this->assertDatabaseCount('residents', 0);
+    $this->assertDatabaseCount('households', 0);
+});
+
+it('imports blank special groups as an empty list and removes repeated group names', function () {
+    $this->actingAs(User::factory()->assignedOperations()->create());
+    $preview = $this->postJson(route('staff.resident-profiling-imports.preview'), ['file' => profilingFile([
+        profilingRow(['special_groups' => '']),
+        profilingRow(['first_name' => 'Maria', 'household_group' => 'Family 2', 'special_groups' => '[" PWD ","PWD","Solo Parent"]']),
+    ])])->assertOk()->assertJsonPath('summary.invalid', 0)->json();
+
+    $this->postJson(route('staff.resident-profiling-imports.store'), profilingPayload($preview))->assertCreated();
+    expect(Resident::query()->where('first_name', 'Juan')->sole()->special_groups)->toBe([]);
+    expect(Resident::query()->where('first_name', 'Maria')->sole()->special_groups)->toBe(['PWD', 'Solo Parent']);
 });
 
 it('imports optional household names without grouping separate families by their name', function () {
@@ -193,11 +386,11 @@ it('keeps an unreadable birth date for correction and explains invalid contact n
 });
 
 it('links an existing resident without overwriting verified fields or request history', function () {
-    $existing = Resident::factory()->create(['first_name' => 'Juan', 'middle_name' => null, 'last_name' => 'Dela Cruz', 'suffix' => null, 'date_of_birth' => '1980-05-14', 'address' => 'Verified address', 'contact_number' => '09170000000']);
+    $existing = Resident::factory()->create(['first_name' => 'Juan', 'middle_name' => null, 'last_name' => 'Dela Cruz', 'suffix' => null, 'date_of_birth' => '1980-05-14', 'address' => 'Verified address', 'contact_number' => '09170000000', 'special_groups' => ['PWD']]);
     $request = DocumentRequest::query()->create(['resident_id' => $existing->id, 'reference_code' => 'REQ-PROFILE-LINK', 'document_type' => 'Barangay Clearance', 'full_name' => $existing->full_name, 'address' => $existing->address, 'status' => 'pending']);
     VoterRegistration::factory()->for($existing)->create(['status' => 'active']);
     $this->actingAs(User::factory()->assignedOperations()->create());
-    $preview = $this->postJson(route('staff.resident-profiling-imports.preview'), ['file' => profilingFile([profilingRow(['address' => 'Uploaded different address'])])])->json();
+    $preview = $this->postJson(route('staff.resident-profiling-imports.preview'), ['file' => profilingFile([profilingRow(['address' => 'Uploaded different address', 'special_groups' => '["Solo Parent"]'])])])->json();
     $payload = profilingPayload($preview);
     $payload['rows'][0]['action'] = 'link';
     $payload['rows'][0]['resident_id'] = $existing->id;
@@ -205,7 +398,7 @@ it('links an existing resident without overwriting verified fields or request hi
     $this->postJson(route('staff.resident-profiling-imports.store'), $payload)->assertCreated()->assertJsonPath('result.linked', 1)->assertJsonPath('result.created', 0);
 
     $this->assertDatabaseCount('residents', 1);
-    expect($existing->fresh())->address->toBe('Verified address')->contact_number->toBe('09170000000')->is_household_head->toBeTrue();
+    expect($existing->fresh())->address->toBe('Verified address')->contact_number->toBe('09170000000')->special_groups->toBe(['PWD'])->is_household_head->toBeTrue();
     expect($request->fresh()->resident_id)->toBe($existing->id);
     $this->getJson(route('staff.residents.show', $existing))->assertJsonPath('document_requests.0.reference_code', 'REQ-PROFILE-LINK');
     $this->getJson(route('staff.puroks.index'))->assertJsonPath('demographics.households.registered_voters', 1);
@@ -266,7 +459,7 @@ it('rolls back earlier households and residents when a later linked record is ar
     $reviewed = $this->postJson(route('staff.resident-profiling-imports.review'), $payload)->assertJsonPath('summary.invalid', 0)->json();
     $existing->delete();
 
-    expect(fn () => app(ImportHouseholdProfiling::class)->save($reviewed))->toThrow(ValidationException::class);
+    expect(fn () => app(ImportHouseholdProfiling::class)->save($reviewed, request()))->toThrow(ValidationException::class);
     $this->assertDatabaseCount('households', 0);
     $this->assertDatabaseCount('residents', 1);
 });

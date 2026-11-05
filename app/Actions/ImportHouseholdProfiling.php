@@ -3,25 +3,32 @@
 namespace App\Actions;
 
 use App\Http\Requests\Admin\StoreResidentRequest;
+use App\Http\Requests\Admin\StoreVoterRegistrationRequest;
 use App\Models\Household;
 use App\Models\Purok;
 use App\Models\Resident;
+use App\Models\VoterRegistration;
 use Carbon\Carbon;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class ImportHouseholdProfiling
 {
-    public function __construct(private ResidentIdentity $identity, private ManageHouseholds $households) {}
+    private const VOTER_FIELDS = ['comelec_voter_number', 'precinct_number', 'cluster_number', 'registration_date'];
+
+    public function __construct(private ResidentIdentity $identity, private ManageHouseholds $households, private CreateVoterRegistration $voters) {}
 
     /** @return list<string> */
     public function fields(): array
     {
-        return ['household_group', 'household_number', 'household_name', 'is_household_head', 'relationship_to_household_head', 'resident_number', 'first_name', 'middle_name', 'last_name', 'suffix', 'date_of_birth', 'gender', 'civil_status', 'purok', 'address', 'contact_number', 'residency_type'];
+        return ['household_group', 'household_number', 'household_name', 'is_household_head', 'relationship_to_household_head', 'resident_number', 'first_name', 'middle_name', 'last_name', 'suffix', 'date_of_birth', 'gender', 'civil_status', 'purok', 'address', 'contact_number', 'residency_type', 'special_groups', 'is_registered_voter', ...self::VOTER_FIELDS];
     }
 
     /** @param list<string> $headers
@@ -50,7 +57,7 @@ class ImportHouseholdProfiling
     public function preview(array $raw, array $mapping, ?string $purok, array $edits = []): array
     {
         $rows = [];
-        $rules = Arr::only((new StoreResidentRequest)->rules(), ['first_name', 'middle_name', 'last_name', 'suffix', 'date_of_birth', 'gender', 'civil_status', 'purok', 'address', 'contact_number', 'residency_type']);
+        $rules = Arr::only((new StoreResidentRequest)->rules(), ['first_name', 'middle_name', 'last_name', 'suffix', 'date_of_birth', 'gender', 'civil_status', 'purok', 'address', 'contact_number', 'residency_type', 'special_groups', 'special_groups.*']);
         $rules += ['household_group' => ['nullable', 'string', 'max:100'], 'household_number' => ['nullable', 'string', 'max:100'], 'household_name' => ['nullable', 'string', 'max:150'], 'relationship_to_household_head' => ['nullable', 'string', 'max:100']];
         $edits = collect($edits)->keyBy('id');
         foreach ($raw['rows'] as $index => $values) {
@@ -69,6 +76,7 @@ class ImportHouseholdProfiling
                 'm', 'male' => 'Male', 'f', 'female' => 'Female', default => $fields['gender']
             };
             $fields['contact_number'] = Resident::normalizeContactNumber($fields['contact_number']);
+            $fields['comelec_voter_number'] = Str::upper(preg_replace('/\s+/u', '', $fields['comelec_voter_number']) ?? '');
             foreach (['middle_name', 'suffix'] as $nullable) {
                 $fields[$nullable] = $fields[$nullable] ?: null;
             }
@@ -80,11 +88,17 @@ class ImportHouseholdProfiling
             } catch (\Throwable) {
                 // Keep what was typed so staff can see and correct it; the date rule reports it as invalid.
             }
-            $validator = Validator::make($fields, $rules, (new StoreResidentRequest)->messages());
+            $validator = Validator::make(array_replace($fields, [
+                'special_groups' => $this->specialGroups($fields['special_groups']),
+            ]), $rules, array_replace((new StoreResidentRequest)->messages(), [
+                'special_groups.array' => 'Special groups must be a JSON array of group names, for example ["PWD","Solo Parent"].',
+                'special_groups.*.in' => 'Special groups contains an unsupported group.',
+            ]));
             $matches = collect();
             if (! $validator->errors()->hasAny(['first_name', 'last_name', 'date_of_birth'])) {
-                $matches = $this->identity->matches($fields)->map(fn (Resident $resident): array => [
+                $matches = $this->identity->matches($fields)->loadMissing('voterRegistration')->map(fn (Resident $resident): array => [
                     'id' => $resident->id, 'name' => $resident->full_name, 'resident_number' => $resident->resident_number, 'archived' => $resident->trashed(), 'can_head' => $resident->status === 'active',
+                    'date_of_birth' => $resident->date_of_birth->toDateString(), 'registered_voter' => $resident->voterRegistration !== null,
                     'exact' => $this->normalized($resident->middle_name) === $this->normalized($fields['middle_name']) && $this->normalized($resident->suffix) === $this->normalized($fields['suffix']),
                 ]);
             }
@@ -101,13 +115,31 @@ class ImportHouseholdProfiling
                 }
             }
             $alreadyExists = $matches->contains('exact', true);
+            $exactMatch = $matches->firstWhere('exact', true);
+            $registeredVoter = $this->registeredVoter($fields['is_registered_voter']);
             $action = $edit['action'] ?? match (true) {
                 $matches->isEmpty() => 'create',
+                $registeredVoter === true && $exactMatch !== null && ! $exactMatch['archived'] && $exactMatch['can_head'] && ! $exactMatch['registered_voter'] => 'voter_only',
                 $alreadyExists => 'skip',
                 default => 'resolve',
             };
-            $errors = [...($action === 'create' ? $validator->errors()->all() : Validator::make($fields, Arr::only($rules, ['household_group', 'household_number', 'household_name', 'relationship_to_household_head', 'purok', 'address']))->errors()->all()), ...$numberErrors];
-            $existingId = $edit['resident_id'] ?? null;
+            $errors = $action === 'create' ? $validator->errors()->all() : Validator::make($fields, Arr::only($rules, ['household_group', 'household_number', 'household_name', 'relationship_to_household_head', 'purok', 'address']))->errors()->all();
+            $existingId = $edit['resident_id'] ?? ($exactMatch['id'] ?? null);
+            $existingMatch = $matches->firstWhere('id', $existingId);
+            if ($action === 'voter_only') {
+                $errors = [];
+                if ($existingMatch === null || $existingMatch['archived'] || ! $existingMatch['can_head']) {
+                    $errors[] = 'Select a matching active resident to add a voter record only.';
+                }
+                if ($registeredVoter !== true) {
+                    $errors[] = 'Select Yes for registered voter before adding a voter record.';
+                }
+            }
+            $willImportVoter = $registeredVoter === true && ! ($existingMatch['registered_voter'] ?? false) && $action !== 'skip';
+            if ($action !== 'skip') {
+                $errors = [...$errors, ...$this->voterErrors($fields, $existingMatch)];
+            }
+            $errors = [...$errors, ...$numberErrors];
             if ($action === 'resolve') {
                 $errors[] = 'Choose Link existing, Create as new after confirmation, or Skip.';
             }
@@ -120,20 +152,23 @@ class ImportHouseholdProfiling
                 $errors[] = 'Confirm that this possible duplicate is a separate resident.';
             }
             $head = $edit['is_head'] ?? (in_array(Str::lower($fields['is_household_head']), ['1', 'yes', 'true', 'head'], true) || Str::lower($fields['relationship_to_household_head']) === 'head');
+            if ($action === 'voter_only') {
+                $head = false;
+            }
             if ($head && $action === 'link' && $matches->contains(fn (array $match): bool => $match['id'] === $existingId && ! $match['can_head'])) {
                 $errors[] = 'The household head must be an active resident.';
             }
             if ($action === 'skip') {
                 $errors = [];
             }
-            if ($action !== 'skip' && $fields['household_group'] === '') {
+            if (! in_array($action, ['skip', 'voter_only'], true) && $fields['household_group'] === '') {
                 $errors[] = 'Enter an explicit reviewed household group. Surname and address are never used for grouping.';
             }
-            $rows[] = ['id' => $index, 'source_row' => $index + 2, 'fields' => $fields, 'is_head' => (bool) $head, 'action' => $action, 'resident_id' => $existingId, 'confirm_duplicate' => (bool) ($edit['confirm_duplicate'] ?? false), 'already_exists' => $alreadyExists, 'matches' => $matches->values()->all(), 'errors' => $errors];
+            $rows[] = ['id' => $index, 'source_row' => $index + 2, 'fields' => $fields, 'is_head' => (bool) $head, 'action' => $action, 'resident_id' => $existingId, 'confirm_duplicate' => (bool) ($edit['confirm_duplicate'] ?? false), 'already_exists' => $alreadyExists, 'will_import_voter' => $willImportVoter, 'matches' => $matches->values()->all(), 'errors' => $errors];
         }
         $groups = [];
         foreach ($rows as $row) {
-            if ($row['action'] === 'skip') {
+            if (in_array($row['action'], ['skip', 'voter_only'], true)) {
                 continue;
             }
             $group = $row['fields']['household_group'];
@@ -141,11 +176,12 @@ class ImportHouseholdProfiling
         }
         $seen = [];
         $seenIdentities = [];
+        $seenVoterNumbers = [];
         foreach ($rows as &$row) {
             if ($row['action'] === 'skip') {
                 continue;
             }
-            $key = $row['action'] === 'link' ? 'resident:'.$row['resident_id'] : $this->identity->residentIdentityLockKey($row['fields']).':'.$this->normalized($row['fields']['middle_name']).':'.$this->normalized($row['fields']['suffix']);
+            $key = in_array($row['action'], ['link', 'voter_only'], true) ? 'resident:'.$row['resident_id'] : $this->identity->residentIdentityLockKey($row['fields']).':'.$this->normalized($row['fields']['middle_name']).':'.$this->normalized($row['fields']['suffix']);
             if (isset($seen[$key])) {
                 $row['errors'][] = 'The same resident appears in another selected row. Skip the repeated row.';
             }
@@ -156,6 +192,13 @@ class ImportHouseholdProfiling
                 $row['errors'][] = 'Another selected row has the same name and birth date. Confirm this is a separate resident or skip it.';
             }
             $seenIdentities[$identityKey] = true;
+            if ($row['will_import_voter']) {
+                $number = $row['fields']['comelec_voter_number'];
+                if (isset($seenVoterNumbers[$number])) {
+                    $row['errors'][] = 'This COMELEC voter number appears in another selected row.';
+                }
+                $seenVoterNumbers[$number] = true;
+            }
         }
         unset($row);
         $households = [];
@@ -198,13 +241,13 @@ class ImportHouseholdProfiling
             $households[] = ['group' => (string) $group, 'household_id' => $existing?->id, 'household_number' => $numbers[0] ?? null, 'household_name' => $names[0] ?? null, 'address' => $head['fields']['address'], 'purok' => $head['fields']['purok'], 'head' => trim($head['fields']['first_name'].' '.$head['fields']['last_name']), 'row_ids' => $ids];
         }
 
-        return ['rows' => $rows, 'households' => $households, 'summary' => ['households' => count($households), 'residents' => count($rows), 'heads' => count(array_filter($rows, fn (array $row): bool => $row['is_head'] && $row['action'] !== 'skip')), 'duplicates' => count(array_filter($rows, fn (array $row): bool => $row['matches'] !== [] || ($row['file_duplicate'] ?? false))), 'invalid' => count(array_filter($rows, fn (array $row): bool => $row['errors'] !== [])), 'existing' => count(array_filter($rows, fn (array $row): bool => $row['already_exists'] && $row['action'] === 'skip')), 'ready' => count(array_filter($rows, fn (array $row): bool => $row['errors'] === [] && $row['action'] !== 'skip'))]];
+        return ['rows' => $rows, 'households' => $households, 'summary' => ['households' => count($households), 'residents' => count($rows), 'heads' => count(array_filter($rows, fn (array $row): bool => $row['is_head'] && $row['action'] !== 'skip')), 'duplicates' => count(array_filter($rows, fn (array $row): bool => $row['matches'] !== [] || ($row['file_duplicate'] ?? false))), 'invalid' => count(array_filter($rows, fn (array $row): bool => $row['errors'] !== [])), 'existing' => count(array_filter($rows, fn (array $row): bool => $row['already_exists'] && $row['action'] === 'skip')), 'ready' => count(array_filter($rows, fn (array $row): bool => $row['errors'] === [] && $row['action'] !== 'skip')), 'voters' => count(array_filter($rows, fn (array $row): bool => $row['will_import_voter'] && $row['errors'] === []))]];
     }
 
     /** @param array<string, mixed> $preview
-     * @return array{created: int, linked: int, skipped: int, households: int}
+     * @return array{created: int, linked: int, skipped: int, households: int, voters: int}
      */
-    public function save(array $preview): array
+    public function save(array $preview, Request $request): array
     {
         $errors = [];
         foreach ($preview['rows'] as $row) {
@@ -231,9 +274,9 @@ class ImportHouseholdProfiling
                 $locks[] = $lock;
             }
 
-            return DB::transaction(function () use ($preview): array {
+            return DB::transaction(function () use ($preview, $request): array {
                 DB::table('household_number_sequences')->where('id', 1)->lockForUpdate()->firstOrFail();
-                $counts = ['created' => 0, 'linked' => 0, 'skipped' => count(array_filter($preview['rows'], fn (array $row): bool => $row['action'] === 'skip')), 'households' => 0];
+                $counts = ['created' => 0, 'linked' => 0, 'skipped' => count(array_filter($preview['rows'], fn (array $row): bool => $row['action'] === 'skip')), 'households' => 0, 'voters' => 0];
                 $usedResidents = [];
                 foreach ($preview['households'] as $group) {
                     $purok = Purok::query()->where('name', $group['purok'])->where('is_active', true)->lockForUpdate()->first();
@@ -258,7 +301,9 @@ class ImportHouseholdProfiling
                             $counts['linked']++;
                         } else {
                             $this->identity->rejectDuplicate($fields, $row['confirm_duplicate'], null, true);
-                            $resident = $this->households->saveResident(Arr::only($fields, ['first_name', 'middle_name', 'last_name', 'suffix', 'date_of_birth', 'gender', 'civil_status', 'purok', 'address', 'contact_number', 'residency_type']));
+                            $attributes = Arr::only($fields, ['first_name', 'middle_name', 'last_name', 'suffix', 'date_of_birth', 'gender', 'civil_status', 'purok', 'address', 'contact_number', 'residency_type']);
+                            $attributes['special_groups'] = $this->specialGroups($fields['special_groups']);
+                            $resident = $this->households->saveResident($attributes);
                             $counts['created']++;
                         }
                         if (isset($usedResidents[$resident->id])) {
@@ -266,11 +311,26 @@ class ImportHouseholdProfiling
                         }
                         $usedResidents[$resident->id] = true;
                         $this->households->assign($resident, $household->id, $fields['relationship_to_household_head'] ?: null, $row['is_head']);
+                        $counts['voters'] += $this->importVoter($request, $resident, $fields);
                     }
+                }
+
+                foreach ($preview['rows'] as $row) {
+                    if ($row['action'] !== 'voter_only') {
+                        continue;
+                    }
+                    $resident = $this->identity->matches($row['fields'], null, true)->firstWhere('id', $row['resident_id']);
+                    if ($resident === null || $resident->trashed() || $resident->status !== 'active' || isset($usedResidents[$resident->id])) {
+                        throw ValidationException::withMessages(['rows.'.$row['id'] => 'The matching active resident changed. Review the voter import again.']);
+                    }
+                    $usedResidents[$resident->id] = true;
+                    $counts['voters'] += $this->importVoter($request, $resident, $row['fields']);
                 }
 
                 return $counts;
             }, 3);
+        } catch (UniqueConstraintViolationException) {
+            throw ValidationException::withMessages(['file' => 'A resident or voter record was added by another import. Review the file again before saving.']);
         } finally {
             foreach (array_reverse($locks) as $lock) {
                 $lock->release();
@@ -284,6 +344,106 @@ class ImportHouseholdProfiling
         return $this->normalized($resident->first_name) === $this->normalized($fields['first_name'])
             && $this->normalized($resident->last_name) === $this->normalized($fields['last_name'])
             && $resident->date_of_birth?->toDateString() === $fields['date_of_birth'];
+    }
+
+    private function registeredVoter(string $value): ?bool
+    {
+        return match (Str::lower($value)) {
+            'yes', 'true', '1' => true,
+            '', 'no', 'false', '0' => false,
+            default => null,
+        };
+    }
+
+    /** @return array<string, mixed> */
+    private function voterRules(): array
+    {
+        return array_replace(Arr::only((new StoreVoterRegistrationRequest)->rules(), self::VOTER_FIELDS), [
+            'registration_date' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
+        ]);
+    }
+
+    /** @param array<string, mixed> $fields
+     * @param  array<string, mixed>|null  $existing
+     * @return list<string>
+     */
+    private function voterErrors(array $fields, ?array $existing): array
+    {
+        $registered = $this->registeredVoter($fields['is_registered_voter']);
+        if ($registered === null) {
+            return ['Registered voter must be Yes or No.'];
+        }
+        if (! $registered) {
+            return array_filter(Arr::only($fields, self::VOTER_FIELDS), filled(...)) === []
+                ? [] : ['Select Yes for registered voter when voter details are provided.'];
+        }
+        if ($existing['registered_voter'] ?? false) {
+            return [];
+        }
+
+        $errors = Validator::make($fields, $this->voterRules())->errors()->all();
+        if ($existing !== null && (! $existing['can_head'] || $existing['archived'])) {
+            $errors[] = 'Only active residents can be added to the voters list.';
+        }
+        if (Gate::denies('voters.import')) {
+            $errors[] = 'Voters import permission is required to add voter records.';
+        }
+        if ($fields['comelec_voter_number'] !== '' && VoterRegistration::query()->where('comelec_voter_number_hash', VoterRegistration::identifierHash($fields['comelec_voter_number']))->exists()) {
+            $errors[] = 'This COMELEC voter number is already registered.';
+        }
+        if ($errors === []) {
+            $birthDate = $existing['date_of_birth'] ?? $fields['date_of_birth'];
+            if ($birthDate !== '' && Carbon::parse($birthDate)->diffInYears(Carbon::parse($fields['registration_date'])) < 15) {
+                $errors[] = 'The resident must be at least 15 years old on the registration date.';
+            }
+        }
+
+        return array_values($errors);
+    }
+
+    /** @param array<string, mixed> $fields */
+    private function importVoter(Request $request, Resident $resident, array $fields): int
+    {
+        if ($this->registeredVoter($fields['is_registered_voter']) !== true) {
+            return 0;
+        }
+        Gate::authorize('voters.import');
+        $resident = Resident::query()->whereKey($resident->id)->lockForUpdate()->firstOrFail();
+        if ($resident->voterRegistration()->exists()) {
+            return 0;
+        }
+        $validated = Validator::make($fields, $this->voterRules())->validate();
+        $this->voters->handle($request, [...$validated, 'resident_id' => $resident->id, 'status' => 'active']);
+
+        return 1;
+    }
+
+    /** @return list<string>|null */
+    private function specialGroups(string $value): ?array
+    {
+        if ($value === '') {
+            return [];
+        }
+
+        try {
+            $groups = json_decode($value, flags: JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return null;
+        }
+
+        if (! is_array($groups)) {
+            return null;
+        }
+
+        $normalized = [];
+        foreach ($groups as $group) {
+            if (! is_string($group)) {
+                return null;
+            }
+            $normalized[] = Str::squish($group);
+        }
+
+        return array_values(array_unique($normalized));
     }
 
     private function normalized(?string $value): string

@@ -6,6 +6,8 @@ use Database\Factories\CabinetFileFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
 
 /**
  * @property string $file_reference
@@ -13,6 +15,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $cabinet_device_id
  * @property string $drawer_reference
  * @property string|null $rfid_epc
+ * @property string|null $rfid_enrollment_request_id
+ * @property Carbon|null $rfid_enrollment_requested_at
+ * @property Carbon|null $rfid_enrollment_confirmed_at
  * @property bool $is_active
  */
 class CabinetFile extends Model
@@ -43,9 +48,24 @@ class CabinetFile extends Model
         return $this->rfid_epc !== null;
     }
 
+    public function isRfidEnrollmentPending(): bool
+    {
+        return $this->latestEnrollmentRequest?->isPending() ?? false;
+    }
+
+    /** @return HasOne<CabinetFileEnrollmentRequest, $this> */
+    public function latestEnrollmentRequest(): HasOne
+    {
+        return $this->hasOne(CabinetFileEnrollmentRequest::class)->latestOfMany();
+    }
+
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['is_active' => 'boolean'];
+        return [
+            'is_active' => 'boolean',
+            'rfid_enrollment_requested_at' => 'datetime',
+            'rfid_enrollment_confirmed_at' => 'datetime',
+        ];
     }
 }
