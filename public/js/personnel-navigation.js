@@ -1,6 +1,8 @@
 (() => {
   let restoringHistory = false;
   let activeStylesLayout = null;
+  let activeStaffUi = false;
+  const STAFF_UI = 'staff-ui';
   const stylesheetLoadListeners = new WeakSet();
   const loadedStylesheets = new WeakSet();
   let navigationLoadingTimer = null;
@@ -63,7 +65,11 @@
     if (document.body.dataset.personnelLayout === 'admin') {
       document.body.classList.toggle('light-mode', theme === 'light');
     }
-    try { localStorage.setItem('smartbrgy_theme', theme); } catch (_) {}
+    try {
+      localStorage.setItem('smartbrgy_theme', theme);
+      // Keep Flux's key in step so the staff sign-in and settings pages open in the same theme.
+      localStorage.setItem('flux.appearance', theme);
+    } catch (_) {}
 
     const label = theme === 'dark' ? 'Light Mode' : 'Dark Mode';
     document.querySelectorAll('#theme-toggle, #iot-theme-toggle').forEach(button => {
@@ -92,11 +98,15 @@
     const stylesheetLinks = [...document.querySelectorAll('link[rel="stylesheet"]')];
     const ownedStylesheets = stylesheetLinks.map(link => {
       const pathname = new URL(link.href, window.location.href).pathname;
-      const owner = stylesByLayout[pathname.split('/').pop()]
-        || (pathname.includes('/build/') ? 'settings' : null);
+      const filename = pathname.split('/').pop();
+      // The staff UI bundle (Flux + Tailwind without preflight) serves migrated pages in both workspace layouts.
+      const owner = /^staff-ui(?:-[\w-]+)?\.css$/.test(filename) ? STAFF_UI
+        : stylesByLayout[filename] || (pathname.includes('/build/') ? 'settings' : null);
 
       return { link, owner };
     });
+    // Note sheets that already parsed before any is switched off, so switching back never waits for a load event.
+    ownedStylesheets.forEach(({ link }) => { if (!link.disabled) stylesheetIsLoaded(link); });
 
     // Ordinary pages reached by in-app navigation: switch the workspace-only sheets off and the app bundle back on.
     if (!layout) {
@@ -104,10 +114,14 @@
         if (owner) link.disabled = owner !== 'settings';
       });
       activeStylesLayout = null;
+      activeStaffUi = false;
       return true;
     }
 
-    const targetStylesheets = ownedStylesheets.filter(item => item.owner === layout);
+    // Only pages that opt in (body[data-staff-ui]) use the staff UI bundle; unmigrated pages render exactly as before.
+    // The Flux settings layout has its own bundle (app.css), so the two never load together.
+    const usesStaffUi = (layout === 'admin' || layout === 'iot') && document.body.hasAttribute('data-staff-ui');
+    const targetStylesheets = ownedStylesheets.filter(item => item.owner === layout || (item.owner === STAFF_UI && usesStaffUi));
     const pendingStylesheets = targetStylesheets.filter(({ link }) => !loadedStylesheets.has(link));
     const targetStylesReady = !pendingStylesheets.some(({ link }) => !stylesheetIsLoaded(link));
 
@@ -115,7 +129,9 @@
     // Keep the active layout's CSS enabled until every incoming layout sheet parses.
     if (!targetStylesReady) {
       ownedStylesheets.forEach(({ link, owner }) => {
-        if (owner === layout || owner === activeStylesLayout || activeStylesLayout === null) {
+        if (owner === STAFF_UI) {
+          link.disabled = !(usesStaffUi || activeStaffUi);
+        } else if (owner === layout || owner === activeStylesLayout || activeStylesLayout === null) {
           link.disabled = false;
         } else if (owner) {
           link.disabled = true;
@@ -138,8 +154,10 @@
       });
     } else {
       activeStylesLayout = layout;
+      activeStaffUi = usesStaffUi;
       ownedStylesheets.forEach(({ link, owner }) => {
-        if (owner) link.disabled = owner !== layout;
+        if (owner === STAFF_UI) link.disabled = !usesStaffUi;
+        else if (owner) link.disabled = owner !== layout;
         else if (new URL(link.href, window.location.href).pathname.includes('/build/')) {
           link.disabled = layout === 'admin' || layout === 'iot';
         }

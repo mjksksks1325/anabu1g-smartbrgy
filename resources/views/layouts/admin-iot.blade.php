@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title') — Barangay Anabu I-G</title>
-    <script>try { document.documentElement.dataset.theme = localStorage.getItem('smartbrgy_theme') === 'dark' ? 'dark' : 'light'; document.documentElement.classList.toggle('dark', document.documentElement.dataset.theme === 'dark'); } catch (_) { document.documentElement.dataset.theme = 'light'; }</script>
+    @include('partials.staff-theme-boot')
     <link rel="icon" type="image/jpeg" href="{{ asset('images/anabu-logo.jpg') }}">
     <link rel="stylesheet" href="{{ asset('css/government.css') }}?v={{ filemtime(public_path('css/government.css')) }}">
     <link rel="stylesheet" href="{{ asset('css/figma-tokens.css') }}?v={{ filemtime(public_path('css/figma-tokens.css')) }}">
@@ -22,8 +22,10 @@
 <link rel="stylesheet" href="{{ asset('css/form-feedback.css') }}?v={{ filemtime(public_path('css/form-feedback.css')) }}">
 <script defer data-navigate-once src="{{ asset('js/form-feedback.js') }}?v={{ filemtime(public_path('js/form-feedback.js')) }}"></script>
 <link rel="stylesheet" href="{{ asset('css/staff-theme.css') }}?v={{ filemtime(public_path('css/staff-theme.css')) }}">
+{{-- Flux and Tailwind for migrated pages. Linked last so it wins over the legacy sheets; personnel-navigation.js enables it only on pages that opt in with @section('staff-ui'). --}}
+@vite('resources/css/staff-ui.css')
 </head>
-<body data-personnel-layout="iot" data-admin-localization data-personnel-super-admin="{{ auth()->user()->hasAdministrativeAccess() ? 'true' : 'false' }}">
+<body data-personnel-layout="iot" {{ $__env->hasSection('staff-ui') ? 'data-staff-ui' : '' }} data-admin-localization data-personnel-super-admin="{{ auth()->user()->hasAdministrativeAccess() ? 'true' : 'false' }}">
 <script>window.PersonnelNavigation.syncStyles();</script>
 <a class="skip-link" href="#main">Skip to main content</a>
 <header class="site-header">
@@ -93,6 +95,7 @@
     </main>
 </div>
 @livewireScripts
+@fluxScripts
 @include('partials.personnel-password-confirmation')
 @include('partials.personnel-logout-confirmation')
 </body>

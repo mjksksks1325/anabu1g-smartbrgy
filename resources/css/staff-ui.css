@@ -1,0 +1,117 @@
+/*
+ * Staff UI bundle: Flux and Tailwind for the legacy staff layouts (the staff workspace page and
+ * layouts/admin-iot), alongside their hand-written stylesheets in public/css.
+ *
+ * Three rules keep the legacy pages unchanged:
+ * 1. No global preflight. Tailwind's reset would restyle every legacy heading, button and form control.
+ *    Migrated markup opts in with a [data-ui] wrapper, and the scoped reset below applies only inside it.
+ * 2. Utilities are unlayered and this sheet is linked after the legacy sheets. The legacy CSS is unlayered,
+ *    and unlayered rules always beat layered ones, so layered utilities would lose to rules like
+ *    `a { color: inherit }`. Unlayered, a utility class (0,1,0) beats legacy element selectors.
+ * 3. Only migrated views are scanned (plus Flux's own stubs), so the bundle never generates a utility
+ *    that collides with a class name in unmigrated markup.
+ *
+ * public/js/personnel-navigation.js enables this sheet only on those two layouts. The Flux settings pages
+ * use app.css instead.
+ */
+
+@layer theme, base, components;
+
+@import 'tailwindcss/theme.css' layer(theme);
+@import '../../vendor/livewire/flux/dist/flux.css';
+@import './theme/tokens.css';
+
+@source '../views/components/ui';
+@source '../views/admin/announcements';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Scoped reset: Tailwind's preflight, limited to [data-ui] islands. */
+[data-ui] {
+    line-height: 1.5;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.dark [data-ui] {
+    color-scheme: dark;
+}
+
+:where([data-ui]) :where(*, ::after, ::before, ::backdrop, ::file-selector-button) {
+    box-sizing: border-box;
+    padding: 0;
+    border: 0 solid;
+    border-color: var(--color-zinc-200);
+}
+
+/* Native <dialog> is centred by its user-agent margin, so it keeps it. */
+:where([data-ui]) :where(*:not(dialog), ::after, ::before, ::file-selector-button) {
+    margin: 0;
+}
+
+:where([data-ui]) :where(h1, h2, h3, h4, h5, h6) {
+    font-size: inherit;
+    font-weight: inherit;
+}
+
+:where([data-ui]) :where(a) {
+    color: inherit;
+    text-decoration: inherit;
+}
+
+:where([data-ui]) :where(b, strong) {
+    font-weight: bolder;
+}
+
+:where([data-ui]) :where(small) {
+    font-size: 80%;
+}
+
+:where([data-ui]) :where(table) {
+    text-indent: 0;
+    border-color: inherit;
+    border-collapse: collapse;
+}
+
+:where([data-ui]) :where(ol, ul, menu) {
+    list-style: none;
+}
+
+:where([data-ui]) :where(img, svg, video, canvas, audio, iframe, embed, object) {
+    display: block;
+    vertical-align: middle;
+}
+
+:where([data-ui]) :where(img, video) {
+    max-width: 100%;
+    height: auto;
+}
+
+:where([data-ui]) :where(button, input, select, optgroup, textarea, ::file-selector-button) {
+    font: inherit;
+    font-feature-settings: inherit;
+    font-variation-settings: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+    border-radius: 0;
+    background-color: transparent;
+    opacity: 1;
+}
+
+:where([data-ui]) :where(::placeholder) {
+    opacity: 1;
+    color: color-mix(in oklab, currentcolor 50%, transparent);
+}
+
+:where([data-ui]) :where(textarea) {
+    resize: vertical;
+}
+
+:where([data-ui]) :where(button, input:where([type='button'], [type='reset'], [type='submit']), ::file-selector-button) {
+    appearance: button;
+}
+
+:where([data-ui]) :where([hidden]:where(:not([hidden='until-found']))) {
+    display: none !important;
+}
+
+@tailwind utilities source(none);

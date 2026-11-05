@@ -57,3 +57,38 @@ it('marks reversible archive actions with the outline danger style and keeps del
         ->toContain('class="btn btn-xs btn-danger-outline" onclick="deleteResident(\'${resident.id}\')">Archive')
         ->toContain('class="btn btn-danger" onclick="event.stopPropagation();deleteUser(');
 });
+
+it('links the staff UI bundle after the legacy sheets and enables it only on pages that opt in', function (string $route, bool $linked, bool $optedIn) {
+    $this->actingAs(User::factory()->superAdmin()->create())->withSession(['auth.password_confirmed_at' => time()]);
+
+    $content = $this->get(route($route))->assertOk()->getContent();
+    $head = substr($content, 0, strpos($content, '</head>'));
+    preg_match_all('/<link rel="stylesheet" href="([^"]+)"/', $head, $sheets);
+    $sheetNames = array_map(fn (string $href): string => basename(parse_url($href, PHP_URL_PATH)), $sheets[1]);
+    $staffUi = array_key_last(array_filter($sheetNames, fn (string $name): bool => str_starts_with($name, 'staff-ui')));
+    preg_match('/<body[^>]*>/', $content, $body);
+
+    expect($staffUi !== null)->toBe($linked)
+        ->and(str_contains($body[0], 'data-staff-ui'))->toBe($optedIn);
+    if ($linked) {
+        expect($staffUi)->toBe(array_key_last($sheetNames))
+            ->and($content)->toContain('/flux/flux');
+    }
+})->with([
+    'workspace (not migrated)' => ['staff.dashboard', true, false],
+    'announcements (pilot)' => ['staff.announcements.index', true, true],
+    'resident applications (not migrated)' => ['staff.resident-applications.index', true, false],
+    'account settings (own Flux bundle)' => ['profile.edit', false, false],
+]);
+
+it('applies the saved staff theme in the head before any workspace stylesheet', function (string $route) {
+    $this->actingAs(User::factory()->superAdmin()->create());
+
+    $content = $this->get(route($route))->assertOk()->getContent();
+    $boot = strpos($content, "localStorage.getItem('smartbrgy_theme')");
+
+    expect($boot)->not->toBeFalse()
+        ->and($boot)->toBeLessThan(strpos($content, '<link rel="stylesheet"'))
+        ->and($boot)->toBeLessThan(strpos($content, '</head>'))
+        ->and($content)->toContain("localStorage.setItem('flux.appearance', theme)");
+})->with(['staff.dashboard', 'staff.announcements.index']);

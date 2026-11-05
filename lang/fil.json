@@ -2163,5 +2163,13 @@
     "A password reset link was sent to the account owner's email address. It expires in 60 minutes.": "Naipadala na ang password reset link sa email ng may-ari ng account. Mag-e-expire ito sa loob ng 60 minuto.",
     "A reset link was sent to this account recently. Wait a minute before sending another.": "Kapapadala lang ng reset link sa account na ito. Maghintay ng isang minuto bago magpadala ulit.",
     "Reactivate this account before sending a password reset link.": "I-reactivate muna ang account na ito bago magpadala ng password reset link.",
-    "The reset link could not be sent. Check the mail settings and try again.": "Hindi naipadala ang reset link. Tingnan ang mail settings at subukan ulit."
+    "The reset link could not be sent. Check the mail settings and try again.": "Hindi naipadala ang reset link. Tingnan ang mail settings at subukan ulit.",
+    "Every record": "Lahat ng record",
+    "On the resident portal": "Nasa Resident Portal",
+    "Staff only": "Staff lang ang nakakakita",
+    "Kept for the record": "Nakatabi bilang record",
+    ":total total": ":total lahat",
+    "announcement": "anunsiyo",
+    "announcements": "anunsiyo",
+    "Close modal": "Isara"
 }

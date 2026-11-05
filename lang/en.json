@@ -1984,5 +1984,17 @@
     "A password reset link was sent to the account owner's email address. It expires in 60 minutes.": "A password reset link was sent to the account owner's email address. It expires in 60 minutes.",
     "A reset link was sent to this account recently. Wait a minute before sending another.": "A reset link was sent to this account recently. Wait a minute before sending another.",
     "Reactivate this account before sending a password reset link.": "Reactivate this account before sending a password reset link.",
-    "The reset link could not be sent. Check the mail settings and try again.": "The reset link could not be sent. Check the mail settings and try again."
+    "The reset link could not be sent. Check the mail settings and try again.": "The reset link could not be sent. Check the mail settings and try again.",
+    "All": "All",
+    "Archived": "Archived",
+    "Every record": "Every record",
+    "On the resident portal": "On the resident portal",
+    "Staff only": "Staff only",
+    "Kept for the record": "Kept for the record",
+    ":total total": ":total total",
+    "announcement": "announcement",
+    "announcements": "announcements",
+    "Close modal": "Close",
+    "Choose file": "Choose file",
+    "No file chosen": "No file chosen"
 }

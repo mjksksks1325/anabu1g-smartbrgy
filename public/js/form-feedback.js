@@ -73,7 +73,8 @@
             element.id = id;
             element.className = 'field-feedback-message';
             element.setAttribute('role', 'alert');
-            (field.closest('.password-field, .input-group') ?? field).insertAdjacentElement('afterend', element);
+            // Flux inputs sit in a positioned wrapper with trailing buttons; the message goes below that wrapper.
+            (field.closest('.password-field, .input-group, [data-flux-input]') ?? field).insertAdjacentElement('afterend', element);
         }
 
         return element;

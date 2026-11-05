@@ -8,15 +8,17 @@ const script = readFileSync(new URL('../../public/js/personnel-navigation.js', i
 function navigation() {
   const events = new Map();
   const classes = new Set();
-  const styles = ['admin.css', 'figma-admin.css', 'admin-iot.css', 'figma-iot.css', 'government.css', 'app.css']
+  const attributes = new Set();
+  const preferences = new Map([['smartbrgy_theme', 'dark']]);
+  const styles = ['admin.css', 'figma-admin.css', 'admin-iot.css', 'figma-iot.css', 'government.css', 'app.css', 'staff-ui-Ab12_c.css']
     // Already parsed stylesheets, so the script switches layouts immediately instead of waiting for their load events.
-    .map(name => ({ href: `http://localhost/${name === 'app.css' ? 'build/assets' : 'css'}/${name}`, disabled: false, sheet: { cssRules: [{}] }, addEventListener() {} }));
+    .map(name => ({ href: `http://localhost/${/^(app|staff-ui)/.test(name) ? 'build/assets' : 'css'}/${name}`, disabled: false, sheet: { cssRules: [{}] }, addEventListener() {} }));
   const context = vm.createContext({
     URL,
     window: { location: { href: 'http://localhost/admin' }, setTimeout: () => 1, clearTimeout() {} },
-    localStorage: { getItem: () => 'dark', setItem() {} },
+    localStorage: { getItem: key => preferences.get(key) ?? null, setItem: (key, value) => preferences.set(key, value) },
     document: {
-      body: { dataset: { personnelLayout: 'admin' }, classList: { toggle() {} } },
+      body: { dataset: { personnelLayout: 'admin' }, classList: { toggle() {} }, hasAttribute: name => attributes.has(name) },
       documentElement: { dataset: {}, classList: {
         contains: name => classes.has(name),
         toggle(name, enabled) { enabled ? classes.add(name) : classes.delete(name); },
@@ -27,7 +29,7 @@ function navigation() {
     },
   });
   vm.runInContext(script, context);
-  return { context, styles, events };
+  return { context, styles, events, attributes, preferences };
 }
 
 test('bottom logout opens confirmation without submitting and restores focus when cancelled', () => {
@@ -72,10 +74,10 @@ test('logout keeps ordinary form submission for confirmation and when dialogs ar
 test('layout navigation keeps only the destination styles active and preserves the selected theme', () => {
   const { context, styles } = navigation();
   for (const [layout, expected] of [
-    ['admin', [false, false, true, true, false, true]],
-    ['iot', [true, true, false, false, false, true]],
-    ['settings', [true, true, true, true, false, false]],
-    ['admin', [false, false, true, true, false, true]],
+    ['admin', [false, false, true, true, false, true, true]],
+    ['iot', [true, true, false, false, false, true, true]],
+    ['settings', [true, true, true, true, false, false, true]],
+    ['admin', [false, false, true, true, false, true, true]],
   ]) {
     context.document.body.dataset.personnelLayout = layout;
     context.window.PersonnelNavigation.syncStyles();
@@ -104,4 +106,30 @@ test('navigation restores ordinary page styles outside the personnel layouts', (
   context.window.PersonnelNavigation.syncStyles();
   assert.equal(styles[4].disabled, false);
   assert.equal(styles[5].disabled, false);
+});
+
+test('the staff UI bundle is active only on workspace pages that opt in, and the theme stays shared with Flux', () => {
+  const { context, styles, attributes, preferences } = navigation();
+  const staffUi = styles[6];
+  for (const [layout, optIn, disabled] of [
+    ['iot', true, false],
+    ['iot', false, true],
+    ['admin', true, false],
+    ['settings', true, true],
+    ['iot', true, false],
+  ]) {
+    context.document.body.dataset.personnelLayout = layout;
+    optIn ? attributes.add('data-staff-ui') : attributes.delete('data-staff-ui');
+    context.window.PersonnelNavigation.syncStyles();
+    assert.equal(staffUi.disabled, disabled, `${layout} ${optIn ? 'opted in' : 'not opted in'}`);
+    assert.equal(styles[5].disabled, layout !== 'settings', 'the app bundle with preflight stays off the workspace layouts');
+  }
+
+  delete context.document.body.dataset.personnelLayout;
+  context.window.PersonnelNavigation.syncStyles();
+  assert.equal(staffUi.disabled, true);
+
+  context.window.PersonnelNavigation.setTheme('light');
+  assert.equal(preferences.get('smartbrgy_theme'), 'light');
+  assert.equal(preferences.get('flux.appearance'), 'light');
 });
