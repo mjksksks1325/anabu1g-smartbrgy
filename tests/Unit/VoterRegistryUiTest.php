@@ -4,9 +4,13 @@ test('voter page supports adding voters and separates the list by purok and age 
     $dashboard = file_get_contents(dirname(__DIR__, 2).'/resources/views/admin/dashboard.blade.php');
     $adminScript = file_get_contents(dirname(__DIR__, 2).'/public/js/admin.js');
     $adminStyles = file_get_contents(dirname(__DIR__, 2).'/public/css/admin.css');
+    $navigation = file_get_contents(dirname(__DIR__, 2).'/resources/views/components/staff/nav.blade.php');
+
+    // The Voters menu item is a workspace screen (data-screen="voters" is rendered from this entry).
+    expect($navigation)->toContain("'screen' => 'voters'");
 
     expect($dashboard)
-        ->toContain('data-screen="voters"')
+        ->toContain('<x-staff.nav variant="workspace"')
         ->toContain('id="screen-voters"')
         ->toContain('<h1>Voters</h1>')
         ->toContain('Para sa barangay personnel:')

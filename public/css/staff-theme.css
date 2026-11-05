@@ -927,3 +927,21 @@ body #app.admin-interface .incident-status-chip[aria-pressed="true"] { border-co
 body #app.admin-interface .incident-status-chip:focus-visible { outline: 3px solid var(--staff-focus, #2563eb); outline-offset: 2px; }
 body #app.admin-interface .incident-status-chip .badge { min-width: 28px; justify-content: center; }
 #app.admin-interface .restriction-needs-reviewer { display: inline-block; color: var(--staff-muted); font-size: 12px; font-style: italic; }
+
+/* ── IoT/request pages: phone menu ─────────────────────────────── */
+/* Below 650px the side menu folds away behind a Menu button (toggled in personnel-navigation.js). */
+.iot-menu-button { display: none; }
+@media (max-width: 650px) {
+  body[data-personnel-layout="iot"] .iot-menu-button {
+    display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 12px;
+    border: 1px solid var(--staff-quiet-border); border-radius: 6px; background: var(--staff-quiet-bg); color: var(--staff-quiet-ink);
+    font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+  body[data-personnel-layout="iot"] .iot-menu-button[aria-expanded="true"] { border-color: var(--staff-accent-fill); background: var(--staff-active-bg); color: var(--staff-active-ink); }
+  body[data-personnel-layout="iot"] .side-nav:not(.is-open) { display: none; }
+  body[data-personnel-layout="iot"] .side-nav.is-open { border-bottom: 1px solid var(--staff-border); }
+  /* Open, it is a single readable column of groups, not the narrow-screen horizontal strip. */
+  body[data-personnel-layout="iot"] .side-nav.is-open .side-nav-scroll { display: block; overflow: visible; white-space: normal; padding: 8px 14px 14px; }
+  body[data-personnel-layout="iot"] .side-nav.is-open .sidebar-sec { display: block; width: auto; margin: 0 0 6px; }
+  body[data-personnel-layout="iot"] .side-nav.is-open .side-nav-scroll a { display: flex; width: 100%; min-height: 44px; }
+}

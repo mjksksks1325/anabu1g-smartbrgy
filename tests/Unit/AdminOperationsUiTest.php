@@ -54,11 +54,15 @@ test('dashboard and incident screens use authenticated database endpoints', func
         ->toContain('id="inc-resolution-notes"')
         ->toContain("onclick=\"openModal('modal-hardware-status')\"")
         ->not->toContain('IoT Not Connected')
-        ->toContain("route('staff.rfid-files.index')")
+        ->toContain('<x-staff.nav variant="workspace"')
         ->not->toContain('id="screen-cabinet"')
-        ->not->toContain('id="screen-face"')
-        ->toContain('class="nav-item staff-settings-portal"')
-        ->toContain("href=\"{{ route('home') }}\" target=\"_blank\" rel=\"noopener\"");
+        ->not->toContain('id="screen-face"');
+    // The workspace menu comes from the shared staff navigation component.
+    expect(file_get_contents(dirname(__DIR__, 2).'/resources/views/components/staff/nav.blade.php'))
+        ->toContain("'route' => 'staff.rfid-files.index'")
+        ->toContain("'route' => 'home', 'external' => true")
+        ->toContain('class="nav-item portal-link staff-settings-portal"')
+        ->toContain('target="_blank" rel="noopener"');
     expect($adminScript)
         ->toContain("fetch('/staff/dashboard-summary'")
         ->toContain('fetch(`/staff/incidents?${query}`')

@@ -54,7 +54,7 @@ test('bottom logout opens confirmation without submitting and restores focus whe
   assert.equal(closedMenu, true);
   assert.equal(dialog.open, true);
 
-  events.get('click')({ target: { closest: () => true } });
+  events.get('click')({ target: { closest: selector => (selector === '[data-logout-cancel]' ? {} : null) } });
   assert.equal(dialog.open, false);
   assert.equal(focused, true);
 });
@@ -132,4 +132,39 @@ test('the staff UI bundle is active only on workspace pages that opt in, and the
   context.window.PersonnelNavigation.setTheme('light');
   assert.equal(preferences.get('smartbrgy_theme'), 'light');
   assert.equal(preferences.get('flux.appearance'), 'light');
+});
+
+test('the phone menu toggle opens and closes the side navigation and returns focus on Escape', () => {
+  const { context, events } = navigation();
+  const attributes = { 'aria-controls': 'staff-side-nav', 'aria-expanded': 'false' };
+  const navClasses = new Set();
+  let focused = null;
+  const link = { focus() { focused = 'first link'; } };
+  const toggle = {
+    getAttribute: name => attributes[name],
+    setAttribute: (name, value) => { attributes[name] = value; },
+    focus() { focused = 'toggle'; },
+  };
+  const nav = { classList: { toggle(name, on) { on ? navClasses.add(name) : navClasses.delete(name); } }, querySelector: () => link };
+  context.document.querySelector = selector => {
+    if (selector === '[data-staff-nav-toggle]') return toggle;
+    if (selector === '[data-staff-nav-toggle][aria-expanded="true"]') return attributes['aria-expanded'] === 'true' ? toggle : null;
+    return null;
+  };
+  context.document.getElementById = id => (id === 'staff-side-nav' ? nav : null);
+  const click = target => events.get('click')({ target: { closest: selector => target(selector) } });
+
+  click(selector => (selector === '[data-staff-nav-toggle]' ? toggle : null));
+  assert.equal(attributes['aria-expanded'], 'true');
+  assert.ok(navClasses.has('is-open'));
+  assert.equal(focused, 'first link');
+
+  events.get('keydown')({ key: 'Escape' });
+  assert.equal(attributes['aria-expanded'], 'false');
+  assert.ok(!navClasses.has('is-open'));
+  assert.equal(focused, 'toggle');
+
+  click(selector => (selector === '[data-staff-nav-toggle]' ? toggle : null));
+  click(selector => (selector === '#staff-side-nav a[href]' ? link : null));
+  assert.equal(attributes['aria-expanded'], 'false', 'choosing a link closes the menu');
 });

@@ -136,7 +136,10 @@ test('staff sidebars always show the orange scrollbar', function () {
 
     expect(file_get_contents($root.'/resources/views/layouts/admin-iot.blade.php'))
         ->toContain('<div class="side-nav-scroll staff-settings-navigation">')
-        ->toContain('<div class="sidebar-label">IoT Security</div>');
+        ->toContain('<x-staff.nav />');
+    expect(file_get_contents($root.'/resources/views/components/staff/nav.blade.php'))
+        ->toContain("'label' => 'IoT Security'")
+        ->toContain('<div class="sidebar-label">{{ $section[\'label\'] }}</div>');
 });
 
 test('resident portal uses the staff workspace background color', function () {

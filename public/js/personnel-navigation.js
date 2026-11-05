@@ -183,9 +183,27 @@
     dialog.showModal();
     dialog.addEventListener('close', () => logoutTrigger?.focus(), { once: true });
   });
+  /** Phone menu on the IoT/request layout: the toggle names the nav it controls and reports its state. */
+  function setStaffMenu(open, { restoreFocus = false } = {}) {
+    const toggle = document.querySelector('[data-staff-nav-toggle]');
+    const nav = toggle && document.getElementById(toggle.getAttribute('aria-controls'));
+    if (!toggle || !nav) return false;
+    nav.classList.toggle('is-open', open);
+    toggle.setAttribute('aria-expanded', String(open));
+    if (open) nav.querySelector('a[href]')?.focus();
+    else if (restoreFocus) toggle.focus();
+    return true;
+  }
+
   document.addEventListener('click', event => {
     if (event.target.closest('#iot-theme-toggle')) {
       toggleTheme();
+    }
+    const menuToggle = event.target.closest('[data-staff-nav-toggle]');
+    if (menuToggle) {
+      setStaffMenu(menuToggle.getAttribute('aria-expanded') !== 'true');
+    } else if (event.target.closest('#staff-side-nav a[href]')) {
+      setStaffMenu(false);
     }
     if (event.target.closest('[data-logout-cancel]')) {
       document.getElementById('logout-dialog')?.close();
@@ -196,6 +214,9 @@
   });
   document.addEventListener('keydown', event => {
     if (event.key !== 'Escape') return;
+    if (document.querySelector('[data-staff-nav-toggle][aria-expanded="true"]')) {
+      setStaffMenu(false, { restoreFocus: true });
+    }
     document.querySelectorAll('details.personnel-account-menu[open]').forEach(menu => {
       menu.removeAttribute('open');
       menu.querySelector('summary')?.focus();
