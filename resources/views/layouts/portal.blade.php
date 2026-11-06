@@ -70,9 +70,8 @@
             <h2 id="footer-contact-title"><span data-portal-i18n="Contact at lokasyon">{{ __('Contact at lokasyon') }}</span></h2>
             <dl class="site-footer-facts">
                 <div><dt><span data-portal-i18n="Barangay Hall">{{ __('Barangay Hall') }}</span></dt><dd><span data-portal-i18n="Barangay Anabu I-G, Lungsod ng Imus, Cavite">{{ __('Barangay Anabu I-G, Lungsod ng Imus, Cavite') }}</span></dd></div>
-                <div><dt><span data-portal-i18n="Telepono">{{ __('Telepono') }}</span></dt><dd><span class="tag-unconfirmed"><span data-portal-i18n="Hindi pa kumpirmado">{{ __('Hindi pa kumpirmado') }}</span></span></dd></div>
-                <div><dt><span data-portal-i18n="Office hours">{{ __('Office hours') }}</span></dt><dd><span class="tag-unconfirmed"><span data-portal-i18n="Hindi pa kumpirmado">{{ __('Hindi pa kumpirmado') }}</span></span></dd></div>
-                <div><dt><span data-portal-i18n="Emergency">{{ __('Emergency') }}</span></dt><dd><a href="tel:911">911</a> · <span data-portal-i18n="Lungsod ng Imus">{{ __('Lungsod ng Imus') }}</span> <a href="tel:+63468889911">(046) 888 9911</a></dd></div>
+                @include('portal.partials.barangay-hall-contact')
+                                <div><dt><span data-portal-i18n="Emergency">{{ __('Emergency') }}</span></dt><dd><a href="tel:911">911</a> · <span data-portal-i18n="Lungsod ng Imus">{{ __('Lungsod ng Imus') }}</span> <a href="tel:+63468889911">(046) 888 9911</a></dd></div>
             </dl>
             <p><a href="https://www.google.com/maps/search/?api=1&amp;query=Barangay+Anabu+I-G%2C+Imus%2C+Cavite" target="_blank" rel="noopener noreferrer"><span data-portal-i18n="Buksan sa Google Maps">{{ __('Buksan sa Google Maps') }}</span></a></p>
         </section>

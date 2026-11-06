@@ -75,6 +75,28 @@ test('public portal shows community information and usable service links', funct
         ->assertSee(route('portal.information').'#requirements', false);
 });
 
+test('the barangay emergency hotlines and office hours appear with call links and verification tags', function (string $route) {
+    $page = $this->get(route($route))->assertOk();
+
+    foreach (['tel:+63462302905', 'tel:+639985985601', 'tel:+639985985602', 'tel:+63464163032', 'tel:+639155283256', 'tel:+639190691703', 'tel:+63464198301', 'tel:911'] as $link) {
+        $page->assertSee('href="'.$link.'"', false);
+    }
+    $page->assertSeeInOrder(['Imus CDRRMO / Ambulance', '0919-069-1703', 'Pending verification'])
+        ->assertSeeInOrder(['Ospital ng Imus', 'Lines 8301 to 8307', '(046) 419-8301'])
+        ->assertSee('Office line, not a 24-hour hotline')
+        ->assertSeeInOrder(['Office hours', '8:00 AM – 5:00 PM', '(office days not yet confirmed)'])
+        ->assertDontSee('24/7')
+        ->assertDontSee('tel:+63464198307', false);
+})->with(['home', 'portal.information']);
+
+test('every page footer shows the Barangay Hall number and office hours instead of Not yet confirmed', function () {
+    $this->get(route('portal.login'))->assertOk()
+        ->assertSeeInOrder(['id="footer-contact"', 'href="tel:+63462302905"', '(046) 230-2905', '8:00 AM – 5:00 PM'], false);
+
+    config(['portal.barangay_hall.verified' => true, 'portal.emergency_hotlines' => [['label' => 'Imus PNP', 'numbers' => [['display' => '0998-598-5601', 'tel' => '+639985985601']], 'verified' => true]]]);
+    $this->get(route('portal.information'))->assertDontSee('<span data-portal-i18n="Pending verification">', false);
+});
+
 test('portal home lists confirmed document fees and flags the business clearance fee for confirmation', function () {
     $this->get(route('home'))
         ->assertOk()

@@ -15,6 +15,30 @@ return [
         'rejected' => ['label' => 'Not approved', 'note' => 'Hindi naaprubahan ang request.', 'next' => 'Tingnan ang dahilan. Puwedeng mag-submit ng bagong request kapag naayos na ang problema.'],
     ],
 
+    /*
+     * Barangay Hall contact details and the public emergency hotlines, shown on the portal home page,
+     * Information page and footer. "verified" => false shows a Pending verification tag: set it to true
+     * once the barangay confirms the entry. 911, the City of Imus line, the first Imus PNP number and the
+     * BFP mobile were already listed from the City of Imus website; the rest were provided for Work Group 5
+     * (2026-11-07). Office days were not provided, so only the hours are shown.
+     */
+    'barangay_hall' => [
+        'phone' => ['display' => '(046) 230-2905', 'tel' => '+63462302905'],
+        'office_hours' => '8:00 AM – 5:00 PM',
+        'verified' => false,
+    ],
+
+    'emergency_hotlines' => [
+        ['label' => 'National emergency hotline', 'numbers' => [['display' => '911', 'tel' => '911']], 'verified' => true],
+        ['label' => 'City of Imus emergency', 'numbers' => [['display' => '(046) 888 9911', 'tel' => '+63468889911']], 'verified' => true],
+        ['label' => 'Imus CDRRMO / Ambulance', 'numbers' => [['display' => '0919-069-1703', 'tel' => '+639190691703']], 'verified' => false],
+        ['label' => 'Imus PNP', 'numbers' => [['display' => '0998-598-5601', 'tel' => '+639985985601'], ['display' => '0998-598-5602', 'tel' => '+639985985602']], 'verified' => false],
+        ['label' => 'Imus BFP (Bureau of Fire Protection)', 'numbers' => [['display' => '(046) 416-3032', 'tel' => '+63464163032'], ['display' => '0915-528-3256', 'tel' => '+639155283256']], 'verified' => false],
+        // Trunk lines 8301 to 8307: only the first is linked, since a range is not one number to dial.
+        ['label' => 'Ospital ng Imus', 'numbers' => [['display' => '(046) 419-8301', 'tel' => '+63464198301']], 'note' => 'Lines 8301 to 8307', 'verified' => false],
+        ['label' => 'Barangay Hall', 'numbers' => [['display' => '(046) 230-2905', 'tel' => '+63462302905']], 'note' => 'Office line, not a 24-hour hotline', 'verified' => false],
+    ],
+
     'officials' => array_fill(0, 4, [
         'photo_path' => null,
         'full_name' => 'Barangay Official',

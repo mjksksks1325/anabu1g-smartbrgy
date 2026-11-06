@@ -519,3 +519,13 @@ body.dark-mode .rp-privacy-dialog-body { border-color: var(--v2-line-elevated); 
 .rp-privacy-dialog:modal .rp-privacy-dialog-inner { flex: 1 1 auto; min-height: 0; max-height: none; overflow-y: auto; }
 .rp-privacy-dialog:modal .rp-privacy-dialog-body { min-height: 120px; }
 @media (max-width: 520px) { .rp-privacy-dialog:modal { width: calc(100% - 20px); max-height: calc(100dvh - 20px); } }
+
+/* Emergency hotlines: one card per service, which may have several numbers, a note and a Pending verification tag. */
+ul.rp-hotlines > li { display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 10px; min-width: 0; }
+.rp-hotlines .rp-hotline-label { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
+.rp-hotlines .rp-hotline-note { font-size: 13px; font-weight: 500; opacity: .85; }
+.rp-hotlines .rp-hotline-numbers { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.rp-hotlines .rp-hotline-numbers a { white-space: nowrap; }
+.rp-hotlines .tag-unconfirmed { color: var(--v2-warning); white-space: nowrap; }
+.rp-hotlines .tag-unconfirmed span { color: inherit; }
+.rp-office-days { font-size: .9em; opacity: .85; }
