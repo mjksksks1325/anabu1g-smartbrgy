@@ -11,7 +11,7 @@
 {{ __('Use this activation code to continue creating your Resident Portal account.') }}
 {{ __('This activation code expires in 24 hours.') }}
 
-{{ __('Continue Registration') }}: {{ $registrationUrl }}
+{{ __('Continue Registration') }}: {!! $registrationUrl !!}
 
 {{ __('On the registration page, choose “May activation code na mula sa barangay staff?” and enter your Resident Number and Activation Code. If the activation form is already visible, enter them there.') }}
 

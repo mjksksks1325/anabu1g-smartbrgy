@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ResidentEmailVerificationController;
 use App\Http\Middleware\ApplyPortalLocale;
 use App\Http\Middleware\EnsureActiveAccount;
 use App\Http\Middleware\EnsurePersonnelTwoFactorAccount;
@@ -11,7 +12,9 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Exceptions\InvalidSignatureException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -31,9 +34,12 @@ return Application::configure(basePath: dirname(__DIR__))
         );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->render(function (ThrottleRequestsException $exception, Request $request): ?JsonResponse {
+        $exceptions->render(function (ThrottleRequestsException $exception, Request $request): JsonResponse|RedirectResponse|null {
             if ($request->is('portal', 'portal/*') && $request->expectsJson()) {
                 return response()->json(['message' => __('Too many attempts. Please wait before trying again.')], 429, $exception->getHeaders());
+            }
+            if ($request->routeIs('portal.verification.verify', 'portal.verification.send')) {
+                return ResidentEmailVerificationController::rejectedLink(__('Too many attempts. Please wait before trying again.'));
             }
 
             return null;
@@ -44,6 +50,10 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             return null;
+        });
+        // An expired or altered email confirmation link explains itself instead of showing a bare 403 page.
+        $exceptions->render(function (InvalidSignatureException $exception, Request $request): ?RedirectResponse {
+            return $request->routeIs('portal.verification.verify') ? ResidentEmailVerificationController::rejectedLink() : null;
         });
         $exceptions->dontFlash(['activation_code', 'resident_number']);
         $exceptions->shouldRenderJsonWhen(

@@ -2361,5 +2361,8 @@
     "View only. Your access does not include changing households.": "Pang-view lang. Hindi kasama sa access ninyo ang pagbabago ng household.",
     "Save household": "I-save ang household",
     "New household": "Bagong household",
-    "Household Name": "Pangalan ng household"
+    "Household Name": "Pangalan ng household",
+    "This confirmation link is invalid or has expired. Sign in and select Send a new confirmation link.": "Hindi valid o expired na ang confirmation link na ito. Mag-log in at piliin ang Magpadala ng bagong confirmation link.",
+    "We could not send the confirmation email right now. Please try again in a few minutes. If it keeps failing, ask the Barangay Hall for help.": "Hindi namin maipadala ang confirmation email ngayon. Pakisubukang muli pagkalipas ng ilang minuto. Kung patuloy itong pumalya, magpatulong sa Barangay Hall.",
+    "Your resident account is ready, but we could not send the confirmation email. Sign in and select Send a new confirmation link.": "Handa na ang inyong resident account, pero hindi namin naipadala ang confirmation email. Mag-log in at piliin ang Magpadala ng bagong confirmation link."
 }

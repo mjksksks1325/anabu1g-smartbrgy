@@ -157,6 +157,9 @@ class ResidentRegistrationController extends Controller
             $account->notify((new ResidentEmailVerificationNotification)->locale(app()->getLocale()));
         } catch (Throwable $exception) {
             report($exception);
+
+            return redirect()->route('portal.login')
+                ->with('status', 'Your resident account is ready, but we could not send the confirmation email. Sign in and select Send a new confirmation link.');
         }
 
         return redirect()->route('portal.login')

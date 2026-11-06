@@ -2193,5 +2193,8 @@
     "View only. Your access does not include changing households.": "View only. Your access does not include changing households.",
     "Save household": "Save household",
     "New household": "New household",
-    "Household Name": "Household Name"
+    "Household Name": "Household Name",
+    "This confirmation link is invalid or has expired. Sign in and select Send a new confirmation link.": "This confirmation link is invalid or has expired. Sign in and select Send a new confirmation link.",
+    "We could not send the confirmation email right now. Please try again in a few minutes. If it keeps failing, ask the Barangay Hall for help.": "We could not send the confirmation email right now. Please try again in a few minutes. If it keeps failing, ask the Barangay Hall for help.",
+    "Your resident account is ready, but we could not send the confirmation email. Sign in and select Send a new confirmation link.": "Your resident account is ready, but we could not send the confirmation email. Sign in and select Send a new confirmation link."
 }

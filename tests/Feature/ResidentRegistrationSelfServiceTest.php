@@ -9,7 +9,12 @@ use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
+use Symfony\Component\Mailer\Exception\TransportException;
+use Symfony\Component\Mailer\SentMessage;
+use Symfony\Component\Mailer\Transport\AbstractTransport;
 
 /*
  * Resident Portal activation is staff-verified only. The former self-service path (full name → birth date →
@@ -24,6 +29,24 @@ function staffCodeResident(string $code = 'ABCD2345', array $attributes = []): R
         'portal_registration_hash' => hash('sha256', $code), 'portal_registration_expires_at' => now()->addDay(),
         ...$attributes,
     ]);
+}
+
+/** Route mail through a transport that always fails, as an unreachable or refusing SMTP server would. */
+function useFailingMailer(): void
+{
+    Mail::extend('failing', fn (): AbstractTransport => new class extends AbstractTransport
+    {
+        protected function doSend(SentMessage $message): void
+        {
+            throw new TransportException('Connection could not be established with host "127.0.0.1:1".');
+        }
+
+        public function __toString(): string
+        {
+            return 'failing://';
+        }
+    });
+    config(['mail.mailers.failing' => ['transport' => 'failing'], 'mail.default' => 'failing']);
 }
 
 function activationAttempt(Resident|string $resident, string $code): array
@@ -201,19 +224,95 @@ test('an unconfirmed email cannot request documents, and confirming it opens req
 
 test('confirmation links must be signed, unexpired and match the account email', function (string $case) {
     $account = User::factory()->resident()->create(['email_verified_at' => null, 'email' => 'jane@example.test']);
+    $staff = User::factory()->assignedOperations()->create(['email_verified_at' => null]);
     $url = match ($case) {
         'unsigned' => route('portal.verification.verify', ['account' => $account->id, 'hash' => sha1('jane@example.test')]),
+        'altered signature' => ResidentEmailVerificationNotification::verificationUrl($account).'0',
         'other email' => ResidentEmailVerificationNotification::verificationUrl($account->replicate()->forceFill(['id' => $account->id, 'email' => 'old@example.test'])),
         'expired' => ResidentEmailVerificationNotification::verificationUrl($account),
-        'staff account' => ResidentEmailVerificationNotification::verificationUrl(User::factory()->assignedOperations()->create(['email_verified_at' => null])),
+        'staff account' => ResidentEmailVerificationNotification::verificationUrl($staff),
+        'missing account' => ResidentEmailVerificationNotification::verificationUrl($account->replicate()->forceFill(['id' => 999999, 'email' => 'jane@example.test'])),
     };
     if ($case === 'expired') {
         $this->travel(61)->minutes();
     }
 
-    $this->get($url)->assertForbidden();
-    expect($account->fresh()->email_verified_at)->toBeNull();
-})->with(['unsigned', 'other email', 'expired', 'staff account']);
+    $this->get($url)->assertRedirect(route('portal.login'))
+        ->assertSessionHasErrors(['verification' => 'This confirmation link is invalid or has expired. Sign in and select Send a new confirmation link.']);
+    expect($account->fresh()->email_verified_at)->toBeNull()
+        ->and($staff->fresh()->email_verified_at)->toBeNull();
+    $this->assertDatabaseMissing('administrative_audits', ['action' => 'portal.email.verified']);
+})->with(['unsigned', 'altered signature', 'other email', 'expired', 'staff account', 'missing account']);
+
+test('a rejected link explains itself on the page instead of an error page', function () {
+    $account = User::factory()->resident()->create(['email_verified_at' => null]);
+    $url = ResidentEmailVerificationNotification::verificationUrl($account);
+    $this->travel(61)->minutes();
+
+    $this->followingRedirects()->get($url)->assertOk()->assertSee('This confirmation link is invalid or has expired.');
+    $this->actingAs($account, 'resident')->get($url)->assertRedirect(route('portal.request.create'))->assertSessionHasErrors('verification');
+});
+
+test('a confirmation link works with a staff session open in the same browser, and again after use', function () {
+    $account = User::factory()->resident()->create(['email_verified_at' => null]);
+    $url = ResidentEmailVerificationNotification::verificationUrl($account);
+
+    $this->actingAs(User::factory()->assignedOperations()->create(), 'web')->get($url)
+        ->assertRedirect(route('portal.login'))->assertSessionHas('status', 'Your email address is confirmed. You can now request documents.');
+    $verifiedAt = $account->fresh()->email_verified_at;
+    expect($verifiedAt)->not->toBeNull();
+
+    $this->travel(5)->minutes();
+    $this->get($url)->assertRedirect(route('portal.login'))->assertSessionHas('status');
+    expect($account->fresh()->email_verified_at->equalTo($verifiedAt))->toBeTrue();
+    expect(DB::table('administrative_audits')->where('action', 'portal.email.verified')->count())->toBe(1);
+});
+
+test('repeated confirmation link attempts are rate limited with a message', function () {
+    $url = ResidentEmailVerificationNotification::verificationUrl(User::factory()->resident()->create(['email_verified_at' => null]));
+
+    for ($attempt = 0; $attempt < 6; $attempt++) {
+        $this->get($url.'0')->assertSessionHasErrors('verification');
+    }
+
+    $this->get($url)->assertRedirect(route('portal.login'))
+        ->assertSessionHasErrors(['verification' => 'Too many attempts. Please wait before trying again.']);
+});
+
+test('the plain-text confirmation email carries a working link', function () {
+    $account = User::factory()->resident()->create(['email_verified_at' => null]);
+    $url = ResidentEmailVerificationNotification::verificationUrl($account);
+
+    $text = view('mail.resident-email-verification-text', ['verificationUrl' => $url, 'minutes' => 60])->render();
+
+    expect($url)->toContain('&signature=')
+        ->and($text)->toContain($url)->not->toContain('&amp;');
+});
+
+test('a mail server failure while sending a confirmation link is explained, not a server error', function () {
+    Exceptions::fake();
+    useFailingMailer();
+    $account = User::factory()->resident()->create(['email_verified_at' => null]);
+
+    $this->actingAs($account, 'resident')->from(route('portal.request.create'))->post(route('portal.verification.send'))
+        ->assertRedirect(route('portal.request.create'))
+        ->assertSessionHasErrors(['verification' => 'We could not send the confirmation email right now. Please try again in a few minutes. If it keeps failing, ask the Barangay Hall for help.'])
+        ->assertSessionMissing('status');
+    Exceptions::assertReported(TransportException::class);
+});
+
+test('a new account is told when its first confirmation email could not be sent', function () {
+    Exceptions::fake();
+    useFailingMailer();
+    $resident = staffCodeResident();
+    $this->post(route('portal.register.verify'), activationAttempt($resident, 'ABCD2345'))->assertRedirect(route('portal.register'));
+
+    $this->post(route('portal.register.store'), ['email' => 'jane@example.test', 'password' => 'ResidentPassword123!', 'password_confirmation' => 'ResidentPassword123!'])
+        ->assertRedirect(route('portal.login'))
+        ->assertSessionHas('status', 'Your resident account is ready, but we could not send the confirmation email. Sign in and select Send a new confirmation link.');
+    expect($resident->fresh()->portalAccount()->sole()->email_verified_at)->toBeNull();
+    Exceptions::assertReported(TransportException::class);
+});
 
 test('a signed-in resident can ask for a new confirmation link, within a limit', function () {
     Notification::fake();
@@ -222,7 +321,9 @@ test('a signed-in resident can ask for a new confirmation link, within a limit',
     for ($attempt = 0; $attempt < 3; $attempt++) {
         $this->actingAs($account, 'resident')->post(route('portal.verification.send'))->assertRedirect();
     }
-    $this->post(route('portal.verification.send'))->assertTooManyRequests();
+    $this->post(route('portal.verification.send'))->assertRedirect(route('portal.request.create'))
+        ->assertSessionHasErrors(['verification' => 'Too many attempts. Please wait before trying again.']);
+    $this->postJson(route('portal.verification.send'))->assertTooManyRequests();
     Notification::assertSentToTimes($account, ResidentEmailVerificationNotification::class, 3);
     $this->post(route('portal.logout'));
     $this->post(route('portal.verification.send'))->assertRedirect(route('portal.login'));
