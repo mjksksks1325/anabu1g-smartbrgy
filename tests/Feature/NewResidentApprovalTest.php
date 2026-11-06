@@ -19,8 +19,105 @@ function newResidentApplicationPayload(array $overrides = []): array
 
     return ['first_name' => 'Maria', 'middle_name' => 'Cruz', 'last_name' => 'Newresident', 'date_of_birth' => '1996-02-10',
         'gender' => 'Female', 'civil_status' => 'Single', 'residency_type' => 'Renter', 'purok' => $purok->name,
-        'address' => 'Block 1, Anabu I-G', 'email' => 'newresident@example.test', 'photo' => UploadedFile::fake()->image('resident.jpg'), ...$overrides];
+        'address' => 'Block 1, Anabu I-G', 'email' => 'newresident@example.test', 'photo' => UploadedFile::fake()->image('resident.jpg'),
+        'nationality' => 'Filipino', 'contact_number' => '0917 123 4567', 'privacy_notice_accepted' => '1', ...$overrides];
 }
+
+test('the application opens with the Data Privacy Notice and cannot be sent without consent', function () {
+    Storage::fake('local');
+    $this->get(route('portal.new-resident.create'))->assertOk()
+        ->assertSeeInOrder(['data-privacy-notice', 'Republic Act 10173', 'National Privacy Commission', 'name="privacy_notice_accepted"', 'data-privacy-notice-cancel', 'data-privacy-notice-continue', 'name="first_name"'], false)
+        ->assertSee('js/privacy-notice.js', false);
+
+    $this->post(route('portal.new-resident.store'), newResidentApplicationPayload(['privacy_notice_accepted' => null]))
+        ->assertSessionHasErrors(['privacy_notice_accepted' => 'Read the Data Privacy Notice and tick the box to agree before you submit.']);
+    $this->assertDatabaseEmpty('resident_registration_applications');
+
+    $this->post(route('portal.new-resident.store'), newResidentApplicationPayload())->assertSessionHasNoErrors();
+    $application = ResidentRegistrationApplication::query()->sole();
+    expect($application->details)->not->toHaveKey('privacy_notice_accepted');
+    $this->assertDatabaseHas('administrative_audits', ['action' => 'portal.application.privacy-notice-accepted', 'record' => $application->reference]);
+});
+
+test('online applicants must be at least 16, counted to the day and across leap years', function (string $today, string $birthDate, bool $allowed) {
+    Storage::fake('local');
+    $this->travelTo($today);
+
+    $response = $this->post(route('portal.new-resident.store'), newResidentApplicationPayload(['date_of_birth' => $birthDate]));
+
+    $allowed
+        ? $response->assertSessionHasNoErrors()
+        : $response->assertSessionHasErrors(['date_of_birth' => 'Online applicants must be at least 16 years old. For a younger resident, please visit the Barangay Hall.']);
+})->with([
+    'sixteenth birthday today' => ['2026-11-07', '2010-11-07', true],
+    'sixteenth birthday tomorrow' => ['2026-11-07', '2010-11-08', false],
+    'future date' => ['2026-11-07', '2027-01-01', false],
+    'leap-day birth, 28 Feb of a non-leap year' => ['2027-02-28', '2011-02-28', true],
+    'born 29 Feb 2008, on 28 Feb 2024' => ['2024-02-28', '2008-02-29', false],
+    'born 29 Feb 2008, on 29 Feb 2024' => ['2024-02-29', '2008-02-29', true],
+]);
+
+test('the date field limit matches the server age rule', function () {
+    $this->travelTo('2026-11-07');
+
+    $this->get(route('portal.new-resident.create'))->assertSee('max="2010-11-07"', false)->assertSee('You must be at least 16 years old to apply online.');
+});
+
+test('nationality and a Philippine mobile number are required, and the number is stored as +639', function (string $typed, ?string $stored) {
+    Storage::fake('local');
+
+    $response = $this->post(route('portal.new-resident.store'), newResidentApplicationPayload(['contact_number' => $typed]));
+
+    if ($stored === null) {
+        $response->assertSessionHasErrors('contact_number');
+        $this->assertDatabaseEmpty('resident_registration_applications');
+    } else {
+        $response->assertSessionHasNoErrors();
+        expect(ResidentRegistrationApplication::query()->sole()->details['contact_number'])->toBe($stored);
+    }
+})->with([
+    ['09171234567', '+639171234567'],
+    ['+639171234567', '+639171234567'],
+    ['+63 917-123-4567', '+639171234567'],
+    ['', null],
+    ['9171234567', null],
+    ['(046) 230-2905', null],
+    ['+6391712345678', null],
+]);
+
+test('nationality is required on the application', function () {
+    Storage::fake('local');
+
+    $this->post(route('portal.new-resident.store'), newResidentApplicationPayload(['nationality' => '  ']))->assertSessionHasErrors('nationality');
+    $this->assertDatabaseEmpty('resident_registration_applications');
+
+    $form = $this->get(route('portal.new-resident.create'))->getContent();
+    expect($form)->toMatch('/id="application-nationality"[^>]*\brequired\b/')
+        ->toMatch('/id="application-contact_number"[^>]*type="tel"[^>]*\brequired\b/');
+});
+
+test('the application trims the email and never says whether it already has an account', function () {
+    Storage::fake('local');
+    User::factory()->resident()->create(['email' => 'taken@example.test']);
+
+    $this->post(route('portal.new-resident.store'), newResidentApplicationPayload(['email' => '  Taken@Example.TEST ']))->assertSessionHasNoErrors();
+    expect(ResidentRegistrationApplication::query()->sole()->email)->toBe('taken@example.test');
+
+    $this->post(route('portal.new-resident.store'), newResidentApplicationPayload(['email' => 'not an email', 'first_name' => 'Other']))->assertSessionHasErrors('email');
+});
+
+test('approval still refuses an application whose email already has an account', function () {
+    Storage::fake('local');
+    Notification::fake();
+    $this->post(route('portal.new-resident.store'), newResidentApplicationPayload(['email' => 'taken@example.test']))->assertSessionHasNoErrors();
+    User::factory()->resident()->create(['email' => 'taken@example.test']);
+    $application = ResidentRegistrationApplication::query()->sole();
+
+    $this->actingAs(User::factory()->create(['role' => 'staff', 'staff_permissions' => ['records.review']]))
+        ->post(route('staff.resident-applications.update', $application), ['decision' => 'approved'])
+        ->assertSessionHasErrors(['decision' => 'A matching resident or account now exists. Review the duplicate before approving.']);
+    expect($application->fresh()->status)->toBe('pending');
+});
 
 test('new application remains pending without creating a resident account or record', function () {
     Storage::fake('local');

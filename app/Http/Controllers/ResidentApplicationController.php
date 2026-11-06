@@ -50,7 +50,7 @@ class ResidentApplicationController extends Controller
     public function store(StoreResidentApplicationRequest $request): RedirectResponse
     {
         abort_unless(Schema::hasTable('resident_registration_applications'), 503);
-        $details = $request->safe()->except(['email', 'photo']);
+        $details = $request->safe()->except(['email', 'photo', 'privacy_notice_accepted']);
         if (ResidentRegistrationApplication::matchesExistingResident($details)) {
             throw ValidationException::withMessages(['first_name' => __('A matching resident record already exists. Use the existing resident activation flow or ask barangay staff for help.')]);
         }
@@ -75,6 +75,11 @@ class ResidentApplicationController extends Controller
                 $application->locale = app()->getLocale();
                 $application->status = 'pending';
                 $application->save();
+                // Evidence that the applicant agreed to the Data Privacy Notice with this submission.
+                DB::table('administrative_audits')->insert([
+                    'user_id' => null, 'actor' => 'Resident Portal', 'action' => 'portal.application.privacy-notice-accepted',
+                    'type' => 'record', 'record' => $application->reference, 'created_at' => now(), 'updated_at' => now(),
+                ]);
 
                 return $application;
             });

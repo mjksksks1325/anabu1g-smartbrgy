@@ -48,9 +48,13 @@ class Resident extends Model
 
     protected $hidden = ['photo_path', 'portal_registration_hash', 'portal_registration_expires_at', 'portal_registration_email', 'portal_registration_sent_at'];
 
+    /** Philippine mobile numbers as typed: 09XXXXXXXXX or +639XXXXXXXXX, after spaces, dashes and brackets are removed. */
+    public const MOBILE_NUMBER_PATTERN = '/^(?:\+63|0)9\d{9}$/';
+
     /**
-     * Store mobile numbers in one local format: spaces, dashes and brackets are removed and +639XXXXXXXXX
-     * becomes 09XXXXXXXXX. Anything else is returned as typed so validation can reject it.
+     * Store new mobile numbers in the international format: spaces, dashes and brackets are removed and
+     * 09XXXXXXXXX becomes +639XXXXXXXXX. Anything else is returned as typed so validation can reject it.
+     * Numbers already stored as 09XXXXXXXXX are left as they are until the record is next saved.
      */
     public static function normalizeContactNumber(mixed $value): ?string
     {
@@ -60,7 +64,7 @@ class Resident extends Model
             return null;
         }
 
-        return preg_match('/^\+639\d{9}$/', $number) === 1 ? '0'.substr($number, 3) : $number;
+        return preg_match('/^09\d{9}$/', $number) === 1 ? '+63'.substr($number, 1) : $number;
     }
 
     /** @return HasOne<User, $this> */

@@ -58,7 +58,7 @@ it('registers a validated resident with a server-generated number', function () 
     expect($resident->resident_number)->toStartWith('ANB-'.now()->format('Y').'-');
     $this->assertDatabaseHas('residents', [
         'id' => $resident->id,
-        'contact_number' => '09171234567',
+        'contact_number' => '+639171234567',
         'is_in_good_standing' => true,
     ]);
 });
@@ -491,13 +491,13 @@ it('accepts only 09 or +639 mobile numbers when creating or editing a resident',
     }
 })->with([['09171234567', true], ['+639171234567', true], ['9171234567', false], ['0817123456', false], ['+6391712345678', false]]);
 
-it('stores every accepted mobile number in the local 09XXXXXXXXX format', function (string $typed) {
+it('stores every accepted mobile number in the international +639XXXXXXXXX format', function (string $typed) {
     $staff = User::factory()->assignedOperations()->create();
     $resident = Resident::factory()->create(['contact_number' => null]);
 
     $created = $this->actingAs($staff)->postJson(route('staff.residents.store'), residentPayload(['contact_number' => $typed]))->assertCreated();
     $this->patchJson(route('staff.residents.update', $resident), [...residentPayload(['first_name' => $resident->first_name, 'last_name' => $resident->last_name, 'date_of_birth' => $resident->date_of_birth->toDateString()]), 'contact_number' => $typed])->assertOk();
 
-    expect(Resident::query()->whereKey($created->json('resident.id') ?? $created->json('id'))->value('contact_number'))->toBe('09171234567')
-        ->and($resident->fresh()->contact_number)->toBe('09171234567');
+    expect(Resident::query()->whereKey($created->json('resident.id') ?? $created->json('id'))->value('contact_number'))->toBe('+639171234567')
+        ->and($resident->fresh()->contact_number)->toBe('+639171234567');
 })->with(['09171234567', '+639171234567', '+63 917 123 4567', '0917-123-4567']);

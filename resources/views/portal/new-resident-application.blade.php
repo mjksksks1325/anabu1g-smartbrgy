@@ -27,6 +27,7 @@
             @if(!$application || $application->status === 'needs_correction')
                 <form class="new-resident-form" method="POST" action="{{ route('portal.new-resident.store') }}" enctype="multipart/form-data" data-resident-form>
                     @csrf
+                    @include('portal.partials.new-resident-privacy-notice')
                     @php($sections = [
                         'Personal information' => ['first_name' => 'First name', 'last_name' => 'Last name', 'middle_name' => 'Middle name', 'suffix' => 'Suffix', 'date_of_birth' => 'Date of birth', 'gender' => 'Gender', 'civil_status' => 'Civil status', 'nationality' => 'Nationality'],
                         'Residential address' => ['purok' => 'Purok', 'residency_type' => 'Residency type', 'address' => 'Address'],
@@ -52,7 +53,7 @@
                         </div>
                     </fieldset>
                     @error('application')<p class="field-error" data-portal-message>{{ $message }}</p>@enderror
-                    <div class="new-resident-form-actions"><button class="btn btn-green" type="submit"><span data-portal-i18n="Submit for barangay review">{{ __('Submit for barangay review') }}</span></button></div>
+                    <div class="new-resident-form-actions"><button class="btn-link new-resident-privacy-review" type="button" data-privacy-notice-open><span data-portal-i18n="Read the Data Privacy Notice">{{ __('Read the Data Privacy Notice') }}</span></button><button class="btn btn-green" type="submit"><span data-portal-i18n="Submit for barangay review">{{ __('Submit for barangay review') }}</span></button></div>
                 </form>
             @endif
             <div class="new-resident-secondary-actions">
@@ -74,3 +75,6 @@
     </x-slot:help>
 </x-portal.auth-shell>
 @endsection
+@push('scripts')
+<script src="{{ asset('js/privacy-notice.js') }}?v={{ filemtime(public_path('js/privacy-notice.js')) }}"></script>
+@endpush
