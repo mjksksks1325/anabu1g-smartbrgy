@@ -1666,3 +1666,27 @@ test('the reset-link action shows for active accounts the viewer may change, nev
   context.showUserResetLink({ id: 1, role: 'admin', is_super_admin: true, is_active: true });
   assert.equal(row.hidden, false);
 });
+test('password guidance marks each rule as staff type, without blocking on recommendations', () => {
+  const source = readFileSync(new URL('../../public/js/admin.js', import.meta.url), 'utf8');
+  const code = source.slice(source.indexOf('const PASSWORD_RULES = {'), source.indexOf('function openAddUser() {'));
+  const items = ['length', 'uppercase', 'lowercase', 'number', 'symbol'].map(rule => ({ dataset: { passwordRule: rule }, classes: new Set(), classList: { toggle(name, on) { on ? this.owner.classes.add(name) : this.owner.classes.delete(name); } } }));
+  items.forEach(item => { item.classList.owner = item; });
+  const fields = { 'adduser-password': { value: '' }, 'adduser-pass-label': { textContent: '' } };
+  const context = vm.createContext({
+    adminText: text => text,
+    document: { getElementById: id => fields[id], querySelectorAll: () => items },
+  });
+  vm.runInContext(code, context);
+  const states = () => Object.fromEntries(items.map(item => [item.dataset.passwordRule, item.dataset.state]));
+
+  context.setPasswordGuidanceMode(false);
+  assert.equal(fields['adduser-pass-label'].textContent, 'Required. At least 12 characters.');
+  assert.deepEqual(states(), { length: 'idle', uppercase: 'idle', lowercase: 'idle', number: 'idle', symbol: 'idle' });
+
+  fields['adduser-password'].value = 'barangay.hall';
+  context.updatePasswordGuidance();
+  assert.deepEqual(states(), { length: 'met', uppercase: 'unmet', lowercase: 'met', number: 'unmet', symbol: 'met' }, 'a period counts as a symbol');
+
+  context.setPasswordGuidanceMode(true);
+  assert.match(fields['adduser-pass-label'].textContent, /^Leave blank to keep the current password/);
+});

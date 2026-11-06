@@ -978,3 +978,37 @@ body:not(.light-mode) #app.admin-interface .workspace-state[data-state="error"] 
   body #app.admin-interface.admin-interface #users-list-container .user-card { grid-template-columns: auto minmax(0, 1fr); }
   body #app.admin-interface.admin-interface .user-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
 }
+
+/* ── Households dialog (Work Group 4): list view and record view ─────── */
+body[data-personnel-layout="admin"] .household-modal { width: min(820px, calc(100vw - 24px)); max-width: none; }
+body[data-personnel-layout="admin"] .household-browser-toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 12px; margin-bottom: 12px; }
+body[data-personnel-layout="admin"] .household-browser-toolbar .form-group { flex: 1 1 280px; margin: 0; }
+body[data-personnel-layout="admin"] .household-browser-toolbar .btn { min-height: 44px; }
+body[data-personnel-layout="admin"] .household-editor-head { display: grid; gap: 8px; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--staff-row); }
+body[data-personnel-layout="admin"] .household-editor-head .household-back { justify-self: start; }
+body[data-personnel-layout="admin"] #household-editor-title { margin: 0; color: var(--text-primary); font-size: 18px; font-weight: 800; }
+body[data-personnel-layout="admin"] #household-editor-title:focus { outline: none; }
+body[data-personnel-layout="admin"] #household-editor-title:focus-visible { outline: 3px solid color-mix(in srgb, var(--civic-primary) 40%, transparent); outline-offset: 3px; }
+body[data-personnel-layout="admin"] #household-editor .form-input:disabled { opacity: 1; background: var(--staff-soft); color: var(--text-primary); cursor: default; }
+body[data-personnel-layout="admin"] .household-form-error { margin: 0 0 14px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--staff-danger) 45%, transparent); border-radius: 8px; background: color-mix(in srgb, var(--staff-danger) 8%, transparent); color: var(--staff-danger); font-size: 13px; font-weight: 600; }
+body[data-personnel-layout="admin"] .household-field-error { margin: 6px 0 0; color: var(--staff-danger); font-size: 12px; font-weight: 600; }
+body[data-personnel-layout="admin"] #household-editor [aria-invalid="true"] { border-color: var(--staff-danger); }
+body:not(.light-mode)[data-personnel-layout="admin"] :is(.household-form-error, .household-field-error) { color: #f87171; }
+body[data-personnel-layout="admin"] .household-save-actions { display: flex; justify-content: flex-end; }
+@media (max-width: 760px) {
+  body[data-personnel-layout="admin"] .household-browser-toolbar .btn { width: 100%; }
+  body[data-personnel-layout="admin"] .household-save-actions .btn { width: 100%; min-height: 44px; }
+}
+
+/* ── User account form: password guidance (Work Group 4) ──────────── */
+/* One required line (enforced by the server) and recommendations; each line shows idle, met or not yet met. */
+body[data-personnel-layout="admin"] .password-guidance { display: grid; gap: 4px; margin: 8px 0 0; padding: 0; list-style: none; font-size: 12.5px; color: var(--staff-muted); }
+body[data-personnel-layout="admin"] .password-guidance li { display: flex; align-items: center; gap: 8px; }
+body[data-personnel-layout="admin"] .password-guidance li::before { content: ""; flex: 0 0 14px; width: 14px; height: 14px; border: 1.5px solid var(--staff-control-border); border-radius: 50%; }
+body[data-personnel-layout="admin"] .password-guidance li.is-met { color: var(--staff-ink); }
+body[data-personnel-layout="admin"] .password-guidance li.is-met::before { border-color: var(--staff-accent-fill); background: var(--staff-accent-fill) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 8.5 2.5 2.5L12 5.5'/%3E%3C/svg%3E") center / 12px no-repeat; }
+body[data-personnel-layout="admin"] .password-guidance li[data-required][data-state="unmet"] { color: var(--staff-danger); }
+body[data-personnel-layout="admin"] .password-guidance li[data-required][data-state="unmet"]::before { border-color: var(--staff-danger); }
+body[data-personnel-layout="admin"] .password-rule-tag { margin-left: auto; padding: 1px 6px; border-radius: 999px; background: var(--staff-soft); color: var(--staff-muted); font-size: 11px; font-weight: 600; }
+body[data-personnel-layout="admin"] .password-guidance li[data-required] .password-rule-tag { background: var(--staff-active-bg); color: var(--staff-active-ink); }
+body:not(.light-mode)[data-personnel-layout="admin"] .password-guidance li[data-required][data-state="unmet"] { color: #f87171; }

@@ -39,9 +39,18 @@ class ResidentRegistrationController extends Controller
             $request->session()->forget(['resident_verification', '_old_input']);
         }
         $resident = $this->verifiedResident($request);
+        $verified = $resident && ! $resident->portalAccount()->exists();
 
+        // Display only: the eligibility explanation comes first; the record is verified only by the staff-issued
+        // code in verify(), and the matched record is shown only after that check has passed.
         return view('portal.register', [
-            'stage' => $resident && ! $resident->portalAccount()->exists() ? 'account' : 'code',
+            'stage' => match (true) {
+                $verified => 'account',
+                // ?step=activation comes from the activation-code email (ResidentPortalActivationNotification).
+                in_array($request->query('step'), ['verify', 'activation'], true) || $request->session()->has('errors') => 'code',
+                default => 'eligibility',
+            },
+            'verifiedResident' => $verified ? $resident : null,
         ]);
     }
 

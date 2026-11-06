@@ -303,3 +303,24 @@ it('records a completed reset and keeps two-factor authentication in place', fun
     $this->assertDatabaseHas('administrative_audits', ['action' => 'auth.password-reset-completed', 'user_id' => $staff->id]);
     expect(DB::table('administrative_audits')->get()->toJson())->not->toContain('Owner-Chosen-2026!')->not->toContain($token);
 });
+
+it('describes the staff password rule the server enforces: twelve characters, with stronger choices only recommended', function () {
+    $admin = User::factory()->superAdmin()->create(['role' => 'admin']);
+    $content = $this->actingAs($admin)->get(route('admin.users.index'))->assertOk()->getContent();
+    $document = new DOMDocument;
+    @$document->loadHTML($content);
+    $xpath = new DOMXPath($document);
+
+    // The new-account wording only; the edit wording is set by admin.js when an account is opened.
+    expect(trim($xpath->query('//*[@id="adduser-pass-label"]')->item(0)->textContent))->toBe('Required. At least 12 characters.')
+        ->and($content)->not->toContain('Leave blank when editing')
+        ->and(collect($xpath->query('//*[@id="adduser-password-guidance"]/li[@data-required]'))->map(fn (DOMElement $rule): string => $rule->getAttribute('data-password-rule'))->all())->toBe(['length'])
+        ->and(collect($xpath->query('//*[@id="adduser-password-guidance"]/li[not(@data-required)]'))->map(fn (DOMElement $rule): string => $rule->getAttribute('data-password-rule'))->all())->toBe(['uppercase', 'lowercase', 'number', 'symbol'])
+        ->and($xpath->query('//input[@id="adduser-password" and @minlength="12" and contains(@aria-describedby, "adduser-password-guidance")]'))->toHaveCount(1);
+
+    // The guidance matches the policy: eleven characters are refused; twelve lowercase letters are accepted.
+    $this->postJson(route('admin.users.store'), ['name' => 'Short', 'email' => 'short@example.test', 'password' => 'abcdefghijk', 'role' => 'staff', 'is_active' => true])
+        ->assertUnprocessable()->assertJsonValidationErrors(['password']);
+    $this->postJson(route('admin.users.store'), ['name' => 'Long', 'email' => 'long@example.test', 'password' => 'abcdefghijkl', 'role' => 'staff', 'is_active' => true])
+        ->assertCreated();
+});

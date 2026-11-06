@@ -3444,6 +3444,36 @@ function toggleUserCabinetFields() {
   rpiId.required = enabled;
 }
 
+/**
+ * Password guidance on the user account form. Only the length is enforced (SaveUserRequest: 12 or more characters);
+ * the other lines are recommendations and never block saving. The password value itself is only measured here,
+ * never logged or stored.
+ */
+const PASSWORD_RULES = {
+  length: value => value.length >= 12,
+  uppercase: value => /[A-Z]/.test(value),
+  lowercase: value => /[a-z]/.test(value),
+  number: value => /[0-9]/.test(value),
+  symbol: value => /[^A-Za-z0-9s]/.test(value),
+};
+
+function updatePasswordGuidance() {
+  const value = document.getElementById('adduser-password')?.value || '';
+  document.querySelectorAll('#adduser-password-guidance [data-password-rule]').forEach(item => {
+    const met = value !== '' && Boolean(PASSWORD_RULES[item.dataset.passwordRule]?.(value));
+    item.classList.toggle('is-met', met);
+    item.dataset.state = value === '' ? 'idle' : (met ? 'met' : 'unmet');
+  });
+}
+
+/** New accounts need a password; an edit keeps the current one unless a new one is typed. */
+function setPasswordGuidanceMode(editing) {
+  document.getElementById('adduser-pass-label').textContent = adminText(editing
+    ? 'Leave blank to keep the current password. A new password needs at least 12 characters.'
+    : 'Required. At least 12 characters.');
+  updatePasswordGuidance();
+}
+
 function openAddUser() {
   ['adduser-edit-id', 'adduser-name', 'adduser-email', 'adduser-password', 'adduser-rpi-id']
     .forEach(id => document.getElementById(id).value = '');
@@ -3452,6 +3482,7 @@ function openAddUser() {
   document.getElementById('adduser-status').value = 'active';
   lockUserCredentials(null);
   document.getElementById('adduser-password').required = true;
+  setPasswordGuidanceMode(false);
   showUserResetLink(null);
 
   document.getElementById('adduser-cabinet-access').checked = false;
@@ -3507,6 +3538,8 @@ function lockUserCredentials(user) {
   if (password) { password.disabled = locked; if (locked) password.value = ''; }
   const note = document.getElementById('adduser-credential-lock');
   if (note) note.hidden = !locked;
+  // A locked password field has nothing to type, so its guidance is hidden too.
+  ['adduser-pass-label', 'adduser-password-guidance'].forEach(id => { const element = document.getElementById(id); if (element) element.hidden = locked; });
 }
 
 function openEditUser(id) {
@@ -3532,6 +3565,7 @@ function openEditUser(id) {
   document.getElementById('adduser-status').value = user.is_active ? 'active' : 'suspended';
   document.getElementById('adduser-password').value = '';
   document.getElementById('adduser-password').required = false;
+  setPasswordGuidanceMode(true);
   lockUserCredentials(user);
   showUserResetLink(user);
 
@@ -5239,7 +5273,11 @@ async function householdApi(url, method = 'GET', body) {
   });
   const payload = await response.json();
   // A refusal carries no message of its own; say so plainly instead of blaming household records.
-  if (!response.ok) throw new Error(payload.errors ? Object.values(payload.errors).flat()[0] : payload.message || (response.status === 403 ? 'You do not have access to this information.' : 'Unable to load household records.'));
+  if (!response.ok) {
+    const error = new Error(payload.errors ? Object.values(payload.errors).flat()[0] : payload.message || (response.status === 403 ? 'You do not have access to this information.' : 'Unable to load household records.'));
+    error.fieldErrors = payload.errors || null;
+    throw error;
+  }
   return payload;
 }
 
@@ -5351,9 +5389,84 @@ async function loadResidentHouseholdInformation(residentId) {
   }
 }
 
+/*
+ * The Households dialog has two views. Opening a record (View / Edit, Create household) replaces the list with the
+ * record and moves focus to its heading; Back returns to the list and to the row that opened it. The record used
+ * to be appended below the list, out of sight inside the scrolling dialog, so View / Edit appeared to do nothing.
+ */
+let householdEditorTrigger = null;
+const HOUSEHOLD_FIELD_IDS = { household_name: 'household-name', household_number: 'household-number', address: 'household-address', purok_id: 'household-purok', household_head_resident_id: 'household-head' };
+
+function showHouseholdEditor(trigger, { focus = true } = {}) {
+  if (trigger) householdEditorTrigger = trigger;
+  const editor = document.getElementById('household-editor');
+  const wasHidden = editor.hidden;
+  document.getElementById('household-browser').hidden = true;
+  editor.hidden = false;
+  if (wasHidden || focus) editor.closest?.('.modal')?.scrollTo?.({ top: 0 });
+  if (focus) document.getElementById('household-editor-title').focus?.();
+}
+
+function showHouseholdList() {
+  householdDetailVersion++;
+  clearHouseholdErrors();
+  document.getElementById('household-editor').hidden = true;
+  document.getElementById('household-browser').hidden = false;
+  const trigger = householdEditorTrigger;
+  householdEditorTrigger = null;
+  // The list may have been re-rendered while the record was open: find the same row's button again.
+  const id = trigger?.dataset?.householdId;
+  const again = id ? document.querySelector(`#household-list [data-household-id="${Number(id)}"]`) : null;
+  (again || (trigger?.isConnected ? trigger : document.getElementById('household-search'))).focus?.();
+}
+
+/** Fields stay editable only for staff who may save them; the server enforces the same permissions. */
+function setHouseholdEditable(editable) {
+  ['household-name', 'household-address', 'household-purok', 'household-head'].forEach(id => { document.getElementById(id).disabled = !editable; });
+  document.getElementById('household-readonly-note').hidden = editable;
+  document.getElementById('household-add-member').hidden = !editable;
+}
+
+function clearHouseholdErrors() {
+  const summary = document.getElementById('household-editor-error');
+  summary.hidden = true;
+  summary.textContent = '';
+  Object.values(HOUSEHOLD_FIELD_IDS).forEach(id => {
+    const field = document.getElementById(id);
+    field?.removeAttribute('aria-invalid');
+    field?.removeAttribute('aria-describedby');
+    document.getElementById(`${id}-error`)?.remove();
+  });
+}
+
+/** Shows a save error in the form: the message at the top, and each field's own message under that field. */
+function showHouseholdErrors(message, fieldErrors = null) {
+  clearHouseholdErrors();
+  const summary = document.getElementById('household-editor-error');
+  summary.textContent = adminText(message);
+  summary.hidden = false;
+  let first = null;
+  Object.entries(fieldErrors || {}).forEach(([key, messages]) => {
+    const field = document.getElementById(HOUSEHOLD_FIELD_IDS[key]);
+    if (!field) return;
+    const note = document.createElement('p');
+    note.id = `${field.id}-error`;
+    note.className = 'household-field-error';
+    note.textContent = adminText([messages].flat()[0]);
+    field.insertAdjacentElement('afterend', note);
+    field.setAttribute('aria-invalid', 'true');
+    field.setAttribute('aria-describedby', note.id);
+    first ??= field;
+  });
+  if (first) first.focus?.();
+  else summary.scrollIntoView?.({ block: 'nearest' });
+}
+
 function openHouseholdManagement() {
   document.getElementById('household-search').value = '';
   document.getElementById('household-editor').hidden = true;
+  document.getElementById('household-browser').hidden = false;
+  householdEditorTrigger = null;
   openModal('modal-households');
   void loadManagedHouseholds();
 }
@@ -5372,11 +5485,12 @@ async function loadManagedHouseholds(page = 1) {
   try {
     const payload = await householdApi(`/staff/households?${query}`);
     if (version !== householdListVersion) return;
+    const canEdit = hasStaffPermission('households.update');
     const rows = payload.data.map(item => `<tr>
       <td><span data-no-admin-translate>${escapeText(item.household_name || item.household_number)}</span>${item.household_name ? `<br><small class="resident-number" data-no-admin-translate>${escapeText(item.household_number)}</small>` : ''}</td>
       <td>${item.head?.full_name ? `<span data-no-admin-translate>${escapeText(item.head.full_name)}</span>` : `<span>${escapeText('No household head assigned')}</span>`}<br><small data-no-admin-translate>${escapeText(item.address)}</small></td>
       <td>${Number(item.household_size)}</td>
-      <td><button type="button" data-action-permission="households.view" class="btn btn-xs" onclick="editManagedHousehold(${Number(item.id)})">View / Edit</button></td>
+      <td><button type="button" class="btn btn-xs" data-household-id="${Number(item.id)}" onclick="editManagedHousehold(${Number(item.id)}, this)" aria-label="${escapeText(adminText(canEdit ? 'Edit household :name' : 'View household :name', { name: item.household_name || item.household_number }))}">${canEdit ? 'Edit' : 'View'}</button></td>
     </tr>`).join('');
     list.innerHTML = `<div class="table-scroll"><table class="tbl"><thead><tr><th>Household</th><th>Head / Address</th><th>Members</th><th>Actions</th></tr></thead><tbody>${rows || workspaceStateRow(4, 'No households found.')}</tbody></table></div>`;
     householdPagination('household-pagination', payload, 'loadManagedHouseholds');
@@ -5385,14 +5499,15 @@ async function loadManagedHouseholds(page = 1) {
   }
 }
 
-function newManagedHousehold() {
+function newManagedHousehold(trigger) {
   const save = document.getElementById('household-save');
   save.dataset.actionPermission = 'households.create';
   save.hidden = !hasStaffPermission('households.create');
   save.style.display = hasStaffPermission('households.create') ? '' : 'none';
   householdDetailVersion++;
   householdMemberLookupVersion++;
-  document.getElementById('household-editor').hidden = false;
+  clearHouseholdErrors();
+  setHouseholdEditable(true);
   document.getElementById('household-editor-title').textContent = 'New household';
   document.getElementById('household-edit-id').value = '';
   document.getElementById('household-address').value = '';
@@ -5410,6 +5525,7 @@ function newManagedHousehold() {
   householdResidentOptions.clear();
   document.getElementById('household-head').replaceChildren(new Option('Select household head', ''));
   renderDraftHouseholdMembers();
+  showHouseholdEditor(trigger);
   void loadHouseholdResidents();
 }
 
@@ -5454,7 +5570,7 @@ function removeDraftHouseholdMember(id) {
   renderDraftHouseholdMembers(Number(selectedHead) === id ? '' : selectedHead);
 }
 
-async function editManagedHousehold(id) {
+async function editManagedHousehold(id, trigger = null, { focus = true } = {}) {
   const save = document.getElementById('household-save');
   save.dataset.actionPermission = 'households.update';
   save.hidden = !hasStaffPermission('households.update');
@@ -5463,7 +5579,8 @@ async function editManagedHousehold(id) {
   try {
     const household = await householdApi(`/staff/households/${id}`);
     if (version !== householdDetailVersion) return;
-    document.getElementById('household-editor').hidden = false;
+    const editable = hasStaffPermission('households.update');
+    clearHouseholdErrors();
     document.getElementById('household-editor-title').textContent = household.household_name || household.household_number;
     document.getElementById('household-name').value = household.household_name || '';
     document.getElementById('household-edit-id').value = String(household.id);
@@ -5477,12 +5594,13 @@ async function editManagedHousehold(id) {
     head.replaceChildren(new Option('No household head assigned', ''));
     household.members.filter(member => member.status === 'active').forEach(member => head.add(new Option(member.full_name, String(member.id))));
     head.value = String(household.head?.id || '');
-    document.getElementById('household-members').innerHTML = `<h4>Household members (${Number(household.household_size)})</h4>${householdMembersMarkup(household, true)}`;
-    document.getElementById('household-add-member').hidden = false;
+    document.getElementById('household-members').innerHTML = `<h4>Household members (${Number(household.household_size)})</h4>${householdMembersMarkup(household, hasStaffPermission('households.remove'))}`;
+    setHouseholdEditable(editable);
+    showHouseholdEditor(trigger, { focus });
     document.getElementById('household-resident-search').value = '';
     document.getElementById('household-resident-relationship').value = '';
     document.getElementById('household-resident-head').checked = false;
-    void loadHouseholdResidents();
+    if (editable) void loadHouseholdResidents();
   } catch (error) { showToast(error.message, 'red'); }
 }
 
@@ -5496,23 +5614,23 @@ async function saveManagedHousehold() {
   if (!id) {
     if (!body.household_head_resident_id) {
       button.disabled = false;
-      return showToast('Select an existing active resident as household head.', 'red');
+      return showHouseholdErrors('Select an existing active resident as household head.', { household_head_resident_id: ['Select an existing active resident as household head.'] });
     }
     body.household_number = document.getElementById('household-number').value.trim() || null;
     body.members = [...draftHouseholdMembers.values()].filter(member => member.id !== body.household_head_resident_id).map(member => ({ resident_id: member.id, relationship_to_household_head: member.relationship_to_household_head.trim() }));
     if (body.members.some(member => !member.relationship_to_household_head)) {
       button.disabled = false;
-      return showToast('Enter the relationship of each member to the household head.', 'red');
+      return showHouseholdErrors('Enter the relationship of each member to the household head.');
     }
   }
   try {
     const payload = await householdApi(id ? `/staff/households/${id}` : '/staff/households', id ? 'PATCH' : 'POST', body);
     showToast(payload.message, 'green');
-    await editManagedHousehold(payload.household.id);
+    await editManagedHousehold(payload.household.id, null, { focus: false });
     await loadManagedHouseholds();
     await loadResidents(residentCurrentPage);
     await refreshHouseholdDemographics();
-  } catch (error) { showToast(error.message, 'red'); }
+  } catch (error) { showHouseholdErrors(error.message, error.fieldErrors); }
   finally { button.disabled = false; }
 }
 
@@ -5565,7 +5683,7 @@ async function addManagedHouseholdMember() {
       is_household_head: isHead
     });
     showToast(payload.message, 'green');
-    await editManagedHousehold(id);
+    await editManagedHousehold(id, null, { focus: false });
     await loadManagedHouseholds();
     await loadResidents(residentCurrentPage);
     await refreshHouseholdDemographics();
@@ -5578,7 +5696,7 @@ async function removeManagedHouseholdMember(id, residentId) {
   try {
     const payload = await householdApi(`/staff/households/${id}/members/${residentId}`, 'DELETE', { super_admin_password: supervisorPassword });
     showToast(payload.message, 'green');
-    await editManagedHousehold(id);
+    await editManagedHousehold(id, null, { focus: false });
     await loadManagedHouseholds();
     await loadResidents(residentCurrentPage);
     await refreshHouseholdDemographics();

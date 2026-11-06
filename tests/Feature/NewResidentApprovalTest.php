@@ -198,7 +198,8 @@ test('new application form supports both portal languages and preserves existing
 });
 
 test('new resident entry sits inside the registration card and is translated', function (string $locale) {
-    $response = $this->withCookie('portal_locale', $locale)->get(route('portal.register'))->assertOk();
+    $this->withCookie('portal_locale', $locale)->get(route('portal.register'))->assertOk()->assertSee(route('portal.new-resident.create'), false);
+    $response = $this->withCookie('portal_locale', $locale)->get(route('portal.register', ['step' => 'verify']))->assertOk();
     $document = new DOMDocument;
     @$document->loadHTML($response->getContent());
     $xpath = new DOMXPath($document);
@@ -287,8 +288,10 @@ test('review result email reaches the application email with reference decision 
     if ($decision === 'approved') {
         expect($mail->viewData['actionUrl'])->toBe(route('portal.register'));
         expect($mail->viewData['instructions'])->toContain('visit the Barangay Hall with a valid ID');
-        $this->get($mail->viewData['actionUrl'])->assertOk()->assertViewHas('stage', 'code')
-            ->assertSee('name="activation_code"', false)->assertDontSee('name="full_name"', false);
+        // The approval email opens the eligibility step, which explains the Barangay Hall visit and links to the code form.
+        $this->get($mail->viewData['actionUrl'])->assertOk()->assertViewHas('stage', 'eligibility')
+            ->assertSee(route('portal.register', ['step' => 'verify']), false)->assertDontSee('name="full_name"', false);
+        $this->get(route('portal.register', ['step' => 'verify']))->assertSee('name="activation_code"', false);
         app()->setLocale($locale);
     }
     $html = view($mail->view['html'], $mail->viewData)->render();

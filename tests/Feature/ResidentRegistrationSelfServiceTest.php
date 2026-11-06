@@ -64,7 +64,12 @@ test('a forged session from the old flow cannot obtain a code or an account', fu
 });
 
 test('the registration page offers only the staff-issued activation code path', function (string $locale) {
-    $response = $this->withCookie('portal_locale', $locale)->get(route('portal.register'))->assertOk()->assertViewHas('stage', 'code');
+    // Step 1 only explains eligibility: it has no fields at all, so nothing can be looked up from it.
+    $eligibility = $this->withCookie('portal_locale', $locale)->get(route('portal.register'))->assertOk()->assertViewHas('stage', 'eligibility');
+    expect(substr_count($eligibility->getContent(), 'name="resident_number"') + substr_count($eligibility->getContent(), 'name="full_name"') + substr_count($eligibility->getContent(), 'name="date_of_birth"'))->toBe(0);
+    $eligibility->assertSee(route('portal.register', ['step' => 'verify']), false)->assertSee(route('portal.new-resident.create'), false);
+
+    $response = $this->withCookie('portal_locale', $locale)->get(route('portal.register', ['step' => 'verify']))->assertOk()->assertViewHas('stage', 'code');
     $document = new DOMDocument;
     @$document->loadHTML($response->getContent());
     $xpath = new DOMXPath($document);
@@ -241,4 +246,20 @@ test('existing accounts are classified for staff review without names or emails'
         ->not->toContain($staffCode->resident->resident_number)
         ->not->toContain('self@example.test', 'seeded@example.test', $selfService->name, $unknown->name);
     expect($selfService->fresh()->is_active)->toBeTrue();
+});
+
+test('the record is confirmed to the resident only after their staff-issued code matches it', function () {
+    $resident = staffCodeResident('WXYZ2345');
+
+    $this->get(route('portal.register', ['step' => 'activation']))->assertOk()->assertViewHas('stage', 'code')
+        ->assertDontSee($resident->full_name)->assertDontSee($resident->resident_number);
+
+    $this->post(route('portal.register.verify'), activationAttempt($resident, 'WRONG999'))->assertRedirect(route('portal.registration.denied'));
+    $this->get(route('portal.register'))->assertViewHas('stage', 'eligibility')->assertViewHas('verifiedResident', null)
+        ->assertDontSee($resident->full_name)->assertDontSee($resident->resident_number);
+
+    $this->post(route('portal.register.verify'), activationAttempt($resident, 'WXYZ2345'))->assertRedirect(route('portal.register'));
+    $this->get(route('portal.register'))->assertViewHas('stage', 'account')
+        ->assertSeeInOrder(['Verified resident record', $resident->full_name, $resident->resident_number]);
+    $this->assertDatabaseEmpty('users');
 });

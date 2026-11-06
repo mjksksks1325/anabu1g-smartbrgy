@@ -789,14 +789,24 @@
   </div>
 </div>
 <div class="modal-overlay" id="modal-households">
-  <div class="modal">
-    <div class="modal-header"><div class="modal-title">Households</div><button type="button" class="modal-close" onclick="closeModal('modal-households')" aria-label="Close">&times;</button></div>
-    <div class="form-group"><label class="form-label" for="household-search">Search by household name, number, head or address</label><input class="form-input" id="household-search" autocomplete="off" maxlength="100" oninput="searchHouseholdManagement()"/></div>
-    <div id="household-list" aria-live="polite"></div>
-    <div class="resident-pagination" id="household-pagination"></div>
-    <button data-action-permission="households.create" class="btn btn-sm" onclick="newManagedHousehold()">Create household</button>
-    <section class="resident-account-panel" id="household-editor" hidden>
-      <h3 id="household-editor-title">New household</h3>
+  <div class="modal household-modal" role="dialog" aria-modal="true" aria-labelledby="households-modal-title">
+    <div class="modal-header"><div class="modal-title" id="households-modal-title">Households</div><button type="button" class="modal-close" onclick="closeModal('modal-households')" aria-label="Close">&times;</button></div>
+    {{-- List view and record view share the dialog: opening a record replaces the list instead of appending below it. --}}
+    <div id="household-browser">
+      <div class="household-browser-toolbar">
+        <div class="form-group"><label class="form-label" for="household-search">Search by household name, number, head or address</label><input class="form-input" id="household-search" type="search" autocomplete="off" maxlength="100" oninput="searchHouseholdManagement()"/></div>
+        <button type="button" data-action-permission="households.create" class="btn btn-green btn-sm" onclick="newManagedHousehold(this)">Create household</button>
+      </div>
+      <div id="household-list" aria-live="polite"></div>
+      <div class="resident-pagination" id="household-pagination"></div>
+    </div>
+    <section class="household-editor" id="household-editor" aria-labelledby="household-editor-title" hidden>
+      <div class="household-editor-head">
+        <button type="button" class="btn btn-sm household-back" onclick="showHouseholdList()"><span aria-hidden="true">&larr;</span> Back to households</button>
+        <h3 id="household-editor-title" tabindex="-1">New household</h3>
+        <p class="card-sub" id="household-readonly-note" hidden>View only. Your access does not include changing households.</p>
+      </div>
+      <div class="household-form-error" id="household-editor-error" role="alert" hidden></div>
       <input type="hidden" id="household-edit-id"/>
       <div class="form-group"><label class="form-label" for="household-name">Household Name</label><input class="form-input" id="household-name" maxlength="150" placeholder="e.g. Pamilya Manalac"/></div>
       <div class="form-group"><label class="form-label" for="household-number">Household Number</label><input class="form-input" id="household-number" maxlength="100" placeholder="Leave blank to generate HH-000001"/></div>
@@ -1101,8 +1111,16 @@
     </div>
     <div class="form-group user-account-password">
       <label for="adduser-password" class="form-label">Password</label>
-      <span class="password-visibility-field"><input class="form-input" id="adduser-password" type="password" minlength="12" autocomplete="new-password"><x-password-toggle target="adduser-password" /></span>
-      <p class="card-sub" id="adduser-pass-label">At least 12 characters. Leave blank when editing to keep the current password.</p>
+      <span class="password-visibility-field"><input class="form-input" id="adduser-password" name="password" type="password" minlength="12" maxlength="255" autocomplete="new-password" aria-describedby="adduser-pass-label adduser-password-guidance" oninput="updatePasswordGuidance()"><x-password-toggle target="adduser-password" /></span>
+      {{-- What the server enforces for staff accounts set here (SaveUserRequest): 12 or more characters. The other lines are advice, not rules. --}}
+      <p class="card-sub" id="adduser-pass-label">Required. At least 12 characters.</p>
+      <ul class="password-guidance" id="adduser-password-guidance" data-password-guidance>
+        <li data-password-rule="length" data-required>12 or more characters <span class="password-rule-tag">Required</span></li>
+        <li data-password-rule="uppercase">An uppercase letter (A–Z) <span class="password-rule-tag">Recommended</span></li>
+        <li data-password-rule="lowercase">A lowercase letter (a–z) <span class="password-rule-tag">Recommended</span></li>
+        <li data-password-rule="number">A number (0–9) <span class="password-rule-tag">Recommended</span></li>
+        <li data-password-rule="symbol">A symbol, such as a period (.) or ! <span class="password-rule-tag">Recommended</span></li>
+      </ul>
       <p class="card-sub" id="adduser-credential-lock" hidden>Only this Super Admin can change their own email address and password. Use the password reset link or the server command.</p>
       <div class="user-reset-link" id="adduser-reset-link-row" hidden><button type="button" class="btn btn-sm" id="adduser-reset-link" onclick="sendUserPasswordResetLink(this)">Send password reset link</button><p class="card-sub">Emails the account owner a link that expires in 60 minutes. They choose their own password; you never see it.</p></div>
     </div>
