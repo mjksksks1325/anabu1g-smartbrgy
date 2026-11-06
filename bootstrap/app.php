@@ -5,6 +5,7 @@ use App\Http\Middleware\ApplyPortalLocale;
 use App\Http\Middleware\EnsureActiveAccount;
 use App\Http\Middleware\EnsurePersonnelTwoFactorAccount;
 use App\Http\Middleware\PreventAccountCaching;
+use App\Http\Responses\PasswordResetLinkRequestResponse;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
@@ -15,6 +16,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Exceptions\InvalidSignatureException;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -54,6 +57,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // An expired or altered email confirmation link explains itself instead of showing a bare 403 page.
         $exceptions->render(function (InvalidSignatureException $exception, Request $request): ?RedirectResponse {
             return $request->routeIs('portal.verification.verify') ? ResidentEmailVerificationController::rejectedLink() : null;
+        });
+        // A failed reset email is reported but answered like any other reset request, so the reply never
+        // differs between addresses that have accounts and addresses that do not.
+        $exceptions->render(function (TransportExceptionInterface $exception, Request $request): ?Response {
+            return $request->routeIs('password.email') ? (new PasswordResetLinkRequestResponse)->toResponse($request) : null;
         });
         $exceptions->dontFlash(['activation_code', 'resident_number']);
         $exceptions->shouldRenderJsonWhen(

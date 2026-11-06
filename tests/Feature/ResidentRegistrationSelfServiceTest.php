@@ -10,11 +10,8 @@ use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Exceptions;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Symfony\Component\Mailer\Exception\TransportException;
-use Symfony\Component\Mailer\SentMessage;
-use Symfony\Component\Mailer\Transport\AbstractTransport;
 
 /*
  * Resident Portal activation is staff-verified only. The former self-service path (full name → birth date →
@@ -29,24 +26,6 @@ function staffCodeResident(string $code = 'ABCD2345', array $attributes = []): R
         'portal_registration_hash' => hash('sha256', $code), 'portal_registration_expires_at' => now()->addDay(),
         ...$attributes,
     ]);
-}
-
-/** Route mail through a transport that always fails, as an unreachable or refusing SMTP server would. */
-function useFailingMailer(): void
-{
-    Mail::extend('failing', fn (): AbstractTransport => new class extends AbstractTransport
-    {
-        protected function doSend(SentMessage $message): void
-        {
-            throw new TransportException('Connection could not be established with host "127.0.0.1:1".');
-        }
-
-        public function __toString(): string
-        {
-            return 'failing://';
-        }
-    });
-    config(['mail.mailers.failing' => ['transport' => 'failing'], 'mail.default' => 'failing']);
 }
 
 function activationAttempt(Resident|string $resident, string $code): array

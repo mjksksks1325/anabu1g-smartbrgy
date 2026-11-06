@@ -2196,5 +2196,10 @@
     "Household Name": "Household Name",
     "This confirmation link is invalid or has expired. Sign in and select Send a new confirmation link.": "This confirmation link is invalid or has expired. Sign in and select Send a new confirmation link.",
     "We could not send the confirmation email right now. Please try again in a few minutes. If it keeps failing, ask the Barangay Hall for help.": "We could not send the confirmation email right now. Please try again in a few minutes. If it keeps failing, ask the Barangay Hall for help.",
-    "Your resident account is ready, but we could not send the confirmation email. Sign in and select Send a new confirmation link.": "Your resident account is ready, but we could not send the confirmation email. Sign in and select Send a new confirmation link."
+    "Your resident account is ready, but we could not send the confirmation email. Sign in and select Send a new confirmation link.": "Your resident account is ready, but we could not send the confirmation email. Sign in and select Send a new confirmation link.",
+    "If an account uses this email address, we will send it a link to reset the password. The link works for 60 minutes. Check your Spam folder if it does not arrive.": "If an account uses this email address, we will send it a link to reset the password. The link works for 60 minutes. Check your Spam folder if it does not arrive.",
+    "Your password has been reset. Log in with your new password.": "Your password has been reset. Log in with your new password.",
+    "Create a new password for your resident account.": "Create a new password for your resident account.",
+    "The link works for 60 minutes. If it has expired, request a new one.": "The link works for 60 minutes. If it has expired, request a new one.",
+    "Request a new reset link": "Request a new reset link"
 }

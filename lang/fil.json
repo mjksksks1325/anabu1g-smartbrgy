@@ -2364,5 +2364,10 @@
     "Household Name": "Pangalan ng household",
     "This confirmation link is invalid or has expired. Sign in and select Send a new confirmation link.": "Hindi valid o expired na ang confirmation link na ito. Mag-log in at piliin ang Magpadala ng bagong confirmation link.",
     "We could not send the confirmation email right now. Please try again in a few minutes. If it keeps failing, ask the Barangay Hall for help.": "Hindi namin maipadala ang confirmation email ngayon. Pakisubukang muli pagkalipas ng ilang minuto. Kung patuloy itong pumalya, magpatulong sa Barangay Hall.",
-    "Your resident account is ready, but we could not send the confirmation email. Sign in and select Send a new confirmation link.": "Handa na ang inyong resident account, pero hindi namin naipadala ang confirmation email. Mag-log in at piliin ang Magpadala ng bagong confirmation link."
+    "Your resident account is ready, but we could not send the confirmation email. Sign in and select Send a new confirmation link.": "Handa na ang inyong resident account, pero hindi namin naipadala ang confirmation email. Mag-log in at piliin ang Magpadala ng bagong confirmation link.",
+    "If an account uses this email address, we will send it a link to reset the password. The link works for 60 minutes. Check your Spam folder if it does not arrive.": "Kung may account na gumagamit ng email address na ito, padadalhan namin ito ng link para i-reset ang password. Gumagana ang link nang 60 minuto. Tingnan ang Spam folder kung hindi ito dumating.",
+    "Your password has been reset. Log in with your new password.": "Na-reset na ang inyong password. Mag-log in gamit ang bagong password.",
+    "Create a new password for your resident account.": "Gumawa ng bagong password para sa inyong resident account.",
+    "The link works for 60 minutes. If it has expired, request a new one.": "Gumagana ang link nang 60 minuto. Kung expired na ito, humingi ng bago.",
+    "Request a new reset link": "Humingi ng bagong reset link"
 }

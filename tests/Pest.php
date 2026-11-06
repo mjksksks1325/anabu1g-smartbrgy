@@ -2,7 +2,11 @@
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Testing\TestResponse;
+use Symfony\Component\Mailer\Exception\TransportException;
+use Symfony\Component\Mailer\SentMessage;
+use Symfony\Component\Mailer\Transport\AbstractTransport;
 use Tests\TestCase;
 
 /*
@@ -75,4 +79,22 @@ function spreadsheetSheetXml(TestResponse $response): string
     $zip->close();
 
     return $xml;
+}
+
+/** Route mail through a transport that always fails, as an unreachable or refusing SMTP server would. */
+function useFailingMailer(): void
+{
+    Mail::extend('failing', fn (): AbstractTransport => new class extends AbstractTransport
+    {
+        protected function doSend(SentMessage $message): void
+        {
+            throw new TransportException('Connection could not be established with host "127.0.0.1:1".');
+        }
+
+        public function __toString(): string
+        {
+            return 'failing://';
+        }
+    });
+    config(['mail.mailers.failing' => ['transport' => 'failing'], 'mail.default' => 'failing']);
 }

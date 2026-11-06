@@ -7,9 +7,11 @@ use App\Models\Incident;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
+use Symfony\Component\Mailer\Exception\TransportException;
 
 it('requires authentication and administrator access to account management', function () {
     $this->getJson(route('admin.users.index'))->assertUnauthorized();
@@ -280,6 +282,17 @@ it('emails the owner a reset link the administrator never sees, refuses the wron
     $this->postJson(route('admin.users.password-reset-link', User::factory()->create(['role' => 'staff', 'is_active' => false])))->assertUnprocessable()
         ->assertJsonPath('errors.user.0', 'Reactivate this account before sending a password reset link.');
     $this->actingAs($staff)->postJson(route('admin.users.password-reset-link', $captain))->assertForbidden();
+});
+
+it('tells the administrator when the reset email could not be sent', function () {
+    Exceptions::fake();
+    useFailingMailer();
+    $captain = User::factory()->create(['role' => 'captain']);
+    $staff = User::factory()->create(['role' => 'staff', 'staff_permissions' => ['dashboard.view']]);
+
+    $this->actingAs($captain)->postJson(route('admin.users.password-reset-link', $staff))->assertUnprocessable()
+        ->assertJsonPath('errors.user.0', 'The reset link could not be sent. Check the mail settings and try again.');
+    Exceptions::assertReported(TransportException::class);
 });
 
 it('lets a Super Admin send a reset link only to their own Super Admin account', function () {
