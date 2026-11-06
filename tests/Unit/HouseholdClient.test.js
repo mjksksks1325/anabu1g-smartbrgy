@@ -336,3 +336,23 @@ test('a rejected save shows each server error under its own field and clears it 
   assert.equal(getField('household-editor-error').hidden, true);
   assert.equal(getField('household-address').getAttribute('aria-invalid'), null);
 });
+
+test('a household list refresh keeps keyboard focus on the same household row', async () => {
+  const fetch = async () => ({ ok: true, status: 200, json: async () => ({ data: [{ id: 3, household_name: 'Pamilya Santos', household_number: 'HH-3', address: 'Purok 1', household_size: 2, head: { full_name: 'Jane Santos' } }], current_page: 1, last_page: 1, total: 1, per_page: 15 }) });
+  const { context, getField } = householdClient(fetch);
+  Object.assign(context, { workspaceState: text => text, workspaceStateRow: (columns, text) => text, householdPagination: () => {}, workspaceError: () => 'error' });
+  const list = getField('household-list');
+  const oldButton = new FakeElement();
+  oldButton.dataset.householdId = '3';
+  const newButton = new FakeElement();
+  list.contains = element => element === oldButton;
+  list.querySelector = selector => (selector === '[data-household-id="3"]' ? newButton : null);
+  context.document.activeElement = oldButton;
+  getField('household-search').value = 'Santos';
+
+  await context.loadManagedHouseholds();
+
+  assert.match(list.innerHTML, /data-household-id="3"/);
+  assert.equal(newButton.focused, true, 'focus moves to the re-rendered button for the same household');
+  assert.notEqual(getField('household-search').focused, true);
+});

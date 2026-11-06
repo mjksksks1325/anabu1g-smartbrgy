@@ -41,3 +41,14 @@ test('returning to the Dashboard never paints the legacy full-screen login overl
         ->and($dashboard)->toContain('<div id="login-screen" hidden></div>')
         ->and($dashboard)->toContain('<div id="app" class="admin-interface visible">');
 });
+
+test('versioned staff scripts are tracked so an open tab reloads after an update instead of keeping old code', function () {
+    foreach (['resources/views/admin/dashboard.blade.php', 'resources/views/layouts/admin-iot.blade.php', 'resources/views/layouts/app/sidebar.blade.php'] as $layout) {
+        preg_match_all('/<script[^>]*filemtime[^>]*>/', file_get_contents(dirname(__DIR__, 2).'/'.$layout), $scripts);
+
+        expect($scripts[0])->not->toBeEmpty();
+        foreach ($scripts[0] as $script) {
+            expect($script)->toContain('data-navigate-track');
+        }
+    }
+});

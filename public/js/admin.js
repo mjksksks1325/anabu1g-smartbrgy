@@ -141,6 +141,8 @@ async function refreshDashboardStats() {
     const response = await fetch('/staff/dashboard-summary', { credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload?.message || 'Hindi ma-load ang dashboard summary.');
+    // The staff member may have left the workspace (Livewire navigation) while this request was in flight.
+    if (!document.getElementById('dash-sub-pending')) return false;
     const summary = payload.summary || {};
     const set = (id, value) => { const element = document.getElementById(id); if (element) element.textContent = Number(value || 0).toLocaleString(); };
     set('dash-stat-residents', summary.active_residents);
@@ -5486,6 +5488,8 @@ async function loadManagedHouseholds(page = 1) {
     const payload = await householdApi(`/staff/households?${query}`);
     if (version !== householdListVersion) return;
     const canEdit = hasStaffPermission('households.update');
+    // A refresh can land just after Back returned focus to a row: keep focus on the same household's button.
+    const focusedHouseholdId = list.contains?.(document.activeElement) ? document.activeElement?.dataset?.householdId : null;
     const rows = payload.data.map(item => `<tr>
       <td><span data-no-admin-translate>${escapeText(item.household_name || item.household_number)}</span>${item.household_name ? `<br><small class="resident-number" data-no-admin-translate>${escapeText(item.household_number)}</small>` : ''}</td>
       <td>${item.head?.full_name ? `<span data-no-admin-translate>${escapeText(item.head.full_name)}</span>` : `<span>${escapeText('No household head assigned')}</span>`}<br><small data-no-admin-translate>${escapeText(item.address)}</small></td>
@@ -5493,6 +5497,7 @@ async function loadManagedHouseholds(page = 1) {
       <td><button type="button" class="btn btn-xs" data-household-id="${Number(item.id)}" onclick="editManagedHousehold(${Number(item.id)}, this)" aria-label="${escapeText(adminText(canEdit ? 'Edit household :name' : 'View household :name', { name: item.household_name || item.household_number }))}">${canEdit ? 'Edit' : 'View'}</button></td>
     </tr>`).join('');
     list.innerHTML = `<div class="table-scroll"><table class="tbl"><thead><tr><th>Household</th><th>Head / Address</th><th>Members</th><th>Actions</th></tr></thead><tbody>${rows || workspaceStateRow(4, 'No households found.')}</tbody></table></div>`;
+    if (focusedHouseholdId) (list.querySelector?.(`[data-household-id="${Number(focusedHouseholdId)}"]`) || document.getElementById('household-search'))?.focus?.();
     householdPagination('household-pagination', payload, 'loadManagedHouseholds');
   } catch (error) {
     if (version === householdListVersion) list.innerHTML = workspaceError(error, 'loadManagedHouseholds()');

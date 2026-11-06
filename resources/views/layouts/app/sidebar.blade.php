@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
-        <script src="{{ asset('js/staff-settings-theme.js') }}?v={{ filemtime(public_path('js/staff-settings-theme.js')) }}"></script>
+        <script src="{{ asset('js/staff-settings-theme.js') }}?v={{ filemtime(public_path('js/staff-settings-theme.js')) }}" data-navigate-track></script>
         @include('partials.head')
         <link rel="stylesheet" href="{{ asset('css/figma-tokens.css') }}?v={{ filemtime(public_path('css/figma-tokens.css')) }}">
         <meta name="csrf-token" content="{{ csrf_token() }}">
         @include('partials.admin-localization-scripts')
-        <script src="{{ asset('js/personnel-navigation.js') }}?v={{ filemtime(public_path('js/personnel-navigation.js')) }}" data-navigate-once></script>
-        <script defer data-navigate-once src="{{ asset('js/personnel-password-confirmation.js') }}?v={{ filemtime(public_path('js/personnel-password-confirmation.js')) }}"></script>
+        <script src="{{ asset('js/personnel-navigation.js') }}?v={{ filemtime(public_path('js/personnel-navigation.js')) }}" data-navigate-once data-navigate-track></script>
+        <script defer data-navigate-once data-navigate-track src="{{ asset('js/personnel-password-confirmation.js') }}?v={{ filemtime(public_path('js/personnel-password-confirmation.js')) }}"></script>
         <link rel="stylesheet" href="{{ asset('css/password-visibility.css') }}?v={{ filemtime(public_path('css/password-visibility.css')) }}">
-        <script defer data-navigate-once src="{{ asset('js/password-visibility.js') }}?v={{ filemtime(public_path('js/password-visibility.js')) }}"></script>
+        <script defer data-navigate-once data-navigate-track src="{{ asset('js/password-visibility.js') }}?v={{ filemtime(public_path('js/password-visibility.js')) }}"></script>
         <link rel="stylesheet" href="{{ asset('css/form-feedback.css') }}?v={{ filemtime(public_path('css/form-feedback.css')) }}">
-        <script defer data-navigate-once src="{{ asset('js/form-feedback.js') }}?v={{ filemtime(public_path('js/form-feedback.js')) }}"></script>
+        <script defer data-navigate-once data-navigate-track src="{{ asset('js/form-feedback.js') }}?v={{ filemtime(public_path('js/form-feedback.js')) }}"></script>
         <link rel="stylesheet" href="{{ asset('css/staff-theme.css') }}?v={{ filemtime(public_path('css/staff-theme.css')) }}">
     </head>
     <body class="civic-settings min-h-screen bg-white dark:bg-zinc-800" data-admin-localization data-personnel-layout="settings" data-personnel-super-admin="{{ auth()->user()->hasAdministrativeAccess() ? 'true' : 'false' }}">

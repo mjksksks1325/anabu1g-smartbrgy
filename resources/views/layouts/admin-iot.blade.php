@@ -14,13 +14,13 @@
     <link rel="preload" href="{{ asset('css/admin.css') }}?v={{ filemtime(public_path('css/admin.css')) }}" as="style">
     <link rel="preload" href="{{ asset('css/figma-admin.css') }}?v={{ filemtime(public_path('css/figma-admin.css')) }}" as="style">
 @include('partials.admin-localization-scripts')
-<script src="{{ asset('js/personnel-navigation.js') }}?v={{ filemtime(public_path('js/personnel-navigation.js')) }}" data-navigate-once></script>
-<script defer data-navigate-once src="{{ asset('js/rfid-file-tracking.js') }}?v={{ filemtime(public_path('js/rfid-file-tracking.js')) }}"></script>
-<script defer data-navigate-once src="{{ asset('js/personnel-password-confirmation.js') }}?v={{ filemtime(public_path('js/personnel-password-confirmation.js')) }}"></script>
+<script src="{{ asset('js/personnel-navigation.js') }}?v={{ filemtime(public_path('js/personnel-navigation.js')) }}" data-navigate-once data-navigate-track></script>
+<script defer data-navigate-once data-navigate-track src="{{ asset('js/rfid-file-tracking.js') }}?v={{ filemtime(public_path('js/rfid-file-tracking.js')) }}"></script>
+<script defer data-navigate-once data-navigate-track src="{{ asset('js/personnel-password-confirmation.js') }}?v={{ filemtime(public_path('js/personnel-password-confirmation.js')) }}"></script>
 <link rel="stylesheet" href="{{ asset('css/password-visibility.css') }}?v={{ filemtime(public_path('css/password-visibility.css')) }}">
-<script defer data-navigate-once src="{{ asset('js/password-visibility.js') }}?v={{ filemtime(public_path('js/password-visibility.js')) }}"></script>
+<script defer data-navigate-once data-navigate-track src="{{ asset('js/password-visibility.js') }}?v={{ filemtime(public_path('js/password-visibility.js')) }}"></script>
 <link rel="stylesheet" href="{{ asset('css/form-feedback.css') }}?v={{ filemtime(public_path('css/form-feedback.css')) }}">
-<script defer data-navigate-once src="{{ asset('js/form-feedback.js') }}?v={{ filemtime(public_path('js/form-feedback.js')) }}"></script>
+<script defer data-navigate-once data-navigate-track src="{{ asset('js/form-feedback.js') }}?v={{ filemtime(public_path('js/form-feedback.js')) }}"></script>
 <link rel="stylesheet" href="{{ asset('css/staff-theme.css') }}?v={{ filemtime(public_path('css/staff-theme.css')) }}">
 {{-- Flux and Tailwind for migrated pages. Linked last so it wins over the legacy sheets; personnel-navigation.js enables it only on pages that opt in with @section('staff-ui'). --}}
 @vite('resources/css/staff-ui.css')
@@ -50,7 +50,7 @@
 </div>
 @livewireScripts
 @fluxScripts
-<script defer data-navigate-once src="{{ asset('js/staff-ui.js') }}?v={{ filemtime(public_path('js/staff-ui.js')) }}"></script>
+<script defer data-navigate-once data-navigate-track src="{{ asset('js/staff-ui.js') }}?v={{ filemtime(public_path('js/staff-ui.js')) }}"></script>
 @include('partials.personnel-password-confirmation')
 @include('partials.personnel-logout-confirmation')
 </body>

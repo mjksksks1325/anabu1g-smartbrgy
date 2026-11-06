@@ -1028,6 +1028,19 @@ test('notification read state survives a refresh without storing request or inci
   assert.equal(fields.get('notif-count').textContent, 0);
 });
 
+test('a dashboard summary that returns after the staff member left the workspace changes nothing', async () => {
+  const { context, fields } = await client();
+  let activityRendered = false;
+  context.hasStaffPermission = () => true;
+  context.renderDashboardActivity = () => { activityRendered = true; };
+  context.fetch = async () => ({ ok: true, json: async () => ({ summary: { pending_requests: 2 }, recent_activity: [] }) });
+  fields.delete('dash-sub-pending');
+  fields.delete('dash-sub-incidents');
+
+  assert.equal(await context.refreshDashboardStats(), false);
+  assert.deepEqual([activityRendered, context.messages], [false, []]);
+});
+
 test('deleting a user requires confirmation and sends the delete request', async () => {
   const { context, fields } = await client();
   fields.set('users-list-container', { innerHTML: '', querySelectorAll: () => [] });

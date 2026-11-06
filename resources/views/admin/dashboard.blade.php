@@ -14,15 +14,15 @@
 <link rel="preload" href="{{ asset('css/admin-iot.css') }}?v={{ filemtime(public_path('css/admin-iot.css')) }}" as="style">
 <link rel="preload" href="{{ asset('css/figma-iot.css') }}?v={{ filemtime(public_path('css/figma-iot.css')) }}" as="style">
 @include('partials.admin-localization-scripts')
-<script src="{{ asset('js/personnel-navigation.js') }}?v={{ filemtime(public_path('js/personnel-navigation.js')) }}" data-navigate-once></script>
-<script defer data-navigate-once src="{{ asset('js/admin.js') }}?v={{ filemtime(public_path('js/admin.js')) }}"></script>
-<script defer data-navigate-once src="{{ asset('js/household-profiling.js') }}?v={{ filemtime(public_path('js/household-profiling.js')) }}"></script>
-<script defer data-navigate-once src="{{ asset('js/case-management.js') }}?v={{ filemtime(public_path('js/case-management.js')) }}"></script>
-<script defer data-navigate-once src="{{ asset('js/personnel-password-confirmation.js') }}?v={{ filemtime(public_path('js/personnel-password-confirmation.js')) }}"></script>
+<script src="{{ asset('js/personnel-navigation.js') }}?v={{ filemtime(public_path('js/personnel-navigation.js')) }}" data-navigate-once data-navigate-track></script>
+<script defer data-navigate-once data-navigate-track src="{{ asset('js/admin.js') }}?v={{ filemtime(public_path('js/admin.js')) }}"></script>
+<script defer data-navigate-once data-navigate-track src="{{ asset('js/household-profiling.js') }}?v={{ filemtime(public_path('js/household-profiling.js')) }}"></script>
+<script defer data-navigate-once data-navigate-track src="{{ asset('js/case-management.js') }}?v={{ filemtime(public_path('js/case-management.js')) }}"></script>
+<script defer data-navigate-once data-navigate-track src="{{ asset('js/personnel-password-confirmation.js') }}?v={{ filemtime(public_path('js/personnel-password-confirmation.js')) }}"></script>
 <link rel="stylesheet" href="{{ asset('css/password-visibility.css') }}?v={{ filemtime(public_path('css/password-visibility.css')) }}">
-<script defer data-navigate-once src="{{ asset('js/password-visibility.js') }}?v={{ filemtime(public_path('js/password-visibility.js')) }}"></script>
+<script defer data-navigate-once data-navigate-track src="{{ asset('js/password-visibility.js') }}?v={{ filemtime(public_path('js/password-visibility.js')) }}"></script>
 <link rel="stylesheet" href="{{ asset('css/form-feedback.css') }}?v={{ filemtime(public_path('css/form-feedback.css')) }}">
-<script defer data-navigate-once src="{{ asset('js/form-feedback.js') }}?v={{ filemtime(public_path('js/form-feedback.js')) }}"></script>
+<script defer data-navigate-once data-navigate-track src="{{ asset('js/form-feedback.js') }}?v={{ filemtime(public_path('js/form-feedback.js')) }}"></script>
 <link rel="stylesheet" href="{{ asset('css/staff-theme.css') }}?v={{ filemtime(public_path('css/staff-theme.css')) }}">
 {{-- Loaded but kept disabled until a workspace screen migrates to Flux, so navigating to a migrated page never waits for it (see personnel-navigation.js). --}}
 @vite('resources/css/staff-ui.css')
