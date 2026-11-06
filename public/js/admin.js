@@ -1266,7 +1266,7 @@ function legacyRenderSeniorList() {
     return;
   }
   container.innerHTML = `
-    <table class="tbl">
+    <table class="tbl" data-num-cols="3">
       <thead><tr><th>Resident ID</th><th>Pangalan</th><th>Edad</th><th>Kaarawan</th><th>Purok</th><th>Status</th><th>Senior Badge</th></tr></thead>
       <tbody>${seniors.map(r => {
         const age = calcAge(r.dob);
@@ -3084,7 +3084,7 @@ function openViewCertReq(code) {
 function renderCertTypesList() {
   const container = document.getElementById('cert-types-list');
   if (!container) return;
-  container.innerHTML = `<table class="tbl cert-fees-table">
+  container.innerHTML = `<table class="tbl cert-fees-table" data-num-cols="3">
     <thead><tr><th>Document</th><th>Processing</th><th>Fee</th></tr></thead>
     <tbody>${CERTIFICATE_TYPES.map(ct => `<tr><td><strong>${escapeText(ct.label)}</strong></td><td>${escapeText(ct.days)}</td><td class="cert-fee">${escapeText(certificateFeeText(ct.label))}</td></tr>`).join('')}</tbody>
   </table>`;
@@ -3868,7 +3868,7 @@ function renderSeniorList() {
   const pageSeniors = seniors.slice((seniorCurrentPage - 1) * SENIOR_PAGE_SIZE, seniorCurrentPage * SENIOR_PAGE_SIZE);
   renderPager('senior-citizens-pagination', { page: seniorCurrentPage, lastPage, total: seniors.length, perPage: SENIOR_PAGE_SIZE, noun: ['senior citizen', 'senior citizens'], loader: 'changeSeniorPage' });
   container.innerHTML = `
-    <table class="tbl">
+    <table class="tbl" data-num-cols="3">
       <thead><tr><th>Resident ID</th><th>Full Name</th><th>Age</th><th>Date of Birth</th><th>Zone / Purok</th><th>Status</th><th>Classification</th></tr></thead>
       <tbody>${pageSeniors.map(r => {
         const age = Number(r.age ?? calcAge(r.dob));
@@ -5369,7 +5369,7 @@ async function openDemographicMember(id) {
 }
 function householdMembersMarkup(household, manageable = false) {
   if (!household.members.length) return '<p>No household members assigned.</p>';
-  return `<div class="table-scroll"><table class="tbl"><thead><tr><th>Name</th><th>Relationship</th><th>Gender</th><th>Voter registration</th>${manageable ? '<th>Actions</th>' : ''}</tr></thead><tbody>${household.members.map(member => `
+  return `<div class="table-scroll"><table class="tbl"${manageable ? ' data-actions' : ''}><thead><tr><th>Name</th><th>Relationship</th><th>Gender</th><th>Voter registration</th>${manageable ? '<th>Actions</th>' : ''}</tr></thead><tbody>${household.members.map(member => `
     <tr><td>${hasStaffPermission('records.view') ? `<button class="btn btn-xs" onclick="openDemographicMember(${Number(member.id)})">${escapeText(member.full_name)}</button>` : escapeText(member.full_name)}${member.status !== 'active' ? ' <span class="badge badge-gray">Inactive</span>' : ''}</td>
     <td>${escapeText(member.relationship_to_household_head || 'Unspecified')}</td><td>${escapeText(member.gender)}</td><td>${voterStatusBadge(member.voter_status ?? (member.registered_voter ? 'active' : null))}</td>
     ${manageable ? `<td>${hasStaffPermission('households.remove') ? `<button class="btn btn-xs btn-danger-outline" onclick="removeManagedHouseholdMember(${Number(household.id)}, ${Number(member.id)})">Remove</button>` : ''}</td>` : ''}</tr>`).join('')}</tbody></table></div>`;
@@ -5497,7 +5497,7 @@ async function loadManagedHouseholds(page = 1) {
       <td>${Number(item.household_size)}</td>
       <td><button type="button" class="btn btn-xs" data-household-id="${Number(item.id)}" onclick="editManagedHousehold(${Number(item.id)}, this)" aria-label="${escapeText(adminText(canEdit ? 'Edit household :name' : 'View household :name', { name: item.household_name || item.household_number }))}">${canEdit ? 'Edit' : 'View'}</button></td>
     </tr>`).join('');
-    list.innerHTML = `<div class="table-scroll"><table class="tbl"><thead><tr><th>Household</th><th>Head / Address</th><th>Members</th><th>Actions</th></tr></thead><tbody>${rows || workspaceStateRow(4, 'No households found.')}</tbody></table></div>`;
+    list.innerHTML = `<div class="table-scroll"><table class="tbl" data-num-cols="3" data-actions><thead><tr><th>Household</th><th>Head / Address</th><th>Members</th><th>Actions</th></tr></thead><tbody>${rows || workspaceStateRow(4, 'No households found.')}</tbody></table></div>`;
     if (focusedHouseholdId) (list.querySelector?.(`[data-household-id="${Number(focusedHouseholdId)}"]`) || document.getElementById('household-search'))?.focus?.();
     householdPagination('household-pagination', payload, 'loadManagedHouseholds');
   } catch (error) {
@@ -5542,7 +5542,7 @@ function renderDraftHouseholdMembers(selectedHead = document.getElementById('hou
   const candidates = new Map([...householdResidentOptions, ...draftHouseholdMembers]);
   [...candidates.values()].filter(member => member.status === 'active').forEach(member => head.add(new Option(member.full_name, String(member.id))));
   head.value = draftHouseholdMembers.has(Number(selectedHead)) ? String(selectedHead) : '';
-  document.getElementById('household-members').innerHTML = members.length ? `<h4>Selected existing residents</h4><div class="table-scroll"><table class="tbl"><thead><tr><th>Name</th><th>Relationship to head</th><th>Actions</th></tr></thead><tbody>${members.map(member => `<tr><td>${hasStaffPermission('records.view') ? `<button class="btn btn-xs" onclick="openDemographicMember(${Number(member.id)})">${escapeText(member.full_name)}</button>` : escapeText(member.full_name)}</td><td><input class="form-input" aria-label="Relationship for ${escapeText(member.full_name)}" maxlength="100" value="${escapeText(member.relationship_to_household_head)}" oninput="updateDraftHouseholdRelationship(${Number(member.id)}, this.value)"/></td><td><button class="btn btn-xs btn-danger-outline" onclick="removeDraftHouseholdMember(${Number(member.id)})">Remove</button></td></tr>`).join('')}</tbody></table></div>` : '<p>No residents selected yet.</p>';
+  document.getElementById('household-members').innerHTML = members.length ? `<h4>Selected existing residents</h4><div class="table-scroll"><table class="tbl" data-actions><thead><tr><th>Name</th><th>Relationship to head</th><th>Actions</th></tr></thead><tbody>${members.map(member => `<tr><td>${hasStaffPermission('records.view') ? `<button class="btn btn-xs" onclick="openDemographicMember(${Number(member.id)})">${escapeText(member.full_name)}</button>` : escapeText(member.full_name)}</td><td><input class="form-input" aria-label="Relationship for ${escapeText(member.full_name)}" maxlength="100" value="${escapeText(member.relationship_to_household_head)}" oninput="updateDraftHouseholdRelationship(${Number(member.id)}, this.value)"/></td><td><button class="btn btn-xs btn-danger-outline" onclick="removeDraftHouseholdMember(${Number(member.id)})">Remove</button></td></tr>`).join('')}</tbody></table></div>` : '<p>No residents selected yet.</p>';
 }
 
 async function selectManagedHouseholdHead(residentId) {

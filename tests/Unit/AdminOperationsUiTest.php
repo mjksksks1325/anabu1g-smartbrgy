@@ -87,25 +87,36 @@ test('request eligibility uses server history and a real csv export', function (
         ->toContain('openEligibilityForRequestResident');
 });
 
-test('personnel tables center cells and audit headers share the four column row layout', function () {
+test('workspace tables start-align text, end-align numbers and actions, and audit rows share the four column layout', function () {
     $adminStyles = file_get_contents(dirname(__DIR__, 2).'/public/css/figma-admin.css');
     $iotStyles = file_get_contents(dirname(__DIR__, 2).'/public/css/figma-iot.css');
     $dashboard = file_get_contents(dirname(__DIR__, 2).'/resources/views/admin/dashboard.blade.php');
+    $client = file_get_contents(dirname(__DIR__, 2).'/public/js/admin.js');
 
     expect($adminStyles)
         ->toContain('.tbl th,')
-        ->toContain('.tbl td { text-align: center; vertical-align: middle; }')
-        ->toContain('.tbl div.resident-actions,')
-        ->toContain('justify-content: center;')
+        ->toContain('#app.admin-interface .tbl td { text-align: start; vertical-align: middle; }')
+        ->toContain(':is(#app.admin-interface, .modal-overlay) .tbl[data-num-cols~="3"] :is(th, td):nth-child(3):not([colspan])')
+        ->toContain('{ text-align: end; font-variant-numeric: tabular-nums; }')
+        ->toContain(':is(#app.admin-interface, .modal-overlay) .tbl[data-actions] :is(th, td):last-child:not([colspan]) { text-align: end; }')
         ->toContain('.tbl td.resident-actions { display: table-cell; }')
+        ->not->toContain('#app.admin-interface .tbl td { text-align: center; vertical-align: middle; }')
         ->toContain('.audit-table-head,')
         ->toContain('.audit-log-row {')
         ->toContain('grid-template-columns: minmax(110px, .8fr) minmax(135px, 1fr) minmax(0, 2fr) minmax(110px, 1fr);')
+        ->toContain('#app.admin-interface .audit-category-badge { justify-self: start; }')
         ->toContain('@media (min-width: 761px)');
+    // Tables outside the migrated workspace keep their alignment.
     expect($iotStyles)->toContain('.main-content table th,')
         ->toContain('.main-content table td { text-align: center; vertical-align: middle; }');
     expect($dashboard)->toContain('class="audit-log-table-scroll"')
+        ->toContain('<table class="tbl" data-num-cols="3" data-actions>')
+        ->toContain('<table class="tbl voter-table" data-num-cols="3" data-actions>')
+        ->toContain('<table class="tbl issued-history-table" data-num-cols="5" data-actions>')
+        ->toContain('<table class="tbl incident-table" data-actions>')
         ->not->toContain('grid-template-columns:50px 130px 1fr 200px 90px');
+    expect($client)->toContain('<table class="tbl" data-num-cols="3" data-actions><thead><tr><th>Household</th><th>Head / Address</th><th>Members</th><th>Actions</th>')
+        ->toContain('<table class="tbl cert-fees-table" data-num-cols="3">');
 });
 
 test('every workspace modal has the upper-right X, and only confirmations add a Cancel button', function (string $view, array $confirmations) {

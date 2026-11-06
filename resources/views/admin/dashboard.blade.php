@@ -215,7 +215,7 @@
         </label>
       </div>
       <div class="card" @cannot('records.view') hidden style="display:none;" @endcannot>
-        <div class="table-scroll"><table class="tbl">
+        <div class="table-scroll"><table class="tbl" data-num-cols="3" data-actions>
           <thead><tr><th>Resident ID</th><th>Full Name</th><th>Age</th><th>Purok</th><th>Gender</th><th>Civil Status</th><th>Status</th><th>Household</th><th>Actions</th></tr></thead>
           <tbody id="records-tbody"></tbody>
         </table></div>
@@ -255,7 +255,7 @@
       </div>
 
       <div class="card voter-table-card">
-        <div class="table-scroll"><table class="tbl voter-table">
+        <div class="table-scroll"><table class="tbl voter-table" data-num-cols="3" data-actions>
           <thead><tr><th>Resident ID</th><th>Buong Pangalan</th><th>Edad</th><th>Purok</th><th>Maaaring Iboto</th><th>Precinct</th><th>Cluster</th>@can('voters.update')<th>Actions</th>@endcan</tr></thead>
           <tbody id="voter-registry-tbody"><tr class="workspace-state-row"><td colspan="{{ auth()->user()->hasPermission('voters.update') ? 8 : 7 }}" class="resident-table-message workspace-state" data-state="loading"><span role="status" aria-busy="true">Loading voter list...</span></td></tr></tbody>
         </table></div>
@@ -324,7 +324,7 @@
           <label class="incident-date-filter"><span>To</span><input class="form-input" type="date" id="issued-date-to" aria-label="Issued to" onchange="refreshIssuedCertificates(1)"/></label>
         </form>
         <div class="table-scroll">
-          <table class="tbl issued-history-table">
+          <table class="tbl issued-history-table" data-num-cols="5" data-actions>
             <thead><tr><th>Certificate No.</th><th>Resident</th><th>Document</th><th>Source</th><th>Fee</th><th>Date Issued</th><th>Issued By</th><th>Actions</th></tr></thead>
             <tbody id="issued-certificates-tbody">
               <tr class="workspace-state-row"><td colspan="8" class="resident-table-message workspace-state" data-state="loading"><span role="status" aria-busy="true">Loading issued certificates...</span></td></tr>
@@ -356,7 +356,7 @@
         <select class="form-input" id="incident-assignee-filter" aria-label="Assigned staff" onchange="filterIncidents()"><option value="">All assigned staff</option></select>
       </div>
       <div class="card">
-        <div class="table-scroll" tabindex="0" role="region" aria-label="Incident reports table"><table class="tbl incident-table">
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Incident reports table"><table class="tbl incident-table" data-actions>
           <thead><tr><th>Incident</th><th>Date</th><th>Location</th><th>Complainant</th><th>Respondent</th><th>Severity</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody id="incidents-tbody"><tr class="workspace-state-row"><td colspan="8" class="resident-table-message workspace-state" data-state="loading"><span role="status" aria-busy="true">Loading incident reports...</span></td></tr></tbody>
         </table></div>
@@ -410,7 +410,7 @@
           @can('create', App\Models\ResidentRequestRestriction::class)<button class="btn btn-primary btn-sm" onclick="openRestrictionForm()">Add restriction</button>@endcan
         </div>
         <form class="rr-toolbar" role="search" aria-label="Search restrictions" onsubmit="event.preventDefault(); loadRestrictions(1);"><div class="search-wrap"><span class="si"></span><input class="search-input" id="restriction-search" type="search" autocomplete="off" aria-label="Search restrictions by resident" placeholder="Search resident name or resident number"/></div><button class="btn" type="submit">Search</button></form>
-        <div class="table-scroll"><table class="tbl"><thead><tr><th>Resident</th><th>Document scope</th><th>Status</th><th>Dates / decision</th><th>Actions</th></tr></thead><tbody id="restrictions-tbody"></tbody></table></div>
+        <div class="table-scroll"><table class="tbl" data-actions><thead><tr><th>Resident</th><th>Document scope</th><th>Status</th><th>Dates / decision</th><th>Actions</th></tr></thead><tbody id="restrictions-tbody"></tbody></table></div>
         <div class="resident-pagination" id="restrictions-pagination"></div>
       </div>
     </div>
@@ -766,7 +766,7 @@
       <button class="btn btn-primary" type="submit">Search</button><button class="btn" type="button" onclick="clearPurokHouseholdSearch()">Clear</button>
     </form>
     <p class="purok-households-results" id="purok-households-results" role="status" aria-live="polite"></p>
-    <div class="table-scroll"><table class="tbl"><thead><tr><th>Household</th><th>Head</th><th>Address</th><th>Members</th></tr></thead><tbody id="purok-households-tbody"></tbody></table></div>
+    <div class="table-scroll"><table class="tbl" data-num-cols="4"><thead><tr><th>Household</th><th>Head</th><th>Address</th><th>Members</th></tr></thead><tbody id="purok-households-tbody"></tbody></table></div>
     <div class="resident-pagination" id="purok-households-pagination"></div>
   </div>
 </div>
