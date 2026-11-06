@@ -83,13 +83,13 @@ test('password can be updated', function () {
 
     $response = Livewire::test(Security::class)
         ->set('current_password', 'password')
-        ->set('password', 'new-password')
-        ->set('password_confirmation', 'new-password')
+        ->set('password', 'New-Password-2026.')
+        ->set('password_confirmation', 'New-Password-2026.')
         ->call('updatePassword');
 
     $response->assertHasNoErrors();
 
-    expect(Hash::check('new-password', $user->refresh()->password))->toBeTrue();
+    expect(Hash::check('New-Password-2026.', $user->refresh()->password))->toBeTrue();
 });
 
 test('correct password must be provided to update password', function () {
@@ -101,9 +101,33 @@ test('correct password must be provided to update password', function () {
 
     $response = Livewire::test(Security::class)
         ->set('current_password', 'wrong-password')
-        ->set('password', 'new-password')
-        ->set('password_confirmation', 'new-password')
+        ->set('password', 'New-Password-2026.')
+        ->set('password_confirmation', 'New-Password-2026.')
         ->call('updatePassword');
 
     $response->assertHasErrors(['current_password']);
+});
+
+test('a staff password change in Settings follows the staff password policy', function (string $password, bool $accepted) {
+    $user = User::factory()->create(['password' => Hash::make('password')]);
+    $this->actingAs($user);
+
+    $response = Livewire::test(Security::class)
+        ->set('current_password', 'password')
+        ->set('password', $password)
+        ->set('password_confirmation', $password)
+        ->call('updatePassword');
+
+    $accepted ? $response->assertHasNoErrors() : $response->assertHasErrors(['password']);
+    expect(Hash::check($password, $user->refresh()->password))->toBe($accepted);
+})->with([
+    'period as the only symbol' => ['Barangay.Staff2026', true],
+    'twelve lowercase letters' => ['abcdefghijkl', false],
+    'no symbol' => ['BarangayStaff2026', false],
+]);
+
+test('the Settings password form describes the staff password policy', function () {
+    $this->actingAs(User::factory()->create());
+
+    Livewire::test(Security::class)->assertSee('At least 12 characters, with an uppercase and a lowercase letter, a number and a symbol (a period counts).');
 });

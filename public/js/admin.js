@@ -3451,12 +3451,13 @@ function toggleUserCabinetFields() {
  * the other lines are recommendations and never block saving. The password value itself is only measured here,
  * never logged or stored.
  */
+/** The staff password policy (Password::defaults() in AppServiceProvider), using Laravel's own patterns. */
 const PASSWORD_RULES = {
-  length: value => value.length >= 12,
-  uppercase: value => /[A-Z]/.test(value),
-  lowercase: value => /[a-z]/.test(value),
-  number: value => /[0-9]/.test(value),
-  symbol: value => /[^A-Za-z0-9s]/.test(value),
+  length: value => [...value].length >= 12,
+  uppercase: value => /\p{Lu}/u.test(value),
+  lowercase: value => /\p{Ll}/u.test(value),
+  number: value => /\p{N}/u.test(value),
+  symbol: value => /\p{Z}|\p{S}|\p{P}/u.test(value),
 };
 
 function updatePasswordGuidance() {
@@ -3471,8 +3472,8 @@ function updatePasswordGuidance() {
 /** New accounts need a password; an edit keeps the current one unless a new one is typed. */
 function setPasswordGuidanceMode(editing) {
   document.getElementById('adduser-pass-label').textContent = adminText(editing
-    ? 'Leave blank to keep the current password. A new password needs at least 12 characters.'
-    : 'Required. At least 12 characters.');
+    ? 'Leave blank to keep the current password. A new password must meet every requirement below.'
+    : 'Required. The password must meet every requirement below.');
   updatePasswordGuidance();
 }
 

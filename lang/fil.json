@@ -2399,5 +2399,10 @@
     "Pending verification": "Hinihintay ang beripikasyon",
     "Numbers marked Pending verification are awaiting confirmation from the barangay. Other numbers are from the": "Hinihintay pa ang kumpirmasyon ng barangay sa mga numerong may markang Hinihintay ang beripikasyon. Ang ibang numero ay mula sa",
     "(office days not yet confirmed)": "(hindi pa kumpirmado ang mga araw ng opisina)",
-    "The office days are not yet confirmed. Call the Barangay Hall before you visit.": "Hindi pa kumpirmado ang mga araw ng opisina. Tumawag muna sa Barangay Hall bago pumunta."
+    "The office days are not yet confirmed. Call the Barangay Hall before you visit.": "Hindi pa kumpirmado ang mga araw ng opisina. Tumawag muna sa Barangay Hall bago pumunta.",
+    "Required. The password must meet every requirement below.": "Kailangan. Dapat matugunan ng password ang bawat kahilingan sa ibaba.",
+    "Leave blank to keep the current password. A new password must meet every requirement below.": "Iwanang blangko para panatilihin ang kasalukuyang password. Dapat matugunan ng bagong password ang bawat kahilingan sa ibaba.",
+    "Not found in a known data breach (checked when you save)": "Wala sa alinmang kilalang data breach (sinusuri kapag nag-save)",
+    "At least 12 characters, with an uppercase and a lowercase letter, a number and a symbol (a period counts).": "Hindi bababa sa 12 character, may uppercase at lowercase na letra, numero at simbolo (puwede ang tuldok).",
+    "It must not appear in a known data breach.": "Hindi ito dapat makita sa alinmang kilalang data breach."
 }

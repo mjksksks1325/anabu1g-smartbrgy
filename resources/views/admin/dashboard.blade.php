@@ -1112,14 +1112,15 @@
     <div class="form-group user-account-password">
       <label for="adduser-password" class="form-label">Password</label>
       <span class="password-visibility-field"><input class="form-input" id="adduser-password" name="password" type="password" minlength="12" maxlength="255" autocomplete="new-password" aria-describedby="adduser-pass-label adduser-password-guidance" oninput="updatePasswordGuidance()"><x-password-toggle target="adduser-password" /></span>
-      {{-- What the server enforces for staff accounts set here (SaveUserRequest): 12 or more characters. The other lines are advice, not rules. --}}
-      <p class="card-sub" id="adduser-pass-label">Required. At least 12 characters.</p>
+      {{-- The staff password policy the server enforces (Password::defaults() in AppServiceProvider); every line is required. --}}
+      <p class="card-sub" id="adduser-pass-label">Required. The password must meet every requirement below.</p>
       <ul class="password-guidance" id="adduser-password-guidance" data-password-guidance>
         <li data-password-rule="length" data-required>12 or more characters <span class="password-rule-tag">Required</span></li>
-        <li data-password-rule="uppercase">An uppercase letter (A–Z) <span class="password-rule-tag">Recommended</span></li>
-        <li data-password-rule="lowercase">A lowercase letter (a–z) <span class="password-rule-tag">Recommended</span></li>
-        <li data-password-rule="number">A number (0–9) <span class="password-rule-tag">Recommended</span></li>
-        <li data-password-rule="symbol">A symbol, such as a period (.) or ! <span class="password-rule-tag">Recommended</span></li>
+        <li data-password-rule="uppercase" data-required>An uppercase letter (A–Z) <span class="password-rule-tag">Required</span></li>
+        <li data-password-rule="lowercase" data-required>A lowercase letter (a–z) <span class="password-rule-tag">Required</span></li>
+        <li data-password-rule="number" data-required>A number (0–9) <span class="password-rule-tag">Required</span></li>
+        <li data-password-rule="symbol" data-required>A symbol, such as a period (.) or ! <span class="password-rule-tag">Required</span></li>
+        @if(app()->isProduction())<li data-required>Not found in a known data breach (checked when you save) <span class="password-rule-tag">Required</span></li>@endif
       </ul>
       <p class="card-sub" id="adduser-credential-lock" hidden>Only this Super Admin can change their own email address and password. Use the password reset link or the server command.</p>
       <div class="user-reset-link" id="adduser-reset-link-row" hidden><button type="button" class="btn btn-sm" id="adduser-reset-link" onclick="sendUserPasswordResetLink(this)">Send password reset link</button><p class="card-sub">Emails the account owner a link that expires in 60 minutes. They choose their own password; you never see it.</p></div>

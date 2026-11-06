@@ -2231,5 +2231,10 @@
     "Pending verification": "Pending verification",
     "Numbers marked Pending verification are awaiting confirmation from the barangay. Other numbers are from the": "Numbers marked Pending verification are awaiting confirmation from the barangay. Other numbers are from the",
     "(office days not yet confirmed)": "(office days not yet confirmed)",
-    "The office days are not yet confirmed. Call the Barangay Hall before you visit.": "The office days are not yet confirmed. Call the Barangay Hall before you visit."
+    "The office days are not yet confirmed. Call the Barangay Hall before you visit.": "The office days are not yet confirmed. Call the Barangay Hall before you visit.",
+    "Required. The password must meet every requirement below.": "Required. The password must meet every requirement below.",
+    "Leave blank to keep the current password. A new password must meet every requirement below.": "Leave blank to keep the current password. A new password must meet every requirement below.",
+    "Not found in a known data breach (checked when you save)": "Not found in a known data breach (checked when you save)",
+    "At least 12 characters, with an uppercase and a lowercase letter, a number and a symbol (a period counts).": "At least 12 characters, with an uppercase and a lowercase letter, a number and a symbol (a period counts).",
+    "It must not appear in a known data breach.": "It must not appear in a known data breach."
 }

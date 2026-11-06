@@ -106,14 +106,14 @@ class AppServiceProvider extends ServiceProvider
             app()->isProduction(),
         );
 
-        Password::defaults(fn (): ?Password => app()->isProduction()
-            ? Password::min(12)
-                ->mixedCase()
-                ->letters()
-                ->numbers()
-                ->symbols()
-                ->uncompromised()
-            : null,
-        );
+        // One staff password policy everywhere (creation by an administrator, the first Super Admin command,
+        // a change in Settings and a reset): 12+ characters, upper and lower case, a number and a symbol (any
+        // punctuation, so a period counts). The breach check calls an external service, so it runs in production only.
+        // Existing password hashes are not affected; the policy applies the next time a password is set.
+        Password::defaults(function (): Password {
+            $rule = Password::min(12)->mixedCase()->letters()->numbers()->symbols();
+
+            return app()->isProduction() ? $rule->uncompromised() : $rule;
+        });
     }
 }
