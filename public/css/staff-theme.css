@@ -1055,3 +1055,8 @@ body #app.admin-interface.admin-interface .content { container: workspace-conten
 /* Icons inside workspace buttons take the button's text colour (the menu icon colour made "+" on Add New User
    nearly invisible on green). */
 body #app.admin-interface.admin-interface .btn > svg.nav-icon { color: currentColor; stroke: currentColor; opacity: 1; }
+
+/* The workspace keeps an empty legacy #login-screen marked hidden. admin.css gives #login-screen display:flex as a
+   full-screen dark (#050e1a) overlay, which beats the hidden attribute, so every return to the Dashboard painted it
+   until admin.js hid it after Livewire's navigated event: the black flash. Sign-in is the Fortify page now. */
+#login-screen[hidden] { display: none !important; }

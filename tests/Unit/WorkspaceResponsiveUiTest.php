@@ -31,3 +31,13 @@ test('icons inside workspace buttons use the button text colour', function () {
     expect(file_get_contents(dirname(__DIR__, 2).'/public/css/staff-theme.css'))
         ->toContain('body #app.admin-interface.admin-interface .btn > svg.nav-icon { color: currentColor; stroke: currentColor; opacity: 1; }');
 });
+
+test('returning to the Dashboard never paints the legacy full-screen login overlay', function () {
+    $root = dirname(__DIR__, 2);
+    $dashboard = file_get_contents($root.'/resources/views/admin/dashboard.blade.php');
+
+    expect(file_get_contents($root.'/public/css/admin.css'))->toContain("#login-screen {\n  position: fixed; inset: 0;")
+        ->and(file_get_contents($root.'/public/css/staff-theme.css'))->toContain('#login-screen[hidden] { display: none !important; }')
+        ->and($dashboard)->toContain('<div id="login-screen" hidden></div>')
+        ->and($dashboard)->toContain('<div id="app" class="admin-interface visible">');
+});

@@ -37,7 +37,7 @@
 <div id="login-screen" hidden></div>
 
 <!-- MAIN APPLICATION -->
-<div id="app" class="admin-interface">
+<div id="app" class="admin-interface visible">
   <!-- TOPBAR -->
   <div class="topbar">
     <button class="mobile-menu-button" type="button" aria-controls="admin-navigation" aria-expanded="false" onclick="toggleNavigation()">Menu</button>
