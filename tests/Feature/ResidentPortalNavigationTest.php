@@ -485,7 +485,9 @@ test('resident log in keeps one help panel with both account paths and a portal 
         ->assertOk()
         ->assertSee('href="'.route('password.request', ['from' => 'portal']).'"', false)
         ->assertSeeInOrder(['Don&#039;t have an account?', route('portal.register'), route('portal.new-resident.create'), route('portal.information').'#help'], false)
-        ->assertDontSee('After logging in');
+        ->assertDontSee('After logging in')
+        ->assertSee('Enter the Resident Number and Activation Code provided by staff after verifying your identity.')
+        ->assertDontSee('full name and date of birth');
 });
 
 test('form errors are summarised at the top and linked to the field that needs fixing', function () {
