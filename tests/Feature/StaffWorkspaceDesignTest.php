@@ -54,7 +54,7 @@ it('marks reversible archive actions with the outline danger style and keeps del
     $script = file_get_contents(public_path('js/admin.js'));
 
     expect($script)->toContain('class="btn btn-xs btn-danger-outline" onclick="archiveIncident(')
-        ->toContain('class="btn btn-xs btn-danger-outline" onclick="deleteResident(\'${resident.id}\')">Archive')
+        ->toContain('class="btn btn-xs btn-danger-outline" data-resident-action="archive" data-resident="${escapeText(resident.id)}">Archive')
         ->toContain('class="btn btn-danger" onclick="event.stopPropagation();deleteUser(');
 });
 

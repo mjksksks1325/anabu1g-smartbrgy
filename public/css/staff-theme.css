@@ -947,3 +947,34 @@ body #app.admin-interface .incident-status-chip .badge { min-width: 28px; justif
   /* The hidden page title is a spacer on wide screens; here it wraps to its own row, so take it out of the layout. */
   body[data-personnel-layout="iot"] .workspace-title { display: none; }
 }
+
+/* ── Workspace list patterns (Work Group 3) ────────────────────── */
+/* Loading, empty and error messages rendered by workspaceState/workspaceStateRow/workspaceErrorRow in admin.js. */
+#app.admin-interface .workspace-state { padding: 28px 16px !important; color: var(--staff-muted); font-size: 13px; line-height: 1.5; text-align: center; }
+#app.admin-interface .workspace-state[data-state="loading"] > span::before { content: ''; display: inline-block; width: 12px; height: 12px; margin-right: 8px; border: 2px solid var(--staff-row); border-top-color: var(--civic-primary); border-radius: 50%; vertical-align: -1px; animation: workspace-spin .8s linear infinite; }
+#app.admin-interface .workspace-state[data-state="error"] { color: var(--staff-danger); }
+body:not(.light-mode) #app.admin-interface .workspace-state[data-state="error"] { color: #f87171; }
+#app.admin-interface .workspace-state-row:hover > td { background: transparent !important; }
+#app.admin-interface .workspace-reference { color: var(--civic-primary); font-family: var(--font-mono); }
+#app.admin-interface .workspace-primary-text { color: var(--text-primary); }
+@keyframes workspace-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { #app.admin-interface .workspace-state[data-state="loading"] > span::before { animation: none; } }
+#app.admin-interface .cert-lane-count { min-width: 28px; justify-content: center; }
+
+/* Tablets keep the 218px sidebar, so the content column is phone-width-plus: toolbars and dense rows reflow early. */
+@media (min-width: 761px) and (max-width: 1100px) {
+  #app.admin-interface .audit-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #app.admin-interface .audit-toolbar .search-wrap { grid-column: 1 / -1; }
+  #app.admin-interface .audit-toolbar .incident-date-filter { min-width: 0; }
+  #app.admin-interface .audit-toolbar .incident-date-filter .form-input { width: 100%; min-width: 0; }
+  /* Audit events: category and time on the first line, the action across the row, then who made it. */
+  #app.admin-interface .audit-table-head { display: none !important; }
+  #app.admin-interface .audit-log-row { grid-template-columns: auto minmax(0, 1fr); gap: 6px 12px; align-items: center; text-align: start; }
+  #app.admin-interface .audit-log-row > div:nth-child(3),
+  #app.admin-interface .audit-log-row > .audit-log-user { grid-column: 1 / -1; }
+  #app.admin-interface .audit-log-row .audit-category-badge { justify-self: start; }
+  body #app.admin-interface.admin-interface .user-filter-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body #app.admin-interface.admin-interface .user-filter-row .search-wrap { grid-column: 1 / -1; }
+  body #app.admin-interface.admin-interface #users-list-container .user-card { grid-template-columns: auto minmax(0, 1fr); }
+  body #app.admin-interface.admin-interface .user-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
+}

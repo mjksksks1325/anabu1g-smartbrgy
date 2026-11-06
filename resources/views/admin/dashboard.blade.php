@@ -257,7 +257,7 @@
       <div class="card voter-table-card">
         <div class="table-scroll"><table class="tbl voter-table">
           <thead><tr><th>Resident ID</th><th>Buong Pangalan</th><th>Edad</th><th>Purok</th><th>Maaaring Iboto</th><th>Precinct</th><th>Cluster</th>@can('voters.update')<th>Actions</th>@endcan</tr></thead>
-          <tbody id="voter-registry-tbody"><tr><td colspan="7" class="resident-table-message">Loading voter list...</td></tr></tbody>
+          <tbody id="voter-registry-tbody"><tr class="workspace-state-row"><td colspan="{{ auth()->user()->hasPermission('voters.update') ? 8 : 7 }}" class="resident-table-message workspace-state" data-state="loading"><span role="status" aria-busy="true">Loading voter list...</span></td></tr></tbody>
         </table></div>
         <div class="resident-pagination" id="voter-pagination"></div>
       </div>
@@ -327,7 +327,7 @@
           <table class="tbl issued-history-table">
             <thead><tr><th>Certificate No.</th><th>Resident</th><th>Document</th><th>Source</th><th>Fee</th><th>Date Issued</th><th>Issued By</th><th>Actions</th></tr></thead>
             <tbody id="issued-certificates-tbody">
-              <tr><td colspan="8" style="text-align:center;color:var(--text-muted);">Loading issued certificates...</td></tr>
+              <tr class="workspace-state-row"><td colspan="8" class="resident-table-message workspace-state" data-state="loading"><span role="status" aria-busy="true">Loading issued certificates...</span></td></tr>
             </tbody>
           </table>
         </div>
@@ -358,7 +358,7 @@
       <div class="card">
         <div class="table-scroll" tabindex="0" role="region" aria-label="Incident reports table"><table class="tbl incident-table">
           <thead><tr><th>Incident</th><th>Date</th><th>Location</th><th>Complainant</th><th>Respondent</th><th>Severity</th><th>Status</th><th>Actions</th></tr></thead>
-          <tbody id="incidents-tbody"><tr><td colspan="8" class="resident-table-message">Loading incident reports...</td></tr></tbody>
+          <tbody id="incidents-tbody"><tr class="workspace-state-row"><td colspan="8" class="resident-table-message workspace-state" data-state="loading"><span role="status" aria-busy="true">Loading incident reports...</span></td></tr></tbody>
         </table></div>
         <div class="resident-pagination" id="incident-pagination"></div>
       </div>

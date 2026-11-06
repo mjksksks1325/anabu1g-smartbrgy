@@ -2147,5 +2147,21 @@
     "Could not reach the server. No folder was changed.": "Could not reach the server. No folder was changed.",
     "The announcement was not archived. Please try again.": "The announcement was not archived. Please try again.",
     "Could not reach the server. No announcement was changed.": "Could not reach the server. No announcement was changed.",
-    "Folder archived. Its movement history is retained.": "Folder archived. Its movement history is retained."
+    "Folder archived. Its movement history is retained.": "Folder archived. Its movement history is retained.",
+    "Walk-in": "Walk-in",
+    "Rejected": "Rejected",
+    ":age yrs old": ":age yrs old",
+    "No households found.": "No households found.",
+    "Loading voter list...": "Loading voter list...",
+    "Loading incident reports...": "Loading incident reports...",
+    "Loading request records...": "Loading request records...",
+    "No linked requests yet.": "No linked requests yet.",
+    "No linked document requests.": "No linked document requests.",
+    "Senior": "Senior",
+    "No household head assigned": "No household head assigned",
+    "Unassigned": "Unassigned",
+    "Loading issued certificates...": "Loading issued certificates...",
+    "Loading resident records...": "Loading resident records...",
+    "No resident records found.": "No resident records found.",
+    "System": "System"
 }

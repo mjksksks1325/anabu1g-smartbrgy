@@ -1605,6 +1605,61 @@ function listErrorMarkup(error, retryCall, fallback) {
   return `<span>${escapeText(requestErrorMessage(error, fallback))}</span> <button type="button" class="btn btn-sm list-retry" onclick="${retryCall}">${escapeText(adminText('Try again'))}</button>`;
 }
 
+/*
+ * Shared list rendering for the workspace modules (records, voters, certificates, incidents, audit, users).
+ * Each helper escapes the text it receives, so callers pass raw values and never pre-built HTML, and badge
+ * tones come from a fixed list. Loading and empty messages are announced politely; load errors use an alert.
+ */
+const WORKSPACE_BADGE_TONES = ['green', 'red', 'amber', 'blue', 'purple', 'gray', 'senior'];
+
+/** A status badge. Unknown tones fall back to gray. */
+function workspaceBadge(label, tone = 'gray') {
+  const safeTone = WORKSPACE_BADGE_TONES.includes(tone) ? tone : 'gray';
+  return `<span class="badge badge-${safeTone}">${escapeText(label)}</span>`;
+}
+
+/** A loading or empty message for a list that is not a table. */
+function workspaceState(message, state = 'empty') {
+  const kind = state === 'loading' ? 'loading' : 'empty';
+  const busy = kind === 'loading' ? ' aria-busy="true"' : '';
+  return `<div class="resident-table-message workspace-state" data-state="${kind}"><span role="status"${busy}>${escapeText(adminText(message))}</span></div>`;
+}
+
+/** The same message as a full-width table row. */
+function workspaceStateRow(colspan, message, state = 'empty') {
+  const kind = state === 'loading' ? 'loading' : 'empty';
+  const busy = kind === 'loading' ? ' aria-busy="true"' : '';
+  return `<tr class="workspace-state-row"><td colspan="${Math.max(1, Number(colspan) || 1)}" class="resident-table-message workspace-state" data-state="${kind}"><span role="status"${busy}>${escapeText(adminText(message))}</span></td></tr>`;
+}
+
+/** A load error with a Try again button (retryCall is a trusted, fixed loader call, as in listErrorMarkup). */
+function workspaceErrorRow(colspan, error, retryCall, fallback) {
+  return `<tr class="workspace-state-row"><td colspan="${Math.max(1, Number(colspan) || 1)}" class="resident-table-message resident-table-error workspace-state" data-state="error"><span role="alert">${listErrorMarkup(error, retryCall, fallback)}</span></td></tr>`;
+}
+
+/** workspaceErrorRow for a list that is not a table. */
+function workspaceError(error, retryCall, fallback) {
+  return `<div class="resident-table-message resident-table-error workspace-state" data-state="error"><span role="alert">${listErrorMarkup(error, retryCall, fallback)}</span></div>`;
+}
+
+/** Document request status badge; the same labels and tones as the x-staff.request-status Blade component. */
+function documentRequestStatusBadge(status) {
+  const [label, tone] = ({
+    pending: ['Pending', 'amber'],
+    processing: ['Processing', 'blue'],
+    approved: ['Approved', 'green'],
+    ready_for_release: ['Ready for release', 'green'],
+    released: ['Released', 'gray'],
+    rejected: ['Rejected', 'red'],
+  })[status] || [String(status || '').replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase()), 'gray'];
+  return workspaceBadge(label, tone).replace('<span ', `<span data-request-status="${escapeText(status)}" `);
+}
+
+/** Number of header cells in a list's table, so state rows always span the visible columns. */
+function workspaceColumnCount(tbody, fallback) {
+  return tbody?.closest?.('table')?.querySelectorAll?.('thead th')?.length || fallback;
+}
+
 async function refreshIssuedCertificates(page = issuedCertificatesPage) {
   if (!hasStaffPermission('documents.view')) return;
   const tbody = document.getElementById('issued-certificates-tbody');
@@ -1628,7 +1683,7 @@ async function refreshIssuedCertificates(page = issuedCertificatesPage) {
     renderIssuedCertificates(payload.data, payload);
   } catch (error) {
     if (version !== issuedCertificatesRequestVersion) return;
-    tbody.innerHTML = `<tr><td colspan="8" class="resident-table-message resident-table-error">${listErrorMarkup(error, 'refreshIssuedCertificates()', 'Unable to load issued certificates.')}</td></tr>`;
+    tbody.innerHTML = workspaceErrorRow(8, error, 'refreshIssuedCertificates()', 'Unable to load issued certificates.');
   }
 }
 
@@ -1676,7 +1731,7 @@ function renderIssuedCertificates(certificates, meta = null) {
 
   if (!Array.isArray(certificates) || certificates.length === 0) {
     const filtered = Object.values(issuedCertificateFilters()).some(Boolean);
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--text-muted);">${filtered ? 'No issued certificates match these filters.' : 'No certificates have been issued yet.'}</td></tr>`;
+    tbody.innerHTML = workspaceStateRow(8, filtered ? 'No issued certificates match these filters.' : 'No certificates have been issued yet.');
     return;
   }
 
@@ -1687,18 +1742,17 @@ function renderIssuedCertificates(certificates, meta = null) {
     const fee = Number(certificate.amount_paid) > 0
       ? `PHP ${Number(certificate.amount_paid).toFixed(2)}`
       : 'Free';
-    const source =String(certificate.source || 'onsite').toLowerCase();
-    const sourceBadgeClass = source === 'online' ? 'badge-purple' : 'badge-gray';
+    const online = String(certificate.source || 'onsite').toLowerCase() === 'online';
     const row = document.createElement('tr');
 
     row.innerHTML = `
-      <td><span style="font-family:var(--font-mono);color:var(--green-500);">${escapeText(certificate.certificate_number)}</span></td>
-      <td><strong style="color:var(--text-primary);">${escapeText(certificate.resident_name)}</strong></td>
+      <td><span class="workspace-reference" data-no-admin-translate>${escapeText(certificate.certificate_number)}</span></td>
+      <td><strong class="workspace-primary-text" data-no-admin-translate>${escapeText(certificate.resident_name)}</strong></td>
       <td>${escapeText(certificate.certificate_type)}</td>
-      <td><span class="badge ${sourceBadgeClass}">${escapeText(source.toUpperCase())}</span></td>
+      <td>${workspaceBadge(online ? 'Online' : 'Walk-in', online ? 'purple' : 'gray')}</td>
       <td>${escapeText(fee)}</td>
       <td class="issued-date">${escapeText(issuedDate)}<small>${escapeText(issuedTime)}</small></td>
-      <td>${escapeText(certificate.issued_by || 'Barangay Staff')}</td>
+      <td>${certificate.issued_by ? `<span data-no-admin-translate>${escapeText(certificate.issued_by)}</span>` : escapeText('Barangay Staff')}</td>
       <td><div class="resident-actions"><button type="button" data-action-permission="documents.print" class="btn btn-xs issued-reprint">Reprint</button><button type="button" class="btn btn-xs issued-verify">Verify</button></div></td>`;
 
     row.querySelector('.issued-reprint')?.addEventListener('click', () => {
@@ -2805,10 +2859,25 @@ function showMoreCertLane(laneId) {
   return loadCertBoard();
 }
 
+/** One delegated click handler per board element: cards are re-rendered on every poll, the listener is not. */
+function bindCertBoardActions(board) {
+  if (!board || board.dataset.certActionsBound === 'true') return;
+  board.dataset.certActionsBound = 'true';
+  board.addEventListener('click', event => {
+    const control = event.target.closest?.('[data-cert-action]');
+    if (!control || !board.contains(control)) return;
+    const { certAction, code } = control.dataset;
+    if (certAction === 'advance') void advanceCertStatus(code, control.dataset.next, event);
+    else if (certAction === 'reject') openRejectRequest(Number(control.dataset.requestId), code, event);
+    else if (certAction === 'view') openViewCertReq(code);
+  });
+}
+
 function renderCertKanban() {
   const board = document.getElementById('cert-kanban-board');
 
   if (!board) return;
+  bindCertBoardActions(board);
 
   const laneScrollPositions = {};
 
@@ -2872,19 +2941,10 @@ function renderCertKanban() {
       <div class="cert-lane-header">
 
         <span class="cert-lane-title" style="--lane-color:${lane.color};">
-          ${lane.icon} ${lane.label}
+          ${escapeText(lane.label)}
         </span>
 
-        <span
-          class="badge"
-          style="
-            background:rgba(255,255,255,0.06);
-            color:var(--text-muted);
-            border-color:var(--border);
-          "
-        >
-          ${laneTotal}
-        </span>
+        <span class="badge badge-gray cert-lane-count">${Number(laneTotal) || 0}</span>
 
       </div>
 
@@ -2898,57 +2958,29 @@ function renderCertKanban() {
         `
 
         : items.map(r => {
-
-            const viaBadge = `
-              <span
-                class="badge ${
-                  r.via === 'Online'
-                    ? 'badge-purple'
-                    : 'badge-gray'
-                }"
-                style="font-size:9.5px;"
-              >
-                ${r.via}
-              </span>
-            `;
-
+            const code = escapeText(r.code);
+            const viaBadge = workspaceBadge(r.via === 'Online' ? 'Online' : 'Walk-in', r.via === 'Online' ? 'purple' : 'gray');
             const proceedBtn = lane.next && hasStaffPermission(lane.id === 'ready' ? 'documents.issue' : 'documents.process')
-
-              ? `
-                <button
-                  class="btn btn-xs ${lane.nextClass} cert-card-action"
-                  onclick="
-                    advanceCertStatus(
-                      '${r.code}',
-                      '${lane.next}',
-                      event
-                    )
-                  "
-                >
-                  ${lane.nextLabel}
-                </button>
-              `
-
+              ? `<button type="button" class="btn btn-xs ${lane.nextClass} cert-card-action" data-cert-action="advance" data-code="${code}" data-next="${escapeText(lane.next)}">${escapeText(lane.nextLabel)}</button>`
               : '';
-
             const rejectBtn = hasStaffPermission('documents.process') && lane.id !== 'completed' && r.via === 'Online'
-              ? `<button type="button" data-action-permission="documents.process" class="btn btn-xs btn-danger-outline cert-card-action" onclick="openRejectRequest(${Number(r.id)}, '${r.code}', event)">Reject</button>`
+              ? `<button type="button" data-action-permission="documents.process" class="btn btn-xs btn-danger-outline cert-card-action" data-cert-action="reject" data-code="${code}" data-request-id="${Number(r.id)}">Reject</button>`
               : '';
             // The requester's name opens the details (it stretches over the card); a separate View button is only
             // shown when the card has no other action, so each card needs at most one row of buttons.
             const viewBtn = proceedBtn || rejectBtn
               ? ''
-              : `<button type="button" class="btn btn-xs cert-card-action cert-card-view" onclick="openViewCertReq('${r.code}')">View</button>`;
+              : `<button type="button" class="btn btn-xs cert-card-action cert-card-view" data-cert-action="view" data-code="${code}">View</button>`;
             const actionCount = [proceedBtn, rejectBtn, viewBtn].filter(Boolean).length;
             const btnRow = `<div class="cert-card-actions" data-action-count="${actionCount}">${proceedBtn}${rejectBtn}${viewBtn}</div>`;
 
             return `
               <div class="cert-card">
                 <div class="cert-card-heading">
-                  <button type="button" class="cert-card-name cert-card-open" onclick="openViewCertReq('${r.code}')" aria-label="${escapeText(adminText('View request :code for :name', { code: r.code, name: r.name }))}">${escapeText(r.name)}</button>
+                  <button type="button" class="cert-card-name cert-card-open" data-cert-action="view" data-code="${code}" data-no-admin-translate aria-label="${escapeText(adminText('View request :code for :name', { code: r.code, name: r.name }))}">${escapeText(r.name)}</button>
                 </div>
                 <div class="cert-card-type">${escapeText(r.type)}</div>
-                <div class="cert-card-meta"><span class="cert-card-code">${escapeText(r.code)}</span>${viaBadge}</div>
+                <div class="cert-card-meta"><span class="cert-card-code" data-no-admin-translate>${code}</span>${viaBadge}</div>
                 ${btnRow}
               </div>
             `;
@@ -3091,7 +3123,7 @@ function renderAuditLog() {
   container.innerHTML = '';
   renderPager('audit-pagination', { page: auditCurrentPage, lastPage: pageCount, total: logs.length, perPage: AUDIT_PAGE_SIZE, noun: ['event', 'events'], loader: 'goToAuditPage' });
   if (logs.length === 0) {
-    container.innerHTML = `<div class="resident-table-message">${LIVE_AUDIT_LOGS.length ? 'No events match the current filter.' : 'No audit events recorded yet.'}</div>`;
+    container.innerHTML = workspaceState(LIVE_AUDIT_LOGS.length ? 'No events match the current filter.' : 'No audit events recorded yet.');
     return;
   }
   const pageLogs = logs.slice((auditCurrentPage - 1) * AUDIT_PAGE_SIZE, auditCurrentPage * AUDIT_PAGE_SIZE);
@@ -3112,7 +3144,7 @@ function renderAuditLog() {
         <div class="audit-action">${escapeText(log.action)}</div>
         <div class="audit-detail">${escapeText(log.detail)}</div>
       </div>
-      <div class="audit-log-user">${escapeText(log.user || 'System')}</div>`;
+      <div class="audit-log-user"${log.user ? ' data-no-admin-translate' : ''}>${escapeText(log.user || 'System')}</div>`;
     row.addEventListener('click', () => openAuditDetail(log));
     row.addEventListener('keydown', event => {
       if (event.key === 'Enter' || event.key === ' ') {
@@ -3221,7 +3253,7 @@ async function reloadAuditLog() {
     LIVE_AUDIT_LOGS.splice(0, LIVE_AUDIT_LOGS.length, ...payload.events);
     renderAuditLog();
   } catch (error) {
-    document.getElementById('audit-log-list').innerHTML = `<div class="resident-table-message resident-table-error">${listErrorMarkup(error, 'reloadAuditLog()')}</div>`;
+    document.getElementById('audit-log-list').innerHTML = workspaceError(error, 'reloadAuditLog()');
     showToast(error.message, 'red');
   }
 }
@@ -3268,7 +3300,7 @@ async function reloadUsers() {
     USERS.splice(0, USERS.length, ...payload.users);
     renderUsers();
   } catch (error) {
-    if (container) container.innerHTML = `<div class="card civic-empty resident-table-error">${listErrorMarkup(error, 'reloadUsers()')}</div>`;
+    if (container) container.innerHTML = `<div class="card">${workspaceError(error, 'reloadUsers()')}</div>`;
     markStatsUnavailable(['usr-total', 'usr-active', 'usr-suspended', 'usr-no-2fa']);
   }
 }
@@ -3315,12 +3347,12 @@ function renderUsers() {
     <article class="user-card ${user.is_active ? '' : 'suspended'}" data-user-card-id="${id}">
       <div class="user-avatar-lg user-avatar-${escapeText(staffRoleKey(user))}" aria-hidden="true">${escapeText(initials(user.name))}</div>
       <div class="user-info">
-        <h3 class="user-name"><button type="button" class="user-card-open" onclick="openUserDetails(${id})" aria-label="${escapeText(adminText('View account details for :name', { name: user.name }))}">${name}</button>${isSelf ? `<span class="user-self-tag">${escapeText(adminText('You'))}</span>` : ''}</h3>
-        <div class="user-role-tag">${escapeText(user.email)}</div>
+        <h3 class="user-name"><button type="button" class="user-card-open" onclick="openUserDetails(${id})" aria-label="${escapeText(adminText('View account details for :name', { name: user.name }))}"><span data-no-admin-translate>${name}</span></button>${isSelf ? `<span class="user-self-tag">${escapeText(adminText('You'))}</span>` : ''}</h3>
+        <div class="user-role-tag" data-no-admin-translate>${escapeText(user.email)}</div>
         <div class="user-badges">
           <span class="badge user-role-badge user-role-${escapeText(staffRoleKey(user))}">${escapeText(adminText(staffRoleLabel(user)))}</span>
-          <span class="badge ${user.is_active ? 'badge-green' : 'badge-red'}">${user.is_active ? 'Active' : 'Suspended'}</span>
-          <span class="badge ${user.two_factor_confirmed_at ? 'badge-gray' : 'badge-amber'}">${user.two_factor_confirmed_at ? '2FA enabled' : '2FA not configured'}</span>
+          ${workspaceBadge(user.is_active ? 'Active' : 'Suspended', user.is_active ? 'green' : 'red')}
+          ${workspaceBadge(user.two_factor_confirmed_at ? '2FA enabled' : '2FA not configured', user.two_factor_confirmed_at ? 'gray' : 'amber')}
         </div>
       </div>
       <div class="user-actions">
@@ -3328,7 +3360,7 @@ function renderUsers() {
         ${canChangeAccess ? `<button type="button" class="btn ${user.is_active ? 'user-action-suspend' : 'user-action-activate'}" onclick="event.stopPropagation();setUserActive(${id}, ${!user.is_active})" aria-label="${escapeText(adminText(user.is_active ? 'Suspend :name' : 'Activate :name', { name: user.name }))}">${user.is_active ? 'Suspend' : 'Activate'}</button><button type="button" class="btn btn-danger" onclick="event.stopPropagation();deleteUser(${id})" aria-label="${escapeText(adminText('Delete account of :name', { name: user.name }))}">Delete</button>` : ''}
       </div>
     </article>`;
-  }).join('') : '<div class="card civic-empty">No accounts match your filters.</div>';
+  }).join('') : `<div class="card">${workspaceState('No accounts match your filters.')}</div>`;
 }
 
 /** User KPI cards count every personnel account, so search and role are cleared before the status filter is applied. */
@@ -3972,7 +4004,7 @@ async function loadIncidents(page = 1) {
   const tbody = document.getElementById('incidents-tbody');
   if (!tbody) return;
   const version = ++incidentLoadVersion;
-  tbody.innerHTML = '<tr><td colspan="8" class="resident-table-message">Loading incident reports...</td></tr>';
+  tbody.innerHTML = workspaceStateRow(8, 'Loading incident reports...', 'loading');
   const query = new URLSearchParams({ page: String(page), per_page: '15' });
   const search = document.getElementById('incident-search')?.value.trim();
   const status = document.getElementById('incident-status-filter')?.value;
@@ -3998,7 +4030,7 @@ async function loadIncidents(page = 1) {
     updateIncidentSummary(payload.summary || {});
   } catch (error) {
     if (version !== incidentLoadVersion) return;
-    tbody.innerHTML = `<tr><td colspan="8" class="resident-table-message resident-table-error">${listErrorMarkup(error, 'loadIncidents(incidentCurrentPage)')}</td></tr>`;
+    tbody.innerHTML = workspaceErrorRow(8, error, 'loadIncidents(incidentCurrentPage)');
     markStatsUnavailable(['inc-stat-pending', 'inc-stat-resolved', 'inc-stat-high']);
   }
 }
@@ -4009,13 +4041,14 @@ function renderIncidents(total = 0) {
   tbody.innerHTML = '';
 
   if (INCIDENTS.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" class="resident-table-message">Walang nakitang incident report.</td></tr>';
+    tbody.innerHTML = workspaceStateRow(8, 'Walang nakitang incident report.');
   }
 
   INCIDENTS.forEach(incident => {
-    const severityClass = incident.severity === 'high' ? 'badge-red' : incident.severity === 'medium' ? 'badge-amber' : 'badge-gray';
+    const incidentId = Number(incident.id);
+    const severityTone = incident.severity === 'high' ? 'red' : incident.severity === 'medium' ? 'amber' : 'gray';
     const archiveButton = incident.can_archive
-      ? `<button type="button" data-action-permission="incidents.archive|vawc.archive" class="btn btn-xs btn-danger-outline" onclick="archiveIncident(${incident.id})">Archive</button>`
+      ? `<button type="button" data-action-permission="incidents.archive|vawc.archive" class="btn btn-xs btn-danger-outline" onclick="archiveIncident(${incidentId})">Archive</button>`
       : '';
     // "Nov 2, 2026 3:30 PM" reads better as a date line and a time line than wrapped word by word.
     const [, occurredDate = incident.occurred_at_display, occurredTime = ''] = String(incident.occurred_at_display || '').match(/^(\w{3} \d{1,2}, \d{4}) (.+)$/) || [];
@@ -4026,22 +4059,22 @@ function renderIncidents(total = 0) {
     row.innerHTML = `
       <td class="incident-cell-main"><strong>${escapeText(incident.incident_type)}</strong><span class="resident-number incident-ref" title="${escapeText(incident.incident_number)}">${incidentReferenceMarkup(incident.incident_number)}</span></td>
       <td class="incident-cell-date"><span>${escapeText(occurredDate)}</span><small>${escapeText(occurredTime)}</small></td>
-      <td>${escapeText(incident.location)}</td>
-      <td>${escapeText(incident.complainant_name)}</td>
-      <td>${incident.respondent_name ? escapeText(incident.respondent_name) : '—'}</td>
-      <td><span class="badge ${severityClass}">${escapeText(incident.severity_label)}</span></td>
-      <td><span class="badge ${incidentStatusBadge(incident.status)}">${escapeText(incident.status_label)}</span></td>
+      <td data-no-admin-translate>${escapeText(incident.location)}</td>
+      <td data-no-admin-translate>${escapeText(incident.complainant_name)}</td>
+      <td${incident.respondent_name ? ' data-no-admin-translate' : ''}>${incident.respondent_name ? escapeText(incident.respondent_name) : '—'}</td>
+      <td>${workspaceBadge(incident.severity_label, severityTone)}</td>
+      <td>${workspaceBadge(incident.status_label, incidentStatusBadge(incident.status).replace('badge-', ''))}</td>
       <td><div class="resident-actions">
-        <button type="button" class="btn btn-xs" onclick="openViewIncident(${incident.id})">View</button>
-        ${incident.can_update ? `<button type="button" data-action-permission="incidents.update|vawc.update" class="btn btn-xs" onclick="openEditIncident(${incident.id})">Edit</button>` : ''}
+        <button type="button" class="btn btn-xs" onclick="openViewIncident(${incidentId})">View</button>
+        ${incident.can_update ? `<button type="button" data-action-permission="incidents.update|vawc.update" class="btn btn-xs" onclick="openEditIncident(${incidentId})">Edit</button>` : ''}
         ${archiveButton}
       </div></td>`;
     // The whole row opens the record; its own buttons keep their actions.
-    row.addEventListener('click', event => { if (!event.target.closest('button, a')) openViewIncident(incident.id); });
+    row.addEventListener('click', event => { if (!event.target.closest('button, a')) openViewIncident(incidentId); });
     row.addEventListener('keydown', event => {
       if (event.target === row && (event.key === 'Enter' || event.key === ' ')) {
         event.preventDefault();
-        openViewIncident(incident.id);
+        openViewIncident(incidentId);
       }
     });
     applyStaffActionVisibility(row);
@@ -4318,7 +4351,7 @@ async function loadRequestRecords(page = 1) {
   const container = document.getElementById('rr-resident-list');
   if (!container) return;
   const version = ++requestRecordLoadVersion;
-  if (requestRecordResidents.length === 0) container.innerHTML = '<div class="card rr-list-card"><div class="resident-table-message">Loading request records...</div></div>';
+  if (requestRecordResidents.length === 0) container.innerHTML = `<div class="card rr-list-card">${workspaceState('Loading request records...', 'loading')}</div>`;
   const query = new URLSearchParams({ page: String(page), per_page: '15' });
   if (rrCurrentFilter.trim()) query.set('search', rrCurrentFilter.trim());
   if (rrCurrentStatusFilter) query.set('eligibility', rrCurrentStatusFilter);
@@ -4342,7 +4375,7 @@ async function loadRequestRecords(page = 1) {
     set('rr-blocked', summary.blocked);
     set('rr-review', summary.needs_review);
   } catch (error) {
-    if (version === requestRecordLoadVersion) container.innerHTML = `<div class="card rr-list-card"><div class="resident-table-message resident-table-error">${listErrorMarkup(error, 'loadRequestRecords(rrCurrentPage || 1)')}</div></div>`;
+    if (version === requestRecordLoadVersion) container.innerHTML = `<div class="card rr-list-card">${workspaceError(error, 'loadRequestRecords(rrCurrentPage || 1)')}</div>`;
   }
 }
 
@@ -4351,22 +4384,21 @@ function renderRequestRecords(total = 0) {
   if (!container) return;
 
   if (requestRecordResidents.length === 0) {
-    container.innerHTML = '<div class="card rr-list-card"><div class="resident-table-message">Walang nakitang resident request record.</div></div>';
+    container.innerHTML = `<div class="card rr-list-card">${workspaceState('Walang nakitang resident request record.')}</div>`;
   } else {
     container.innerHTML = '<div class="card rr-list-card"><ul class="rr-list">' + requestRecordResidents.map(resident => {
       const eligible = resident.status === 'active' && Boolean(resident.is_in_good_standing);
       const requests = Array.isArray(resident.document_requests) ? resident.document_requests : [];
       const requestRows = requests.length === 0
-        ? '<tr><td colspan="5" class="resident-table-message">Wala pang linked request.</td></tr>'
+        ? workspaceStateRow(5, 'No linked requests yet.')
         : requests.map(request => {
-            const status = String(request.status || 'pending');
-            const statusClass = status === 'released' ? 'badge-green' : status === 'rejected' ? 'badge-red' : status === 'ready_for_release' ? 'badge-blue' : 'badge-amber';
+            const online = String(request.source || 'online').toLowerCase() === 'online';
             return `<tr>
-              <td><span class="resident-number">${escapeText(request.reference_code)}</span></td>
+              <td><span class="resident-number" data-no-admin-translate>${escapeText(request.reference_code)}</span></td>
               <td>${escapeText(request.document_type)}</td>
               <td>${escapeText(String(request.created_at || '').slice(0, 10))}</td>
-              <td>${escapeText(request.source || 'online')}</td>
-              <td><span class="badge ${statusClass}">${escapeText(status.replaceAll('_', ' '))}</span></td>
+              <td>${escapeText(online ? 'Online' : 'Walk-in')}</td>
+              <td>${documentRequestStatusBadge(String(request.status || 'pending'))}</td>
             </tr>`;
           }).join('');
 
@@ -4375,12 +4407,12 @@ function renderRequestRecords(total = 0) {
         <div class="rr-row-summary">
           <button type="button" class="rr-row-toggle" aria-expanded="false" aria-controls="${panelId}" onclick="toggleRRCard(this)">
             <span class="rr-avatar" aria-hidden="true">${escapeText(String(resident.full_name || '?').charAt(0))}</span>
-            <span class="rr-row-name"><strong>${escapeText(resident.full_name)}</strong><small>${escapeText(resident.resident_number)} · ${escapeText(resident.purok)} · ${Number(resident.age)} yrs old</small></span>
+            <span class="rr-row-name"><strong data-no-admin-translate>${escapeText(resident.full_name)}</strong><small><span data-no-admin-translate>${escapeText(resident.resident_number)}</span> <span aria-hidden="true">·</span> <span data-no-admin-translate>${escapeText(resident.purok)}</span> <span aria-hidden="true">·</span> <span>${escapeText(adminText(':age yrs old', { age: Number(resident.age) }))}</span></small></span>
             <span class="rr-chevron" aria-hidden="true"></span>
           </button>
-          <span class="badge ${eligible ? 'badge-green' : 'badge-red'}">${eligible ? 'Good Standing' : 'Needs Review'}</span>
+          ${workspaceBadge(eligible ? 'Good Standing' : 'Needs Review', eligible ? 'green' : 'red')}
           <span class="rr-request-count">${requests.length} <span>${requests.length === 1 ? 'request' : 'requests'}</span></span>
-          <button type="button" class="btn btn-xs" onclick="openEligibilityForRequestResident(${resident.id})">Check</button>
+          <button type="button" class="btn btn-xs" onclick="openEligibilityForRequestResident(${Number(resident.id)})">Check</button>
         </div>
         <div class="rr-requests-panel" id="${panelId}" hidden>
           <div class="table-scroll"><table class="tbl"><thead><tr><th>Code</th><th>Document</th><th>Date</th><th>Source</th><th>Status</th></tr></thead><tbody>${requestRows}</tbody></table></div>
@@ -4604,7 +4636,7 @@ async function loadResidents(page = 1) {
   if (!hasStaffPermission('records.view')) return;
   const version = ++residentLoadVersion;
   const tbody = document.getElementById('records-tbody');
-  if (tbody && RESIDENTS.length === 0) tbody.innerHTML = '<tr><td colspan="9" class="resident-table-message">Loading resident records...</td></tr>';
+  if (tbody && RESIDENTS.length === 0) tbody.innerHTML = workspaceStateRow(9, 'Loading resident records...', 'loading');
 
   const query = new URLSearchParams({ page: String(page), per_page: '15' });
   const search = document.getElementById('residents-search')?.value.trim();
@@ -4632,38 +4664,55 @@ async function loadResidents(page = 1) {
     renderDashPurokBreakdown();
     populateEligResidentDropdown(null);
   } catch (error) {
-    if (tbody && version === residentLoadVersion) tbody.innerHTML = `<tr><td colspan="9" class="resident-table-message resident-table-error">${listErrorMarkup(error, 'loadResidents(residentCurrentPage || 1)')}</td></tr>`;
+    if (tbody && version === residentLoadVersion) tbody.innerHTML = workspaceErrorRow(9, error, 'loadResidents(residentCurrentPage || 1)');
   }
+}
+
+/** One delegated handler for the resident row buttons; rows are rebuilt on every load, the table body is not. */
+function bindResidentTableActions(tbody) {
+  if (typeof tbody?.addEventListener !== 'function' || !tbody.dataset || tbody.dataset.residentActionsBound === 'true') return;
+  tbody.dataset.residentActionsBound = 'true';
+  tbody.addEventListener('click', event => {
+    const control = event.target.closest?.('[data-resident-action]');
+    if (!control) return;
+    const { residentAction, resident, databaseId } = control.dataset;
+    if (residentAction === 'restore') restoreResident(Number(databaseId));
+    else if (residentAction === 'view') openViewResident(resident);
+    else if (residentAction === 'edit') openEditResident(resident);
+    else if (residentAction === 'archive') deleteResident(resident);
+  });
 }
 
 function renderResidentsTable() {
   const tbody = document.getElementById('records-tbody');
   if (!tbody) return;
+  bindResidentTableActions(tbody);
   tbody.innerHTML = '';
 
   if (RESIDENTS.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9" class="resident-table-message">No resident records found.</td></tr>';
+    tbody.innerHTML = workspaceStateRow(9, 'No resident records found.');
     return;
   }
 
   RESIDENTS.forEach(resident => {
     const row = document.createElement('tr');
-    const archivedBadge = resident.archived ? `<span class="badge badge-red">Archived</span><small>${escapeText(String(resident.archivedAt || '').slice(0, 10))}</small>` : `<span class="badge ${resident.status === 'Active' ? 'badge-green' : 'badge-red'}">${escapeText(resident.status)}</span>`;
+    const archivedBadge = resident.archived ? `${workspaceBadge('Archived', 'red')}<small>${escapeText(String(resident.archivedAt || '').slice(0, 10))}</small>` : workspaceBadge(resident.status, resident.status === 'Active' ? 'green' : 'red');
     const actions = resident.archived
-      ? `<button data-action-permission="records.archive" class="btn btn-xs btn-green" onclick="restoreResident(${resident.databaseId})">Restore</button>`
-      : `<button class="btn btn-xs" onclick="openViewResident('${resident.id}')">View</button>
-         <button data-action-permission="records.update" class="btn btn-xs" onclick="openEditResident('${resident.id}')">Edit</button>
-         <button data-action-permission="records.archive" class="btn btn-xs btn-danger-outline" onclick="deleteResident('${resident.id}')">Archive</button>`;
+      ? `<button type="button" data-action-permission="records.archive" class="btn btn-xs btn-green" data-resident-action="restore" data-database-id="${Number(resident.databaseId)}">Restore</button>`
+      : `<button type="button" class="btn btn-xs" data-resident-action="view" data-resident="${escapeText(resident.id)}">View</button>
+         <button type="button" data-action-permission="records.update" class="btn btn-xs" data-resident-action="edit" data-resident="${escapeText(resident.id)}">Edit</button>
+         <button type="button" data-action-permission="records.archive" class="btn btn-xs btn-danger-outline" data-resident-action="archive" data-resident="${escapeText(resident.id)}">Archive</button>`;
+    const household = resident.household?.household_name || resident.household?.household_number;
 
     row.innerHTML = `
-      <td><span class="resident-number">${escapeText(resident.id)}</span></td>
-      <td><strong>${escapeText(resident.name)}</strong>${calcAge(resident.dob) >= 60 ? '<span class="badge badge-senior">Senior</span>' : ''}${resident.voterStatus === 'active' ? '<span class="badge badge-green" title="Registered voter">Voter</span>' : ''}</td>
+      <td><span class="resident-number" data-no-admin-translate>${escapeText(resident.id)}</span></td>
+      <td><strong data-no-admin-translate>${escapeText(resident.name)}</strong>${calcAge(resident.dob) >= 60 ? workspaceBadge('Senior', 'senior') : ''}${resident.voterStatus === 'active' ? '<span class="badge badge-green" title="Registered voter">Voter</span>' : ''}</td>
       <td>${calcAge(resident.dob)}</td>
-      <td>${escapeText(resident.purok)}</td>
+      <td data-no-admin-translate>${escapeText(resident.purok)}</td>
       <td>${escapeText(resident.gender)}</td>
       <td>${escapeText(resident.civil)}</td>
       <td>${archivedBadge}</td>
-      <td><span class="resident-number">${escapeText(resident.household?.household_name || resident.household?.household_number || 'Unassigned')}</span></td>
+      <td>${household ? `<span class="resident-number" data-no-admin-translate>${escapeText(household)}</span>` : `<span class="resident-number">${escapeText('Unassigned')}</span>`}</td>
       <td><div class="resident-actions">${actions}</div></td>`;
     if (!resident.archived) {
       row.classList.add('resident-row-clickable');
@@ -5317,14 +5366,22 @@ function searchHouseholdManagement() {
 
 async function loadManagedHouseholds(page = 1) {
   const version = ++householdListVersion;
+  const list = document.getElementById('household-list');
+  if (!list.querySelector?.('tbody tr:not(.workspace-state-row)')) list.innerHTML = workspaceState('Loading households...', 'loading');
   const query = new URLSearchParams({ search: document.getElementById('household-search').value.trim(), page, per_page: 15 });
   try {
     const payload = await householdApi(`/staff/households?${query}`);
     if (version !== householdListVersion) return;
-    document.getElementById('household-list').innerHTML = payload.data.length ? `<div class="table-scroll"><table class="tbl"><thead><tr><th>Household</th><th>Head / Address</th><th>Members</th><th>Actions</th></tr></thead><tbody>${payload.data.map(item => `<tr><td>${escapeText(item.household_name || item.household_number)}${item.household_name ? `<br><small>${escapeText(item.household_number)}</small>` : ''}</td><td>${escapeText(item.head?.full_name || 'No household head assigned')}<br>${escapeText(item.address)}</td><td>${Number(item.household_size)}</td><td><button data-action-permission="households.view" class="btn btn-xs" onclick="editManagedHousehold(${Number(item.id)})">View / Edit</button></td></tr>`).join('')}</tbody></table></div>` : '<p>No households found.</p>';
+    const rows = payload.data.map(item => `<tr>
+      <td><span data-no-admin-translate>${escapeText(item.household_name || item.household_number)}</span>${item.household_name ? `<br><small class="resident-number" data-no-admin-translate>${escapeText(item.household_number)}</small>` : ''}</td>
+      <td>${item.head?.full_name ? `<span data-no-admin-translate>${escapeText(item.head.full_name)}</span>` : `<span>${escapeText('No household head assigned')}</span>`}<br><small data-no-admin-translate>${escapeText(item.address)}</small></td>
+      <td>${Number(item.household_size)}</td>
+      <td><button type="button" data-action-permission="households.view" class="btn btn-xs" onclick="editManagedHousehold(${Number(item.id)})">View / Edit</button></td>
+    </tr>`).join('');
+    list.innerHTML = `<div class="table-scroll"><table class="tbl"><thead><tr><th>Household</th><th>Head / Address</th><th>Members</th><th>Actions</th></tr></thead><tbody>${rows || workspaceStateRow(4, 'No households found.')}</tbody></table></div>`;
     householdPagination('household-pagination', payload, 'loadManagedHouseholds');
   } catch (error) {
-    if (version === householdListVersion) document.getElementById('household-list').textContent = error.message;
+    if (version === householdListVersion) list.innerHTML = workspaceError(error, 'loadManagedHouseholds()');
   }
 }
 
@@ -5566,7 +5623,7 @@ async function openViewResidentRequests(residentNumber) {
     if (!response.ok) throw new Error(payload?.message || 'Unable to load request history.');
     const requests = payload.document_requests || [];
     const rows = requests.length === 0
-      ? '<tr><td colspan="5" class="resident-table-message">No linked document requests.</td></tr>'
+      ? workspaceStateRow(5, 'No linked document requests.')
       : requests.map(request => `<tr>
           <td>${escapeText(request.reference_code)}</td>
           <td>${escapeText(request.document_type)}</td>
@@ -5660,7 +5717,7 @@ async function loadVoterRegistry(page = 1) {
   if (!tbody) return;
   const version = ++voterLoadVersion;
   const columns = hasStaffPermission('voters.update') ? 8 : 7;
-  if (voterRegistrations.length === 0) tbody.innerHTML = `<tr><td colspan="${columns}" class="resident-table-message">Loading voter list...</td></tr>`;
+  if (voterRegistrations.length === 0) tbody.innerHTML = workspaceStateRow(columns, 'Loading voter list...', 'loading');
 
   const query = new URLSearchParams({ page: String(page), per_page: '15' });
   const search = document.getElementById('voter-search')?.value.trim();
@@ -5686,7 +5743,7 @@ async function loadVoterRegistry(page = 1) {
     updateVoterSummary(payload.summary || {});
   } catch (error) {
     if (version === voterLoadVersion) {
-      tbody.innerHTML = `<tr><td colspan="${columns}" class="resident-table-message resident-table-error">${listErrorMarkup(error, 'loadVoterRegistry(voterCurrentPage || 1)')}</td></tr>`;
+      tbody.innerHTML = workspaceErrorRow(columns, error, 'loadVoterRegistry(voterCurrentPage || 1)');
       markStatsUnavailable(['voter-stat-total', 'voter-stat-sk-only', 'voter-stat-sk-regular', 'voter-stat-regular-only']);
     }
   }
@@ -5701,18 +5758,18 @@ function renderVoterRegistry(total) {
     tbody.innerHTML = `<tr><td colspan="${canEdit ? 8 : 7}" class="voter-empty-state"><strong>Walang nakitang botante.</strong><span>Subukang baguhin ang purok, age group, o search.</span></td></tr>`;
   } else {
     tbody.innerHTML = voterRegistrations.map(registration => {
-      const eligibilityClass = registration.voter_eligibility === 'sk_only'
-        ? 'badge-amber'
-        : registration.voter_eligibility === 'sk_and_regular' ? 'badge-green' : 'badge-blue';
+      const eligibilityTone = registration.voter_eligibility === 'sk_only'
+        ? 'amber'
+        : registration.voter_eligibility === 'sk_and_regular' ? 'green' : 'blue';
 
       return `<tr>
-        <td><span class="resident-number">${escapeText(registration.resident_number)}</span></td>
-        <td><strong>${escapeText(registration.resident_name)}</strong></td>
+        <td><span class="resident-number" data-no-admin-translate>${escapeText(registration.resident_number)}</span></td>
+        <td><strong data-no-admin-translate>${escapeText(registration.resident_name)}</strong></td>
         <td><strong>${Number(registration.age)}</strong></td>
-        <td>${escapeText(registration.purok)}</td>
-        <td><span class="badge ${eligibilityClass}">${escapeText(registration.voter_eligibility_label)}</span></td>
-        <td>${escapeText(registration.precinct_number)}</td>
-        <td>${escapeText(registration.cluster_number)}</td>
+        <td data-no-admin-translate>${escapeText(registration.purok)}</td>
+        <td>${workspaceBadge(registration.voter_eligibility_label, eligibilityTone)}</td>
+        <td data-no-admin-translate>${escapeText(registration.precinct_number)}</td>
+        <td data-no-admin-translate>${escapeText(registration.cluster_number)}</td>
         ${canEdit ? `<td><div class="resident-actions">${registration.integrity_valid === false
           ? '<span class="badge badge-red" title="Updates are blocked until an administrator reviews this record.">Locked for review</span>'
           : `<button type="button" class="btn btn-xs" onclick="openEditVoter(${Number(registration.id)})" aria-label="Edit voter record of ${escapeText(registration.resident_name)}">Edit</button>`}</div></td>` : ''}

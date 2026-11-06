@@ -2320,5 +2320,18 @@
     "Could not reach the server. No folder was changed.": "Hindi makakonekta sa server. Walang binagong folder.",
     "The announcement was not archived. Please try again.": "Hindi na-archive ang anunsyo. Pakisubukan ulit.",
     "Could not reach the server. No announcement was changed.": "Hindi makakonekta sa server. Walang binagong anunsyo.",
-    "Folder archived. Its movement history is retained.": "Na-archive ang folder. Nananatili ang kasaysayan ng galaw nito."
+    "Folder archived. Its movement history is retained.": "Na-archive ang folder. Nananatili ang kasaysayan ng galaw nito.",
+    "Walk-in": "Walk-in",
+    ":age yrs old": ":age taong gulang",
+    "No households found.": "Walang nakitang household.",
+    "Loading voter list...": "Nilo-load ang listahan ng botante...",
+    "Loading incident reports...": "Nilo-load ang mga incident report...",
+    "Loading request records...": "Nilo-load ang mga request record...",
+    "No linked requests yet.": "Wala pang naka-link na request.",
+    "No linked document requests.": "Walang naka-link na document request.",
+    "Senior": "Senior",
+    "No household head assigned": "Walang nakatalagang household head",
+    "Loading resident records...": "Nilo-load ang mga resident record...",
+    "No resident records found.": "Walang nakitang resident record.",
+    "System": "System"
 }
