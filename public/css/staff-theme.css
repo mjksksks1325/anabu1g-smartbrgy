@@ -944,4 +944,6 @@ body #app.admin-interface .incident-status-chip .badge { min-width: 28px; justif
   body[data-personnel-layout="iot"] .side-nav.is-open .side-nav-scroll { display: block; overflow: visible; white-space: normal; padding: 8px 14px 14px; }
   body[data-personnel-layout="iot"] .side-nav.is-open .sidebar-sec { display: block; width: auto; margin: 0 0 6px; }
   body[data-personnel-layout="iot"] .side-nav.is-open .side-nav-scroll a { display: flex; width: 100%; min-height: 44px; }
+  /* The hidden page title is a spacer on wide screens; here it wraps to its own row, so take it out of the layout. */
+  body[data-personnel-layout="iot"] .workspace-title { display: none; }
 }

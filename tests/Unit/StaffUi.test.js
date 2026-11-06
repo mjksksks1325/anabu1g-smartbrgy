@@ -60,3 +60,69 @@ test('returns focus to the control that opened a Flux dialog when it closes', ()
 
   assert.equal(focused, true);
 });
+
+function openedHarness({ openDialogs = [], active = null }) {
+  const listeners = {};
+  let frame = null;
+  const document = {
+    readyState: 'complete',
+    activeElement: active,
+    addEventListener: (type, handler) => { (listeners[type] ??= []).push(handler); },
+    querySelectorAll: (selector) => (selector === 'ui-modal > dialog[open]' ? openDialogs : []),
+    querySelector: () => null,
+  };
+  const context = vm.createContext({ HTMLDialogElement: FakeDialog, window: {}, document, requestAnimationFrame: (callback) => { frame = callback; } });
+  vm.runInContext(script, context);
+
+  return { StaffUi: context.window.StaffUi, document, runFrame: () => frame?.() };
+}
+
+function dialogWith({ initialFocus = null, contains = () => false } = {}) {
+  const dialog = new FakeDialog();
+  dialog.open = true;
+  dialog.removeAttribute = (name) => { delete dialog.attributes[name]; };
+  dialog.contains = contains;
+  dialog.querySelector = (selector) => (selector.includes('data-ui-initial-focus') ? initialFocus : null);
+  dialog.focus = () => { dialog.focused = true; };
+  return dialog;
+}
+
+test('a dialog that opens over another one is marked stacked and focuses its safe action', () => {
+  const panel = dialogWith();
+  let cancelFocused = false;
+  const confirmation = dialogWith({ initialFocus: { focus() { cancelFocused = true; } } });
+  const { StaffUi, runFrame } = openedHarness({ openDialogs: [panel, confirmation] });
+
+  StaffUi.opened(confirmation);
+  runFrame();
+
+  assert.ok('data-ui-stacked' in confirmation.attributes);
+  assert.equal(cancelFocused, true);
+});
+
+test('a dialog without a marked control takes focus itself once Flux has dropped its focus placeholder', () => {
+  const placeholder = { matches: (selector) => selector === '[data-flux-focus-placeholder]' };
+  const panel = dialogWith({ contains: (node) => node === placeholder });
+  const { StaffUi, runFrame } = openedHarness({ openDialogs: [panel], active: placeholder });
+
+  StaffUi.opened(panel);
+  runFrame();
+
+  assert.equal(panel.attributes.tabindex, '-1');
+  assert.equal(panel.focused, true);
+  assert.equal('data-ui-stacked' in panel.attributes, false);
+});
+
+test('focus that a script already placed inside the dialog is left alone, and closing clears the stacked mark', () => {
+  const field = { matches: () => false };
+  const dialog = dialogWith({ contains: (node) => node === field });
+  const { StaffUi, runFrame } = openedHarness({ openDialogs: [dialogWith(), dialog], active: field });
+
+  StaffUi.opened(dialog);
+  runFrame();
+  assert.equal(dialog.focused, undefined);
+
+  dialog.open = false;
+  StaffUi.opened(dialog);
+  assert.equal('data-ui-stacked' in dialog.attributes, false);
+});

@@ -81,7 +81,7 @@
             if (!response.ok) {
                 // A password error is shown under the field by form-feedback.js; anything else is shown here.
                 if (!payload.errors?.super_admin_password || !window.FormFeedback) {
-                    error.textContent = payload.message || 'Hindi na-archive ang folder. Pakisubukan ulit.';
+                    error.textContent = payload.message || 'The folder was not archived. Please try again.';
                     error.hidden = false;
                 }
                 passwordInput.focus();
@@ -90,7 +90,7 @@
 
             window.location.reload();
         } catch {
-            error.textContent = 'Hindi makakonekta sa server. Walang binagong folder.';
+            error.textContent = 'Could not reach the server. No folder was changed.';
             error.hidden = false;
         } finally {
             submitButton.disabled = false;

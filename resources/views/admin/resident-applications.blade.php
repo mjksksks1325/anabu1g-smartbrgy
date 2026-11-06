@@ -101,7 +101,7 @@
                         <flux:heading level="2" size="lg" id="application-{{ $application->id }}-title" data-no-admin-translate>{{ $applicantName }}</flux:heading>
                         <x-ui.status-badge :tone="$statusTones[$application->status] ?? 'neutral'">{{ $statusLabels[$application->status] ?? ucfirst(str_replace('_', ' ', $application->status)) }}</x-ui.status-badge>
                     </div>
-                    <flux:text class="mt-1 text-sm"><span class="font-mono">{{ $application->reference }}</span> &middot; Submitted {{ $application->created_at->format('M d, Y h:i A') }}</flux:text>
+                    <flux:text class="mt-1 text-sm"><span class="font-mono">{{ $application->reference }}</span> <span aria-hidden="true">&middot;</span> <span>Submitted {{ $application->created_at->format('M d, Y h:i A') }}</span></flux:text>
                 </div>
 
                 <div class="flex flex-col gap-5 sm:flex-row">

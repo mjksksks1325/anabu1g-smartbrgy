@@ -175,4 +175,29 @@
     background: rgb(255 255 255 / 0.025);
 }
 
+/*
+ * Dialog backdrops. Flux sets a faint 10% black backdrop (same selector, so these later rules win). A dialog that opens over another one
+ * (a confirmation over a side panel, marked data-ui-stacked by public/js/staff-ui.js) dims the panel beneath it
+ * so the pending decision is unmistakable. Focus moved to a dialog itself shows no outline; its controls keep theirs.
+ */
+[data-flux-modal] > dialog::backdrop {
+    background: rgb(17 19 21 / 0.2);
+}
+
+[data-flux-modal] > dialog[data-ui-stacked]::backdrop {
+    background: rgb(17 19 21 / 0.5);
+}
+
+.dark [data-flux-modal] > dialog::backdrop {
+    background: rgb(0 0 0 / 0.45);
+}
+
+.dark [data-flux-modal] > dialog[data-ui-stacked]::backdrop {
+    background: rgb(0 0 0 / 0.65);
+}
+
+[data-flux-modal] > dialog[tabindex='-1']:focus {
+    outline: none;
+}
+
 @tailwind utilities source(none);

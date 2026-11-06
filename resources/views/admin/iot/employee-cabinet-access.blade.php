@@ -66,7 +66,7 @@
                             <tr data-employee-row="{{ $employee->id }}">
                                 <td>
                                     <span class="block font-medium text-zinc-800 dark:text-white" data-no-admin-translate>{{ $employee->name }}</span>
-                                    <span class="block text-xs text-zinc-500 dark:text-zinc-400"><span data-no-admin-translate>{{ $employee->email }}</span> &middot; {{ $roleLabel($employee) }}</span>
+                                    <span class="block text-xs text-zinc-500 dark:text-zinc-400"><span data-no-admin-translate>{{ $employee->email }}</span> <span aria-hidden="true">&middot;</span> <span>{{ $roleLabel($employee) }}</span></span>
                                     <span class="mt-1 block md:hidden"><x-ui.status-badge :tone="$access?->isEffective() ? 'success' : 'neutral'">{{ $access?->isEffective() ? 'Effective access' : 'No effective access' }}</x-ui.status-badge></span>
                                 </td>
                                 <td class="hidden lg:table-cell"><x-ui.status-badge :tone="$employee->is_active ? 'success' : 'neutral'">{{ $employee->is_active ? 'Active' : 'Inactive' }}</x-ui.status-badge></td>
@@ -94,14 +94,14 @@
                         <div class="space-y-6">
                             <div class="pe-8">
                                 <flux:heading level="2" size="lg" id="employee-details-title-{{ $employee->id }}" data-no-admin-translate>{{ $employee->name }}</flux:heading>
-                                <flux:text class="mt-1 text-sm">Employee #{{ $employee->id }} &middot; <span data-no-admin-translate>{{ $employee->email }}</span> &middot; {{ $roleLabel($employee) }}</flux:text>
+                                <flux:text class="mt-1 text-sm"><span>Employee #{{ $employee->id }}</span> <span aria-hidden="true">&middot;</span> <span data-no-admin-translate>{{ $employee->email }}</span> <span aria-hidden="true">&middot;</span> <span>{{ $roleLabel($employee) }}</span></flux:text>
                             </div>
 
                             <x-ui.details>
                                 <x-ui.detail label="Cabinet permission">{{ $access?->is_active ? 'Enabled' : 'Disabled' }}</x-ui.detail>
-                                <x-ui.detail label="Authorization version">{{ $access?->authorization_version ?? '—' }} · Updated {{ $access?->updated_at?->format('M j, Y g:i A') ?? 'Never' }}</x-ui.detail>
-                                <x-ui.detail label="RFID enrollment">{{ str_replace('_', ' ', ucfirst($access?->rfid_enrollment_status ?? 'not_started')) }} · {{ $access?->rfid_enrolled_at?->format('M j, Y g:i A') ?? 'No completion date' }}</x-ui.detail>
-                                <x-ui.detail label="Face enrollment">{{ str_replace('_', ' ', ucfirst($access?->face_enrollment_status ?? 'not_started')) }} · {{ $access?->face_enrolled_at?->format('M j, Y g:i A') ?? 'No completion date' }}</x-ui.detail>
+                                <x-ui.detail label="Authorization version">{{ $access?->authorization_version ?? '—' }} <span aria-hidden="true">·</span> <span>{{ $access?->updated_at ? 'Updated '.$access->updated_at->format('M j, Y g:i A') : 'Never updated' }}</span></x-ui.detail>
+                                <x-ui.detail label="RFID enrollment"><span>{{ str_replace('_', ' ', ucfirst($access?->rfid_enrollment_status ?? 'not_started')) }}</span> <span aria-hidden="true">·</span> <span>{{ $access?->rfid_enrolled_at?->format('M j, Y g:i A') ?? 'No completion date' }}</span></x-ui.detail>
+                                <x-ui.detail label="Face enrollment"><span>{{ str_replace('_', ' ', ucfirst($access?->face_enrollment_status ?? 'not_started')) }}</span> <span aria-hidden="true">·</span> <span>{{ $access?->face_enrolled_at?->format('M j, Y g:i A') ?? 'No completion date' }}</span></x-ui.detail>
                             </x-ui.details>
 
                             <section class="space-y-3 border-t border-zinc-200 pt-5 dark:border-zinc-700" aria-labelledby="drawer-access-heading-{{ $employee->id }}">
@@ -179,7 +179,7 @@
                                     <flux:text class="mt-2"><span data-no-admin-translate>{{ $employee->name }}</span> will no longer have effective cabinet access. Their file movement and audit history will remain available.</flux:text>
                                 </div>
                                 <div class="flex justify-end gap-2">
-                                    <flux:modal.close><flux:button type="button" variant="ghost">Cancel</flux:button></flux:modal.close>
+                                    <flux:modal.close><flux:button type="button" variant="ghost" data-ui-initial-focus>Cancel</flux:button></flux:modal.close>
                                     <form method="POST" action="{{ route('admin.cabinet-access.update', $employee) }}">
                                         @csrf
                                         @method('PATCH')

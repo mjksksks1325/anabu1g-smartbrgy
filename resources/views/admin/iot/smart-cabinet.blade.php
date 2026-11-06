@@ -36,7 +36,7 @@
                 <x-ui.details class="lg:grid-cols-4">
                     <x-ui.detail label="Last seen" class="tabular-nums">{{ $cabinet->last_seen_at?->format('M j, Y g:i A') ?? 'Never reported' }}</x-ui.detail>
                     <x-ui.detail label="Software">{{ $cabinet->software_version ?? 'Not reported' }}</x-ui.detail>
-                    <x-ui.detail label="Last error" data-no-admin-translate>{{ $cabinet->last_error ?? 'None reported' }}</x-ui.detail>
+                    <x-ui.detail label="Last error">@if ($cabinet->last_error)<span data-no-admin-translate>{{ $cabinet->last_error }}</span>@else None reported @endif</x-ui.detail>
                     <x-ui.detail label="Cabinet state">
                         @if (is_array($cabinet->cabinet_state) && $cabinet->cabinet_state)
                             <ul class="cabinet-state-list">@foreach ($cabinet->cabinet_state as $stateKey => $stateValue)<li><span>{{ \Illuminate\Support\Str::headline((string) $stateKey) }}</span><strong>{{ is_bool($stateValue) ? ($stateValue ? 'Yes' : 'No') : (is_scalar($stateValue) ? $stateValue : json_encode($stateValue, JSON_UNESCAPED_SLASHES)) }}</strong></li>@endforeach</ul>
@@ -97,12 +97,12 @@
                     <input type="hidden" name="_form" value="readers-{{ $cabinet->id }}">
                     <flux:field>
                         <flux:label>Drawer 1 reader alias</flux:label>
-                        <flux:input name="drawer_1_reader_identifier" required maxlength="80" pattern="[A-Za-z0-9][A-Za-z0-9._-]*" :value="$failedHere ? old('drawer_1_reader_identifier') : ($drawerOneReader?->reader_identifier ?? 'reader-one')" autocomplete="off" />
+                        <flux:input name="drawer_1_reader_identifier" required maxlength="80" pattern="[A-Za-z0-9][A-Za-z0-9._\-]*" :value="$failedHere ? old('drawer_1_reader_identifier') : ($drawerOneReader?->reader_identifier ?? 'reader-one')" autocomplete="off" />
                         <flux:error name="drawer_1_reader_identifier" />
                     </flux:field>
                     <flux:field>
                         <flux:label>Drawer 2 reader alias</flux:label>
-                        <flux:input name="drawer_2_reader_identifier" required maxlength="80" pattern="[A-Za-z0-9][A-Za-z0-9._-]*" :value="$failedHere ? old('drawer_2_reader_identifier') : ($drawerTwoReader?->reader_identifier ?? 'reader-two')" autocomplete="off" />
+                        <flux:input name="drawer_2_reader_identifier" required maxlength="80" pattern="[A-Za-z0-9][A-Za-z0-9._\-]*" :value="$failedHere ? old('drawer_2_reader_identifier') : ($drawerTwoReader?->reader_identifier ?? 'reader-two')" autocomplete="off" />
                         <flux:error name="drawer_2_reader_identifier" />
                     </flux:field>
                     <flux:button type="submit" variant="primary">Save reader mapping</flux:button>
@@ -111,7 +111,7 @@
                     @foreach ($drawerHealthItems as $item)
                         @php($mappedReader = $cabinet->readers->firstWhere('drawer_reference', $item['drawer_reference']))
                         <li class="flex items-center justify-between gap-3 rounded-md border border-zinc-200 px-3 py-1.5 dark:border-zinc-700">
-                            <span class="text-sm font-medium">{{ $item['label'] }} · <span class="font-mono text-xs">{{ $mappedReader?->reader_identifier ?? 'Not assigned' }}</span></span>
+                            <span class="text-sm font-medium"><span>{{ $item['label'] }}</span> <span aria-hidden="true">·</span> <span class="font-mono text-xs">{{ $mappedReader?->reader_identifier ?? 'Not assigned' }}</span></span>
                             <x-ui.status-badge :tone="$item['tone']">{{ $item['status'] }}</x-ui.status-badge>
                         </li>
                     @endforeach
@@ -151,7 +151,7 @@
                     <input type="hidden" name="_form" value="folder-create">
                     <flux:field>
                         <flux:label>Folder reference</flux:label>
-                        <flux:input name="file_reference" required maxlength="100" pattern="[A-Za-z0-9][A-Za-z0-9._/-]*" :value="$creatingFailed ? old('file_reference') : ''" placeholder="e.g. DOC-2026-001" autocomplete="off" />
+                        <flux:input name="file_reference" required maxlength="100" pattern="[A-Za-z0-9][A-Za-z0-9._\/\-]*" :value="$creatingFailed ? old('file_reference') : ''" placeholder="e.g. DOC-2026-001" autocomplete="off" />
                         <flux:error name="file_reference" />
                     </flux:field>
                     <flux:field>

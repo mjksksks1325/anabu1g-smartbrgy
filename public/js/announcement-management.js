@@ -168,7 +168,7 @@
             if (!response.ok) {
                 // A password error is shown under the field by form-feedback.js; anything else is shown here.
                 if (!payload.errors?.super_admin_password || !window.FormFeedback) {
-                    error.textContent = payload.message || 'Hindi na-archive ang anunsyo. Pakisubukan ulit.';
+                    error.textContent = payload.message || 'The announcement was not archived. Please try again.';
                     error.hidden = false;
                 }
                 password.focus();
@@ -188,7 +188,7 @@
             record?.remove();
             window.setTimeout(() => window.location.reload(), 900);
         } catch {
-            error.textContent = 'Hindi makakonekta sa server. Walang binagong anunsyo.';
+            error.textContent = 'Could not reach the server. No announcement was changed.';
             error.hidden = false;
         } finally {
             button.disabled = false;
