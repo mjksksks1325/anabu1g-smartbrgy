@@ -1690,3 +1690,36 @@ test('password guidance marks each rule as staff type, without blocking on recom
   context.setPasswordGuidanceMode(true);
   assert.match(fields['adduser-pass-label'].textContent, /^Leave blank to keep the current password/);
 });
+
+test('the tablet and phone drawer moves focus in when opened and back to Menu when Escape closes it', () => {
+  const source = readFileSync(new URL('../../public/js/admin.js', import.meta.url), 'utf8');
+  const code = source.slice(source.indexOf('function toggleNavigation(force'), source.indexOf('// A click outside the open drawer closes it'));
+  const classes = new Set();
+  let focused = null;
+  const firstItem = { focus() { focused = 'first item'; } };
+  const sidebar = { classList: { contains: name => classes.has(name), toggle(name, on) { on ? classes.add(name) : classes.delete(name); } }, querySelector: () => firstItem };
+  const attributes = {};
+  const button = { setAttribute(name, value) { attributes[name] = value; }, focus() { focused = 'Menu'; } };
+  let buttonDisplay = 'inline-flex';
+  const context = vm.createContext({
+    document: { getElementById: () => sidebar, querySelector: () => button },
+    getComputedStyle: () => ({ display: buttonDisplay }),
+  });
+  vm.runInContext(code, context);
+
+  context.toggleNavigation();
+  assert.equal(classes.has('is-open'), true);
+  assert.equal(attributes['aria-expanded'], 'true');
+  assert.equal(focused, 'first item');
+
+  context.toggleNavigation(false, { restoreFocus: true });
+  assert.equal(classes.has('is-open'), false);
+  assert.equal(focused, 'Menu');
+
+  // Desktop: the sidebar is always shown, so opening state changes never move focus.
+  buttonDisplay = 'none';
+  focused = null;
+  context.toggleNavigation(true);
+  context.toggleNavigation(false, { restoreFocus: true });
+  assert.equal(focused, null);
+});

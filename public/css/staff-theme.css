@@ -1012,3 +1012,46 @@ body[data-personnel-layout="admin"] .password-guidance li[data-required][data-st
 body[data-personnel-layout="admin"] .password-rule-tag { margin-left: auto; padding: 1px 6px; border-radius: 999px; background: var(--staff-soft); color: var(--staff-muted); font-size: 11px; font-weight: 600; }
 body[data-personnel-layout="admin"] .password-guidance li[data-required] .password-rule-tag { background: var(--staff-active-bg); color: var(--staff-active-ink); }
 body:not(.light-mode)[data-personnel-layout="admin"] .password-guidance li[data-required][data-state="unmet"] { color: #f87171; }
+
+/* ── Tablets (761–1023px): the staff menu becomes a drawer (Work Group 4) ───────── */
+/* At these widths a pinned 218px sidebar left 550–806px for tables and forms. Like the account settings layout
+   (Flux sidebar, below 1024px) the menu now opens from the Menu button: the workspace drawer overlays the page;
+   the IoT/request layout opens it as a column above the content, as on phones. */
+@media (min-width: 761px) and (max-width: 1023px) {
+  body #app.admin-interface.admin-interface .mobile-menu-button { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; margin: 0 12px 0 16px; padding: 8px 14px; border: 1px solid var(--staff-quiet-border); border-radius: 6px; background: var(--staff-quiet-bg); color: var(--staff-quiet-ink); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+  body #app.admin-interface.admin-interface .mobile-menu-button[aria-expanded="true"] { border-color: var(--staff-accent-fill); background: var(--staff-active-bg); color: var(--staff-active-ink); }
+  body #app.admin-interface.admin-interface .topbar-logo { flex: 0 0 auto; width: auto; padding-right: 18px; }
+  body #app.admin-interface.admin-interface .sidebar { display: none; position: fixed; top: 80px; bottom: 0; left: 0; z-index: 200; width: min(300px, 80vw); box-shadow: 12px 0 32px rgba(10, 18, 14, .35); }
+  body #app.admin-interface.admin-interface .sidebar.is-open { display: flex; }
+}
+@media (min-width: 651px) and (max-width: 1023px) {
+  body[data-personnel-layout="iot"] .iot-menu-button {
+    display: inline-flex; align-items: center; gap: 6px; min-height: 44px; margin: auto 0 auto 16px; padding: 8px 14px;
+    border: 1px solid var(--staff-quiet-border); border-radius: 6px; background: var(--staff-quiet-bg); color: var(--staff-quiet-ink);
+    font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+  body[data-personnel-layout="iot"] .iot-menu-button[aria-expanded="true"] { border-color: var(--staff-accent-fill); background: var(--staff-active-bg); color: var(--staff-active-ink); }
+  body[data-personnel-layout="iot"] .workspace { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  body[data-personnel-layout="iot"] .workspace > .side-nav { grid-row: 1; }
+  body[data-personnel-layout="iot"] .workspace > .main-content { grid-row: 2; }
+  body[data-personnel-layout="iot"] .side-nav:not(.is-open) { display: none; }
+  /* Open, the menu takes its natural height: the pinned sidebar height would make the account block overlap the links. */
+  body[data-personnel-layout="iot"] .side-nav.is-open { display: flex; flex-direction: column; height: auto; max-height: min(70dvh, 620px); overflow-y: auto; border-right: 0; border-bottom: 1px solid var(--staff-border); }
+  body[data-personnel-layout="iot"] .side-nav.is-open .side-nav-scroll { display: grid; flex: none; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 18px; overflow: visible; padding: 12px 18px; }
+  body[data-personnel-layout="iot"] .side-nav.is-open .side-nav-user { position: static; }
+}
+
+/* ── Workspace KPI rows follow the space they have, not the window (Work Group 4) ─── */
+/* With the sidebar open at 1024–1200px a four-card row squeezed labels and links into three lines. A screen
+   (.content, sized by the flex row) is the container: under 900px of content the cards go two by two. */
+body #app.admin-interface.admin-interface .content { container: workspace-content / inline-size; }
+@container workspace-content (max-width: 900px) {
+  body #app.admin-interface.admin-interface .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container workspace-content (max-width: 520px) {
+  body #app.admin-interface.admin-interface .stats-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Icons inside workspace buttons take the button's text colour (the menu icon colour made "+" on Add New User
+   nearly invisible on green). */
+body #app.admin-interface.admin-interface .btn > svg.nav-icon { color: currentColor; stroke: currentColor; opacity: 1; }

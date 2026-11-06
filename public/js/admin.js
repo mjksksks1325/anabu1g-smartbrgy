@@ -6179,19 +6179,36 @@ window.addEventListener('popstate', event => {
   if (entry) showScreen(entry[0], findNavItem(entry[0]), false);
 });
 
-function toggleNavigation(force) {
+/**
+ * Phones and tablets (below 1024px): the sidebar is a drawer opened by the Menu button. Opening moves focus into
+ * it; closing with Escape returns focus to Menu. On wider screens the sidebar is always shown and this only
+ * keeps aria-expanded in step.
+ */
+function toggleNavigation(force, { restoreFocus = false } = {}) {
   const sidebar = document.getElementById('admin-navigation');
   if (!sidebar) return;
-  const open = force ?? !sidebar.classList.contains('is-open');
+  const wasOpen = sidebar.classList.contains('is-open');
+  const open = force ?? !wasOpen;
   sidebar.classList.toggle('is-open', open);
-  document.querySelector('.mobile-menu-button')?.setAttribute('aria-expanded', String(open));
+  const button = document.querySelector('.mobile-menu-button');
+  button?.setAttribute('aria-expanded', String(open));
+  const isDrawer = button && getComputedStyle(button).display !== 'none';
+  if (open && !wasOpen && isDrawer) sidebar.querySelector('.nav-item')?.focus();
+  if (!open && wasOpen && isDrawer && restoreFocus) button.focus();
 }
+
+// A click outside the open drawer closes it, as Escape does.
+document.addEventListener('click', event => {
+  const sidebar = document.getElementById('admin-navigation');
+  if (!sidebar?.classList.contains('is-open') || sidebar.contains(event.target) || event.target.closest?.('.mobile-menu-button')) return;
+  toggleNavigation(false);
+});
 
 document.addEventListener('keydown', event => {
   const modal = topOpenModal();
   if (event.key === 'Escape') {
     if (modal) closeModal(modal.id);
-    toggleNavigation(false);
+    else toggleNavigation(false, { restoreFocus: true });
   }
   if (event.key === 'Tab' && modal) {
     const controls = [...modal.querySelectorAll('button, a[href], input, select, textarea, [tabindex="0"]')].filter(element => !element.disabled && element.getClientRects().length);
