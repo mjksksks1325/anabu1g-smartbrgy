@@ -18,6 +18,8 @@
 @section('styles')
     .historical .photo { left: 159.6mm; top: 56.4mm; }
     .historical.voter p.salutation { margin-bottom: 4.95mm; }
+    .historical .resident-signature { margin-top: 12.7mm; }
+    .historical.fit-tight .resident-signature { margin-top: 7mm; }
     .historical .resident-signature strong { text-transform: none; }
 @endsection
 

@@ -56,7 +56,7 @@
         .sheet .thumb-mark { width: 31.8mm; margin-top: 3.7mm; text-align: center; }
         .sheet .thumb-box { width: 25.4mm; height: 25.4mm; border: .75pt solid #000; border-radius: 4.2mm; }
         .sheet .thumb-label { display: block; width: 25.4mm; margin-top: 3.2mm; font: italic 8pt/1 'Times New Roman', Times, serif; }
-        .sheet .resident-signature { margin: 12.7mm 0 0; text-indent: 0; text-align: left; }
+        .sheet .resident-signature { margin: 5mm 0 0; text-indent: 0; text-align: left; }
         .sheet .resident-signature strong { display: block; text-decoration: underline; text-underline-offset: .6mm; text-transform: uppercase; }
         .sheet .resident-signature span { display: block; font: bold italic 10pt/4mm 'Times New Roman', Times, serif; }
         .sheet .clearance-photo, .clearance .photo { left: 159.6mm; top: 56.4mm; }
@@ -68,7 +68,7 @@
         .sheet.fit-tight p:not(.salutation), .sheet.fit-tight .details, .sheet.fit-tight ol, .sheet.fit-tight li { margin-bottom: 2.4mm; }
         .sheet.fit-tight .details tr.group-start > * { padding-top: 2.4mm; }
         .sheet.fit-tight .thumb-mark { margin-top: 2.4mm; }
-        .sheet.fit-tight .resident-signature { margin-top: 7mm; }
+        .sheet.fit-tight .resident-signature { margin-top: 3mm; }
         .sheet.fit-tight .official-signature { margin-top: 10mm; }
         .sheet.preview::after { position: absolute; left: 50%; top: 50%; z-index: 3; content: 'PREVIEW · NOT YET ISSUED · NOT VALID'; transform: translate(-50%, -50%) rotate(-35deg); color: rgba(185, 28, 28, .28); font: bold 26pt/1 Arial, Helvetica, sans-serif; white-space: nowrap; pointer-events: none; }
 
@@ -135,6 +135,16 @@
             { label: 'tighter spacing and body text at 95.8% of its size', scale: 11.5 / 12 },
             { label: 'tighter spacing and body text at 91.7% of its size', scale: 11 / 12 },
         ];
+        // A resident signature line sits at the template's height (data-reference-top, mm) when the details above leave
+        // room, and otherwise follows them, so it never overlaps longer content. Re-run after every fit step.
+        const placeSignatures = sheet => sheet.querySelectorAll('[data-reference-top]').forEach(signature => {
+            signature.style.marginTop = '';
+            const natural = signature.getBoundingClientRect().top - sheet.getBoundingClientRect().top;
+            const target = parseFloat(signature.dataset.referenceTop) * 96 / 25.4;
+            if (natural < target) {
+                signature.style.marginTop = (parseFloat(getComputedStyle(signature).marginTop) + target - natural) + 'px';
+            }
+        });
         const adjusted = [];
         const unfit = [];
 
@@ -144,6 +154,7 @@
             const baseSize = parseFloat(base.fontSize);
             const baseLine = parseFloat(base.lineHeight);
             let applied = null;
+            placeSignatures(sheet);
 
             for (const step of steps) {
                 if (fits(body)) break;
@@ -153,6 +164,7 @@
                     body.style.fontSize = size + 'px';
                     body.style.lineHeight = (baseLine * size / baseSize) + 'px';
                 }
+                placeSignatures(sheet);
                 applied = step;
             }
 

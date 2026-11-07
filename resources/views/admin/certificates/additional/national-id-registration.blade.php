@@ -28,6 +28,6 @@
             ['EXPIRATION DATE', $document->validUntil()?->format('F d, Y'), false],
         ]" />
         <p class="issued">Issued this <x-certificate.day :date="$document->issuedAt()" /> at the office of Barangay Anabu I-G, City of Imus, Cavite.</p>
-        @include('admin.certificates.partials.thumb-signature', ['signatureName' => $document->signatureName()])
+        @include('admin.certificates.partials.thumb-signature', ['signatureName' => $document->signatureName(), 'referenceTop' => '255.1'])
     </x-certificate.sheet>
 @endsection

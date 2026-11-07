@@ -47,19 +47,24 @@ test('official certificates preserve all historical details and private photos t
     expect(Storage::disk('local')->get($certificate->photo_path))->toBe($originalPhoto);
     $print = $this->get(route('staff.issued-certificates.print', $certificate))->assertOk();
     expect($certificate->expires_on?->toDateString())->toBe('2027-01-03');
-    foreach (['Province of Cavite', 'OFFICE OF THE SANGGUNIANG BARANGAY', 'Test Resident', 'Example Street, Anabu I-G', 'February 12, 1990', 'Female', 'Single', 'Test nationality', 'Test assistance', 'October 03, 2026', 'January 03, 2027', 'EXPIRATION DATE', 'Resident photo at issuance', 'registered voter'] as $text) {
+    foreach (['Province of Cavite', 'OFFICE OF THE SANGGUNIANG BARANGAY', 'Test Resident', 'Example Street, Anabu I-G', 'February 12, 1990', 'Female', 'Single', 'Test nationality', 'Test assistance', 'October 03, 2026', 'January 03, 2027', 'EXPIRATION DATE', 'registered voter'] as $text) {
         $print->assertSee($text);
     }
-    $print->assertDontSee('Changed address')->assertSee(route('staff.issued-certificates.photo', $certificate));
+    $print->assertDontSee('Changed address');
     $print->assertDontSeeText('Certificate No.:')->assertDontSeeText('Verification code:')
         ->assertDontSeeText($certificate->certificate_number)->assertDontSeeText($certificate->verification_code)
         ->assertSee(asset($certificate->qr_code_path));
     $print->assertSee(asset('images/certificates/anabu-source-seal.png'))
-        ->assertSeeInOrder(['Resident photo at issuance', 'To Whom it may concern', 'FULL:', 'PURPOSE:', 'DATE ISSUE:', 'EXPIRATION DATE:', 'Issued this', 'Scan QR code to verify', 'City of Imus footer logo']);
+        ->assertSeeInOrder(['To Whom it may concern', 'FULL:', 'PURPOSE:', 'DATE ISSUE:', 'EXPIRATION DATE:', 'Issued this', 'Scan QR code to verify', 'City of Imus footer logo']);
+    // Each layout follows its template: the Indigency template shows the photo, the bona fide voter template does not
+    // (the photo stays on record privately either way).
     if ($type === CertificateType::RegisteredVoterCertification) {
-        $print->assertSeeInOrder(['Right Thumb Mark', 'Signature over Printed Name', 'Scan QR code to verify']);
+        $print->assertSeeInOrder(['Right Thumb Mark', 'Signature over Printed Name', 'Scan QR code to verify'])
+            ->assertDontSee('Resident photo at issuance')->assertDontSee(route('staff.issued-certificates.photo', $certificate))
+            ->assertSee('class="resident-signature" data-reference-top="251.7"', false);
     } else {
-        $print->assertSeeText('INDIGENT family')->assertDontSee('Right Thumb Mark');
+        $print->assertSeeText('INDIGENT family')->assertDontSee('Right Thumb Mark')
+            ->assertSeeInOrder(['Resident photo at issuance', 'To Whom it may concern'])->assertSee(route('staff.issued-certificates.photo', $certificate));
     }
     $this->get(route('staff.issued-certificates.photo', $certificate))->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff');
     $this->postJson(route('staff.document-requests.issue', $request))->assertConflict();
@@ -295,7 +300,7 @@ test('indigency and bona fide resident certificates print the official template 
     $certificate = printableCertificate($type);
 
     $print = $this->actingAs(User::factory()->assignedOperations()->create())->get(route('staff.issued-certificates.print', $certificate))
-        ->assertOk()->assertSee(route('staff.issued-certificates.photo', $certificate))
+        ->assertOk()
         ->assertSeeInOrder(['FULL:', 'Test Resident', 'ADDRESS:', 'Historical test address', 'DATE OF BIRTH:', 'February 12, 1990', 'GENDER:', 'Female', 'CIVIL STATUS:', 'Single', 'NATIONALITY:', 'Test nationality', 'PURPOSE:', 'Test purpose', 'DATE ISSUE:', 'October 03, 2026', 'EXPIRATION DATE:', 'January 03, 2027'])
         ->assertSeeText('Issued this 03rd day of October, 2026 at the office of Barangay Anabu I-G, City of Imus, Cavite.')
         ->assertDontSee('official-placeholder.svg')->assertDontSeeText($certificate->verification_code);
@@ -305,6 +310,9 @@ test('indigency and bona fide resident certificates print the official template 
     foreach ($absent as $text) {
         $print->assertDontSeeText($text);
     }
+    $type === CertificateType::CertificateOfIndigency
+        ? $print->assertSee(route('staff.issued-certificates.photo', $certificate))
+        : $print->assertDontSee(route('staff.issued-certificates.photo', $certificate));
 })->with([
     'indigency (Brgy. Indigency 2026)' => [CertificateType::CertificateOfIndigency, [
         'CERTIFICATION OF INDIGENCY', 'To Whom it may concern:',
@@ -411,6 +419,8 @@ test('long details are fitted in documented steps with an 11 pt floor, and never
         ->assertSee("{ label: 'tighter spacing and body text at 95.8% of its size', scale: 11.5 / 12 }", false)
         ->assertSee('.sheet.fit-tight p:not(.salutation)', false)
         ->assertSee('data-fit-adjusted', false)
+        ->assertSee('const placeSignatures = sheet =>', false)
+        ->assertSee('if (natural < target) {', false)
         ->assertSeeText('Nothing has been shortened, and no detail should be shortened to make it fit.')
         ->assertDontSeeText('Shorten the purpose');
 });

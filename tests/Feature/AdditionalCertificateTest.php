@@ -217,3 +217,18 @@ test('previewing is not written to the audit log, while uploads, removals and is
     $this->post(route('staff.additional-certificates.store', 'no-objection'), ['resident_id' => $resident->id, 'details' => ['tree_count' => 2, 'tree_species' => 'Mango', 'tree_location' => 'right of way']])->assertRedirect();
     $this->assertDatabaseHas('administrative_audits', ['user_id' => $staff->id, 'action' => 'admin.additional-certificates.store']);
 });
+
+test('signature lines carry their template heights and photos appear only where the template shows one', function (AdditionalCertificateType $type, array $details, string $referenceTop, bool $printsPhoto) {
+    $resident = eligibleResident(['household_id' => Household::factory()->create()->id]);
+
+    $preview = $this->actingAs(User::factory()->assignedOperations()->create())
+        ->post(route('staff.additional-certificates.preview', $type->slug()), additionalCertificateForm($type, $resident, $details))->assertOk()
+        ->assertSee('class="resident-signature" data-reference-top="'.$referenceTop.'"', false);
+
+    $printsPhoto ? $preview->assertSee('alt="Resident photo at issuance"', false) : $preview->assertDontSee('Resident photo at issuance');
+})->with([
+    'low income (no photo in the template)' => [AdditionalCertificateType::LowIncome, ['occupation' => 'Labandera', 'monthly_income' => '8000', 'purpose' => 'Medical assistance'], '254.9', false],
+    'probation' => [AdditionalCertificateType::Probation, ['service_completed_on' => '2026-10-14', 'purpose' => 'Probation'], '251.6', true],
+    'national ID registration' => [AdditionalCertificateType::NationalIdRegistration, ['birth_place' => 'Imus', 'mother_name' => 'Juana Cruz', 'father_name' => 'Nicolas Reyes', 'purpose' => 'National ID'], '255.1', true],
+    '4Ps move-out' => [AdditionalCertificateType::FourPsMoveOut, ['destination' => 'Pasong Buaya II', 'purpose' => '4Ps requirement'], '240.9', true],
+]);

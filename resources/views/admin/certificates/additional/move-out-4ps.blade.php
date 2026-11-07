@@ -26,6 +26,6 @@
             ['PURPOSE', $document->purpose(), true],
         ]" />
         <p class="issued">Issued this <x-certificate.day :date="$document->issuedAt()" /> at the office of Barangay Anabu I-G, City of Imus, Cavite.</p>
-        @include('admin.certificates.partials.thumb-signature', ['signatureName' => $document->fullName()])
+        @include('admin.certificates.partials.thumb-signature', ['signatureName' => $document->fullName(), 'referenceTop' => '240.9'])
     </x-certificate.sheet>
 @endsection

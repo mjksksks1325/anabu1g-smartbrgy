@@ -21,7 +21,7 @@
         <p>This Certification is issued upon request of the above-mentioned person for any legal purposes it may serve.</p>
         @include('admin.certificates.partials.resident-details')
         <p class="issued">Issued this <x-certificate.day :date="$document->issuedAt()" /> at the office of Barangay Anabu I-G, City of Imus, Cavite.</p>
-        @include('admin.certificates.partials.thumb-signature', ['signatureName' => $document->signatureName()])
+        @include('admin.certificates.partials.thumb-signature', ['signatureName' => $document->signatureName(), 'referenceTop' => '251.6'])
     </x-certificate.sheet>
 
     {{-- Page 2: the community-service photographs, inside the template's picture area, never cropped. --}}

@@ -42,6 +42,9 @@ test('a certificate issued before the 2026 templates reprints with the wording a
     foreach ($absent as $text) {
         $print->assertDontSeeText($text);
     }
+    $print->assertSee('.historical .resident-signature { margin-top: 12.7mm; }', false)
+        ->assertSee('.historical.fit-tight .resident-signature { margin-top: 7mm; }', false)
+        ->assertDontSee('data-reference-top="', false);
 
     $this->assertDatabaseHas('administrative_audits', ['user_id' => $staff->id, 'action' => 'admin.issued-certificates.historical-reprint', 'type' => 'cert', 'record' => (string) $certificate->id]);
     expect($certificate->fresh()->only(['certificate_number', 'issued_at', 'resident_snapshot', 'template_version']))->toEqual($certificate->only(['certificate_number', 'issued_at', 'resident_snapshot', 'template_version']));
