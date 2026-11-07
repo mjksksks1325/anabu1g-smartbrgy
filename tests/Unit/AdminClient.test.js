@@ -2038,3 +2038,23 @@ test('resident rows flag records missing certificate details, and household name
   assert.match(tbody.rows[0].innerHTML, /resident-missing-badge[^>]*title="Missing for certificates: Nationality, Resident photo">Missing details/);
   assert.match(tbody.rows[0].innerHTML, /resident-household is-unassigned">Unassigned/);
 });
+
+test('a workspace restored by browser Back opens the screen its address names, not the one first loaded', async () => {
+  const { context, fields } = await client();
+  context.document.body = { classList: { contains: () => true } };
+  context.opened = [];
+  vm.runInContext(`loadPuroks = async () => {}; launchApp = () => {};
+    startDocumentRequestLiveRefresh = refreshIssuedCertificates = populateManualResidentDropdown = loadVoterRegistry = startDashboardLiveRefresh = () => {};
+    loadResidents = async () => {}; findNavItem = id => ({ id, style: {} });
+    showScreen = (id, navigation, updateHistory) => opened.push(id + ':' + updateHistory);`, context);
+  fields.set('app', {});
+  context.window.ADMIN_ACTIVE_SCREEN = 'dashboard';
+  context.window.ADMIN_SCREEN_ROUTES = { dashboard: 'http://localhost/admin', incidents: 'http://localhost/staff/incidents' };
+
+  context.window.location = { href: 'http://localhost/staff/incidents', pathname: '/staff/incidents', search: '' };
+  await context.initializePersonnelWorkspace();
+  context.window.location = { href: 'http://localhost/staff/households/page', pathname: '/staff/households/page', search: '' };
+  await context.initializePersonnelWorkspace();
+
+  assert.equal(context.opened.join(','), 'incidents:false,dashboard:false');
+});

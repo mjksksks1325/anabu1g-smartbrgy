@@ -6477,7 +6477,9 @@ async function initializePersonnelWorkspace() {
   isLightMode = document.body.classList.contains('light-mode');
   const authenticatedUser = window.AUTHENTICATED_USER;
   if (authenticatedUser) {
-    const screen = window.ADMIN_ACTIVE_SCREEN || 'dashboard';
+    // Browser Back or Forward can restore the workspace as it was first loaded while the address names a screen
+    // opened in place later (showScreen() pushes its URL), so the address decides, as it does for popstate.
+    const screen = screenForAddress() || window.ADMIN_ACTIVE_SCREEN || 'dashboard';
     launchApp(authenticatedUser.name, authenticatedUser.role);
     const navigation = findNavItem(screen);
     if (navigation && navigation.style.display !== 'none') showScreen(screen, navigation, false);
@@ -6527,10 +6529,16 @@ function restoreAdminFiltersFromUrl() {
   }
 }
 
+/** The workspace screen whose URL is the current address, if any. */
+function screenForAddress() {
+  const entry = Object.entries(window.ADMIN_SCREEN_ROUTES || {}).find(([, url]) => new URL(url, window.location.href).pathname === window.location.pathname);
+  return entry ? entry[0] : null;
+}
+
 window.addEventListener('popstate', event => {
   if (event?.state?.alpine) return;
-  const entry = Object.entries(window.ADMIN_SCREEN_ROUTES || {}).find(([, url]) => new URL(url, window.location.href).pathname === window.location.pathname);
-  if (entry) showScreen(entry[0], findNavItem(entry[0]), false);
+  const screen = screenForAddress();
+  if (screen) showScreen(screen, findNavItem(screen), false);
 });
 
 /**

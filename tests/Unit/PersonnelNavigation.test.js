@@ -168,3 +168,39 @@ test('the phone menu toggle opens and closes the side navigation and returns foc
   click(selector => (selector === '#staff-side-nav a[href]' ? link : null));
   assert.equal(attributes['aria-expanded'], 'false', 'choosing a link closes the menu');
 });
+
+test('the staff menu keeps its scroll position across page changes and keeps the current item in view', () => {
+  const { context, events, styles } = navigation();
+  const saved = new Map();
+  context.sessionStorage = { getItem: key => saved.get(key) ?? null, setItem: (key, value) => saved.set(key, value) };
+  context.getComputedStyle = () => ({ overflowY: 'scroll' });
+  // The loading cover the navigating handler adds.
+  context.document.documentElement.lang = 'en';
+  context.document.documentElement.append = () => {};
+  context.document.createElement = () => ({ style: {}, setAttribute() {}, append() {} });
+  // A menu 400px tall showing rows 100-500 of the page, with the current item at the given position.
+  const menu = (scrollTop, currentTop) => ({
+    scrollTop, scrollHeight: 900, clientHeight: 400, parentElement: null,
+    getBoundingClientRect: () => ({ top: 100, bottom: 500 }),
+    querySelector: () => ({ getBoundingClientRect: () => ({ top: currentTop, bottom: currentTop + 40 }) }),
+  });
+  let current = menu(260, 200);
+  context.document.querySelectorAll = selector => (selector.includes('stylesheet') ? styles : selector.includes('side-nav-scroll') ? [current] : []);
+
+  events.get('livewire:navigating')({ detail: {} });
+  assert.equal(saved.get('smartbrgy_nav_scroll'), '260');
+  current = menu(0, 300);
+  events.get('livewire:navigated')();
+  assert.equal(current.scrollTop, 260);
+
+  // The next page's current item would sit below the visible rows: the menu moves just enough to show it.
+  events.get('livewire:navigating')({ detail: {} });
+  current = menu(0, 620);
+  events.get('livewire:navigated')();
+  assert.equal(current.scrollTop, 260 + (660 - 500) + 8);
+
+  // Without a page change nothing is restored, so the resident's own scrolling is never overridden.
+  current.scrollTop = 30;
+  events.get('livewire:navigated')();
+  assert.equal(current.scrollTop, 30);
+});
