@@ -205,3 +205,15 @@ test('staff-only certificates are never offered or accepted in the Resident Port
         ->assertUnprocessable()->assertJsonValidationErrors('document_type');
     $this->assertDatabaseEmpty('document_requests');
 });
+
+test('previewing is not written to the audit log, while uploads, removals and issuance still are', function () {
+    $resident = eligibleResident();
+    $staff = User::factory()->assignedOperations()->create();
+
+    $this->actingAs($staff)->post(route('staff.additional-certificates.preview', 'no-objection'), ['resident_id' => $resident->id, 'details' => ['tree_count' => 2, 'tree_species' => 'Mango', 'tree_location' => 'right of way']])->assertOk();
+    $this->assertDatabaseMissing('administrative_audits', ['action' => 'admin.additional-certificates.preview']);
+
+    config(['certificates.additional.no-objection' => ['fee' => 0, 'enabled' => true]]);
+    $this->post(route('staff.additional-certificates.store', 'no-objection'), ['resident_id' => $resident->id, 'details' => ['tree_count' => 2, 'tree_species' => 'Mango', 'tree_location' => 'right of way']])->assertRedirect();
+    $this->assertDatabaseHas('administrative_audits', ['user_id' => $staff->id, 'action' => 'admin.additional-certificates.store']);
+});

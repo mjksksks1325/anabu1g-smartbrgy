@@ -24,6 +24,12 @@ class RecordAdministrativeAction
         return DB::transaction(function () use ($request, $next): Response {
             $response = $next($request);
 
+            // Previewing a staff-only certificate is a POST only because of the form it carries: it saves and changes
+            // nothing, so it is not an administrative action. Issuing, revoking and evidence changes stay audited.
+            if ($request->routeIs('staff.additional-certificates.preview')) {
+                return $response;
+            }
+
             if ($response->getStatusCode() < 400 && ! $request->session()->has('errors')) {
                 $name = preg_replace('/^staff\./', 'admin.', $request->route()->getName());
                 if (str_starts_with($name, 'admin.resident-applications.') || str_starts_with($name, 'admin.incidents.') || str_starts_with($name, 'admin.protection-orders.') || str_starts_with($name, 'admin.request-restrictions.')) {

@@ -2435,5 +2435,6 @@
     "Staff-only certificates": "Mga certificate na pang-staff lamang",
     "Certificate status": "Status ng certificate",
     "Expired": "Expired",
-    "Revoked": "Binawi"
+    "Revoked": "Binawi",
+    "These details do not fit this certificate's approved one-page layout, even with tighter spacing and the smallest type allowed (11 pt), so it cannot be printed. Nothing has been shortened, and no detail should be shortened to make it fit. Ask a supervisor to review it: the barangay has to approve a layout for details this long.": "Hindi kasya ang mga detalyeng ito sa aprubadong isang-pahinang layout ng certificate, kahit masikip na ang espasyo at pinakamaliit na ang pinapayagang laki ng letra (11 pt), kaya hindi ito maipi-print. Walang pinaikli, at walang detalyeng dapat paikliin para magkasya. Ipasuri sa supervisor: kailangang aprubahan ng barangay ang layout para sa ganito kahahabang detalye."
 }

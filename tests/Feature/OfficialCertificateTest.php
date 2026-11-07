@@ -402,6 +402,19 @@ test('the print page refuses to print a sheet whose text runs into the logos, ph
         ->assertSee('body[data-printable="false"] .sheets { display: none; }', false);
 });
 
+test('long details are fitted in documented steps with an 11 pt floor, and never by asking staff to shorten them', function () {
+    $print = $this->actingAs(User::factory()->assignedOperations()->create())
+        ->get(route('staff.issued-certificates.print', printableCertificate(CertificateType::RegisteredVoterCertification)))->assertOk();
+
+    $print->assertSee("sheet.classList.add('fit-tight')", false)
+        ->assertSee('const MIN_BODY_PX = 11 * 96 / 72;', false)
+        ->assertSee("{ label: 'tighter spacing and body text at 95.8% of its size', scale: 11.5 / 12 }", false)
+        ->assertSee('.sheet.fit-tight p:not(.salutation)', false)
+        ->assertSee('data-fit-adjusted', false)
+        ->assertSeeText('Nothing has been shortened, and no detail should be shortened to make it fit.')
+        ->assertDontSeeText('Shorten the purpose');
+});
+
 test('the ID card reuses its private photo while keeping its identification fields', function () {
     $certificate = IssuedCertificate::query()->create([
         'certificate_number' => 'CERT-ID-TEST', 'verification_code' => 'IDPRINTVERIFY',

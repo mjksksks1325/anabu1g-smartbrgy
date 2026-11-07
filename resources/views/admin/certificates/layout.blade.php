@@ -64,6 +64,12 @@
         .sheet .official-signature strong { display: block; padding-bottom: .6mm; border-bottom: .75pt solid #000; text-transform: uppercase; }
         .sheet .official-signature span { display: block; }
 
+        /* Fit step 1: halve the blank-line gaps below the heading area (title and salutation stay clear of the photo). */
+        .sheet.fit-tight p:not(.salutation), .sheet.fit-tight .details, .sheet.fit-tight ol, .sheet.fit-tight li { margin-bottom: 2.4mm; }
+        .sheet.fit-tight .details tr.group-start > * { padding-top: 2.4mm; }
+        .sheet.fit-tight .thumb-mark { margin-top: 2.4mm; }
+        .sheet.fit-tight .resident-signature { margin-top: 7mm; }
+        .sheet.fit-tight .official-signature { margin-top: 10mm; }
         .sheet.preview::after { position: absolute; left: 50%; top: 50%; z-index: 3; content: 'PREVIEW · NOT YET ISSUED · NOT VALID'; transform: translate(-50%, -50%) rotate(-35deg); color: rgba(185, 28, 28, .28); font: bold 26pt/1 Arial, Helvetica, sans-serif; white-space: nowrap; pointer-events: none; }
 
         @media print {
@@ -88,17 +94,25 @@
         <span class="print-note">Print on A4 paper at 100% scale, with headers and footers turned off.</span>
     @endif
 </nav>
-<p class="certificate-alert" data-fit-warning hidden role="alert">This certificate does not fit on its A4 page without text running into the logos, photo or signature areas, so it cannot be printed. Shorten the purpose or the address on the resident record, then issue a new certificate.</p>
+<p class="certificate-alert" data-fit-warning hidden role="alert">{{ __("These details do not fit this certificate's approved one-page layout, even with tighter spacing and the smallest type allowed (11 pt), so it cannot be printed. Nothing has been shortened, and no detail should be shortened to make it fit. Ask a supervisor to review it: the barangay has to approve a layout for details this long.") }}</p>
+<p class="certificate-note" data-fit-adjusted hidden role="status"></p>
 @yield('notice')
 <main class="sheets">
     @yield('sheets')
 </main>
 <script>
     /*
-     * A sheet is printable only when its body text stays inside the page margins and no line of it touches the
-     * footer mark, the QR code, the photo or a fixed signature block. Anything else would print clipped or overlapped.
+     * Fit check. A sheet prints only when its body text stays inside the page margins and no line touches the footer
+     * mark, the QR code, the photo or a fixed signature block. When the official layout as designed is too short for
+     * long but legitimate details, three predictable steps are tried in order, re-measuring after each:
+     *   1. blank-line gaps between paragraphs and detail groups are halved;
+     *   2. body text is set at 95.8% of the template's size (11.5 pt on 12 pt templates);
+     *   3. body text is set at 91.7% (11 pt on 12 pt templates), never below 11 pt.
+     * Titles, labels, captions and the letterhead keep their sizes, and nothing is ever truncated. If the details still
+     * do not fit, printing is blocked and staff are told why.
      */
     (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => {
+        const MIN_BODY_PX = 11 * 96 / 72;
         const overlaps = (a, b) => a.left < b.right - .5 && b.left < a.right - .5 && a.top < b.bottom - .5 && b.top < a.bottom - .5;
         const inkRects = body => {
             const rects = [...body.querySelectorAll('.thumb-box')].map(box => box.getBoundingClientRect());
@@ -111,13 +125,52 @@
             }
             return rects;
         };
-        const overflowing = [...document.querySelectorAll('[data-sheet-body]')].filter(body => {
+        const fits = body => {
             const keepClear = [...body.closest('.sheet').querySelectorAll('[data-keep-clear]')].map(element => element.getBoundingClientRect());
-            return body.scrollHeight > body.clientHeight + 1 || body.scrollWidth > body.clientWidth + 1
-                || inkRects(body).some(rect => keepClear.some(area => overlaps(rect, area)));
+            return body.scrollHeight <= body.clientHeight + 1 && body.scrollWidth <= body.clientWidth + 1
+                && ! inkRects(body).some(rect => keepClear.some(area => overlaps(rect, area)));
+        };
+        const steps = [
+            { label: 'tighter spacing', apply: sheet => sheet.classList.add('fit-tight') },
+            { label: 'tighter spacing and body text at 95.8% of its size', scale: 11.5 / 12 },
+            { label: 'tighter spacing and body text at 91.7% of its size', scale: 11 / 12 },
+        ];
+        const adjusted = [];
+        const unfit = [];
+
+        document.querySelectorAll('[data-sheet-body]').forEach(body => {
+            const sheet = body.closest('.sheet');
+            const base = getComputedStyle(body);
+            const baseSize = parseFloat(base.fontSize);
+            const baseLine = parseFloat(base.lineHeight);
+            let applied = null;
+
+            for (const step of steps) {
+                if (fits(body)) break;
+                step.apply?.(sheet);
+                if (step.scale) {
+                    const size = Math.max(MIN_BODY_PX, baseSize * step.scale);
+                    body.style.fontSize = size + 'px';
+                    body.style.lineHeight = (baseLine * size / baseSize) + 'px';
+                }
+                applied = step;
+            }
+
+            if (! fits(body)) {
+                sheet.dataset.overflowing = 'true';
+                unfit.push(sheet);
+            } else if (applied !== null) {
+                sheet.dataset.fitAdjusted = applied.label;
+                adjusted.push(sheet.getAttribute('aria-label') + ': ' + applied.label);
+            }
         });
-        overflowing.forEach(body => body.closest('.sheet').dataset.overflowing = 'true');
-        if (overflowing.length > 0) {
+
+        if (adjusted.length > 0) {
+            const note = document.querySelector('[data-fit-adjusted]');
+            note.textContent = 'To fit every detail on its page without shortening anything, this layout uses ' + adjusted.join('; ') + '. Check the printout reads well.';
+            note.hidden = false;
+        }
+        if (unfit.length > 0) {
             document.body.dataset.printable = 'false';
             document.querySelector('[data-fit-warning]').hidden = false;
             document.querySelector('[data-print-certificate]')?.setAttribute('disabled', '');
