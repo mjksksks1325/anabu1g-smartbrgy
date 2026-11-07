@@ -59,8 +59,8 @@ test('the certificates board loads one lane at a time with lane counts that skip
     boardRequest(['source' => 'online', 'status' => 'pending', 'full_name' => 'Online Pending']);
     boardRequest(['source' => 'onsite', 'status' => 'pending', 'full_name' => 'Walk-in Pending']);
     boardRequest(['source' => 'online', 'status' => 'processing']);
-    boardRequest(['status' => 'approved']);
-    boardRequest(['status' => 'ready_for_release']);
+    boardRequest(['status' => 'approved', 'full_name' => 'Approved Not Yet Ready']);
+    boardRequest(['status' => 'ready_for_release', 'full_name' => 'Ready For Release']);
     boardRequest(['status' => 'released']);
     boardRequest(['source' => 'online', 'status' => 'rejected']);
 
@@ -71,13 +71,19 @@ test('the certificates board loads one lane at a time with lane counts that skip
         ->assertOk()
         ->assertJsonPath('total', 1)
         ->assertJsonPath('data.0.full_name', 'Online Pending')
-        ->assertJsonPath('counts', ['online' => 1, 'processing' => 2, 'ready' => 2, 'completed' => 1]);
+        ->assertJsonPath('counts', ['online' => 1, 'processing' => 3, 'ready' => 1, 'completed' => 1]);
 
+    // An approved request cannot be issued until it is marked ready, so it waits in Processing, not Ready to Print.
     $this->getJson(route('staff.document-requests.list', ['lane' => 'processing']))
         ->assertOk()
-        ->assertJsonPath('total', 2)
+        ->assertJsonPath('total', 3)
         ->assertJsonFragment(['full_name' => 'Walk-in Pending'])
+        ->assertJsonFragment(['full_name' => 'Approved Not Yet Ready'])
         ->assertJsonMissingPath('counts');
+    $this->getJson(route('staff.document-requests.list', ['lane' => 'ready']))
+        ->assertOk()
+        ->assertJsonPath('total', 1)
+        ->assertJsonPath('data.0.full_name', 'Ready For Release');
 });
 
 test('board search reaches older requests beyond the first page of a lane', function () {
@@ -241,4 +247,23 @@ test('users without a staff role cannot reject online requests', function () {
         ->assertForbidden();
 
     expect($documentRequest->fresh()->status)->toBe('pending');
+});
+
+test('board cards carry only the number and revocation of their issued certificate, so details can offer the reprint', function () {
+    $released = boardRequest(['status' => 'released', 'full_name' => 'Released With Certificate']);
+    $certificate = IssuedCertificate::query()->create([
+        'document_request_id' => $released->id, 'certificate_number' => 'CERT-2026-BOARD1', 'verification_code' => 'BOARDVERIFYCODE1',
+        'certificate_type' => 'Barangay Clearance', 'resident_name' => 'Released With Certificate', 'issued_at' => now(),
+        'photo_path' => 'certificate-photos/private.jpg', 'resident_snapshot' => ['full_name' => 'Released With Certificate'],
+    ]);
+    boardRequest(['status' => 'released', 'full_name' => 'Released Without Certificate']);
+
+    $response = $this->actingAs(User::factory()->create(['role' => 'staff', 'staff_permissions' => ['documents.view']]))
+        ->getJson(route('staff.document-requests.list', ['lane' => 'completed']))
+        ->assertOk();
+
+    $cards = collect($response->json('data'))->keyBy('full_name');
+    expect($cards['Released With Certificate']['issued_certificate'])->toBe(['id' => $certificate->id, 'document_request_id' => $released->id, 'certificate_number' => 'CERT-2026-BOARD1', 'revoked_at' => null])
+        ->and($cards['Released Without Certificate']['issued_certificate'])->toBeNull();
+    expect($response->getContent())->not->toContain('BOARDVERIFYCODE1')->not->toContain('private.jpg');
 });

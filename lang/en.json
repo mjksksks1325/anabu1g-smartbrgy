@@ -2335,5 +2335,10 @@
     "The inspection the wording mentions, and the validity period (it depends on CENRO certification)": "The inspection the wording mentions, and the validity period (it depends on CENRO certification)",
     "The Barangay Health Worker who co-signs, and how a representative's authority is confirmed": "The Barangay Health Worker who co-signs, and how a representative's authority is confirmed",
     "Something went wrong on our side and the action was not completed. Try again; if it keeps happening, give the system administrator this reference: :reference.": "Something went wrong on our side and the action was not completed. Try again; if it keeps happening, give the system administrator this reference: :reference.",
-    "Something went wrong": "Something went wrong"
+    "Something went wrong": "Something went wrong",
+    "Issued certificate": "Issued certificate",
+    "Reprint": "Reprint",
+    "Open request details": "Open request details",
+    "No certificate was issued for this request, so there is nothing to reprint. To issue one, set the request back to Ready for Release on its details page, then use Print & Release.": "No certificate was issued for this request, so there is nothing to reprint. To issue one, set the request back to Ready for Release on its details page, then use Print & Release.",
+    "Draft only: this certificate cannot be issued until authorized staff complete the following.": "Draft only: this certificate cannot be issued until authorized staff complete the following."
 }

@@ -231,7 +231,7 @@ it('does not issue an online request before it is ready for release', function (
     $this->actingAs($user)
         ->postJson(route('staff.document-requests.issue', $documentRequest))
         ->assertUnprocessable()
-        ->assertJsonPath('message', 'This request is not ready for release.');
+        ->assertJsonPath('message', 'This request is not ready for release yet. On the Certificates board, use "Mark ready" (or set its status to Ready for Release), then issue it.');
 
     expect(IssuedCertificate::query()->count())->toBe(0);
     expect($documentRequest->fresh()->status)->toBe('processing');

@@ -6,6 +6,7 @@ use App\CertificateType;
 use App\Models\DocumentRequest;
 use App\Models\IssuedCertificate;
 use App\Models\Resident;
+use App\Models\ResidentRequestRestriction;
 use App\Models\User;
 use App\Models\VoterRegistration;
 use App\PortalLocalization;
@@ -607,4 +608,79 @@ test('after a Barangay ID preview, issuing and printing work as before: number, 
         ->assertSeeText($certificate->certificate_number)->assertSee(asset($certificate->qr_code_path))->assertSeeText('Scan QR code to verify')
         ->assertSee(route('staff.issued-certificates.photo', $certificate))->assertSee('Resident photo at issuance')
         ->assertDontSeeText('Assigned at issuance')->assertDontSeeText('Preview only: this ID');
+});
+
+/**
+ * @param  array<string, mixed>  $attributes
+ */
+function indigencyRequestFor(array $attributes = []): DocumentRequest
+{
+    $resident = Resident::factory()->create([
+        'first_name' => 'Lorna', 'middle_name' => null, 'last_name' => 'Bautista', 'suffix' => null, 'address' => '12 Mabini St., Anabu I-G',
+        'date_of_birth' => '1980-05-01', 'gender' => 'Female', 'civil_status' => 'Married', 'nationality' => 'Filipino',
+        'status' => 'active', 'is_in_good_standing' => true, 'is_verified_indigent' => false, ...$attributes,
+    ]);
+    VoterRegistration::factory()->create(['resident_id' => $resident->id, 'status' => 'active']);
+    $resident->update(['photo_path' => UploadedFile::fake()->image('resident.jpg')->store('resident-photos', 'local')]);
+
+    return DocumentRequest::query()->create([
+        'reference_code' => 'REQ-IND-'.Str::upper(Str::random(6)), 'resident_id' => $resident->id, 'document_type' => CertificateType::CertificateOfIndigency->value,
+        'full_name' => $resident->full_name, 'address' => $resident->address, 'purpose' => 'Medical assistance', 'status' => 'ready_for_release',
+    ]);
+}
+
+test('an Indigency request awaiting verification previews as a watermarked draft that says what staff must do, and cannot be issued', function () {
+    Storage::fake('local');
+    Storage::fake('public');
+    $request = indigencyRequestFor();
+    $staff = User::factory()->assignedOperations()->create();
+
+    $this->actingAs($staff)->get(route('staff.document-requests.certificate-preview', $request))
+        ->assertOk()->assertViewIs(CertificateType::CertificateOfIndigency->printView())
+        ->assertSee('data-issuance-blockers', false)->assertSeeText('Draft only: this certificate cannot be issued until authorized staff complete the following.')
+        ->assertSeeText(Resident::INDIGENCY_NOT_VERIFIED)->assertSeeText('in Resident Records, edit this resident and tick')
+        ->assertSee('class="sheet preview', false)->assertSee('data-printable="false"', false)
+        ->assertSeeText('INDIGENT family')->assertDontSee('Certificate authenticity QR code');
+
+    $this->postJson(route('staff.document-requests.issue', $request))
+        ->assertUnprocessable()->assertJsonPath('message', Resident::INDIGENCY_NOT_VERIFIED);
+    $this->assertDatabaseEmpty('issued_certificates');
+    $this->assertDatabaseEmpty('administrative_audits');
+    expect($request->fresh()->status)->toBe('ready_for_release');
+    Storage::disk('public')->assertDirectoryEmpty('qrcodes');
+
+    $request->resident->update(['is_verified_indigent' => true]);
+    $this->get(route('staff.document-requests.certificate-preview', $request))->assertOk()->assertDontSee('data-issuance-blockers', false);
+    $this->postJson(route('staff.document-requests.issue', $request))->assertOk();
+    expect(IssuedCertificate::query()->sole()->certificate_type)->toBe(CertificateType::CertificateOfIndigency->value)
+        ->and($request->fresh()->status)->toBe('released');
+});
+
+test('a disqualified resident gets no draft preview, only the reasons', function () {
+    Storage::fake('local');
+    $request = indigencyRequestFor(['is_in_good_standing' => false]);
+
+    $this->actingAs(User::factory()->assignedOperations()->create())->get(route('staff.document-requests.certificate-preview', $request))
+        ->assertUnprocessable()->assertSeeText('This certificate cannot be issued yet')
+        ->assertSeeText('Resident is not in good standing.')->assertSeeText(Resident::INDIGENCY_NOT_VERIFIED)
+        ->assertDontSee('class="sheet', false)->assertDontSeeText('INDIGENT family');
+});
+
+test('a draft preview still lists missing resident details next to the pending verification', function () {
+    Storage::fake('local');
+    $request = indigencyRequestFor(['nationality' => null]);
+
+    $this->actingAs(User::factory()->assignedOperations()->create())->get(route('staff.document-requests.certificate-preview', $request))
+        ->assertUnprocessable()->assertSeeText('Missing: Nationality')->assertSeeText(Resident::INDIGENCY_NOT_VERIFIED)
+        ->assertDontSee('class="sheet', false);
+});
+
+test('a document hold blocks the draft preview even while a verification is also pending', function () {
+    Storage::fake('local');
+    $request = indigencyRequestFor();
+    ResidentRequestRestriction::factory()->reviewed()->create(['resident_id' => $request->resident_id, 'affected_document_type' => null]);
+
+    $this->actingAs(User::factory()->assignedOperations()->create())->get(route('staff.document-requests.certificate-preview', $request))
+        ->assertUnprocessable()->assertSeeText(ResidentRequestRestriction::MESSAGE)->assertSeeText(Resident::INDIGENCY_NOT_VERIFIED)
+        ->assertDontSee('class="sheet', false)->assertDontSee('data-issuance-blockers', false);
 });

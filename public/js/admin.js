@@ -2886,7 +2886,9 @@ let certBoardSearchTimer = null;
 function boardRequestFromServer(r) {
   let uiStatus = 'Pending';
   if (r.status === 'processing') uiStatus = 'In Progress';
-  if (r.status === 'approved' || r.status === 'ready_for_release') uiStatus = 'Ready to Print';
+  // An approved request is not issuable until it is marked ready for release, so it stays in Processing.
+  if (r.status === 'approved') uiStatus = 'Approved';
+  if (r.status === 'ready_for_release') uiStatus = 'Ready to Print';
   if (r.status === 'released') uiStatus = 'Completed';
 
   return {
@@ -2905,7 +2907,10 @@ function boardRequestFromServer(r) {
     attachment: r.attachment_path,
     remarks: r.remarks,
     hidden: false,
-    laravelStatus: r.status
+    laravelStatus: r.status,
+    issuedCertificate: r.issued_certificate
+      ? { id: r.issued_certificate.id, number: r.issued_certificate.certificate_number, revoked: Boolean(r.issued_certificate.revoked_at) }
+      : null
   };
 }
 
@@ -3172,6 +3177,7 @@ function openViewCertReq(code) {
     badgeEl.textContent = r.status;
     badgeEl.style.cssText = `font-size:11px;font-weight:700;padding:2px 10px;border-radius:999px;background:rgba(255,255,255,0.06);border:1px solid var(--border);color:${statusColors[r.status]||'var(--text-muted)'}`;
   }
+  renderRequestCertificate(r);
   const attWrap = document.getElementById('vreq-attachment-wrap');
   const attEl   = document.getElementById('vreq-attachment');
   if (attWrap && attEl && r.attachment) {
@@ -3184,6 +3190,28 @@ function openViewCertReq(code) {
     attWrap.style.display = 'none';
   }
   openModal('modal-view-certreq');
+}
+
+/**
+ * The request's issued certificate in its details: the number and a reprint for staff who may print, or, for a request
+ * marked released without one, why there is nothing to reprint and how to issue it.
+ */
+function renderRequestCertificate(r) {
+  const wrap = document.getElementById('vreq-certificate-wrap');
+  const target = document.getElementById('vreq-certificate');
+  if (!wrap || !target) return;
+  const certificate = r.issuedCertificate;
+  wrap.hidden = !certificate && r.laravelStatus !== 'released';
+  if (!certificate) {
+    target.innerHTML = r.laravelStatus === 'released'
+      ? `${escapeText(adminText('No certificate was issued for this request, so there is nothing to reprint. To issue one, set the request back to Ready for Release on its details page, then use Print & Release.'))} <a href="/staff/document-requests/${Number(r.id)}">${escapeText(adminText('Open request details'))}</a>`
+      : '';
+    return;
+  }
+  const number = `<span class="workspace-reference" data-no-admin-translate>${escapeText(certificate.number)}</span>`;
+  target.innerHTML = certificate.revoked
+    ? `${number} ${workspaceBadge('Revoked', 'red')}`
+    : `${number} ${hasStaffPermission('documents.print') ? `<a class="btn btn-xs" href="/staff/issued-certificates/${Number(certificate.id)}/print" target="_blank" rel="noopener">${escapeText(adminText('Reprint'))}</a>` : ''}`;
 }
 
 function renderCertTypesList() {

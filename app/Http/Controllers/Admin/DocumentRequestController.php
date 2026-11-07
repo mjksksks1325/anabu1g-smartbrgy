@@ -66,7 +66,9 @@ class DocumentRequestController extends Controller
         ]);
         $search = trim((string) ($filters['search'] ?? ''));
 
+        // Each card carries its issued certificate's number, so request details can lead staff to the reprint.
         $requests = DocumentRequest::query()
+            ->with('issuedCertificate:id,document_request_id,certificate_number,revoked_at')
             ->when($filters['lane'] ?? null, fn (Builder $query, string $lane) => $this->whereLane($query, $lane))
             ->tap(fn (Builder $query) => $this->whereSearch($query, $search))
             ->latest()
@@ -148,14 +150,18 @@ class DocumentRequestController extends Controller
         return response()->json(DocumentRequest::query()->latest()->get());
     }
 
-    /** Keep only the requests that sit in one board lane; mirrors getLane() in public/js/admin.js. */
+    /**
+     * Keep only the requests that sit in one board lane; mirrors getLane() in public/js/admin.js. "Ready to Print"
+     * holds only requests that can be issued (ready_for_release, as IssueCertificate requires): an approved request
+     * stays in Processing, where "Mark ready" moves it on.
+     */
     private function whereLane(Builder $query, string $lane): void
     {
         match ($lane) {
             'completed' => $query->where('status', 'released'),
-            'ready' => $query->whereIn('status', ['approved', 'ready_for_release']),
+            'ready' => $query->where('status', 'ready_for_release'),
             'online' => $query->where('status', 'pending')->where('source', 'online'),
-            default => $query->whereNotIn('status', ['released', 'approved', 'ready_for_release', 'rejected'])
+            default => $query->whereNotIn('status', ['released', 'ready_for_release', 'rejected'])
                 ->where(fn (Builder $query) => $query->where('status', '!=', 'pending')->orWhereNull('source')->orWhere('source', '!=', 'online')),
         };
     }
@@ -192,7 +198,7 @@ class DocumentRequestController extends Controller
             ->each(function (object $row) use (&$counts): void {
                 $lane = match (true) {
                     $row->status === 'released' => 'completed',
-                    in_array($row->status, ['approved', 'ready_for_release'], true) => 'ready',
+                    $row->status === 'ready_for_release' => 'ready',
                     $row->status === 'pending' && $row->source === 'online' => 'online',
                     default => 'processing',
                 };

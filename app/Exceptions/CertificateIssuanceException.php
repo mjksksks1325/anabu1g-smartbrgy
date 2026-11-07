@@ -18,7 +18,7 @@ class CertificateIssuanceException extends Exception
 
     public static function requestNotReady(): self
     {
-        return new self('This request is not ready for release.', 422);
+        return new self('This request is not ready for release yet. On the Certificates board, use "Mark ready" (or set its status to Ready for Release), then issue it.', 422);
     }
 
     public static function qrCodeCouldNotBeSaved(): self

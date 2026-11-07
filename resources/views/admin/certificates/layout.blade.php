@@ -96,6 +96,16 @@
 </nav>
 <p class="certificate-alert" data-fit-warning hidden role="alert">{{ __("These details do not fit this certificate's approved one-page layout, even with tighter spacing and the smallest type allowed (11 pt), so it cannot be printed. Nothing has been shortened, and no detail should be shortened to make it fit. Ask a supervisor to review it: the barangay has to approve a layout for details this long.") }}</p>
 <p class="certificate-note" data-fit-adjusted hidden role="status"></p>
+@if (($issuanceBlockers ?? []) !== [])
+    <div class="certificate-alert" role="alert" data-issuance-blockers>
+        <strong>{{ __('Draft only: this certificate cannot be issued until authorized staff complete the following.') }}</strong>
+        <ul>
+            @foreach ($issuanceBlockers as $blocker)
+                <li>{{ $blocker }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
 @yield('notice')
 <main class="sheets">
     @yield('sheets')

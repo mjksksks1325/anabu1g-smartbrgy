@@ -135,8 +135,9 @@ class IssuedCertificateController extends Controller
     /**
      * What issuing this request would print, built from the same details issuance would freeze, so staff can check
      * it first. Nothing is saved: no certificate number, no QR code, a "not valid" watermark and printing disabled.
-     * Missing details and eligibility problems are listed instead of previewed. A Barangay ID previews on its own
-     * card layout, with the photo on the linked resident record.
+     * Missing details and disqualifications are listed instead of previewed. A resident who only awaits a staff
+     * verification (indigency, voter registration) gets a draft preview headed by what must be completed first; it
+     * still cannot be issued. A Barangay ID previews on its own card layout, with the photo on the resident record.
      */
     public function preview(Request $request, DocumentRequest $documentRequest, IssueCertificate $issueCertificate): Response
     {
@@ -150,12 +151,16 @@ class IssuedCertificateController extends Controller
             'purpose' => $documentRequest->purpose,
             'issued_at' => now(),
         ]);
+        $eligibility = $certificateType !== null ? $resident?->certificateEligibility($certificateType) : null;
+        $awaitsVerification = $certificateType !== null && $resident?->awaitsOnlyVerification($certificateType) === true;
         $problems = match (true) {
             $certificateType === null => [],
             $resident === null && in_array($certificateType, [CertificateType::RegisteredVoterCertification, CertificateType::CertificateOfIndigency], true) => ['Select a verified resident record for this certificate.'],
-            $resident !== null && ! $resident->certificateEligibility($certificateType)['eligible'] => $resident->certificateEligibility($certificateType)['reasons'],
+            $awaitsVerification => [],
+            $eligibility !== null && ! $eligibility['eligible'] => $eligibility['reasons'],
             default => [],
         };
+        $issuanceBlockers = $awaitsVerification ? $eligibility['reasons'] ?? [] : [];
 
         if ($certificateType === null || $problems !== []) {
             return response()->view('admin.certificates.incomplete', ['certificate' => $previewCertificate, 'missingDetails' => [], 'problems' => $problems, 'isPreview' => true, 'isUnsupported' => $certificateType === null], 422);
@@ -171,7 +176,7 @@ class IssuedCertificateController extends Controller
         $missingDetails = CertificateDocument::missingFor($certificateType, $snapshot, $documentRequest->purpose, $photo !== null);
 
         if ($missingDetails !== []) {
-            return response()->view('admin.certificates.incomplete', ['certificate' => $previewCertificate, 'missingDetails' => $missingDetails, 'problems' => [], 'isPreview' => true], 422);
+            return response()->view('admin.certificates.incomplete', ['certificate' => $previewCertificate, 'missingDetails' => $missingDetails, 'problems' => $issuanceBlockers, 'isPreview' => true], 422);
         }
 
         $previewCertificate->forceFill([
@@ -186,6 +191,7 @@ class IssuedCertificateController extends Controller
             'document' => new CertificateDocument($previewCertificate, isPreview: true, previewPhotoUrl: $photoUrl),
             'isPreview' => true,
             'linkedToResident' => $resident !== null,
+            'issuanceBlockers' => $issuanceBlockers,
         ])->header('Cache-Control', 'private, no-store');
     }
 

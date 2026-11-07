@@ -2503,5 +2503,10 @@
     "The inspection the wording mentions, and the validity period (it depends on CENRO certification)": "Ang inspeksyong binanggit ng wording, at ang bisa nito (nakadepende sa certification ng CENRO)",
     "The Barangay Health Worker who co-signs, and how a representative's authority is confirmed": "Ang Barangay Health Worker na kasamang pipirma, at paano kinukumpirma ang awtoridad ng kinatawan",
     "Something went wrong on our side and the action was not completed. Try again; if it keeps happening, give the system administrator this reference: :reference.": "May nagkaproblema sa aming system at hindi natapos ang ginagawa. Subukang muli; kung mangyari ulit, ibigay sa system administrator ang reference na ito: :reference.",
-    "Something went wrong": "May nagkaproblema"
+    "Something went wrong": "May nagkaproblema",
+    "Issued certificate": "Na-issue na sertipiko",
+    "Reprint": "I-print muli",
+    "Open request details": "Buksan ang detalye ng request",
+    "No certificate was issued for this request, so there is nothing to reprint. To issue one, set the request back to Ready for Release on its details page, then use Print & Release.": "Walang sertipikong na-issue para sa request na ito, kaya walang mai-print muli. Para mag-issue, ibalik ang request sa Ready for Release sa pahina ng detalye nito, saka gamitin ang Print & Release.",
+    "Draft only: this certificate cannot be issued until authorized staff complete the following.": "Draft lamang: hindi pa maiisyu ang sertipikong ito hangga’t hindi natatapos ng awtorisadong kawani ang sumusunod."
 }

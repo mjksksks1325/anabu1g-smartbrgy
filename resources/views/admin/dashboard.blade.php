@@ -980,6 +980,10 @@
         <div style="font-size:13px;color:var(--text-primary);background:var(--bg-glass);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;" id="vreq-purpose">—</div>
       </div>
     </div>
+    <div id="vreq-certificate-wrap" hidden style="margin-bottom:14px;">
+      <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">{{ __('Issued certificate') }}</div>
+      <div id="vreq-certificate" style="font-size:13px;color:var(--text-primary);"></div>
+    </div>
     <div id="vreq-attachment-wrap" style="display:none;margin-bottom:14px;">
       <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Attachment / Valid ID</div>
       <div id="vreq-attachment"></div>

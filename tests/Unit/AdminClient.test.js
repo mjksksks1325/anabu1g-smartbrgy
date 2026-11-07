@@ -1877,3 +1877,50 @@ test('the tablet and phone drawer moves focus in when opened and back to Menu wh
   context.toggleNavigation(false, { restoreFocus: true });
   assert.equal(focused, null);
 });
+
+test('an approved request waits in Processing for "Mark ready", because only a ready request can be issued', async () => {
+  const { context } = await client();
+  const card = status => context.boardRequestFromServer({ id: 3, reference_code: 'REQ-1', status, source: 'online' });
+
+  assert.equal(context.getLane(card('approved').status, 'Online'), 'processing');
+  assert.equal(context.getLane(card('ready_for_release').status, 'Online'), 'ready');
+  assert.equal(context.getLane(card('released').status, 'Online'), 'completed');
+});
+
+test('request details lead to the issued certificate, or say why a released request has none to reprint', async () => {
+  const { context, fields } = await client();
+  const wrap = { hidden: true };
+  const target = { innerHTML: '' };
+  fields.set('vreq-certificate-wrap', wrap);
+  fields.set('vreq-certificate', target);
+  const request = (status, issued) => context.boardRequestFromServer({ id: 6, reference_code: 'REQ-6', status, issued_certificate: issued });
+
+  context.renderRequestCertificate(request('released', { id: 41, certificate_number: 'CERT-2026-ABC', revoked_at: null }));
+  assert.equal(wrap.hidden, false);
+  assert.match(target.innerHTML, /CERT-2026-ABC/);
+  assert.match(target.innerHTML, /href="\/staff\/issued-certificates\/41\/print"/);
+
+  context.renderRequestCertificate(request('released', { id: 41, certificate_number: 'CERT-2026-ABC', revoked_at: '2026-11-01T00:00:00Z' }));
+  assert.match(target.innerHTML, /Revoked/);
+  assert.doesNotMatch(target.innerHTML, /\/print/);
+
+  context.renderRequestCertificate(request('released', null));
+  assert.equal(wrap.hidden, false);
+  assert.match(target.innerHTML, /No certificate was issued for this request/);
+  assert.match(target.innerHTML, /href="\/staff\/document-requests\/6"/);
+
+  context.renderRequestCertificate(request('processing', null));
+  assert.equal(wrap.hidden, true);
+});
+
+test('staff without print access see the certificate number in request details but no reprint', async () => {
+  const { context, fields } = await client();
+  const target = { innerHTML: '' };
+  fields.set('vreq-certificate-wrap', { hidden: true });
+  fields.set('vreq-certificate', target);
+  context.window.PERSONNEL_PERMISSIONS = ['documents.view'];
+
+  context.renderRequestCertificate(context.boardRequestFromServer({ id: 6, reference_code: 'REQ-6', status: 'released', issued_certificate: { id: 41, certificate_number: 'CERT-2026-ABC', revoked_at: null } }));
+  assert.match(target.innerHTML, /CERT-2026-ABC/);
+  assert.doesNotMatch(target.innerHTML, /Reprint|\/print/);
+});
