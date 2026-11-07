@@ -51,6 +51,7 @@
             .id-card { margin: 0; border-radius: 0; box-shadow: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             body[data-printable="false"] .id-card, body[data-printable="false"] .preview-note { display: none; }
             body[data-printable="false"]::after { display: block; padding: 4mm; content: 'Preview only. This Barangay ID has not been issued and cannot be printed from here.'; font: 7pt/1.3 Arial, Helvetica, sans-serif; }
+            body[data-printable="false"][data-name-unfit]::after { content: 'This Barangay ID cannot be printed: the full name does not fit the approved name area.'; }
         }
     </style>
     <link rel="stylesheet" href="{{ asset('css/certificates.css') }}">
@@ -76,8 +77,9 @@
         </p>
     @endif
 @else
-    <button class="print-button" type="button" onclick="window.print()">Print Barangay ID</button>
+    <button class="print-button" type="button" data-print-id onclick="window.print()">Print Barangay ID</button>
 @endif
+<p class="preview-note" data-name-fit-warning hidden role="alert">{{ __("This name does not fit the Barangay ID's approved name area, even at the smallest type allowed (7 pt), so the ID cannot be printed. Nothing has been shortened, and the name should not be shortened to make it fit. Ask a supervisor to review it: the barangay has to approve a layout for names this long.") }}</p>
 
 <main @class(['id-card', 'preview' => $isPreview]) aria-label="Barangay resident identification card">
     <header class="id-header">
@@ -122,5 +124,29 @@
         <img class="imus-footer" src="{{ asset('images/certificates/imus-footer.png') }}" alt="City of Imus footer logo">
     </footer>
 </main>
+<script>
+    /*
+     * Name fit. The name area holds two lines; a longer name is never cut off. Like the paper certificates' fit check,
+     * the type steps down from the template's 8 pt to 7.5 pt and then 7 pt, never smaller; if the full name still does
+     * not fit, the card is not printable and staff are told why.
+     */
+    (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => {
+        const name = document.querySelector('.id-card .name');
+        if (!name) return;
+        const fits = () => name.scrollHeight <= name.clientHeight + 1 && name.scrollWidth <= name.clientWidth + 1;
+        for (const size of ['7.5pt', '7pt']) {
+            if (fits()) break;
+            name.style.fontSize = size;
+            name.dataset.fitAdjusted = size;
+        }
+        if (! fits()) {
+            name.style.fontSize = '';
+            document.body.dataset.printable = 'false';
+            document.body.dataset.nameUnfit = 'true';
+            document.querySelector('[data-name-fit-warning]').hidden = false;
+            document.querySelector('[data-print-id]')?.setAttribute('disabled', '');
+        }
+    });
+</script>
 </body>
 </html>

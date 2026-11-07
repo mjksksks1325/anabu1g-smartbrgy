@@ -439,6 +439,20 @@ test('long details are fitted in documented steps with an 11 pt floor, and never
         ->assertDontSeeText('Shorten the purpose');
 });
 
+test('a Barangay ID never prints a cut-off name: the type steps down to 7 pt, then printing is refused', function () {
+    $print = $this->actingAs(User::factory()->assignedOperations()->create())
+        ->get(route('staff.issued-certificates.print', printableCertificate(CertificateType::BarangayId, ['resident_name' => 'Maria Concepcion Esperanza Dela Cruz-Villanueva Santos-Bustamante'])))
+        ->assertOk();
+
+    $print->assertSee('Maria Concepcion Esperanza Dela Cruz-Villanueva Santos-Bustamante')
+        ->assertSee("for (const size of ['7.5pt', '7pt']) {", false)
+        ->assertSee("document.body.dataset.printable = 'false';", false)
+        ->assertSee('data-print-id', false)
+        ->assertSee('data-name-fit-warning hidden role="alert"', false)
+        ->assertSee('Nothing has been shortened, and the name should not be shortened to make it fit.', false)
+        ->assertSee("body[data-printable=\"false\"][data-name-unfit]::after { content: 'This Barangay ID cannot be printed: the full name does not fit the approved name area.'; }", false);
+});
+
 test('the ID card reuses its private photo while keeping its identification fields', function () {
     $certificate = certificateWithQrFile(IssuedCertificate::query()->create([
         'certificate_number' => 'CERT-ID-TEST', 'verification_code' => 'IDPRINTVERIFY',
