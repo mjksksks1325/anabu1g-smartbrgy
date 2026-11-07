@@ -128,13 +128,16 @@ sudo find /var/www/anabu1g-smartbrgy -type f -exec chmod g+r,o-rwx {} +
 sudo chmod -R ug+rwX storage bootstrap/cache
 sudo chmod 640 .env
 sudo tee /etc/php/8.4/fpm/conf.d/99-anabu.ini > /dev/null <<'INI'
-upload_max_filesize = 6M
-post_max_size = 8M
+upload_max_filesize = 12M
+post_max_size = 16M
+memory_limit = 256M
 expose_php = Off
 INI
 sudo systemctl restart php8.4-fpm
 sudo nano /etc/nginx/sites-available/anabu1g
 ```
+
+Resident photos may be up to 10 MB, so PHP must accept a 10 MB file inside a slightly larger form: `upload_max_filesize` at least 12M, `post_max_size` at least 16M, and Nginx `client_max_body_size` at least 16m. With lower values PHP discards the photo before the application sees it and the resident reads "The photo could not be uploaded. The file may be too large." `memory_limit = 256M` lets the application resize and clean very large phone photos (up to 6000 × 6000 pixels); with less memory such photos are still accepted, but stored as uploaded. Check the values in effect with `php-fpm8.4 -i | grep -E 'upload_max_filesize|post_max_size|memory_limit'`.
 
 Paste the configuration below and replace the domain. The document root must end in `/public`, as required by [Laravel's deployment guide](https://laravel.com/docs/13.x/deployment).
 
@@ -146,7 +149,7 @@ server {
     root /var/www/anabu1g-smartbrgy/public;
     index index.php;
     charset utf-8;
-    client_max_body_size 8m;
+    client_max_body_size 16m;
 
     location / {
         try_files $uri $uri/ /index.php?$query_string;

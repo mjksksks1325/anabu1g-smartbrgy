@@ -5344,9 +5344,9 @@ function validateResidentPhoto(input) {
     showToast('Resident photo must be an image file. PDF and other document files are not supported.', 'red');
     return false;
   }
-  if (photo.size > 5 * 1024 * 1024) {
+  if (photo.size > 10 * 1024 * 1024) {
     input.value = '';
-    showToast('Resident photo must be 5 MB or smaller.', 'red');
+    showToast('Resident photo must be 10 MB or smaller.', 'red');
     return false;
   }
   return true;

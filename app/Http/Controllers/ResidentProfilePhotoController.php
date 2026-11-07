@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\StoreResidentPhoto;
 use App\Models\Resident;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,10 +26,10 @@ class ResidentProfilePhotoController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $request->validate(['photo' => ['required', 'image', 'mimes:jpg,jpeg,png,gif,bmp,webp,avif,heic,heif', 'extensions:jpg,jpeg,png,gif,bmp,webp,avif,heic,heif', 'max:5120', 'dimensions:max_width=6000,max_height=6000']]);
+        $request->validate(['photo' => StoreResidentPhoto::rules()]);
         /** @var UploadedFile $photo */
         $photo = $request->file('photo');
-        $path = $photo->store('resident-photos', 'local');
+        $path = app(StoreResidentPhoto::class)->handle($photo);
         if ($path === false) {
             throw ValidationException::withMessages(['photo' => __('Hindi ma-save ang larawan. Pakisubukan ulit.')]);
         }

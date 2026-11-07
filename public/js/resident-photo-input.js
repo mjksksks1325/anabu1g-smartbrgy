@@ -1,7 +1,7 @@
 (() => {
     const allowedExtensions = new Set(['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'avif', 'heic', 'heif']);
-    const maximumSize = 5 * 1024 * 1024;
-    const errorMessage = 'Choose an image file only (up to 5 MB). Documents are not accepted.';
+    const maximumSize = 10 * 1024 * 1024;
+    const errorMessage = 'Choose an image file only (up to 10 MB). Documents are not accepted.';
 
     document.addEventListener('change', event => {
         const input = event.target;

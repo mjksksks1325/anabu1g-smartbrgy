@@ -27,7 +27,7 @@ test('untrusted resident photos are rejected', function (string $kind) {
         'pdf' => UploadedFile::fake()->create('document.pdf', 1, 'application/pdf'),
         'fake-image' => UploadedFile::fake()->createWithContent('photo.jpg', 'This is text, not an image.'),
         'wrong-extension' => UploadedFile::fake()->image('photo.jpg'),
-        'size' => UploadedFile::fake()->image('large.jpg')->size(5121),
+        'size' => UploadedFile::fake()->image('large.jpg')->size(10241),
         'dimensions' => UploadedFile::fake()->image('wide.jpg', 6001, 1),
     };
     $resident = Resident::factory()->create();

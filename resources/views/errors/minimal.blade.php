@@ -14,7 +14,7 @@
         <div class="civic-surface">
             <div class="civic-eyebrow">Request @yield('code')</div>
             <h1 class="civic-page-title">@yield('message')</h1>
-            <p class="civic-lead">The requested page could not be displayed. Check the link or reference code, or return to resident services.</p>
+            <p class="civic-lead">@yield('lead', 'The requested page could not be displayed. Check the link or reference code, or return to resident services.')</p>
             <a class="civic-link" href="{{ route('home') }}">Return to resident services</a>
         </div>
     </main>

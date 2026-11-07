@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Actions\RecordResidentVerificationChange;
+use App\Actions\StoreResidentPhoto;
 use App\Http\Controllers\Controller;
 use App\Models\Resident;
 use Illuminate\Http\JsonResponse;
@@ -27,8 +28,8 @@ class ResidentPhotoController extends Controller
     public function store(Request $request, Resident $resident): JsonResponse
     {
         Gate::authorize('update', $resident);
-        $request->validate(['photo' => ['required', 'image', 'mimes:jpg,jpeg,png,gif,bmp,webp,avif,heic,heif', 'extensions:jpg,jpeg,png,gif,bmp,webp,avif,heic,heif', 'max:5120', 'dimensions:max_width=6000,max_height=6000']]);
-        $path = $request->file('photo')->store('resident-photos', 'local');
+        $request->validate(['photo' => StoreResidentPhoto::rules()]);
+        $path = app(StoreResidentPhoto::class)->handle($request->file('photo'));
         abort_if($path === false, 500, 'Photo could not be saved.');
 
         try {

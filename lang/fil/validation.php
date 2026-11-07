@@ -62,4 +62,9 @@ return array_replace_recursive(require __DIR__.'/../en/validation.php', [
         'nationality' => 'nasyonalidad', 'address' => 'tirahan', 'contact_number' => 'contact number',
         'residency_type' => 'uri ng paninirahan', 'purok' => 'purok', 'application' => 'aplikasyon',
     ],
+    'custom' => [
+        'photo' => [
+            'max' => 'Dapat 10 MB o mas maliit ang larawan. Pumili ng mas maliit na larawan at subukan ulit.',
+        ],
+    ],
 ]);

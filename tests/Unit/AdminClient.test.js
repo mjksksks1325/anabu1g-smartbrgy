@@ -883,7 +883,7 @@ for (const photo of [
   { name: 'report.pdf', type: 'application/pdf', size: 100 },
   { name: 'photo.jpg', type: 'text/plain', size: 100 },
   { name: 'photo.svg', type: 'image/svg+xml', size: 100 },
-  { name: 'photo.png', type: 'image/png', size: 5 * 1024 * 1024 + 1 },
+  { name: 'photo.png', type: 'image/png', size: 10 * 1024 * 1024 + 1 },
 ]) {
   test(`invalid resident photo ${photo.name} is cleared before any record save`, async () => {
     const { context, fields } = await client();

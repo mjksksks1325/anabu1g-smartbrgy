@@ -415,7 +415,7 @@ test('my account is one page with resident information, photo upload and passwor
         ->assertSee($user->resident->resident_number)
         ->assertSee($user->resident->address)
         ->assertSee($user->email)
-        ->assertSee('JPG, PNG, WEBP, HEIC and other image files, up to 5 MB.');
+        ->assertSee('JPG, PNG, WEBP, HEIC and other image files, up to 10 MB.');
 
     $document = new DOMDocument;
     @$document->loadHTML($response->getContent());

@@ -184,6 +184,10 @@ return [
         'attribute-name' => [
             'rule-name' => 'custom-message',
         ],
+        // Resident photos (application, profile and Resident Records); see App\Actions\StoreResidentPhoto.
+        'photo' => [
+            'max' => 'The photo must be 10 MB or smaller. Choose a smaller photo and try again.',
+        ],
     ],
 
     /*

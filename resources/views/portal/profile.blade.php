@@ -49,10 +49,10 @@
                 <div class="form-group">
                     <label class="form-label" for="profile-photo"><span data-portal-i18n="Piliin ang larawan">{{ __('Piliin ang larawan') }}</span></label>
                     <input class="form-input" id="profile-photo" data-photo-preview="profile-photo-preview" name="photo" type="file" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.avif,.heic,.heif,image/jpeg,image/png,image/gif,image/bmp,image/webp,image/avif,image/heic,image/heif" data-resident-image-only data-error-target="profile-photo-client-error" required aria-describedby="profile-photo-help profile-photo-client-error" @error('photo') aria-invalid="true" @enderror>
-                    <p class="field-error" id="profile-photo-client-error" hidden role="alert" aria-live="polite"><span data-portal-i18n="Choose an image file only (up to 5 MB). Documents are not accepted.">{{ __('Choose an image file only (up to 5 MB). Documents are not accepted.') }}</span></p>
+                    <p class="field-error" id="profile-photo-client-error" hidden role="alert" aria-live="polite"><span data-portal-i18n="Choose an image file only (up to 10 MB). Documents are not accepted.">{{ __('Choose an image file only (up to 10 MB). Documents are not accepted.') }}</span></p>
                     @error('photo')<p class="field-error" data-portal-message>{{ $message }}</p>@enderror
                     <figure class="rp-photo-preview" id="profile-photo-preview" hidden><img alt="" width="120" height="120"><figcaption><span data-portal-i18n="Ito ang napiling larawan.">{{ __('Ito ang napiling larawan.') }}</span></figcaption></figure>
-                    <p class="form-note" id="profile-photo-help"><span data-portal-i18n="JPG, PNG, WEBP, HEIC at iba pang larawan, hanggang 5 MB. Hindi tinatanggap ang PDF o ibang dokumento.">{{ __('JPG, PNG, WEBP, HEIC at iba pang larawan, hanggang 5 MB. Hindi tinatanggap ang PDF o ibang dokumento.') }}</span></p>
+                    <p class="form-note" id="profile-photo-help"><span data-portal-i18n="JPG, PNG, WEBP, HEIC at iba pang larawan, hanggang 10 MB. Hindi tinatanggap ang PDF o ibang dokumento.">{{ __('JPG, PNG, WEBP, HEIC at iba pang larawan, hanggang 10 MB. Hindi tinatanggap ang PDF o ibang dokumento.') }}</span></p>
                 </div>
                 <button class="btn btn-green" type="submit"><span data-portal-i18n="{{ $resident->has_photo ? 'Update Photo' : 'Upload Photo' }}">{{ __($resident->has_photo ? 'Update Photo' : 'Upload Photo') }}</span></button>
             </form>
