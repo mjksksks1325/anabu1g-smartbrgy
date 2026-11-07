@@ -985,6 +985,9 @@
   <div class="modal cert-issue-modal" role="dialog" aria-modal="true" aria-labelledby="cert-issue-title">
     <div class="modal-header"><div class="modal-title" id="cert-issue-title">Certificates &amp; Fees</div><button type="button" class="modal-close" onclick="closeModal('modal-cert-issue')" aria-label="Close">&times;</button></div>
     <p class="cert-fees-note">Fees are paid at the Barangay Hall upon release. Review the available documents and fees, then complete the form to issue a certificate.</p>
+    @can('documents.issue')
+      <p class="cert-fees-note"><a href="{{ route('staff.additional-certificates.index') }}" data-additional-certificates-link>{{ __('Other official certificates (staff only): Low Income, Guardianship, Cohabitation, Fact of Birth, Probation, National ID, 4Ps Move-Out, No Objection, Nonagenarian') }}</a></p>
+    @endcan
     <details class="cert-fees-details" open>
       <summary>Available certificates and fees</summary>
       <div id="cert-types-list" class="cert-fees-list"></div>

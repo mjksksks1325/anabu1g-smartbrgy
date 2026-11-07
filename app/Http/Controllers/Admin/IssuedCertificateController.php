@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Actions\IssueCertificate;
+use App\AdditionalCertificateType;
 use App\CertificateDocument;
 use App\CertificateType;
 use App\Exceptions\CertificateIssuanceException;
@@ -180,6 +181,11 @@ class IssuedCertificateController extends Controller
         }
 
         $document = new CertificateDocument($issuedCertificate);
+
+        $additionalType = AdditionalCertificateType::tryFrom((string) $issuedCertificate->certificate_type);
+        if ($additionalType !== null) {
+            return response()->view($additionalType->printView(), ['certificate' => $issuedCertificate, 'document' => $document, 'type' => $additionalType]);
+        }
 
         // Issued before the official 2026 templates: reprint with the wording and details recorded at issuance.
         if ($issuedCertificate->template_version === null && $document->type() !== CertificateType::BarangayId) {

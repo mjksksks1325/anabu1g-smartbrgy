@@ -2257,5 +2257,6 @@
     "Unable to revoke the certificate.": "Unable to revoke the certificate.",
     "Certificate revoked.": "Certificate revoked.",
     "Certificate revoked. It stays on record, cannot be printed, and QR verification shows it as revoked.": "Certificate revoked. It stays on record, cannot be printed, and QR verification shows it as revoked.",
-    "This certificate was already revoked.": "This certificate was already revoked."
+    "This certificate was already revoked.": "This certificate was already revoked.",
+    "Other official certificates (staff only): Low Income, Guardianship, Cohabitation, Fact of Birth, Probation, National ID, 4Ps Move-Out, No Objection, Nonagenarian": "Other official certificates (staff only): Low Income, Guardianship, Cohabitation, Fact of Birth, Probation, National ID, 4Ps Move-Out, No Objection, Nonagenarian"
 }

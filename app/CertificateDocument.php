@@ -6,6 +6,7 @@ use App\Models\IssuedCertificate;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Str;
+use NumberFormatter;
 
 /**
  * What a printed certificate says, read only from the details recorded when it was issued
@@ -127,6 +128,34 @@ final class CertificateDocument
     public function detail(string $key): string
     {
         return (string) ($this->snapshot()[$key] ?? '');
+    }
+
+    /** A certificate-specific detail staff entered at issuance (staff-only certificates). */
+    public function extra(string $key): mixed
+    {
+        return ($this->snapshot()['details'] ?? [])[$key] ?? null;
+    }
+
+    /** @return array{full_name?: string, gender?: string|null, date_of_birth?: string|null, nationality?: string|null} */
+    public function partner(): array
+    {
+        return $this->snapshot()['partner'] ?? [];
+    }
+
+    /** "Mr." or "Ms." from a recorded gender, as the templates' honorific blanks are filled; "Mr./Ms." when unknown. */
+    public static function honorific(?string $gender): string
+    {
+        return match (strtolower((string) $gender)) {
+            'male' => 'Mr.',
+            'female' => 'Ms.',
+            default => 'Mr./Ms.',
+        };
+    }
+
+    /** "Ten" for 10, as the templates spell numbers out beside the figures. */
+    public static function numberInWords(int $number): string
+    {
+        return ucfirst((string) (new NumberFormatter('en', NumberFormatter::SPELLOUT))->format($number));
     }
 
     public function purpose(): string

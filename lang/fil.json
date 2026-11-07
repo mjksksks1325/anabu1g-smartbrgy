@@ -2425,5 +2425,6 @@
     "Unable to revoke the certificate.": "Hindi mabawi ang certificate.",
     "Certificate revoked.": "Nabawi na ang certificate.",
     "Certificate revoked. It stays on record, cannot be printed, and QR verification shows it as revoked.": "Nabawi na ang certificate. Mananatili ito sa record, hindi na maipi-print, at ipapakita ng QR verification na binawi na ito.",
-    "This certificate was already revoked.": "Nabawi na dati ang certificate na ito."
+    "This certificate was already revoked.": "Nabawi na dati ang certificate na ito.",
+    "Other official certificates (staff only): Low Income, Guardianship, Cohabitation, Fact of Birth, Probation, National ID, 4Ps Move-Out, No Objection, Nonagenarian": "Iba pang opisyal na certificate (staff lamang): Low Income, Guardianship, Cohabitation, Fact of Birth, Probation, National ID, 4Ps Move-Out, No Objection, Nonagenarian"
 }

@@ -80,7 +80,7 @@
 </head>
 <body data-printable="{{ ($isPreview ?? false) ? 'false' : 'true' }}">
 <nav class="certificate-controls" aria-label="Certificate actions">
-    <a href="{{ route('staff.document-requests.index') }}">Back to certificates</a>
+    <a href="{{ $backUrl ?? route('staff.document-requests.index') }}">{{ $backLabel ?? 'Back to certificates' }}</a>
     @if ($isPreview ?? false)
         <strong>Preview only: this certificate has not been issued and cannot be printed from here.</strong>
     @else

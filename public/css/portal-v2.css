@@ -745,6 +745,8 @@ body.dark-mode .v2-stages li.is-done::before { background-image: url("data:image
 .v2-verify-result p { margin: 0; }
 .v2-verify-icon { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: var(--v2-success); color: #fff; }
 .v2-verify-result[data-result="expired"] .v2-verify-icon { background: var(--v2-warning); }
+.v2-verify-result[data-result="revoked"] { border-color: var(--v2-danger); background: var(--v2-danger-subtle); }
+.v2-verify-result[data-result="revoked"] .v2-verify-icon { background: var(--v2-danger); }
 body.dark-mode .v2-verify-icon { color: var(--v2-forest-950); }
 .v2-verify-icon svg { width: 30px; height: 30px; }
 .v2-verify .v2-details { padding: 8px 24px; }

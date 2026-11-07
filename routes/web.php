@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AdditionalCertificateController;
 use App\Http\Controllers\Admin\AdminLocaleController;
 use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Admin\AuditLogController;
@@ -226,6 +227,10 @@ Route::middleware(['auth:web', 'can:operate-personnel', EnsureStaffAccess::class
     Route::get('/issued-certificates/{issuedCertificate}/photo', [IssuedCertificateController::class, 'photo'])->name('issued-certificates.photo');
     Route::get('/issued-certificates/{issuedCertificate}/print', [IssuedCertificateController::class, 'print']
     )->name('issued-certificates.print');
+    Route::get('/additional-certificates', [AdditionalCertificateController::class, 'index'])->name('additional-certificates.index');
+    Route::get('/additional-certificates/{type}', [AdditionalCertificateController::class, 'create'])->name('additional-certificates.create');
+    Route::post('/additional-certificates/{type}/preview', [AdditionalCertificateController::class, 'preview'])->name('additional-certificates.preview');
+    Route::post('/additional-certificates/{type}', [AdditionalCertificateController::class, 'store'])->name('additional-certificates.store');
     Route::post('/issued-certificates/{issuedCertificate}/revoke', [IssuedCertificateController::class, 'revoke'])
         ->middleware(RequireSupervisorPassword::class)
         ->name('issued-certificates.revoke');

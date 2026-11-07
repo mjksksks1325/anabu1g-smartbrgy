@@ -26,6 +26,7 @@
 @source '../views/admin/announcements';
 @source '../views/admin/resident-applications.blade.php';
 @source '../views/admin/document-requests';
+@source '../views/admin/additional-certificates';
 @source '../views/admin/iot';
 
 @custom-variant dark (&:where(.dark, .dark *));
