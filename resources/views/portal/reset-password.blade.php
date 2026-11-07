@@ -5,6 +5,7 @@
     <section class="card rp-form-card" aria-labelledby="reset-title">
         <form class="card-body" method="POST" action="{{ route('password.update') }}" data-resident-form>
             @csrf
+            <input type="hidden" name="from" value="portal">
             <input type="hidden" name="token" value="{{ request()->route('token') }}">
             <div class="form-group">
                 <label class="form-label" for="reset-email"><span data-portal-i18n="Email address">{{ __('Email address') }}</span></label>

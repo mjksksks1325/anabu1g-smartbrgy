@@ -5,6 +5,7 @@
     <section class="card rp-form-card" aria-labelledby="forgot-title">
         <form class="card-body" method="POST" action="{{ route('password.email') }}" data-resident-form>
             @csrf
+            <input type="hidden" name="from" value="portal">
             <div class="form-group">
                 <label class="form-label" for="reset-email"><span data-portal-i18n="Email address">{{ __('Email address') }}</span></label>
                 <input class="form-input" id="reset-email" name="email" type="email" value="{{ old('email') }}" required maxlength="255" autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false" @error('email') aria-invalid="true" aria-describedby="reset-email-error" @enderror>

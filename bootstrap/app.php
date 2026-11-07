@@ -10,12 +10,14 @@ use App\Http\Middleware\RequirePrivilegedTwoFactor;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Responses\PasswordResetLinkRequestResponse;
 use App\MailDelivery;
+use App\PortalLocalization;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\PostTooLargeException;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -67,6 +69,18 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             return null;
+        });
+        // A form larger than PHP accepts is refused before the web middleware runs (cookies still encrypted, no language
+        // set): answer in the visitor's language, as JSON for background uploads, and never with server details.
+        $exceptions->render(function (PostTooLargeException $exception, Request $request): Response {
+            app()->setLocale(PortalLocalization::localeFromEncryptedCookie($request));
+            if ($request->expectsJson()) {
+                return response()->json(['message' => __('The file you sent is too large, so nothing was saved. Choose a smaller file (resident photos can be up to 10 MB) and try again.')], 413);
+            }
+            $referer = (string) $request->headers->get('referer');
+            $backUrl = parse_url($referer, PHP_URL_HOST) === $request->getHost() ? $referer : null;
+
+            return response()->view('errors.413', ['backUrl' => $backUrl], 413);
         });
         // An expired or altered email confirmation link explains itself instead of showing a bare 403 page.
         $exceptions->render(function (InvalidSignatureException $exception, Request $request): ?RedirectResponse {

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,10 +12,14 @@
     @include('partials.civic-header')
     <main class="civic-main" id="main-content" tabindex="-1">
         <div class="civic-surface">
-            <div class="civic-eyebrow">Request @yield('code')</div>
+            <div class="civic-eyebrow">@hasSection('eyebrow')@yield('eyebrow')@else Request @yield('code')@endif</div>
             <h1 class="civic-page-title">@yield('message')</h1>
             <p class="civic-lead">@yield('lead', 'The requested page could not be displayed. Check the link or reference code, or return to resident services.')</p>
-            <a class="civic-link" href="{{ route('home') }}">Return to resident services</a>
+            @hasSection('actions')
+                @yield('actions')
+            @else
+                <a class="civic-link" href="{{ route('home') }}">Return to resident services</a>
+            @endif
         </div>
     </main>
     @include('partials.civic-footer')
