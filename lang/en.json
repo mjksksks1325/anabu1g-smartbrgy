@@ -2371,5 +2371,10 @@
     "Not eligible": "Not eligible",
     "Every requirement on record is met.": "Every requirement on record is met.",
     "Not eligible because": "Not eligible because",
-    "Missing from the resident record": "Missing from the resident record"
+    "Missing from the resident record": "Missing from the resident record",
+    "Your account has privileged access. Set up two-factor authentication to continue.": "Your account has privileged access. Set up two-factor authentication to continue.",
+    "Two-factor authentication is required for your account": "Two-factor authentication is required for your account",
+    "Your account has privileged access (confidential cases, resident records, certificates or administration). Set up two-factor authentication with an authenticator app to continue using the workspace. Keep the recovery codes somewhere safe.": "Your account has privileged access (confidential cases, resident records, certificates or administration). Set up two-factor authentication with an authenticator app to continue using the workspace. Keep the recovery codes somewhere safe.",
+    "Two-factor authentication is required for your account, so it cannot be turned off.": "Two-factor authentication is required for your account, so it cannot be turned off.",
+    "Account emails are not being delivered": "Account emails are not being delivered"
 }

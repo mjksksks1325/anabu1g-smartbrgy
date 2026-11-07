@@ -2539,5 +2539,10 @@
     "Not eligible": "Hindi kwalipikado",
     "Every requirement on record is met.": "Natutugunan ang lahat ng kinakailangang nakatala.",
     "Not eligible because": "Hindi kwalipikado dahil",
-    "Missing from the resident record": "Kulang sa record ng residente"
+    "Missing from the resident record": "Kulang sa record ng residente",
+    "Your account has privileged access. Set up two-factor authentication to continue.": "May pribilehiyadong access ang inyong account. I-set up ang two-factor authentication para makapagpatuloy.",
+    "Two-factor authentication is required for your account": "Kailangan ang two-factor authentication para sa inyong account",
+    "Your account has privileged access (confidential cases, resident records, certificates or administration). Set up two-factor authentication with an authenticator app to continue using the workspace. Keep the recovery codes somewhere safe.": "May pribilehiyadong access ang inyong account (kumpidensiyal na kaso, records ng residente, sertipiko o administrasyon). I-set up ang two-factor authentication gamit ang authenticator app para patuloy na magamit ang workspace. Itago nang ligtas ang mga recovery code.",
+    "Two-factor authentication is required for your account, so it cannot be turned off.": "Kailangan ang two-factor authentication para sa inyong account, kaya hindi ito maaaring i-off.",
+    "Account emails are not being delivered": "Hindi naipapadala ang mga email ng account"
 }

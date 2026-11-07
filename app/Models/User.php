@@ -92,6 +92,33 @@ class User extends Authenticatable
         return $this->role === 'captain' && $this->is_active && $this->resident_id === null;
     }
 
+    /**
+     * Permissions that reach confidential cases, change resident identity or verification details, or issue and
+     * revoke official certificates. An account holding any of them must use two-factor authentication.
+     */
+    public const PRIVILEGED_PERMISSIONS = [
+        'vawc.view', 'vawc.submit', 'vawc.update', 'vawc.archive',
+        'records.create', 'records.update', 'records.archive', 'records.activate', 'records.review',
+        'documents.issue', 'documents.revoke',
+    ];
+
+    /**
+     * Whether this personnel account must complete two-factor authentication before using the workspace: the
+     * Super Admin, the Barangay Captain (who also manage users and Smart Cabinet access) and staff whose current
+     * assignments include a privileged permission. Read from the current assignments on every request.
+     */
+    public function requiresTwoFactorAuthentication(): bool
+    {
+        return $this->canLoginAsPersonnel()
+            && ($this->hasAdministrativeAccess() || $this->role === 'admin' || $this->hasAnyPermission(self::PRIVILEGED_PERMISSIONS));
+    }
+
+    /** Two-factor authentication is set up only once the authenticator code was confirmed; a secret alone is not. */
+    public function hasConfirmedTwoFactor(): bool
+    {
+        return $this->two_factor_secret !== null && $this->two_factor_confirmed_at !== null;
+    }
+
     public function hasAdministrativeAccess(): bool
     {
         return $this->isSuperAdmin() || $this->isBarangayCaptain();

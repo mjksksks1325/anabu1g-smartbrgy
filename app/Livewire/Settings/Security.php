@@ -172,6 +172,8 @@ class Security extends Component
      */
     public function disable(DisableTwoFactorAuthentication $disableTwoFactorAuthentication): void
     {
+        abort_if(config('access.privileged_two_factor') && auth()->user()->requiresTwoFactorAuthentication(), 403, 'Two-factor authentication is required for this account and cannot be turned off.');
+
         $disableTwoFactorAuthentication(auth()->user());
 
         $this->twoFactorEnabled = false;

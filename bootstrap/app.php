@@ -6,6 +6,7 @@ use App\Http\Middleware\ApplyPortalLocale;
 use App\Http\Middleware\EnsureActiveAccount;
 use App\Http\Middleware\EnsurePersonnelTwoFactorAccount;
 use App\Http\Middleware\PreventAccountCaching;
+use App\Http\Middleware\RequirePrivilegedTwoFactor;
 use App\Http\Responses\PasswordResetLinkRequestResponse;
 use App\MailDelivery;
 use Illuminate\Auth\AuthenticationException;
@@ -32,7 +33,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->web(prepend: [PreventAccountCaching::class], append: [ApplyPortalLocale::class, EnsureActiveAccount::class, EnsurePersonnelTwoFactorAccount::class]);
+        $middleware->web(prepend: [PreventAccountCaching::class], append: [ApplyPortalLocale::class, EnsureActiveAccount::class, EnsurePersonnelTwoFactorAccount::class, RequirePrivilegedTwoFactor::class]);
         $middleware->prependToPriorityList(AuthenticatesRequests::class, ApplyPortalLocale::class);
         $middleware->trustProxies(
             at: '*',
