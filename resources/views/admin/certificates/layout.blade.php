@@ -36,8 +36,11 @@
         .sheet .letterhead-text .barangay { margin-top: .75mm; }
         .sheet .letterhead-rule { position: absolute; left: 32.2mm; top: 52.45mm; width: 161.2mm; height: 1mm; background: #000; }
         .sheet .imus-footer { left: 169.9mm; top: 250.4mm; width: 29.4mm; height: 37.5mm; object-fit: contain; }
-        .sheet .verification { position: absolute; left: 148.5mm; top: 265mm; width: 21mm; margin: 0; text-align: center; font: 6.5pt/1.2 Arial, Helvetica, sans-serif; }
-        .sheet .verification img { position: static; width: 17mm; height: 17mm; margin: 0 auto .8mm; }
+        /* Bottom-left corner: the 17 mm code starts at the 25.4 mm text margin and ends level with the footer mark's base
+           (287.9 mm), with its caption beside it, so the block stays as low as possible below the signature lines. */
+        .sheet .verification { position: absolute; left: 25.4mm; top: 270.9mm; display: flex; align-items: flex-end; gap: 1.6mm; margin: 0; text-align: left; font: 6.5pt/1.2 Arial, Helvetica, sans-serif; }
+        .sheet .verification img { position: static; flex: none; width: 17mm; height: 17mm; margin: 0; }
+        .sheet .verification figcaption { width: 15mm; padding-bottom: .4mm; }
 
         .sheet-body { position: absolute; left: 25.4mm; right: 24mm; top: 58.2mm; bottom: 15mm; }
         .sheet h1 { margin: 0 0 10mm; font-size: 18pt; line-height: 7.3mm; font-weight: bold; text-align: center; }

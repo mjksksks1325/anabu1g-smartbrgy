@@ -1,8 +1,8 @@
 @props(['document', 'label', 'withQr' => true])
 {{--
     One A4 certificate page: the letterhead and footer every 2026 template shares, with the certificate's own body in
-    the slot. The verification QR sits in the empty band between the signature area and the City of Imus mark so it
-    never covers wording, signatures or logos.
+    the slot. The verification QR sits in the bottom-left corner, below the signature area and clear of the City of
+    Imus mark; it is marked data-keep-clear, so the layout's fit check never lets wording or signatures run into it.
 --}}
 <section {{ $attributes->class(['sheet', 'preview' => $document->isPreview]) }} aria-label="{{ $label }}">
     <img class="imus-seal" src="{{ asset('images/certificates/imus-seal.png') }}" alt="City of Imus seal">

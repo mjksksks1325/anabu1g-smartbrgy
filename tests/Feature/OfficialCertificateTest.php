@@ -412,6 +412,18 @@ test('the print page refuses to print a sheet whose text runs into the logos, ph
         ->assertSee('body[data-printable="false"] .sheets { display: none; }', false);
 });
 
+test('the authenticity QR code prints in the bottom-left corner, while the City of Imus mark keeps its place', function (CertificateType $type) {
+    $certificate = printableCertificate($type);
+
+    $print = $this->actingAs(User::factory()->assignedOperations()->create())->get(route('staff.issued-certificates.print', $certificate))->assertOk();
+
+    $print->assertSee('.sheet .verification { position: absolute; left: 25.4mm; top: 270.9mm;', false)
+        ->assertSee('.sheet .verification img { position: static; flex: none; width: 17mm; height: 17mm;', false)
+        ->assertSee('.sheet .imus-footer { left: 169.9mm; top: 250.4mm; width: 29.4mm; height: 37.5mm; object-fit: contain; }', false)
+        ->assertSeeInOrder(['<figure class="verification" data-keep-clear>', 'alt="Certificate authenticity QR code"', 'Scan QR code to verify', 'class="imus-footer" data-keep-clear'], false)
+        ->assertDontSee('left: 148.5mm', false);
+})->with([CertificateType::BarangayClearance, CertificateType::RegisteredVoterCertification, CertificateType::FirstTimeJobseeker]);
+
 test('long details are fitted in documented steps with an 11 pt floor, and never by asking staff to shorten them', function () {
     $print = $this->actingAs(User::factory()->assignedOperations()->create())
         ->get(route('staff.issued-certificates.print', printableCertificate(CertificateType::RegisteredVoterCertification)))->assertOk();
