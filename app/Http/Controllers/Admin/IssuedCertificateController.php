@@ -135,7 +135,8 @@ class IssuedCertificateController extends Controller
     /**
      * What issuing this request would print, built from the same details issuance would freeze, so staff can check
      * it first. Nothing is saved: no certificate number, no QR code, a "not valid" watermark and printing disabled.
-     * Missing details and eligibility problems are listed instead of previewed.
+     * Missing details and eligibility problems are listed instead of previewed. A Barangay ID previews on its own
+     * card layout, with the photo on the linked resident record.
      */
     public function preview(Request $request, DocumentRequest $documentRequest, IssueCertificate $issueCertificate): Response
     {
@@ -150,15 +151,14 @@ class IssuedCertificateController extends Controller
             'issued_at' => now(),
         ]);
         $problems = match (true) {
-            $certificateType === null => ['This certificate type is not supported.'],
-            $certificateType === CertificateType::BarangayId => ['Barangay ID cards have no preview. Issue the request to print the card.'],
+            $certificateType === null => [],
             $resident === null && in_array($certificateType, [CertificateType::RegisteredVoterCertification, CertificateType::CertificateOfIndigency], true) => ['Select a verified resident record for this certificate.'],
             $resident !== null && ! $resident->certificateEligibility($certificateType)['eligible'] => $resident->certificateEligibility($certificateType)['reasons'],
             default => [],
         };
 
         if ($certificateType === null || $problems !== []) {
-            return response()->view('admin.certificates.incomplete', ['certificate' => $previewCertificate, 'missingDetails' => [], 'problems' => $problems, 'isPreview' => true], 422);
+            return response()->view('admin.certificates.incomplete', ['certificate' => $previewCertificate, 'missingDetails' => [], 'problems' => $problems, 'isPreview' => true, 'isUnsupported' => $certificateType === null], 422);
         }
 
         $snapshot = $issueCertificate->snapshot($certificateType, $resident, [
@@ -185,6 +185,7 @@ class IssuedCertificateController extends Controller
             'certificate' => $previewCertificate,
             'document' => new CertificateDocument($previewCertificate, isPreview: true, previewPhotoUrl: $photoUrl),
             'isPreview' => true,
+            'linkedToResident' => $resident !== null,
         ])->header('Cache-Control', 'private, no-store');
     }
 

@@ -511,3 +511,100 @@ test('a preview lists eligibility problems and is limited to staff who may issue
     $this->actingAs(User::factory()->resident()->create(['resident_id' => $resident->id]), 'web')
         ->get(route('staff.document-requests.certificate-preview', $request))->assertForbidden();
 });
+
+/**
+ * @param  array<string, mixed>  $attributes
+ */
+function barangayIdRequest(?Resident $resident, array $attributes = []): DocumentRequest
+{
+    return DocumentRequest::query()->create([
+        'reference_code' => 'REQ-ID-'.Str::upper(Str::random(6)), 'resident_id' => $resident?->id, 'document_type' => CertificateType::BarangayId->value,
+        'full_name' => $resident->full_name ?? 'Walk-in Applicant', 'address' => $resident->address ?? 'Walk-in address', 'purpose' => null, 'status' => 'ready_for_release',
+        ...$attributes,
+    ]);
+}
+
+test('staff preview a Barangay ID on its own card layout with the resident photo, and nothing is issued, charged or verifiable', function () {
+    Storage::fake('local');
+    Storage::fake('public');
+    $this->travelTo('2026-10-03 09:00:00');
+    $resident = Resident::factory()->create(['first_name' => 'Ana', 'middle_name' => 'Cruz', 'last_name' => 'Reyes', 'suffix' => null]);
+    $resident->update(['photo_path' => UploadedFile::fake()->image('resident.jpg')->store('resident-photos', 'local')]);
+    $request = barangayIdRequest($resident);
+
+    $preview = $this->actingAs(User::factory()->assignedOperations()->create())->get(route('staff.document-requests.certificate-preview', $request))
+        ->assertOk()->assertViewIs('admin.certificates.barangay-id')
+        ->assertSee('size: 85.6mm 54mm', false)->assertSee('BARANGAY RESIDENT IDENTIFICATION CARD')
+        ->assertSee('class="id-card preview"', false)->assertSee('data-printable="false"', false)
+        ->assertSeeInOrder(['Ana Cruz Reyes', 'ID No.:', 'Assigned at issuance', 'Date Issued:', 'Oct 03, 2026', 'Valid Until:', 'Oct 03, 2027'])
+        ->assertSee('src="data:image/jpeg;base64,', false)->assertSee('Resident photo on record')
+        ->assertSeeText('Preview only: this ID has not been issued and cannot be printed from here.')->assertSeeText('QR code added at issuance')
+        ->assertDontSee('Print Barangay ID</button>', false)->assertDontSee('Certificate authenticity QR code')->assertDontSeeText('Scan QR code to verify')
+        ->assertDontSee('class="sheet', false)->assertDontSeeText('No photo on file')->assertDontSeeText('cannot be issued yet');
+    expect($preview->getContent())->not->toContain('qrcodes/')->not->toContain('issued-certificates/')
+        ->and($preview->headers->get('Cache-Control'))->toContain('no-store');
+
+    $this->assertDatabaseEmpty('issued_certificates');
+    $this->assertDatabaseEmpty('administrative_audits');
+    expect($request->fresh()->only(['status', 'remarks']))->toBe($request->only(['status', 'remarks']));
+    Storage::disk('public')->assertDirectoryEmpty('qrcodes');
+    Storage::disk('local')->assertDirectoryEmpty('certificate-photos');
+});
+
+test('a Barangay ID preview without a photo says why, field by field, and still shows the card', function (bool $linked, string $reason) {
+    Storage::fake('local');
+    $request = barangayIdRequest($linked ? Resident::factory()->create(['photo_path' => null]) : null);
+
+    $this->actingAs(User::factory()->assignedOperations()->create())->get(route('staff.document-requests.certificate-preview', $request))
+        ->assertOk()->assertViewIs('admin.certificates.barangay-id')->assertSeeText($reason)
+        ->assertSee('<div class="photo photo-missing">No photo on file</div>', false)->assertDontSee('data:image/', false);
+    $this->assertDatabaseEmpty('issued_certificates');
+})->with([
+    'linked resident without a photo' => [true, 'the linked resident record has no photo'],
+    'request not linked to a resident' => [false, 'this request is not linked to a resident record'],
+]);
+
+test('a Barangay ID preview lists the specific detail or eligibility problem instead of a card', function () {
+    $staff = User::factory()->assignedOperations()->create();
+
+    $this->actingAs($staff)->get(route('staff.document-requests.certificate-preview', barangayIdRequest(null, ['full_name' => ''])))
+        ->assertUnprocessable()->assertSeeText('This Barangay ID cannot be issued yet')->assertSeeText('Missing: Full name')
+        ->assertDontSeeText('have no preview')->assertDontSee('id-card', false);
+    $this->get(route('staff.document-requests.certificate-preview', barangayIdRequest(Resident::factory()->create(['status' => 'inactive']))))
+        ->assertUnprocessable()->assertSeeText('Resident record is inactive.')->assertDontSee('id-card', false);
+});
+
+test('a document type without a printed layout is described as having no preview, not as an issuance failure', function () {
+    $request = barangayIdRequest(null, ['document_type' => 'Unknown Permit']);
+
+    $this->actingAs(User::factory()->assignedOperations()->create())->get(route('staff.document-requests.certificate-preview', $request))
+        ->assertUnprocessable()->assertSeeText('No preview for this document type')
+        ->assertSeeText('"Unknown Permit" has no printed layout in Smart Barangay, so there is nothing to preview.')
+        ->assertDontSeeText('cannot be issued yet')->assertDontSeeText('Resolve the following');
+});
+
+test('after a Barangay ID preview, issuing and printing work as before: number, fee, QR code and the private photo copy', function () {
+    Storage::fake('local');
+    Storage::fake('public');
+    $resident = Resident::factory()->create();
+    $resident->update(['photo_path' => UploadedFile::fake()->image('resident.jpg')->store('resident-photos', 'local')]);
+    $request = barangayIdRequest($resident);
+    $staff = User::factory()->assignedOperations()->create();
+
+    $this->actingAs($staff)->get(route('staff.document-requests.certificate-preview', $request))->assertOk();
+    $this->postJson(route('staff.document-requests.issue', $request))->assertSuccessful();
+
+    $certificate = IssuedCertificate::query()->sole();
+    expect($certificate->certificate_type)->toBe(CertificateType::BarangayId->value)
+        ->and($certificate->amount_paid)->toEqual(CertificateType::BarangayId->fee())
+        ->and($request->fresh()->status)->toBe('released');
+    Storage::disk('public')->assertExists('qrcodes/'.$certificate->certificate_number.'.svg');
+    Storage::disk('local')->assertExists($certificate->photo_path);
+
+    $this->get(route('staff.issued-certificates.print', $certificate))
+        ->assertOk()->assertViewIs('admin.certificates.barangay-id')->assertSee('data-printable="true"', false)
+        ->assertSee('<main class="id-card"', false)->assertSee('Print Barangay ID</button>', false)
+        ->assertSeeText($certificate->certificate_number)->assertSee(asset($certificate->qr_code_path))->assertSeeText('Scan QR code to verify')
+        ->assertSee(route('staff.issued-certificates.photo', $certificate))->assertSee('Resident photo at issuance')
+        ->assertDontSeeText('Assigned at issuance')->assertDontSeeText('Preview only: this ID');
+});
