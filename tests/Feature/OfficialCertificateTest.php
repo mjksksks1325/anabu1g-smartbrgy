@@ -64,7 +64,7 @@ test('official certificates preserve all historical details and private photos t
     $this->get(route('staff.issued-certificates.photo', $certificate))->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff');
     $this->postJson(route('staff.document-requests.issue', $request))->assertConflict();
     $verification = $this->getJson(route('certificate.verify', $certificate->verification_code))->assertOk();
-    expect(array_keys($verification->json('certificate')))->toBe(['certificate_number', 'verification_code', 'certificate_type', 'resident_name', 'purpose', 'issued_at', 'issued_by', 'expires_on']);
+    expect(array_keys($verification->json('certificate')))->toBe(['certificate_number', 'certificate_type', 'holder_initials', 'issued_on', 'expires_on']);
     $this->getJson(route('certificate.verify', 'INVALID-CODE'))->assertNotFound();
     $other = User::factory()->resident()->create();
     $this->actingAs($other, 'web')->get(route('staff.issued-certificates.print', $certificate))->assertForbidden();
@@ -443,7 +443,7 @@ test('certificate QR verification shows an authentic result with its details in 
         ->assertSee('data-result="authentic"', false)
         ->assertSee('Authentic Barangay Document')
         ->assertSee('data-portal-language-form', false)
-        ->assertSeeInOrder(['Verified Resident Name', 'CERT-AUTHENTIC-TEST', 'AUTHENTICTESTCODE']);
+        ->assertSeeInOrder(['CERT-AUTHENTIC-TEST', 'V. R. N.'])->assertDontSee('Verified Resident Name');
 });
 
 test('staff can preview a request before issuing it without anything being issued, printed or verifiable', function () {

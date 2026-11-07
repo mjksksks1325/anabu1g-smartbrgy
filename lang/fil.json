@@ -2409,5 +2409,21 @@
     "Years of residency in Anabu I-G": "Ilang taon nang naninirahan sa Anabu I-G",
     "Printed on the Certificate of Residency. Confirm it with the resident before issuing.": "Nakalimbag ito sa Certificate of Residency. Kumpirmahin muna sa residente bago i-issue.",
     "Printed on the First Time Jobseeker certification and Oath of Undertaking. Confirm it with the resident before issuing.": "Nakalimbag ito sa First Time Jobseeker certification at sa Oath of Undertaking. Kumpirmahin muna sa residente bago i-issue.",
-    "Preview certificate": "I-preview ang certificate"
+    "Preview certificate": "I-preview ang certificate",
+    "Revoked Barangay Document": "Binawing dokumento ng barangay",
+    "Barangay Anabu I-G revoked this document. It is no longer valid. Contact the Barangay Hall if you need a current copy.": "Binawi ng Barangay Anabu I-G ang dokumentong ito. Hindi na ito valid. Makipag-ugnayan sa Barangay Hall kung kailangan ng bagong kopya.",
+    "Revoked on": "Binawi noong",
+    "Holder's initials": "Initials ng may hawak",
+    "Compare the certificate number, document type and the initials of the holder's name with the paper you have. If they differ, or if in doubt, contact the Barangay Anabu I-G Barangay Hall.": "Ihambing ang certificate number, uri ng dokumento at ang initials ng pangalan ng may hawak sa papel na hawak ninyo. Kapag magkaiba, o kung may duda, makipag-ugnayan sa Barangay Hall ng Anabu I-G.",
+    "Revoke certificate": "Bawiin ang certificate",
+    "The certificate stays on record but can no longer be printed, and QR verification will show it as revoked. A revocation cannot be undone and no replacement is issued.": "Mananatili sa record ang certificate pero hindi na ito maipi-print, at ipapakita ng QR verification na binawi na ito. Hindi na ito maibabalik at walang ibibigay na kapalit.",
+    "Reason for revoking": "Dahilan ng pagbawi",
+    "Continue to revoke": "Magpatuloy sa pagbawi",
+    "Give the reason in at least 10 characters.": "Isulat ang dahilan sa hindi bababa sa 10 character.",
+    "Revoke issued certificates": "Bawiin ang mga na-issue na certificate",
+    "Valid": "Valid",
+    "Unable to revoke the certificate.": "Hindi mabawi ang certificate.",
+    "Certificate revoked.": "Nabawi na ang certificate.",
+    "Certificate revoked. It stays on record, cannot be printed, and QR verification shows it as revoked.": "Nabawi na ang certificate. Mananatili ito sa record, hindi na maipi-print, at ipapakita ng QR verification na binawi na ito.",
+    "This certificate was already revoked.": "Nabawi na dati ang certificate na ito."
 }

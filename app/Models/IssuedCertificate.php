@@ -64,6 +64,17 @@ class IssuedCertificate extends Model
         return $this->expires_on->copy();
     }
 
+    /**
+     * The holder's initials ("M. S. D. C."), which public QR verification shows instead of the full name so a verifier
+     * can match the paper without the page exposing who holds the certificate.
+     */
+    public function holderInitials(): string
+    {
+        return collect(preg_split('/[\s,]+/u', trim((string) $this->resident_name), -1, PREG_SPLIT_NO_EMPTY) ?: [])
+            ->map(fn (string $part): string => mb_strtoupper(mb_substr($part, 0, 1)).'.')
+            ->implode(' ');
+    }
+
     public function isRevoked(): bool
     {
         return $this->revoked_at !== null;

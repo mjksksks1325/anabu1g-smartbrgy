@@ -1544,6 +1544,36 @@ test('issued certificate history requests the selected page and filters and rend
   assert.match(tbody.innerHTML, /No issued certificates match these filters/);
 });
 
+test('revoking a certificate needs a reason and the supervisor password before anything is sent', async () => {
+  const { context, fields } = await client();
+  const reason = { value: '', focused: false, focus() { this.focused = true; } };
+  const error = { hidden: true, textContent: '' };
+  fields.set('revoke-certificate-number', { textContent: '' });
+  fields.set('revoke-certificate-reason', reason);
+  fields.set('revoke-certificate-reason-error', error);
+  const requests = [];
+  let passwordPrompts = 0;
+  context.fetch = async (url, options) => { requests.push({ url, method: options.method, body: JSON.parse(options.body) }); return { ok: true, json: async () => ({ message: 'Certificate revoked.' }) }; };
+  vm.runInContext('openModal = () => {}; closeModal = () => {}; refreshIssuedCertificates = async () => {};', context);
+  context.confirmDestructiveAction = async () => { passwordPrompts++; return passwordPrompts === 1 ? null : 'captain-password'; };
+
+  context.openRevokeCertificate({ id: 9, certificate_number: 'CERT-2026-ABC' });
+  assert.equal(fields.get('revoke-certificate-number').textContent, 'CERT-2026-ABC');
+  reason.value = 'Mistake';
+  await context.submitRevokeCertificate({ preventDefault() {} });
+  assert.equal(error.hidden, false);
+  assert.equal(reason.focused, true);
+  assert.equal(passwordPrompts, 0);
+
+  reason.value = 'Issued to the wrong person by mistake.';
+  await context.submitRevokeCertificate({ preventDefault() {} });
+  assert.equal(requests.length, 0, 'cancelling the password prompt sends nothing');
+
+  await context.submitRevokeCertificate({ preventDefault() {} });
+  assert.deepEqual(requests, [{ url: '/staff/issued-certificates/9/revoke', method: 'POST', body: { reason: 'Issued to the wrong person by mistake.', super_admin_password: 'captain-password' } }]);
+  assert.deepEqual({ ...context.messages.at(-1) }, { message: 'Certificate revoked.', type: 'green' });
+});
+
 test('voter rows offer Edit only with voters.update, and editing sends the record version without changing the resident', async () => {
   const { context, fields } = await client();
   const element = () => ({ value: '', textContent: '', hidden: false, disabled: false, innerHTML: '' });

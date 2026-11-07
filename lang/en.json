@@ -2241,5 +2241,21 @@
     "Years of residency in Anabu I-G": "Years of residency in Anabu I-G",
     "Printed on the Certificate of Residency. Confirm it with the resident before issuing.": "Printed on the Certificate of Residency. Confirm it with the resident before issuing.",
     "Printed on the First Time Jobseeker certification and Oath of Undertaking. Confirm it with the resident before issuing.": "Printed on the First Time Jobseeker certification and Oath of Undertaking. Confirm it with the resident before issuing.",
-    "Preview certificate": "Preview certificate"
+    "Preview certificate": "Preview certificate",
+    "Revoked Barangay Document": "Revoked Barangay Document",
+    "Barangay Anabu I-G revoked this document. It is no longer valid. Contact the Barangay Hall if you need a current copy.": "Barangay Anabu I-G revoked this document. It is no longer valid. Contact the Barangay Hall if you need a current copy.",
+    "Revoked on": "Revoked on",
+    "Holder's initials": "Holder's initials",
+    "Compare the certificate number, document type and the initials of the holder's name with the paper you have. If they differ, or if in doubt, contact the Barangay Anabu I-G Barangay Hall.": "Compare the certificate number, document type and the initials of the holder's name with the paper you have. If they differ, or if in doubt, contact the Barangay Anabu I-G Barangay Hall.",
+    "Revoke certificate": "Revoke certificate",
+    "The certificate stays on record but can no longer be printed, and QR verification will show it as revoked. A revocation cannot be undone and no replacement is issued.": "The certificate stays on record but can no longer be printed, and QR verification will show it as revoked. A revocation cannot be undone and no replacement is issued.",
+    "Reason for revoking": "Reason for revoking",
+    "Continue to revoke": "Continue to revoke",
+    "Give the reason in at least 10 characters.": "Give the reason in at least 10 characters.",
+    "Revoke issued certificates": "Revoke issued certificates",
+    "Valid": "Valid",
+    "Unable to revoke the certificate.": "Unable to revoke the certificate.",
+    "Certificate revoked.": "Certificate revoked.",
+    "Certificate revoked. It stays on record, cannot be printed, and QR verification shows it as revoked.": "Certificate revoked. It stays on record, cannot be printed, and QR verification shows it as revoked.",
+    "This certificate was already revoked.": "This certificate was already revoked."
 }

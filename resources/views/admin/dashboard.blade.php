@@ -669,6 +669,30 @@
 
   </div>
 </div>
+<!-- Revoke an issued certificate -->
+<div class="modal-overlay" id="modal-revoke-certificate">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="revoke-certificate-title" aria-describedby="revoke-certificate-note">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="revoke-certificate-title">{{ __('Revoke certificate') }} <span id="revoke-certificate-number" data-no-admin-translate></span></div>
+        <div class="modal-sub" id="revoke-certificate-note">{{ __('The certificate stays on record but can no longer be printed, and QR verification will show it as revoked. A revocation cannot be undone and no replacement is issued.') }}</div>
+      </div>
+      <button type="button" class="modal-close" onclick="closeModal('modal-revoke-certificate')" aria-label="Close">&times;</button>
+    </div>
+    <form id="revoke-certificate-form" onsubmit="submitRevokeCertificate(event)" novalidate>
+      <div class="form-group">
+        <label class="form-label" for="revoke-certificate-reason">{{ __('Reason for revoking') }}</label>
+        <textarea class="form-input" id="revoke-certificate-reason" rows="3" minlength="10" maxlength="1000" required aria-describedby="revoke-certificate-reason-error"></textarea>
+        <p class="form-error" id="revoke-certificate-reason-error" role="alert" hidden></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn" onclick="closeModal('modal-revoke-certificate')">{{ __('Cancel') }}</button>
+        <button type="submit" class="btn btn-danger" id="revoke-certificate-submit" data-action-permission="documents.revoke">{{ __('Continue to revoke') }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- Add/Edit Resident -->
 <div class="modal-overlay" id="modal-resident">
   <div class="modal">

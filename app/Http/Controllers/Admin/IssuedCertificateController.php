@@ -59,6 +59,7 @@ class IssuedCertificateController extends Controller
                 'amount_paid' => $certificate->amount_paid,
                 'issued_at' => $certificate->issued_at?->toIso8601String(),
                 'issued_by' => $certificate->issued_by,
+                'revoked_at' => $certificate->revoked_at?->toIso8601String(),
                 'print_url' => route('staff.issued-certificates.print', $certificate),
                 'verification_url' => route('certificate.verify', $certificate->verification_code),
             ]);
@@ -204,6 +205,36 @@ class IssuedCertificateController extends Controller
             'certificate' => $issuedCertificate,
             'document' => $document,
         ]);
+    }
+
+    /**
+     * Revokes an issued certificate: it stays on record with who revoked it, when and why, can no longer be printed,
+     * and QR verification reports it as revoked. Requires the documents.revoke permission and, through the route, the
+     * active Barangay Captain or Super Admin password. A revocation is final and creates no replacement.
+     */
+    public function revoke(Request $request, IssuedCertificate $issuedCertificate): JsonResponse
+    {
+        Gate::authorize('documents.revoke');
+        $validated = $request->validate(['reason' => ['required', 'string', 'min:10', 'max:1000']]);
+
+        return DB::transaction(function () use ($request, $issuedCertificate, $validated): JsonResponse {
+            $certificate = IssuedCertificate::query()->lockForUpdate()->findOrFail($issuedCertificate->id);
+
+            if ($certificate->isRevoked()) {
+                return response()->json(['message' => __('This certificate was already revoked.')], 409);
+            }
+
+            $certificate->forceFill([
+                'revoked_at' => now(),
+                'revoked_by' => $request->user()->id,
+                'revocation_reason' => trim($validated['reason']),
+            ])->save();
+
+            return response()->json([
+                'message' => __('Certificate revoked. It stays on record, cannot be printed, and QR verification shows it as revoked.'),
+                'certificate' => ['id' => $certificate->id, 'certificate_number' => $certificate->certificate_number, 'revoked_at' => $certificate->revoked_at?->toIso8601String()],
+            ]);
+        });
     }
 
     public function photo(IssuedCertificate $issuedCertificate): StreamedResponse

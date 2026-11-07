@@ -226,6 +226,9 @@ Route::middleware(['auth:web', 'can:operate-personnel', EnsureStaffAccess::class
     Route::get('/issued-certificates/{issuedCertificate}/photo', [IssuedCertificateController::class, 'photo'])->name('issued-certificates.photo');
     Route::get('/issued-certificates/{issuedCertificate}/print', [IssuedCertificateController::class, 'print']
     )->name('issued-certificates.print');
+    Route::post('/issued-certificates/{issuedCertificate}/revoke', [IssuedCertificateController::class, 'revoke'])
+        ->middleware(RequireSupervisorPassword::class)
+        ->name('issued-certificates.revoke');
 
 });
 

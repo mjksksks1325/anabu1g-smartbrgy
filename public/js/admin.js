@@ -1792,17 +1792,18 @@ function renderIssuedCertificates(certificates, meta = null) {
       ? `PHP ${Number(certificate.amount_paid).toFixed(2)}`
       : 'Free';
     const online = String(certificate.source || 'onsite').toLowerCase() === 'online';
+    const revoked = Boolean(certificate.revoked_at);
     const row = document.createElement('tr');
 
     row.innerHTML = `
       <td><span class="workspace-reference" data-no-admin-translate>${escapeText(certificate.certificate_number)}</span></td>
       <td><strong class="workspace-primary-text" data-no-admin-translate>${escapeText(certificate.resident_name)}</strong></td>
-      <td>${escapeText(certificate.certificate_type)}</td>
+      <td>${escapeText(certificate.certificate_type)}${revoked ? ` ${workspaceBadge('Revoked', 'red')}` : ''}</td>
       <td>${workspaceBadge(online ? 'Online' : 'Walk-in', online ? 'purple' : 'gray')}</td>
       <td>${escapeText(fee)}</td>
       <td class="issued-date">${escapeText(issuedDate)}<small>${escapeText(issuedTime)}</small></td>
       <td>${certificate.issued_by ? `<span data-no-admin-translate>${escapeText(certificate.issued_by)}</span>` : escapeText('Barangay Staff')}</td>
-      <td><div class="resident-actions"><button type="button" data-action-permission="documents.print" class="btn btn-xs issued-reprint">Reprint</button><button type="button" class="btn btn-xs issued-verify">Verify</button></div></td>`;
+      <td><div class="resident-actions">${revoked ? '' : '<button type="button" data-action-permission="documents.print" class="btn btn-xs issued-reprint">Reprint</button>'}<button type="button" class="btn btn-xs issued-verify">Verify</button>${revoked ? '' : '<button type="button" data-action-permission="documents.revoke" class="btn btn-xs issued-revoke">Revoke</button>'}</div></td>`;
 
     row.querySelector('.issued-reprint')?.addEventListener('click', () => {
       window.open(certificate.print_url, '_blank');
@@ -1810,9 +1811,65 @@ function renderIssuedCertificates(certificates, meta = null) {
     row.querySelector('.issued-verify')?.addEventListener('click', () => {
       window.open(certificate.verification_url, '_blank');
     });
+    row.querySelector('.issued-revoke')?.addEventListener('click', () => openRevokeCertificate(certificate));
     applyStaffActionVisibility(row);
     tbody.appendChild(row);
   });
+}
+
+let revokeCertificateTarget = null;
+
+/** Opens the reason step for revoking an issued certificate (documents.revoke). */
+function openRevokeCertificate(certificate) {
+  revokeCertificateTarget = certificate;
+  const number = document.getElementById('revoke-certificate-number');
+  if (number) number.textContent = certificate.certificate_number || '';
+  const reason = document.getElementById('revoke-certificate-reason');
+  if (reason) reason.value = '';
+  const error = document.getElementById('revoke-certificate-reason-error');
+  if (error) { error.hidden = true; error.textContent = ''; }
+  openModal('modal-revoke-certificate');
+}
+
+/**
+ * Revokes the chosen certificate after a reason of at least 10 characters and the active Barangay Captain or Super
+ * Admin password. The certificate stays on record; the history list then marks it Revoked.
+ */
+async function submitRevokeCertificate(event) {
+  event?.preventDefault?.();
+  const certificate = revokeCertificateTarget;
+  if (!certificate) return;
+  const reasonInput = document.getElementById('revoke-certificate-reason');
+  const error = document.getElementById('revoke-certificate-reason-error');
+  const reason = String(reasonInput?.value || '').trim();
+  if (reason.length < 10) {
+    if (error) { error.textContent = adminText('Give the reason in at least 10 characters.'); error.hidden = false; }
+    reasonInput?.focus?.();
+    return;
+  }
+  if (error) { error.hidden = true; error.textContent = ''; }
+
+  const supervisorPassword = await confirmDestructiveAction(`Revoke ${certificate.certificate_number}? This cannot be undone.`, { title: 'Revoke certificate', confirmLabel: 'Confirm revoke', danger: true });
+  if (!supervisorPassword) return;
+
+  try {
+    const response = await fetch(`/staff/issued-certificates/${encodeURIComponent(certificate.id)}/revoke`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', ...csrfRequestHeaders() },
+      body: JSON.stringify({ reason, super_admin_password: supervisorPassword }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload?.errors ? Object.values(payload.errors).flat()[0] : (payload?.message || 'Unable to revoke the certificate.'));
+    }
+    revokeCertificateTarget = null;
+    closeModal('modal-revoke-certificate');
+    showToast(payload.message || 'Certificate revoked.', 'green');
+    await refreshIssuedCertificates();
+  } catch (requestError) {
+    showToast(requestError.message || 'Unable to revoke the certificate.', 'red');
+  }
 }
 
 function legacyRenderAuditLog() {

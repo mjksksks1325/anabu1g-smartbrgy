@@ -348,12 +348,15 @@ it('publicly verifies a real code through HTML and JSON regardless of letter cas
         ->assertViewIs('certificate.verify')
         ->assertSeeText('Authentic Barangay Document')
         ->assertSeeText('CERT-2026-VERIFY')
-        ->assertSeeText('Maria Santos');
+        ->assertSeeText('M. S.')
+        ->assertDontSeeText('Maria Santos')
+        ->assertDontSeeText('Records Officer');
     $this->getJson(route('certificate.verify', strtolower($certificate->verification_code)))
         ->assertOk()
         ->assertJsonPath('certificate.certificate_number', 'CERT-2026-VERIFY')
-        ->assertJsonPath('certificate.verification_code', 'VALIDVERIFYCODE1')
-        ->assertJsonPath('certificate.resident_name', 'Maria Santos');
+        ->assertJsonPath('certificate.holder_initials', 'M. S.')
+        ->assertJsonMissingPath('certificate.resident_name')
+        ->assertJsonMissingPath('certificate.issued_by');
 });
 
 it('returns 404 for an unknown public verification code', function () {
@@ -377,7 +380,7 @@ it('escapes resident-provided content on public verification and print pages', f
 
     $this->get(route('certificate.verify', $certificate->verification_code))
         ->assertOk()
-        ->assertSee('&lt;script&gt;', false)
+        ->assertSee('&lt;.', false)
         ->assertDontSee($dangerousName, false);
     $this->actingAs($user)
         ->get(route('staff.issued-certificates.print', $certificate))
