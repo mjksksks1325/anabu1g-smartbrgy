@@ -218,12 +218,20 @@ body.dark-mode .rp-action-primary { background: var(--v2-brand-fill); color: var
 #screen-review .summary-list, #screen-confirm .summary-list { padding: 4px 20px; border: 1px solid var(--v2-line); border-radius: var(--rp-radius-sm); background: var(--v2-card); }
 #screen-review .summary-list > dt:first-of-type, #screen-review .summary-list > dt:first-of-type + dd,
 #screen-confirm .summary-list > dt:first-of-type, #screen-confirm .summary-list > dt:first-of-type + dd { border-top: 0; }
-.confirm-head { display: grid; justify-items: center; gap: 12px; text-align: center; }
-.confirm-mark, body.dark-mode .confirm-mark { display: grid; place-items: center; width: 84px; height: 84px; border-radius: 50%; background: var(--v2-success); }
-.confirm-mark::after { content: ""; width: 34px; height: 18px; border: solid #fff; border-width: 0 0 6px 6px; transform: translateY(-4px) rotate(-45deg); }
-.confirm-ticket { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; padding: 22px 24px; border-radius: var(--rp-radius); }
-.confirm-ticket-label { margin: 0; color: var(--v2-muted); font-weight: 700; }
-.confirm-code { margin: 2px 0 0; }
+/* Request submitted: a compact success badge beside the heading, in line with the content below, and the reference
+   number as the most prominent text on the screen. Scoped to #screen-confirm so the general .site-main text sizes
+   do not shrink the reference number to body size. */
+#screen-confirm .confirm-head { display: flex; align-items: center; gap: 16px; text-align: left; }
+#screen-confirm .confirm-head h2 { margin: 0; font-size: clamp(22px, 2.4vw, 26px); line-height: 1.25; }
+#screen-confirm .confirm-head p { margin: 4px 0 0; color: var(--v2-muted); font-size: 16px; line-height: 1.45; }
+.confirm-mark, body.dark-mode .confirm-mark { position: relative; display: block; flex: none; width: 48px; height: 48px; margin-left: 6px; border-radius: 50%; background: var(--v2-success); box-shadow: 0 0 0 6px color-mix(in srgb, var(--v2-success) 16%, transparent); }
+.confirm-mark::after { content: ""; position: absolute; left: 50%; top: 50%; width: 11px; height: 21px; border: solid #fff; border-width: 0 3.5px 3.5px 0; transform: translate(-50%, -60%) rotate(45deg); }
+/* The dark theme's success green is light: a dark tick keeps the contrast, as on the dark-mode toasts. */
+body.dark-mode .confirm-mark::after { border-color: var(--v2-forest-950); }
+#screen-confirm .confirm-ticket { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 20px; margin: 0 0 12px; padding: 20px 24px; border-radius: var(--rp-radius); }
+#screen-confirm .confirm-ticket-label { margin: 0; color: var(--v2-muted); font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+#screen-confirm .confirm-code { margin: 4px 0 0; color: var(--v2-ink); font-size: clamp(26px, 5vw, 32px); line-height: 1.15; overflow-wrap: anywhere; }
+#screen-confirm .confirm-hint { margin: 0; color: var(--v2-muted); font-size: 16px; line-height: 1.55; }
 .confirm-steps { display: grid; gap: 10px; padding-left: 24px; }
 #loader { position: fixed; inset: 0; z-index: 200; align-items: center; justify-content: center; flex-direction: column; gap: 16px; background: rgba(248, 251, 253, .88); color: var(--v2-ink); font-size: 16px; font-weight: 600; }
 body.dark-mode #loader { background: rgba(11, 22, 34, .9); }
@@ -238,7 +246,9 @@ body.dark-mode #toast-wrap .toast.green, body.dark-mode #toast-wrap .toast.red {
     /* The step's main button stays in reach of the thumb. */
     .v2-request .screen:not(#screen-confirm):not(#screen-status) .btn-row { position: sticky; bottom: 0; z-index: 5; margin: 24px -16px 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--v2-line); background: var(--v2-card); box-shadow: 0 -6px 18px rgba(11, 26, 43, .08); }
     .v2-request .btn-row > .btn { flex: 1 1 0; min-width: 0; }
-    .confirm-ticket { padding: 18px; }
+    #screen-confirm .confirm-ticket { padding: 18px; }
+    #screen-confirm .confirm-head { gap: 14px; }
+    .confirm-mark, body.dark-mode .confirm-mark { width: 44px; height: 44px; }
 }
 @media (prefers-reduced-motion: reduce) {
     #loader .spinner { animation-duration: 3s; }
