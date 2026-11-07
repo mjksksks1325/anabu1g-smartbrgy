@@ -10,12 +10,14 @@ use App\Http\Middleware\RequirePrivilegedTwoFactor;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Responses\PasswordResetLinkRequestResponse;
 use App\MailDelivery;
+use App\PortalLocalization;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\PostTooLargeException;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -47,6 +49,11 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (ThrottleRequestsException $exception, Request $request): JsonResponse|RedirectResponse|null {
+            if ($request->routeIs('portal.request.store')) {
+                $seconds = max(1, (int) ($exception->getHeaders()['Retry-After'] ?? 60));
+
+                return response()->json(['message' => __('You have sent several requests in a short time. Please wait :seconds seconds, then submit again. Nothing was lost: your request was not sent yet.', ['seconds' => $seconds])], 429, $exception->getHeaders());
+            }
             if ($request->is('portal', 'portal/*') && $request->expectsJson()) {
                 return response()->json(['message' => __('Too many attempts. Please wait before trying again.')], 429, $exception->getHeaders());
             }
@@ -63,6 +70,18 @@ return Application::configure(basePath: dirname(__DIR__))
 
             return null;
         });
+        // A form larger than PHP accepts is refused before the web middleware runs (cookies still encrypted, no language
+        // set): answer in the visitor's language, as JSON for background uploads, and never with server details.
+        $exceptions->render(function (PostTooLargeException $exception, Request $request): Response {
+            app()->setLocale(PortalLocalization::localeFromEncryptedCookie($request));
+            if ($request->expectsJson()) {
+                return response()->json(['message' => __('The file you sent is too large, so nothing was saved. Choose a smaller file (resident photos can be up to 10 MB) and try again.')], 413);
+            }
+            $referer = (string) $request->headers->get('referer');
+            $backUrl = parse_url($referer, PHP_URL_HOST) === $request->getHost() ? $referer : null;
+
+            return response()->view('errors.413', ['backUrl' => $backUrl], 413);
+        });
         // An expired or altered email confirmation link explains itself instead of showing a bare 403 page.
         $exceptions->render(function (InvalidSignatureException $exception, Request $request): ?RedirectResponse {
             return $request->routeIs('portal.verification.verify') ? ResidentEmailVerificationController::rejectedLink() : null;
@@ -71,6 +90,14 @@ return Application::configure(basePath: dirname(__DIR__))
         // and recorded in the audit log for administrators, but answered like any other reset request, so the reply
         // never differs between addresses that have accounts and addresses that do not.
         $exceptions->render(function (TransportExceptionInterface|MailDeliveryUnavailableException $exception, Request $request): ?Response {
+            // A staff member asking for a new verification link is told it was not sent, never that it was.
+            if ($request->routeIs('verification.send')) {
+                if ($exception instanceof TransportExceptionInterface) {
+                    report($exception);
+                }
+
+                return back()->withErrors(['email' => __('The verification email was not sent: this server does not send email yet, or the mail server refused it. Ask the system administrator to check the email settings.')]);
+            }
             if (! $request->routeIs('password.email')) {
                 return null;
             }

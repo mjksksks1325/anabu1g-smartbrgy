@@ -3,12 +3,14 @@
 namespace App\Livewire\Settings;
 
 use App\Concerns\ProfileValidationRules;
+use App\Exceptions\MailDeliveryUnavailableException;
 use Flux\Flux;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 #[Title('Profile settings')]
 class Profile extends Component
@@ -70,7 +72,17 @@ class Profile extends Component
             return;
         }
 
-        $user->sendEmailVerificationNotification();
+        try {
+            $user->sendEmailVerificationNotification();
+        } catch (MailDeliveryUnavailableException|TransportExceptionInterface $exception) {
+            if ($exception instanceof TransportExceptionInterface) {
+                report($exception);
+            }
+            $message = __('The verification email was not sent: this server does not send email yet, or the mail server refused it. Ask the system administrator to check the email settings.');
+            $this->embedded ? $this->dispatch('profile-notification', message: $message) : Flux::toast(variant: 'danger', text: $message);
+
+            return;
+        }
 
         if ($this->embedded) {
             $this->dispatch('profile-notification', message: __('A new verification link has been sent to your email address.'));

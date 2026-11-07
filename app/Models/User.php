@@ -79,6 +79,19 @@ class User extends Authenticatable
     }
 
     /**
+     * Send Fortify's email verification link (staff accounts). Refused, like the other account emails, when this server
+     * does not deliver email: the log mailer would only write the signed link to the application log.
+     */
+    public function sendEmailVerificationNotification(): void
+    {
+        if (! MailDelivery::configured()) {
+            throw new MailDeliveryUnavailableException('the email verification link');
+        }
+
+        parent::sendEmailVerificationNotification();
+    }
+
+    /**
      * Send the Resident Portal email confirmation link, in the current language. Refused, like password reset
      * links, when this server does not deliver email: the log mailer would only write the signed link to the log.
      */

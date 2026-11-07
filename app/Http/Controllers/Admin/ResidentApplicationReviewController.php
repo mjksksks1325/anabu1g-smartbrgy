@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\MailDelivery;
 use App\Models\Resident;
 use App\Models\ResidentRegistrationApplication;
 use App\Models\User;
@@ -73,7 +74,10 @@ class ResidentApplicationReviewController extends Controller
             'remarks' => ['required_unless:decision,approved', 'nullable', 'string', 'max:1000'],
             ...array_fill_keys(['reviewed_by', 'resident_id', 'status', 'role', 'is_active', 'details', 'email', 'photo_path', 'staff_permissions'], ['prohibited']),
         ]);
-        DB::transaction(function () use ($request, $application, $validated): void {
+        // The result email is queued only when this server delivers email; otherwise staff are told to inform the
+        // applicant themselves, instead of the review details (reference, remarks) going only to the application log.
+        $emailed = MailDelivery::configured();
+        DB::transaction(function () use ($request, $application, $validated, $emailed): void {
             $application = ResidentRegistrationApplication::query()->lockForUpdate()->findOrFail($application->id);
             abort_unless($application->status === 'pending', 409);
             if ($validated['decision'] === 'approved') {
@@ -103,6 +107,15 @@ class ResidentApplicationReviewController extends Controller
                 'record' => $application->reference.'; pending -> '.$application->status,
                 'created_at' => now(), 'updated_at' => now(),
             ]);
+            if (! $emailed) {
+                DB::table('administrative_audits')->insert([
+                    'user_id' => $request->user()->id, 'actor' => $request->user()->name,
+                    'action' => 'admin.resident-applications.result-mail-unavailable', 'type' => 'record',
+                    'record' => $application->reference, 'created_at' => now(), 'updated_at' => now(),
+                ]);
+
+                return;
+            }
             Notification::route('mail', $application->email)->notify(
                 (new ResidentRegistrationReviewedNotification(
                     $application->reference, $application->status, $application->remarks,
@@ -111,6 +124,8 @@ class ResidentApplicationReviewController extends Controller
             );
         });
 
-        return redirect()->route('staff.resident-applications.index')->with('status', 'Registration review saved. The result email has been queued for the applicant.');
+        return redirect()->route('staff.resident-applications.index')->with('status', $emailed
+            ? 'Registration review saved. The result email has been queued for the applicant.'
+            : 'Registration review saved. This server does not send email yet, so the applicant was not emailed: tell them the result when they contact the barangay.');
     }
 }
