@@ -59,7 +59,7 @@ class MailDelivery
 
         DB::table('administrative_audits')->insert([
             'user_id' => $actor?->id,
-            'actor' => $actor?->name ?? 'Password reset request',
+            'actor' => $actor->name ?? 'Password reset request',
             'action' => $exception instanceof Exceptions\MailDeliveryUnavailableException ? 'auth.password-reset-mail-unavailable' : 'auth.password-reset-mail-failed',
             'type' => 'security',
             'record' => $account->isResidentAccount() ? 'resident_portal:'.$account->id : (string) $account->id,
