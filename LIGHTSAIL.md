@@ -210,7 +210,7 @@ Exit Tinker. Open `https://barangay.example.com/login`, sign in, and configure t
 
 ## 7. Queue worker and verification
 
-The configured database queue needs a persistent worker when queued jobs are used. Create a systemd service:
+The configured database queue needs a persistent worker: the application queues jobs (for example the email telling a new-resident applicant the result of the review), and without a worker they are never sent. Create a systemd service:
 
 ```bash
 sudo nano /etc/systemd/system/anabu-queue.service
@@ -244,7 +244,17 @@ php artisan migrate:status --no-interaction
 
 Check in a desktop browser and actual phone: portal submission, ID upload, reference-code tracking, staff login, approval/rejection, certificate print and QR verification, user suspension, and audit log. Test password reset with the configured mail provider. `/up` returning 200 alone does not verify the database or these workflows. IoT hardware integration is outside this deployment.
 
-There are currently no scheduled jobs in `routes/console.php`; add Laravel's scheduler cron when scheduled tasks are introduced.
+The application has scheduled tasks (`routes/console.php`): request holds expire every hour, and the data of expired certificates and unused draft evidence photos are purged nightly at 02:00 and 02:30 (Asia/Manila). Without Laravel's scheduler, holds never lift and the retention purges never run. Run it every minute as the same user as the queue worker:
+
+```bash
+sudo crontab -u www-data -e
+```
+
+```cron
+* * * * * cd /var/www/anabu1g-smartbrgy && /usr/bin/php8.4 artisan schedule:run >> /dev/null 2>&1
+```
+
+Check the list with `sudo -u www-data /usr/bin/php8.4 artisan schedule:list`, and after the first full hour confirm in the Audit Log or with `schedule:list` that the hourly task ran.
 
 ## 8. Paglipat ng existing local data (optional)
 
