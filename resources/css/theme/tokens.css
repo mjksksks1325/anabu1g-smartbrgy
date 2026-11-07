@@ -1,0 +1,57 @@
+/*
+ * Anabu design tokens, shared by every Vite bundle (app.css and staff-ui.css).
+ *
+ * Brand: Anabu green, for the brand, primary actions, links and the current item.
+ * Neutrals: Flux draws surfaces, borders and text from the zinc scale. It is remapped to
+ * green-grey paper in light mode and neutral charcoal in dark mode, to match the legacy
+ * staff shell in public/css/staff-theme.css (--staff-*). Keep the two in step until that file is retired.
+ * Status colours (green, amber, red, sky) keep Tailwind's own palette so they never read as branding.
+ */
+
+@theme {
+    --color-brand-50: #f0f8f3;
+    --color-brand-100: #dcefe3;
+    --color-brand-200: #c2e6cf;
+    --color-brand-300: #9edbb5;
+    --color-brand-400: #6cc08d;
+    --color-brand-500: #3f9f66;
+    --color-brand-600: #1d7146;
+    --color-brand-700: #17663a;
+    --color-brand-800: #0f5130;
+    --color-brand-900: #0d4127;
+    --color-brand-950: #072416;
+
+    --color-zinc-50: #f6f8f7;
+    --color-zinc-100: #eef2ef;
+    --color-zinc-200: #d5ddd8;
+    --color-zinc-300: #b9c3bd;
+    --color-zinc-400: #8b958f;
+    --color-zinc-500: #66706a;
+    --color-zinc-600: #4f5e56;
+    --color-zinc-700: #30363c;
+    --color-zinc-800: #1c2024;
+    --color-zinc-900: #141619;
+    --color-zinc-950: #111315;
+
+    --color-accent: var(--color-brand-700);
+    --color-accent-content: var(--color-brand-700);
+    --color-accent-foreground: var(--color-white);
+}
+
+/* Flux's default error text (red-500) is under 4.5:1 on white; red-600 meets it. */
+[data-flux-error] {
+    color: var(--color-red-600);
+}
+
+.dark [data-flux-error] {
+    color: var(--color-red-400);
+}
+
+@layer theme {
+    /* Dark mode keeps a filled green for actions (white text, 6:1) and a light green for links and current items. */
+    .dark {
+        --color-accent: var(--color-brand-600);
+        --color-accent-content: #8fd4ab;
+        --color-accent-foreground: var(--color-white);
+    }
+}

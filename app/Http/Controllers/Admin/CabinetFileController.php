@@ -164,6 +164,8 @@ class CabinetFileController extends Controller
             $this->recordAudit($request, 'admin.cabinet-files.archived', $file->file_reference, $before, ['is_active' => false]);
         });
 
+        $request->session()->flash('status', 'Folder archived. Its movement history is retained.');
+
         return response()->json(['message' => 'Folder archived. Its movement history is retained.']);
     }
 

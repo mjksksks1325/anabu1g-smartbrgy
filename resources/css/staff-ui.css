@@ -1,0 +1,204 @@
+/*
+ * Staff UI bundle: Flux and Tailwind for the legacy staff layouts (the staff workspace page and
+ * layouts/admin-iot), alongside their hand-written stylesheets in public/css.
+ *
+ * Three rules keep the legacy pages unchanged:
+ * 1. No global preflight. Tailwind's reset would restyle every legacy heading, button and form control.
+ *    Migrated markup opts in with a [data-ui] wrapper, and the scoped reset below applies only inside it.
+ * 2. Utilities are unlayered and this sheet is linked after the legacy sheets. The legacy CSS is unlayered,
+ *    and unlayered rules always beat layered ones, so layered utilities would lose to rules like
+ *    `a { color: inherit }`. Unlayered, a utility class (0,1,0) beats legacy element selectors.
+ * 3. Only migrated views are scanned (plus Flux's own stubs), so the bundle never generates a utility
+ *    that collides with a class name in unmigrated markup.
+ *
+ * public/js/personnel-navigation.js enables this sheet only on those two layouts. The Flux settings pages
+ * use app.css instead.
+ */
+
+@layer theme, base, components;
+
+@import 'tailwindcss/theme.css' layer(theme);
+@import '../../vendor/livewire/flux/dist/flux.css';
+@import './theme/tokens.css';
+
+/* Migrated views only. Add a view here when it moves to Flux (and give its page @section('staff-ui')). */
+@source '../views/components/ui';
+@source '../views/admin/announcements';
+@source '../views/admin/resident-applications.blade.php';
+@source '../views/admin/document-requests';
+@source '../views/admin/additional-certificates';
+@source '../views/admin/iot';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Scoped reset: Tailwind's preflight, limited to [data-ui] islands. */
+[data-ui] {
+    line-height: 1.5;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.dark [data-ui] {
+    color-scheme: dark;
+}
+
+:where([data-ui]) :where(*, ::after, ::before, ::backdrop, ::file-selector-button) {
+    box-sizing: border-box;
+    padding: 0;
+    border: 0 solid;
+    border-color: var(--color-zinc-200);
+}
+
+/* Native <dialog> is centred by its user-agent margin, so it keeps it. */
+:where([data-ui]) :where(*:not(dialog), ::after, ::before, ::file-selector-button) {
+    margin: 0;
+}
+
+:where([data-ui]) :where(h1, h2, h3, h4, h5, h6) {
+    font-size: inherit;
+    font-weight: inherit;
+}
+
+:where([data-ui]) :where(a) {
+    color: inherit;
+    text-decoration: inherit;
+}
+
+:where([data-ui]) :where(b, strong) {
+    font-weight: bolder;
+}
+
+:where([data-ui]) :where(small) {
+    font-size: 80%;
+}
+
+:where([data-ui]) :where(table) {
+    text-indent: 0;
+    border-color: inherit;
+    border-collapse: collapse;
+}
+
+:where([data-ui]) :where(ol, ul, menu) {
+    list-style: none;
+}
+
+:where([data-ui]) :where(img, svg, video, canvas, audio, iframe, embed, object) {
+    display: block;
+    vertical-align: middle;
+}
+
+:where([data-ui]) :where(img, video) {
+    max-width: 100%;
+    height: auto;
+}
+
+:where([data-ui]) :where(button, input, select, optgroup, textarea, ::file-selector-button) {
+    font: inherit;
+    font-feature-settings: inherit;
+    font-variation-settings: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+    border-radius: 0;
+    background-color: transparent;
+    opacity: 1;
+}
+
+:where([data-ui]) :where(::placeholder) {
+    opacity: 1;
+    color: color-mix(in oklab, currentcolor 50%, transparent);
+}
+
+:where([data-ui]) :where(textarea) {
+    resize: vertical;
+}
+
+:where([data-ui]) :where(button, input:where([type='button'], [type='reset'], [type='submit']), ::file-selector-button) {
+    appearance: button;
+}
+
+:where([data-ui]) :where([hidden]:where(:not([hidden='until-found']))) {
+    display: none !important;
+}
+
+/*
+ * Data tables (x-ui.table). The legacy sheets style bare table/th/td, including dark-mode rules as specific as
+ * `html[data-theme=dark] th` (0,1,2). These rules are (0,2,1) and later, so they win inside migrated pages and
+ * nowhere else. Alignment is left to utilities on the cells.
+ */
+[data-ui] [data-ui-table] {
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+}
+
+[data-ui] [data-ui-table] :is(th, td) {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--color-zinc-200);
+    background: transparent;
+    color: var(--color-zinc-700);
+    text-align: start;
+    vertical-align: middle;
+}
+
+[data-ui] [data-ui-table] :is(th, td).text-end {
+    text-align: end;
+}
+
+[data-ui] [data-ui-table] th {
+    padding-block: 0.625rem;
+    background: var(--color-zinc-50);
+    color: var(--color-zinc-500);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+    white-space: nowrap;
+}
+
+[data-ui] [data-ui-table] tbody tr:last-child > td {
+    border-bottom: 0;
+}
+
+[data-ui] [data-ui-table] tbody tr:hover > td {
+    background: color-mix(in oklab, var(--color-zinc-100) 55%, transparent);
+}
+
+.dark [data-ui] [data-ui-table] :is(th, td) {
+    border-color: var(--color-zinc-700);
+    color: var(--color-zinc-300);
+}
+
+.dark [data-ui] [data-ui-table] th {
+    background: rgb(255 255 255 / 0.03);
+    color: var(--color-zinc-400);
+}
+
+.dark [data-ui] [data-ui-table] tbody tr:hover > td {
+    background: rgb(255 255 255 / 0.025);
+}
+
+/*
+ * Dialog backdrops. Flux sets a faint 10% black backdrop (same selector, so these later rules win). A dialog that opens over another one
+ * (a confirmation over a side panel, marked data-ui-stacked by public/js/staff-ui.js) dims the panel beneath it
+ * so the pending decision is unmistakable. Focus moved to a dialog itself shows no outline; its controls keep theirs.
+ */
+[data-flux-modal] > dialog::backdrop {
+    background: rgb(17 19 21 / 0.2);
+}
+
+[data-flux-modal] > dialog[data-ui-stacked]::backdrop {
+    background: rgb(17 19 21 / 0.5);
+}
+
+.dark [data-flux-modal] > dialog::backdrop {
+    background: rgb(0 0 0 / 0.45);
+}
+
+.dark [data-flux-modal] > dialog[data-ui-stacked]::backdrop {
+    background: rgb(0 0 0 / 0.65);
+}
+
+[data-flux-modal] > dialog[tabindex='-1']:focus {
+    outline: none;
+}
+
+@tailwind utilities source(none);

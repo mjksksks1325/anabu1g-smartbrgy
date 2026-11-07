@@ -141,6 +141,8 @@ async function refreshDashboardStats() {
     const response = await fetch('/staff/dashboard-summary', { credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload?.message || 'Hindi ma-load ang dashboard summary.');
+    // The staff member may have left the workspace (Livewire navigation) while this request was in flight.
+    if (!document.getElementById('dash-sub-pending')) return false;
     const summary = payload.summary || {};
     const set = (id, value) => { const element = document.getElementById(id); if (element) element.textContent = Number(value || 0).toLocaleString(); };
     set('dash-stat-residents', summary.active_residents);
@@ -691,12 +693,53 @@ const CERTIFICATE_TYPES = [
   { id: 'BBC',  label: 'Business Clearance',        icon: '', days: '3-5 days' },
 ];
 
-/** The server's fee entry for a certificate name; tolerant of case, spacing and "Job Seeker". */
-function certificateFee(type) {
+/** The entry for a certificate name in a server-provided map; tolerant of case, spacing and "Job Seeker". */
+function certificateEntry(entries, type) {
   const normalize = text => String(text || '').trim().toLowerCase().replace(/\s+/g, ' ').replace('job seeker', 'jobseeker');
-  const fees = window.CERTIFICATE_FEES || {};
-  const key = Object.keys(fees).find(name => normalize(name) === normalize(type));
-  return key ? fees[key] : null;
+  const key = Object.keys(entries || {}).find(name => normalize(name) === normalize(type));
+  return key ? entries[key] : null;
+}
+
+/** The server's fee entry for a certificate name. */
+function certificateFee(type) {
+  return certificateEntry(window.CERTIFICATE_FEES, type);
+}
+
+/**
+ * Details staff confirm when issuing a certificate whose template prints them (App\CertificateType::staffEnteredDetails(),
+ * passed as window.CERTIFICATE_STAFF_DETAILS): "residing_since" for Residency, "years_of_residency" for First Time Jobseeker.
+ */
+function certificateStaffDetails(type) {
+  return certificateEntry(window.CERTIFICATE_STAFF_DETAILS, type) || [];
+}
+
+/** Shows, and requires, only the detail fields the chosen certificate prints; hidden ones are cleared. */
+function syncCertificateDetailFields(container, type) {
+  const needed = certificateStaffDetails(type);
+  (container?.querySelectorAll('[data-certificate-detail]') || []).forEach(group => {
+    const shown = needed.includes(group.dataset.certificateDetail);
+    const input = group.querySelector('input');
+    group.hidden = !shown;
+    if (!input) return;
+    input.required = shown;
+    if (!shown) input.value = '';
+  });
+}
+
+/** The visible detail fields as the issue endpoints expect them. */
+function certificateDetailPayload(container) {
+  const payload = {};
+  (container?.querySelectorAll('[data-certificate-detail]:not([hidden]) input') || []).forEach(input => {
+    const detail = input.closest('[data-certificate-detail]').dataset.certificateDetail;
+    payload[detail] = input.value === '' ? null : (input.type === 'number' ? Number(input.value) : input.value);
+  });
+  return payload;
+}
+
+/** The first visible detail field that is empty or invalid, so staff can complete it before issuing. */
+function incompleteCertificateDetail(container) {
+  return [...(container?.querySelectorAll('[data-certificate-detail]:not([hidden]) input') || [])]
+    .find(input => input.value === '' || (typeof input.checkValidity === 'function' && !input.checkValidity())) || null;
 }
 
 /** "PHP 25.00", "Free", or for a fee the barangay has not confirmed "PHP 200.00 (not yet confirmed)". */
@@ -1264,7 +1307,7 @@ function legacyRenderSeniorList() {
     return;
   }
   container.innerHTML = `
-    <table class="tbl">
+    <table class="tbl" data-num-cols="3">
       <thead><tr><th>Resident ID</th><th>Pangalan</th><th>Edad</th><th>Kaarawan</th><th>Purok</th><th>Status</th><th>Senior Badge</th></tr></thead>
       <tbody>${seniors.map(r => {
         const age = calcAge(r.dob);
@@ -1484,13 +1527,145 @@ function printCert(code) {
   document.getElementById('print-resident-name').value = req.name || '';
   document.getElementById('print-purpose').value = req.purpose || '';
   document.getElementById('print-amount-paid').value = certificateFeeText(req.type);
+  const modal = document.getElementById('modal-print-release');
+  (modal?.querySelectorAll('[data-certificate-detail] input') || []).forEach(input => { input.value = ''; });
+  syncCertificateDetailFields(modal, req.type);
 
   openModal('modal-print-release');
+  void refreshReleaseReadiness();
+}
+
+/** The open Print & Release request's checklist, as the server last reported it. */
+let releaseReadiness = null;
+let releaseReadinessVersion = 0;
+
+/** Resident record fields the checklist can send staff to, by the server's detail key. */
+const RELEASE_RESIDENT_FIELDS = {
+  full_name: 'res-name', address: 'res-address', date_of_birth: 'res-dob', gender: 'res-gender',
+  civil_status: 'res-civil', nationality: 'res-nationality', photo: 'res-photo', is_verified_indigent: 'res-verified-indigent'
+};
+
+/**
+ * Ask the server what the selected request still needs before it can be issued: missing record details, staff
+ * verifications and disqualifications, each with where authorized staff complete it. Only informs: issuing checks
+ * every rule again, and nothing here verifies or fills in a detail.
+ */
+async function refreshReleaseReadiness() {
+  const requestId = document.getElementById('print-document-request-id')?.value;
+  const panel = document.getElementById('print-release-readiness');
+  if (!requestId || !panel) return;
+  const version = ++releaseReadinessVersion;
+  releaseReadiness = null;
+  panel.hidden = false;
+  panel.dataset.state = 'loading';
+  panel.innerHTML = `<p class="release-readiness-status" role="status">${escapeText(adminText('Checking what this certificate needs...'))}</p>`;
+  setReleaseSubmitBlocked(false);
+  try {
+    const response = await fetch(`/staff/document-requests/${encodeURIComponent(requestId)}/certificate-readiness`, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
+    const readiness = await response.json().catch(() => null);
+    if (version !== releaseReadinessVersion) return;
+    if (!response.ok || !readiness || !Array.isArray(readiness.items)) throw new Error(readiness?.message || 'Unable to check this request.');
+    renderReleaseReadiness(readiness);
+  } catch (error) {
+    if (version !== releaseReadinessVersion) return;
+    panel.dataset.state = 'error';
+    panel.innerHTML = `<p class="release-readiness-status">${escapeText(adminText('Could not check this request. Issue & Print still checks every requirement.'))}</p>`;
+  }
+}
+
+function setReleaseSubmitBlocked(blocked) {
+  const submit = document.getElementById('print-release-submit');
+  if (!submit) return;
+  submit.disabled = blocked;
+  if (blocked) submit.setAttribute('aria-describedby', 'print-release-readiness-title');
+  else submit.removeAttribute?.('aria-describedby');
+}
+
+function releaseReadinessAction(item) {
+  if (item.action === 'resident' || item.action === 'indigency') {
+    if (!hasStaffPermission('records.update')) return `<span class="release-readiness-note">${escapeText(adminText('Staff who may update Resident Records complete this.'))}</span>`;
+    const label = item.action === 'indigency' ? 'Verify in Resident Records' : 'Complete missing information';
+    return `<button type="button" class="btn btn-xs btn-primary release-readiness-action" data-readiness-field="${escapeText(item.field || '')}">${escapeText(adminText(label))}</button>`;
+  }
+  if (item.action === 'voters') {
+    if (!hasStaffPermission('voters.update') && !hasStaffPermission('voters.create')) return `<span class="release-readiness-note">${escapeText(adminText('Staff who manage voters complete this.'))}</span>`;
+    return `<a class="btn btn-xs release-readiness-action" href="/staff/voters" target="_blank" rel="noopener">${escapeText(adminText('Open Voters'))}</a>`;
+  }
+  return '';
+}
+
+function renderReleaseReadiness(readiness) {
+  const panel = document.getElementById('print-release-readiness');
+  if (!panel) return;
+  releaseReadiness = readiness;
+  // Redrawing removes the control that had focus (e.g. after returning from the resident form): keep focus in the
+  // dialog, on Issue & Print once everything is complete, otherwise on the first remaining action.
+  const focusWasLost = typeof document.activeElement === 'undefined' || !document.activeElement || document.activeElement === document.body || panel.contains?.(document.activeElement);
+  const dialogOnTop = modalStack.at(-1)?.id === 'modal-print-release';
+  if (readiness.ready) {
+    panel.dataset.state = 'ready';
+    panel.innerHTML = `<p class="release-readiness-status">${escapeText(adminText('Every required detail and verification is complete.'))}</p>`;
+    setReleaseSubmitBlocked(false);
+    if (focusWasLost && dialogOnTop) document.getElementById('print-release-submit')?.focus?.();
+    return;
+  }
+  const kinds = { missing: 'Missing information', verification: 'Needs staff verification', blocked: 'Cannot be issued' };
+  const items = readiness.items.map(item => {
+    const text = item.kind === 'missing'
+      ? `${escapeText(adminText('Missing from the resident record:'))} <strong>${escapeText(adminText(item.message))}</strong>`
+      : escapeText(item.message);
+    return `<li class="release-readiness-item" data-kind="${escapeText(item.kind)}"><span class="release-readiness-kind">${escapeText(adminText(kinds[item.kind] || kinds.blocked))}</span><span class="release-readiness-text">${text}</span>${releaseReadinessAction(item)}</li>`;
+  }).join('');
+  panel.dataset.state = 'blocked';
+  panel.innerHTML = `<h3 class="release-readiness-title" id="print-release-readiness-title">${escapeText(adminText('Complete before issuing'))}</h3>
+    <ul class="release-readiness-list">${items}</ul>
+    <div class="release-readiness-footer"><span>${escapeText(adminText('Issue & Print stays off until everything above is complete. The preview remains available.'))}</span><button type="button" class="btn btn-xs" data-readiness-recheck>${escapeText(adminText('Check again'))}</button></div>`;
+  panel.querySelectorAll('[data-readiness-field]').forEach(button => button.addEventListener('click', () => openResidentForCertificate(button.dataset.readinessField)));
+  panel.querySelector('[data-readiness-recheck]')?.addEventListener('click', () => refreshReleaseReadiness());
+  setReleaseSubmitBlocked(true);
+  if (focusWasLost && dialogOnTop) panel.querySelector('button, a')?.focus?.();
+}
+
+/**
+ * Open the request's resident in the Resident Records edit form on top of Print & Release, at the field to complete.
+ * The record is loaded from the Resident Records list, so the form starts from the saved record (household
+ * included); saving re-checks the request in the dialog underneath.
+ */
+async function openResidentForCertificate(field) {
+  return openResidentRecordForm(releaseReadiness?.resident, field);
+}
+
+/** Open a resident ({ id, resident_number }) in the Resident Records edit form at a field, from any workspace screen. */
+async function openResidentRecordForm(target, field) {
+  if (!target) return;
+  try {
+    const query = new URLSearchParams({ search: target.resident_number, per_page: '15' });
+    const response = await fetch(`/staff/residents?${query}`, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload?.message || 'Unable to open the resident record.');
+    const row = (payload.data || []).find(item => item.id === target.id);
+    if (!row) throw new Error('The resident record could not be found.');
+    const resident = residentFromApi(row);
+    const index = RESIDENTS.findIndex(item => item.databaseId === resident.databaseId);
+    if (index >= 0) RESIDENTS[index] = resident;
+    else RESIDENTS.push(resident);
+    fillResidentForm(resident);
+    openModal('modal-resident');
+    const control = document.getElementById(RELEASE_RESIDENT_FIELDS[field] || '');
+    if (control) {
+      control.scrollIntoView?.({ block: 'center' });
+      control.focus?.();
+    }
+  } catch (error) {
+    showToast(requestErrorMessage(error, 'Unable to open the resident record.'), 'red');
+  }
 }
 
 function updateManualCertificateFee() {
+  const type = document.getElementById('manual-certificate-type')?.value;
   const feeInput = document.getElementById('manual-certificate-fee');
-  if (feeInput) feeInput.value = certificateFeeText(document.getElementById('manual-certificate-type')?.value);
+  if (feeInput) feeInput.value = certificateFeeText(type);
+  syncCertificateDetailFields(document.getElementById('manual-certificate-form'), type);
 }
 
 async function issueManualCertificate(event) {
@@ -1519,7 +1694,8 @@ async function issueManualCertificate(event) {
         resident_id: Number(document.getElementById('manual-resident-id')?.value) || null,
         resident_name: document.getElementById('manual-resident-name')?.value.trim(),
         address: document.getElementById('manual-resident-address')?.value.trim() || null,
-        purpose: document.getElementById('manual-certificate-purpose')?.value.trim() || null
+        purpose: document.getElementById('manual-certificate-purpose')?.value.trim() || null,
+        ...certificateDetailPayload(document.getElementById('manual-certificate-form'))
       })
     });
     const data = await response.json();
@@ -1567,6 +1743,7 @@ function issuedCertificateFilters() {
   return {
     search: value('issued-search'),
     certificate_type: value('issued-type-filter'),
+    status: value('issued-status-filter'),
     source: value('issued-source-filter'),
     date_from: value('issued-date-from'),
     date_to: value('issued-date-to'),
@@ -1605,6 +1782,61 @@ function listErrorMarkup(error, retryCall, fallback) {
   return `<span>${escapeText(requestErrorMessage(error, fallback))}</span> <button type="button" class="btn btn-sm list-retry" onclick="${retryCall}">${escapeText(adminText('Try again'))}</button>`;
 }
 
+/*
+ * Shared list rendering for the workspace modules (records, voters, certificates, incidents, audit, users).
+ * Each helper escapes the text it receives, so callers pass raw values and never pre-built HTML, and badge
+ * tones come from a fixed list. Loading and empty messages are announced politely; load errors use an alert.
+ */
+const WORKSPACE_BADGE_TONES = ['green', 'red', 'amber', 'blue', 'purple', 'gray', 'senior'];
+
+/** A status badge. Unknown tones fall back to gray. */
+function workspaceBadge(label, tone = 'gray') {
+  const safeTone = WORKSPACE_BADGE_TONES.includes(tone) ? tone : 'gray';
+  return `<span class="badge badge-${safeTone}">${escapeText(label)}</span>`;
+}
+
+/** A loading or empty message for a list that is not a table. */
+function workspaceState(message, state = 'empty') {
+  const kind = state === 'loading' ? 'loading' : 'empty';
+  const busy = kind === 'loading' ? ' aria-busy="true"' : '';
+  return `<div class="resident-table-message workspace-state" data-state="${kind}"><span role="status"${busy}>${escapeText(adminText(message))}</span></div>`;
+}
+
+/** The same message as a full-width table row. */
+function workspaceStateRow(colspan, message, state = 'empty') {
+  const kind = state === 'loading' ? 'loading' : 'empty';
+  const busy = kind === 'loading' ? ' aria-busy="true"' : '';
+  return `<tr class="workspace-state-row"><td colspan="${Math.max(1, Number(colspan) || 1)}" class="resident-table-message workspace-state" data-state="${kind}"><span role="status"${busy}>${escapeText(adminText(message))}</span></td></tr>`;
+}
+
+/** A load error with a Try again button (retryCall is a trusted, fixed loader call, as in listErrorMarkup). */
+function workspaceErrorRow(colspan, error, retryCall, fallback) {
+  return `<tr class="workspace-state-row"><td colspan="${Math.max(1, Number(colspan) || 1)}" class="resident-table-message resident-table-error workspace-state" data-state="error"><span role="alert">${listErrorMarkup(error, retryCall, fallback)}</span></td></tr>`;
+}
+
+/** workspaceErrorRow for a list that is not a table. */
+function workspaceError(error, retryCall, fallback) {
+  return `<div class="resident-table-message resident-table-error workspace-state" data-state="error"><span role="alert">${listErrorMarkup(error, retryCall, fallback)}</span></div>`;
+}
+
+/** Document request status badge; the same labels and tones as the x-staff.request-status Blade component. */
+function documentRequestStatusBadge(status) {
+  const [label, tone] = ({
+    pending: ['Pending', 'amber'],
+    processing: ['Processing', 'blue'],
+    approved: ['Approved', 'green'],
+    ready_for_release: ['Ready for release', 'green'],
+    released: ['Released', 'gray'],
+    rejected: ['Rejected', 'red'],
+  })[status] || [String(status || '').replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase()), 'gray'];
+  return workspaceBadge(label, tone).replace('<span ', `<span data-request-status="${escapeText(status)}" `);
+}
+
+/** Number of header cells in a list's table, so state rows always span the visible columns. */
+function workspaceColumnCount(tbody, fallback) {
+  return tbody?.closest?.('table')?.querySelectorAll?.('thead th')?.length || fallback;
+}
+
 async function refreshIssuedCertificates(page = issuedCertificatesPage) {
   if (!hasStaffPermission('documents.view')) return;
   const tbody = document.getElementById('issued-certificates-tbody');
@@ -1628,7 +1860,7 @@ async function refreshIssuedCertificates(page = issuedCertificatesPage) {
     renderIssuedCertificates(payload.data, payload);
   } catch (error) {
     if (version !== issuedCertificatesRequestVersion) return;
-    tbody.innerHTML = `<tr><td colspan="8" class="resident-table-message resident-table-error">${listErrorMarkup(error, 'refreshIssuedCertificates()', 'Unable to load issued certificates.')}</td></tr>`;
+    tbody.innerHTML = workspaceErrorRow(8, error, 'refreshIssuedCertificates()', 'Unable to load issued certificates.');
   }
 }
 
@@ -1676,7 +1908,7 @@ function renderIssuedCertificates(certificates, meta = null) {
 
   if (!Array.isArray(certificates) || certificates.length === 0) {
     const filtered = Object.values(issuedCertificateFilters()).some(Boolean);
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--text-muted);">${filtered ? 'No issued certificates match these filters.' : 'No certificates have been issued yet.'}</td></tr>`;
+    tbody.innerHTML = workspaceStateRow(8, filtered ? 'No issued certificates match these filters.' : 'No certificates have been issued yet.');
     return;
   }
 
@@ -1687,19 +1919,19 @@ function renderIssuedCertificates(certificates, meta = null) {
     const fee = Number(certificate.amount_paid) > 0
       ? `PHP ${Number(certificate.amount_paid).toFixed(2)}`
       : 'Free';
-    const source =String(certificate.source || 'onsite').toLowerCase();
-    const sourceBadgeClass = source === 'online' ? 'badge-purple' : 'badge-gray';
+    const online = String(certificate.source || 'onsite').toLowerCase() === 'online';
+    const revoked = Boolean(certificate.revoked_at);
     const row = document.createElement('tr');
 
     row.innerHTML = `
-      <td><span style="font-family:var(--font-mono);color:var(--green-500);">${escapeText(certificate.certificate_number)}</span></td>
-      <td><strong style="color:var(--text-primary);">${escapeText(certificate.resident_name)}</strong></td>
-      <td>${escapeText(certificate.certificate_type)}</td>
-      <td><span class="badge ${sourceBadgeClass}">${escapeText(source.toUpperCase())}</span></td>
+      <td><span class="workspace-reference" data-no-admin-translate>${escapeText(certificate.certificate_number)}</span></td>
+      <td><strong class="workspace-primary-text" data-no-admin-translate>${escapeText(certificate.resident_name)}</strong></td>
+      <td>${escapeText(certificate.certificate_type)}${revoked ? ` ${workspaceBadge('Revoked', 'red')}` : (certificate.status === 'expired' ? ` ${workspaceBadge('Expired', 'gray')}` : '')}</td>
+      <td>${workspaceBadge(online ? 'Online' : 'Walk-in', online ? 'purple' : 'gray')}</td>
       <td>${escapeText(fee)}</td>
       <td class="issued-date">${escapeText(issuedDate)}<small>${escapeText(issuedTime)}</small></td>
-      <td>${escapeText(certificate.issued_by || 'Barangay Staff')}</td>
-      <td><div class="resident-actions"><button type="button" data-action-permission="documents.print" class="btn btn-xs issued-reprint">Reprint</button><button type="button" class="btn btn-xs issued-verify">Verify</button></div></td>`;
+      <td>${certificate.issued_by ? `<span data-no-admin-translate>${escapeText(certificate.issued_by)}</span>` : escapeText('Barangay Staff')}</td>
+      <td><div class="resident-actions">${revoked ? '' : '<button type="button" data-action-permission="documents.print" class="btn btn-xs issued-reprint">Reprint</button>'}<button type="button" class="btn btn-xs issued-verify">Verify</button>${revoked ? '' : '<button type="button" data-action-permission="documents.revoke" class="btn btn-xs issued-revoke">Revoke</button>'}</div></td>`;
 
     row.querySelector('.issued-reprint')?.addEventListener('click', () => {
       window.open(certificate.print_url, '_blank');
@@ -1707,9 +1939,65 @@ function renderIssuedCertificates(certificates, meta = null) {
     row.querySelector('.issued-verify')?.addEventListener('click', () => {
       window.open(certificate.verification_url, '_blank');
     });
+    row.querySelector('.issued-revoke')?.addEventListener('click', () => openRevokeCertificate(certificate));
     applyStaffActionVisibility(row);
     tbody.appendChild(row);
   });
+}
+
+let revokeCertificateTarget = null;
+
+/** Opens the reason step for revoking an issued certificate (documents.revoke). */
+function openRevokeCertificate(certificate) {
+  revokeCertificateTarget = certificate;
+  const number = document.getElementById('revoke-certificate-number');
+  if (number) number.textContent = certificate.certificate_number || '';
+  const reason = document.getElementById('revoke-certificate-reason');
+  if (reason) reason.value = '';
+  const error = document.getElementById('revoke-certificate-reason-error');
+  if (error) { error.hidden = true; error.textContent = ''; }
+  openModal('modal-revoke-certificate');
+}
+
+/**
+ * Revokes the chosen certificate after a reason of at least 10 characters and the active Barangay Captain or Super
+ * Admin password. The certificate stays on record; the history list then marks it Revoked.
+ */
+async function submitRevokeCertificate(event) {
+  event?.preventDefault?.();
+  const certificate = revokeCertificateTarget;
+  if (!certificate) return;
+  const reasonInput = document.getElementById('revoke-certificate-reason');
+  const error = document.getElementById('revoke-certificate-reason-error');
+  const reason = String(reasonInput?.value || '').trim();
+  if (reason.length < 10) {
+    if (error) { error.textContent = adminText('Give the reason in at least 10 characters.'); error.hidden = false; }
+    reasonInput?.focus?.();
+    return;
+  }
+  if (error) { error.hidden = true; error.textContent = ''; }
+
+  const supervisorPassword = await confirmDestructiveAction(`Revoke ${certificate.certificate_number}? This cannot be undone.`, { title: 'Revoke certificate', confirmLabel: 'Confirm revoke', danger: true });
+  if (!supervisorPassword) return;
+
+  try {
+    const response = await fetch(`/staff/issued-certificates/${encodeURIComponent(certificate.id)}/revoke`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', ...csrfRequestHeaders() },
+      body: JSON.stringify({ reason, super_admin_password: supervisorPassword }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload?.errors ? Object.values(payload.errors).flat()[0] : (payload?.message || 'Unable to revoke the certificate.'));
+    }
+    revokeCertificateTarget = null;
+    closeModal('modal-revoke-certificate');
+    showToast(payload.message || 'Certificate revoked.', 'green');
+    await refreshIssuedCertificates();
+  } catch (requestError) {
+    showToast(requestError.message || 'Unable to revoke the certificate.', 'red');
+  }
 }
 
 function legacyRenderAuditLog() {
@@ -2725,7 +3013,9 @@ let certBoardSearchTimer = null;
 function boardRequestFromServer(r) {
   let uiStatus = 'Pending';
   if (r.status === 'processing') uiStatus = 'In Progress';
-  if (r.status === 'approved' || r.status === 'ready_for_release') uiStatus = 'Ready to Print';
+  // An approved request is not issuable until it is marked ready for release, so it stays in Processing.
+  if (r.status === 'approved') uiStatus = 'Approved';
+  if (r.status === 'ready_for_release') uiStatus = 'Ready to Print';
   if (r.status === 'released') uiStatus = 'Completed';
 
   return {
@@ -2744,7 +3034,10 @@ function boardRequestFromServer(r) {
     attachment: r.attachment_path,
     remarks: r.remarks,
     hidden: false,
-    laravelStatus: r.status
+    laravelStatus: r.status,
+    issuedCertificate: r.issued_certificate
+      ? { id: r.issued_certificate.id, number: r.issued_certificate.certificate_number, revoked: Boolean(r.issued_certificate.revoked_at) }
+      : null
   };
 }
 
@@ -2805,10 +3098,25 @@ function showMoreCertLane(laneId) {
   return loadCertBoard();
 }
 
+/** One delegated click handler per board element: cards are re-rendered on every poll, the listener is not. */
+function bindCertBoardActions(board) {
+  if (!board || board.dataset.certActionsBound === 'true') return;
+  board.dataset.certActionsBound = 'true';
+  board.addEventListener('click', event => {
+    const control = event.target.closest?.('[data-cert-action]');
+    if (!control || !board.contains(control)) return;
+    const { certAction, code } = control.dataset;
+    if (certAction === 'advance') void advanceCertStatus(code, control.dataset.next, event);
+    else if (certAction === 'reject') openRejectRequest(Number(control.dataset.requestId), code, event);
+    else if (certAction === 'view') openViewCertReq(code);
+  });
+}
+
 function renderCertKanban() {
   const board = document.getElementById('cert-kanban-board');
 
   if (!board) return;
+  bindCertBoardActions(board);
 
   const laneScrollPositions = {};
 
@@ -2872,19 +3180,10 @@ function renderCertKanban() {
       <div class="cert-lane-header">
 
         <span class="cert-lane-title" style="--lane-color:${lane.color};">
-          ${lane.icon} ${lane.label}
+          ${escapeText(lane.label)}
         </span>
 
-        <span
-          class="badge"
-          style="
-            background:rgba(255,255,255,0.06);
-            color:var(--text-muted);
-            border-color:var(--border);
-          "
-        >
-          ${laneTotal}
-        </span>
+        <span class="badge badge-gray cert-lane-count">${Number(laneTotal) || 0}</span>
 
       </div>
 
@@ -2898,57 +3197,29 @@ function renderCertKanban() {
         `
 
         : items.map(r => {
-
-            const viaBadge = `
-              <span
-                class="badge ${
-                  r.via === 'Online'
-                    ? 'badge-purple'
-                    : 'badge-gray'
-                }"
-                style="font-size:9.5px;"
-              >
-                ${r.via}
-              </span>
-            `;
-
+            const code = escapeText(r.code);
+            const viaBadge = workspaceBadge(r.via === 'Online' ? 'Online' : 'Walk-in', r.via === 'Online' ? 'purple' : 'gray');
             const proceedBtn = lane.next && hasStaffPermission(lane.id === 'ready' ? 'documents.issue' : 'documents.process')
-
-              ? `
-                <button
-                  class="btn btn-xs ${lane.nextClass} cert-card-action"
-                  onclick="
-                    advanceCertStatus(
-                      '${r.code}',
-                      '${lane.next}',
-                      event
-                    )
-                  "
-                >
-                  ${lane.nextLabel}
-                </button>
-              `
-
+              ? `<button type="button" class="btn btn-xs ${lane.nextClass} cert-card-action" data-cert-action="advance" data-code="${code}" data-next="${escapeText(lane.next)}">${escapeText(lane.nextLabel)}</button>`
               : '';
-
             const rejectBtn = hasStaffPermission('documents.process') && lane.id !== 'completed' && r.via === 'Online'
-              ? `<button type="button" data-action-permission="documents.process" class="btn btn-xs btn-danger-outline cert-card-action" onclick="openRejectRequest(${Number(r.id)}, '${r.code}', event)">Reject</button>`
+              ? `<button type="button" data-action-permission="documents.process" class="btn btn-xs btn-danger-outline cert-card-action" data-cert-action="reject" data-code="${code}" data-request-id="${Number(r.id)}">Reject</button>`
               : '';
             // The requester's name opens the details (it stretches over the card); a separate View button is only
             // shown when the card has no other action, so each card needs at most one row of buttons.
             const viewBtn = proceedBtn || rejectBtn
               ? ''
-              : `<button type="button" class="btn btn-xs cert-card-action cert-card-view" onclick="openViewCertReq('${r.code}')">View</button>`;
+              : `<button type="button" class="btn btn-xs cert-card-action cert-card-view" data-cert-action="view" data-code="${code}">View</button>`;
             const actionCount = [proceedBtn, rejectBtn, viewBtn].filter(Boolean).length;
             const btnRow = `<div class="cert-card-actions" data-action-count="${actionCount}">${proceedBtn}${rejectBtn}${viewBtn}</div>`;
 
             return `
               <div class="cert-card">
                 <div class="cert-card-heading">
-                  <button type="button" class="cert-card-name cert-card-open" onclick="openViewCertReq('${r.code}')" aria-label="${escapeText(adminText('View request :code for :name', { code: r.code, name: r.name }))}">${escapeText(r.name)}</button>
+                  <button type="button" class="cert-card-name cert-card-open" data-cert-action="view" data-code="${code}" data-no-admin-translate aria-label="${escapeText(adminText('View request :code for :name', { code: r.code, name: r.name }))}">${escapeText(r.name)}</button>
                 </div>
                 <div class="cert-card-type">${escapeText(r.type)}</div>
-                <div class="cert-card-meta"><span class="cert-card-code">${escapeText(r.code)}</span>${viaBadge}</div>
+                <div class="cert-card-meta"><span class="cert-card-code" data-no-admin-translate>${code}</span>${viaBadge}</div>
                 ${btnRow}
               </div>
             `;
@@ -3033,6 +3304,7 @@ function openViewCertReq(code) {
     badgeEl.textContent = r.status;
     badgeEl.style.cssText = `font-size:11px;font-weight:700;padding:2px 10px;border-radius:999px;background:rgba(255,255,255,0.06);border:1px solid var(--border);color:${statusColors[r.status]||'var(--text-muted)'}`;
   }
+  renderRequestCertificate(r);
   const attWrap = document.getElementById('vreq-attachment-wrap');
   const attEl   = document.getElementById('vreq-attachment');
   if (attWrap && attEl && r.attachment) {
@@ -3047,10 +3319,32 @@ function openViewCertReq(code) {
   openModal('modal-view-certreq');
 }
 
+/**
+ * The request's issued certificate in its details: the number and a reprint for staff who may print, or, for a request
+ * marked released without one, why there is nothing to reprint and how to issue it.
+ */
+function renderRequestCertificate(r) {
+  const wrap = document.getElementById('vreq-certificate-wrap');
+  const target = document.getElementById('vreq-certificate');
+  if (!wrap || !target) return;
+  const certificate = r.issuedCertificate;
+  wrap.hidden = !certificate && r.laravelStatus !== 'released';
+  if (!certificate) {
+    target.innerHTML = r.laravelStatus === 'released'
+      ? `${escapeText(adminText('No certificate was issued for this request, so there is nothing to reprint. To issue one, set the request back to Ready for Release on its details page, then use Print & Release.'))} <a href="/staff/document-requests/${Number(r.id)}">${escapeText(adminText('Open request details'))}</a>`
+      : '';
+    return;
+  }
+  const number = `<span class="workspace-reference" data-no-admin-translate>${escapeText(certificate.number)}</span>`;
+  target.innerHTML = certificate.revoked
+    ? `${number} ${workspaceBadge('Revoked', 'red')}`
+    : `${number} ${hasStaffPermission('documents.print') ? `<a class="btn btn-xs" href="/staff/issued-certificates/${Number(certificate.id)}/print" target="_blank" rel="noopener">${escapeText(adminText('Reprint'))}</a>` : ''}`;
+}
+
 function renderCertTypesList() {
   const container = document.getElementById('cert-types-list');
   if (!container) return;
-  container.innerHTML = `<table class="tbl cert-fees-table">
+  container.innerHTML = `<table class="tbl cert-fees-table" data-num-cols="3">
     <thead><tr><th>Document</th><th>Processing</th><th>Fee</th></tr></thead>
     <tbody>${CERTIFICATE_TYPES.map(ct => `<tr><td><strong>${escapeText(ct.label)}</strong></td><td>${escapeText(ct.days)}</td><td class="cert-fee">${escapeText(certificateFeeText(ct.label))}</td></tr>`).join('')}</tbody>
   </table>`;
@@ -3091,7 +3385,7 @@ function renderAuditLog() {
   container.innerHTML = '';
   renderPager('audit-pagination', { page: auditCurrentPage, lastPage: pageCount, total: logs.length, perPage: AUDIT_PAGE_SIZE, noun: ['event', 'events'], loader: 'goToAuditPage' });
   if (logs.length === 0) {
-    container.innerHTML = `<div class="resident-table-message">${LIVE_AUDIT_LOGS.length ? 'No events match the current filter.' : 'No audit events recorded yet.'}</div>`;
+    container.innerHTML = workspaceState(LIVE_AUDIT_LOGS.length ? 'No events match the current filter.' : 'No audit events recorded yet.');
     return;
   }
   const pageLogs = logs.slice((auditCurrentPage - 1) * AUDIT_PAGE_SIZE, auditCurrentPage * AUDIT_PAGE_SIZE);
@@ -3112,7 +3406,7 @@ function renderAuditLog() {
         <div class="audit-action">${escapeText(log.action)}</div>
         <div class="audit-detail">${escapeText(log.detail)}</div>
       </div>
-      <div class="audit-log-user">${escapeText(log.user || 'System')}</div>`;
+      <div class="audit-log-user"${log.user ? ' data-no-admin-translate' : ''}>${escapeText(log.user || 'System')}</div>`;
     row.addEventListener('click', () => openAuditDetail(log));
     row.addEventListener('keydown', event => {
       if (event.key === 'Enter' || event.key === ' ') {
@@ -3221,7 +3515,7 @@ async function reloadAuditLog() {
     LIVE_AUDIT_LOGS.splice(0, LIVE_AUDIT_LOGS.length, ...payload.events);
     renderAuditLog();
   } catch (error) {
-    document.getElementById('audit-log-list').innerHTML = `<div class="resident-table-message resident-table-error">${listErrorMarkup(error, 'reloadAuditLog()')}</div>`;
+    document.getElementById('audit-log-list').innerHTML = workspaceError(error, 'reloadAuditLog()');
     showToast(error.message, 'red');
   }
 }
@@ -3268,7 +3562,7 @@ async function reloadUsers() {
     USERS.splice(0, USERS.length, ...payload.users);
     renderUsers();
   } catch (error) {
-    if (container) container.innerHTML = `<div class="card civic-empty resident-table-error">${listErrorMarkup(error, 'reloadUsers()')}</div>`;
+    if (container) container.innerHTML = `<div class="card">${workspaceError(error, 'reloadUsers()')}</div>`;
     markStatsUnavailable(['usr-total', 'usr-active', 'usr-suspended', 'usr-no-2fa']);
   }
 }
@@ -3315,12 +3609,12 @@ function renderUsers() {
     <article class="user-card ${user.is_active ? '' : 'suspended'}" data-user-card-id="${id}">
       <div class="user-avatar-lg user-avatar-${escapeText(staffRoleKey(user))}" aria-hidden="true">${escapeText(initials(user.name))}</div>
       <div class="user-info">
-        <h3 class="user-name"><button type="button" class="user-card-open" onclick="openUserDetails(${id})" aria-label="${escapeText(adminText('View account details for :name', { name: user.name }))}">${name}</button>${isSelf ? `<span class="user-self-tag">${escapeText(adminText('You'))}</span>` : ''}</h3>
-        <div class="user-role-tag">${escapeText(user.email)}</div>
+        <h3 class="user-name"><button type="button" class="user-card-open" onclick="openUserDetails(${id})" aria-label="${escapeText(adminText('View account details for :name', { name: user.name }))}"><span data-no-admin-translate>${name}</span></button>${isSelf ? `<span class="user-self-tag">${escapeText(adminText('You'))}</span>` : ''}</h3>
+        <div class="user-role-tag" data-no-admin-translate>${escapeText(user.email)}</div>
         <div class="user-badges">
           <span class="badge user-role-badge user-role-${escapeText(staffRoleKey(user))}">${escapeText(adminText(staffRoleLabel(user)))}</span>
-          <span class="badge ${user.is_active ? 'badge-green' : 'badge-red'}">${user.is_active ? 'Active' : 'Suspended'}</span>
-          <span class="badge ${user.two_factor_confirmed_at ? 'badge-gray' : 'badge-amber'}">${user.two_factor_confirmed_at ? '2FA enabled' : '2FA not configured'}</span>
+          ${workspaceBadge(user.is_active ? 'Active' : 'Suspended', user.is_active ? 'green' : 'red')}
+          ${workspaceBadge(user.two_factor_confirmed_at ? '2FA enabled' : '2FA not configured', user.two_factor_confirmed_at ? 'gray' : 'amber')}
         </div>
       </div>
       <div class="user-actions">
@@ -3328,7 +3622,7 @@ function renderUsers() {
         ${canChangeAccess ? `<button type="button" class="btn ${user.is_active ? 'user-action-suspend' : 'user-action-activate'}" onclick="event.stopPropagation();setUserActive(${id}, ${!user.is_active})" aria-label="${escapeText(adminText(user.is_active ? 'Suspend :name' : 'Activate :name', { name: user.name }))}">${user.is_active ? 'Suspend' : 'Activate'}</button><button type="button" class="btn btn-danger" onclick="event.stopPropagation();deleteUser(${id})" aria-label="${escapeText(adminText('Delete account of :name', { name: user.name }))}">Delete</button>` : ''}
       </div>
     </article>`;
-  }).join('') : '<div class="card civic-empty">No accounts match your filters.</div>';
+  }).join('') : `<div class="card">${workspaceState('No accounts match your filters.')}</div>`;
 }
 
 /** User KPI cards count every personnel account, so search and role are cleared before the status filter is applied. */
@@ -3412,6 +3706,37 @@ function toggleUserCabinetFields() {
   rpiId.required = enabled;
 }
 
+/**
+ * Password guidance on the user account form. Only the length is enforced (SaveUserRequest: 12 or more characters);
+ * the other lines are recommendations and never block saving. The password value itself is only measured here,
+ * never logged or stored.
+ */
+/** The staff password policy (Password::defaults() in AppServiceProvider), using Laravel's own patterns. */
+const PASSWORD_RULES = {
+  length: value => [...value].length >= 12,
+  uppercase: value => /\p{Lu}/u.test(value),
+  lowercase: value => /\p{Ll}/u.test(value),
+  number: value => /\p{N}/u.test(value),
+  symbol: value => /\p{Z}|\p{S}|\p{P}/u.test(value),
+};
+
+function updatePasswordGuidance() {
+  const value = document.getElementById('adduser-password')?.value || '';
+  document.querySelectorAll('#adduser-password-guidance [data-password-rule]').forEach(item => {
+    const met = value !== '' && Boolean(PASSWORD_RULES[item.dataset.passwordRule]?.(value));
+    item.classList.toggle('is-met', met);
+    item.dataset.state = value === '' ? 'idle' : (met ? 'met' : 'unmet');
+  });
+}
+
+/** New accounts need a password; an edit keeps the current one unless a new one is typed. */
+function setPasswordGuidanceMode(editing) {
+  document.getElementById('adduser-pass-label').textContent = adminText(editing
+    ? 'Leave blank to keep the current password. A new password must meet every requirement below.'
+    : 'Required. The password must meet every requirement below.');
+  updatePasswordGuidance();
+}
+
 function openAddUser() {
   ['adduser-edit-id', 'adduser-name', 'adduser-email', 'adduser-password', 'adduser-rpi-id']
     .forEach(id => document.getElementById(id).value = '');
@@ -3420,6 +3745,7 @@ function openAddUser() {
   document.getElementById('adduser-status').value = 'active';
   lockUserCredentials(null);
   document.getElementById('adduser-password').required = true;
+  setPasswordGuidanceMode(false);
   showUserResetLink(null);
 
   document.getElementById('adduser-cabinet-access').checked = false;
@@ -3475,6 +3801,8 @@ function lockUserCredentials(user) {
   if (password) { password.disabled = locked; if (locked) password.value = ''; }
   const note = document.getElementById('adduser-credential-lock');
   if (note) note.hidden = !locked;
+  // A locked password field has nothing to type, so its guidance is hidden too.
+  ['adduser-pass-label', 'adduser-password-guidance'].forEach(id => { const element = document.getElementById(id); if (element) element.hidden = locked; });
 }
 
 function openEditUser(id) {
@@ -3500,6 +3828,7 @@ function openEditUser(id) {
   document.getElementById('adduser-status').value = user.is_active ? 'active' : 'suspended';
   document.getElementById('adduser-password').value = '';
   document.getElementById('adduser-password').required = false;
+  setPasswordGuidanceMode(true);
   lockUserCredentials(user);
   showUserResetLink(user);
 
@@ -3799,7 +4128,7 @@ function renderSeniorList() {
   const pageSeniors = seniors.slice((seniorCurrentPage - 1) * SENIOR_PAGE_SIZE, seniorCurrentPage * SENIOR_PAGE_SIZE);
   renderPager('senior-citizens-pagination', { page: seniorCurrentPage, lastPage, total: seniors.length, perPage: SENIOR_PAGE_SIZE, noun: ['senior citizen', 'senior citizens'], loader: 'changeSeniorPage' });
   container.innerHTML = `
-    <table class="tbl">
+    <table class="tbl" data-num-cols="3">
       <thead><tr><th>Resident ID</th><th>Full Name</th><th>Age</th><th>Date of Birth</th><th>Zone / Purok</th><th>Status</th><th>Classification</th></tr></thead>
       <tbody>${pageSeniors.map(r => {
         const age = Number(r.age ?? calcAge(r.dob));
@@ -3972,7 +4301,7 @@ async function loadIncidents(page = 1) {
   const tbody = document.getElementById('incidents-tbody');
   if (!tbody) return;
   const version = ++incidentLoadVersion;
-  tbody.innerHTML = '<tr><td colspan="8" class="resident-table-message">Loading incident reports...</td></tr>';
+  tbody.innerHTML = workspaceStateRow(8, 'Loading incident reports...', 'loading');
   const query = new URLSearchParams({ page: String(page), per_page: '15' });
   const search = document.getElementById('incident-search')?.value.trim();
   const status = document.getElementById('incident-status-filter')?.value;
@@ -3998,7 +4327,7 @@ async function loadIncidents(page = 1) {
     updateIncidentSummary(payload.summary || {});
   } catch (error) {
     if (version !== incidentLoadVersion) return;
-    tbody.innerHTML = `<tr><td colspan="8" class="resident-table-message resident-table-error">${listErrorMarkup(error, 'loadIncidents(incidentCurrentPage)')}</td></tr>`;
+    tbody.innerHTML = workspaceErrorRow(8, error, 'loadIncidents(incidentCurrentPage)');
     markStatsUnavailable(['inc-stat-pending', 'inc-stat-resolved', 'inc-stat-high']);
   }
 }
@@ -4009,13 +4338,14 @@ function renderIncidents(total = 0) {
   tbody.innerHTML = '';
 
   if (INCIDENTS.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" class="resident-table-message">Walang nakitang incident report.</td></tr>';
+    tbody.innerHTML = workspaceStateRow(8, 'Walang nakitang incident report.');
   }
 
   INCIDENTS.forEach(incident => {
-    const severityClass = incident.severity === 'high' ? 'badge-red' : incident.severity === 'medium' ? 'badge-amber' : 'badge-gray';
+    const incidentId = Number(incident.id);
+    const severityTone = incident.severity === 'high' ? 'red' : incident.severity === 'medium' ? 'amber' : 'gray';
     const archiveButton = incident.can_archive
-      ? `<button type="button" data-action-permission="incidents.archive|vawc.archive" class="btn btn-xs btn-danger-outline" onclick="archiveIncident(${incident.id})">Archive</button>`
+      ? `<button type="button" data-action-permission="incidents.archive|vawc.archive" class="btn btn-xs btn-danger-outline" onclick="archiveIncident(${incidentId})">Archive</button>`
       : '';
     // "Nov 2, 2026 3:30 PM" reads better as a date line and a time line than wrapped word by word.
     const [, occurredDate = incident.occurred_at_display, occurredTime = ''] = String(incident.occurred_at_display || '').match(/^(\w{3} \d{1,2}, \d{4}) (.+)$/) || [];
@@ -4026,22 +4356,22 @@ function renderIncidents(total = 0) {
     row.innerHTML = `
       <td class="incident-cell-main"><strong>${escapeText(incident.incident_type)}</strong><span class="resident-number incident-ref" title="${escapeText(incident.incident_number)}">${incidentReferenceMarkup(incident.incident_number)}</span></td>
       <td class="incident-cell-date"><span>${escapeText(occurredDate)}</span><small>${escapeText(occurredTime)}</small></td>
-      <td>${escapeText(incident.location)}</td>
-      <td>${escapeText(incident.complainant_name)}</td>
-      <td>${incident.respondent_name ? escapeText(incident.respondent_name) : '—'}</td>
-      <td><span class="badge ${severityClass}">${escapeText(incident.severity_label)}</span></td>
-      <td><span class="badge ${incidentStatusBadge(incident.status)}">${escapeText(incident.status_label)}</span></td>
+      <td data-no-admin-translate>${escapeText(incident.location)}</td>
+      <td data-no-admin-translate>${escapeText(incident.complainant_name)}</td>
+      <td${incident.respondent_name ? ' data-no-admin-translate' : ''}>${incident.respondent_name ? escapeText(incident.respondent_name) : '—'}</td>
+      <td>${workspaceBadge(incident.severity_label, severityTone)}</td>
+      <td>${workspaceBadge(incident.status_label, incidentStatusBadge(incident.status).replace('badge-', ''))}</td>
       <td><div class="resident-actions">
-        <button type="button" class="btn btn-xs" onclick="openViewIncident(${incident.id})">View</button>
-        ${incident.can_update ? `<button type="button" data-action-permission="incidents.update|vawc.update" class="btn btn-xs" onclick="openEditIncident(${incident.id})">Edit</button>` : ''}
+        <button type="button" class="btn btn-xs" onclick="openViewIncident(${incidentId})">View</button>
+        ${incident.can_update ? `<button type="button" data-action-permission="incidents.update|vawc.update" class="btn btn-xs" onclick="openEditIncident(${incidentId})">Edit</button>` : ''}
         ${archiveButton}
       </div></td>`;
     // The whole row opens the record; its own buttons keep their actions.
-    row.addEventListener('click', event => { if (!event.target.closest('button, a')) openViewIncident(incident.id); });
+    row.addEventListener('click', event => { if (!event.target.closest('button, a')) openViewIncident(incidentId); });
     row.addEventListener('keydown', event => {
       if (event.target === row && (event.key === 'Enter' || event.key === ' ')) {
         event.preventDefault();
-        openViewIncident(incident.id);
+        openViewIncident(incidentId);
       }
     });
     applyStaffActionVisibility(row);
@@ -4318,7 +4648,7 @@ async function loadRequestRecords(page = 1) {
   const container = document.getElementById('rr-resident-list');
   if (!container) return;
   const version = ++requestRecordLoadVersion;
-  if (requestRecordResidents.length === 0) container.innerHTML = '<div class="card rr-list-card"><div class="resident-table-message">Loading request records...</div></div>';
+  if (requestRecordResidents.length === 0) container.innerHTML = `<div class="card rr-list-card">${workspaceState('Loading request records...', 'loading')}</div>`;
   const query = new URLSearchParams({ page: String(page), per_page: '15' });
   if (rrCurrentFilter.trim()) query.set('search', rrCurrentFilter.trim());
   if (rrCurrentStatusFilter) query.set('eligibility', rrCurrentStatusFilter);
@@ -4342,7 +4672,7 @@ async function loadRequestRecords(page = 1) {
     set('rr-blocked', summary.blocked);
     set('rr-review', summary.needs_review);
   } catch (error) {
-    if (version === requestRecordLoadVersion) container.innerHTML = `<div class="card rr-list-card"><div class="resident-table-message resident-table-error">${listErrorMarkup(error, 'loadRequestRecords(rrCurrentPage || 1)')}</div></div>`;
+    if (version === requestRecordLoadVersion) container.innerHTML = `<div class="card rr-list-card">${workspaceError(error, 'loadRequestRecords(rrCurrentPage || 1)')}</div>`;
   }
 }
 
@@ -4351,22 +4681,21 @@ function renderRequestRecords(total = 0) {
   if (!container) return;
 
   if (requestRecordResidents.length === 0) {
-    container.innerHTML = '<div class="card rr-list-card"><div class="resident-table-message">Walang nakitang resident request record.</div></div>';
+    container.innerHTML = `<div class="card rr-list-card">${workspaceState('Walang nakitang resident request record.')}</div>`;
   } else {
     container.innerHTML = '<div class="card rr-list-card"><ul class="rr-list">' + requestRecordResidents.map(resident => {
       const eligible = resident.status === 'active' && Boolean(resident.is_in_good_standing);
       const requests = Array.isArray(resident.document_requests) ? resident.document_requests : [];
       const requestRows = requests.length === 0
-        ? '<tr><td colspan="5" class="resident-table-message">Wala pang linked request.</td></tr>'
+        ? workspaceStateRow(5, 'No linked requests yet.')
         : requests.map(request => {
-            const status = String(request.status || 'pending');
-            const statusClass = status === 'released' ? 'badge-green' : status === 'rejected' ? 'badge-red' : status === 'ready_for_release' ? 'badge-blue' : 'badge-amber';
+            const online = String(request.source || 'online').toLowerCase() === 'online';
             return `<tr>
-              <td><span class="resident-number">${escapeText(request.reference_code)}</span></td>
+              <td><span class="resident-number" data-no-admin-translate>${escapeText(request.reference_code)}</span></td>
               <td>${escapeText(request.document_type)}</td>
               <td>${escapeText(String(request.created_at || '').slice(0, 10))}</td>
-              <td>${escapeText(request.source || 'online')}</td>
-              <td><span class="badge ${statusClass}">${escapeText(status.replaceAll('_', ' '))}</span></td>
+              <td>${escapeText(online ? 'Online' : 'Walk-in')}</td>
+              <td>${documentRequestStatusBadge(String(request.status || 'pending'))}</td>
             </tr>`;
           }).join('');
 
@@ -4375,12 +4704,12 @@ function renderRequestRecords(total = 0) {
         <div class="rr-row-summary">
           <button type="button" class="rr-row-toggle" aria-expanded="false" aria-controls="${panelId}" onclick="toggleRRCard(this)">
             <span class="rr-avatar" aria-hidden="true">${escapeText(String(resident.full_name || '?').charAt(0))}</span>
-            <span class="rr-row-name"><strong>${escapeText(resident.full_name)}</strong><small>${escapeText(resident.resident_number)} · ${escapeText(resident.purok)} · ${Number(resident.age)} yrs old</small></span>
+            <span class="rr-row-name"><strong data-no-admin-translate>${escapeText(resident.full_name)}</strong><small><span data-no-admin-translate>${escapeText(resident.resident_number)}</span> <span aria-hidden="true">·</span> <span data-no-admin-translate>${escapeText(resident.purok)}</span> <span aria-hidden="true">·</span> <span>${escapeText(adminText(':age yrs old', { age: Number(resident.age) }))}</span></small></span>
             <span class="rr-chevron" aria-hidden="true"></span>
           </button>
-          <span class="badge ${eligible ? 'badge-green' : 'badge-red'}">${eligible ? 'Good Standing' : 'Needs Review'}</span>
+          ${workspaceBadge(eligible ? 'Good Standing' : 'Needs Review', eligible ? 'green' : 'red')}
           <span class="rr-request-count">${requests.length} <span>${requests.length === 1 ? 'request' : 'requests'}</span></span>
-          <button type="button" class="btn btn-xs" onclick="openEligibilityForRequestResident(${resident.id})">Check</button>
+          <button type="button" class="btn btn-xs" onclick="openEligibilityForRequestResident(${Number(resident.id)})">Check</button>
         </div>
         <div class="rr-requests-panel" id="${panelId}" hidden>
           <div class="table-scroll"><table class="tbl"><thead><tr><th>Code</th><th>Document</th><th>Date</th><th>Source</th><th>Status</th></tr></thead><tbody>${requestRows}</tbody></table></div>
@@ -4460,11 +4789,35 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
+/**
+ * Opens what issuing the selected request would print, with the residency detail typed so far. Nothing is issued:
+ * the preview has no QR code, carries a "not valid" watermark and cannot be printed.
+ */
+function previewCertificateRelease() {
+  const requestId = document.getElementById('print-document-request-id')?.value;
+  if (!requestId) {
+    showToast('Missing document request ID.', 'red');
+    return;
+  }
+
+  const details = certificateDetailPayload(document.getElementById('modal-print-release'));
+  const query = new URLSearchParams(Object.entries(details).filter(([, value]) => value !== null).map(([key, value]) => [key, String(value)]));
+  window.open(`/staff/document-requests/${encodeURIComponent(requestId)}/certificate-preview${query.size ? `?${query}` : ''}`, '_blank', 'noopener');
+}
+
 async function confirmPrintRelease() {
   const requestId = document.getElementById('print-document-request-id')?.value;
 
   if (!requestId) {
     showToast('Missing document request ID.', 'red');
+    return;
+  }
+
+  const modal = document.getElementById('modal-print-release');
+  const incompleteDetail = incompleteCertificateDetail(modal);
+  if (incompleteDetail) {
+    incompleteDetail.reportValidity?.();
+    incompleteDetail.focus?.();
     return;
   }
 
@@ -4483,7 +4836,7 @@ async function confirmPrintRelease() {
       {
         method: 'POST',
         credentials: 'same-origin',
-        body: JSON.stringify({}),
+        body: JSON.stringify(certificateDetailPayload(modal)),
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
@@ -4579,8 +4932,19 @@ function residentFromApi(resident) {
     relationshipToHead: resident.relationship_to_household_head || '',
     isHouseholdHead: Boolean(resident.is_household_head),
     voterStatus: resident.voter_status || null,
+    missingDetails: Array.isArray(resident.missing_certificate_details) ? resident.missing_certificate_details : [],
     version: resident.updated_at || null
   };
+}
+
+/** How staff screens name a resident record detail that certificates print (App\CertificateType::detailLabel()). */
+const CERTIFICATE_DETAIL_LABELS = {
+  full_name: 'Full name', address: 'Address', date_of_birth: 'Date of birth', gender: 'Gender',
+  civil_status: 'Civil status', nationality: 'Nationality', photo: 'Resident photo'
+};
+
+function certificateDetailLabels(details) {
+  return (details || []).map(detail => adminText(CERTIFICATE_DETAIL_LABELS[detail] || detail));
 }
 
 /**
@@ -4604,7 +4968,7 @@ async function loadResidents(page = 1) {
   if (!hasStaffPermission('records.view')) return;
   const version = ++residentLoadVersion;
   const tbody = document.getElementById('records-tbody');
-  if (tbody && RESIDENTS.length === 0) tbody.innerHTML = '<tr><td colspan="9" class="resident-table-message">Loading resident records...</td></tr>';
+  if (tbody && RESIDENTS.length === 0) tbody.innerHTML = workspaceStateRow(9, 'Loading resident records...', 'loading');
 
   const query = new URLSearchParams({ page: String(page), per_page: '15' });
   const search = document.getElementById('residents-search')?.value.trim();
@@ -4632,38 +4996,55 @@ async function loadResidents(page = 1) {
     renderDashPurokBreakdown();
     populateEligResidentDropdown(null);
   } catch (error) {
-    if (tbody && version === residentLoadVersion) tbody.innerHTML = `<tr><td colspan="9" class="resident-table-message resident-table-error">${listErrorMarkup(error, 'loadResidents(residentCurrentPage || 1)')}</td></tr>`;
+    if (tbody && version === residentLoadVersion) tbody.innerHTML = workspaceErrorRow(9, error, 'loadResidents(residentCurrentPage || 1)');
   }
+}
+
+/** One delegated handler for the resident row buttons; rows are rebuilt on every load, the table body is not. */
+function bindResidentTableActions(tbody) {
+  if (typeof tbody?.addEventListener !== 'function' || !tbody.dataset || tbody.dataset.residentActionsBound === 'true') return;
+  tbody.dataset.residentActionsBound = 'true';
+  tbody.addEventListener('click', event => {
+    const control = event.target.closest?.('[data-resident-action]');
+    if (!control) return;
+    const { residentAction, resident, databaseId } = control.dataset;
+    if (residentAction === 'restore') restoreResident(Number(databaseId));
+    else if (residentAction === 'view') openViewResident(resident);
+    else if (residentAction === 'edit') openEditResident(resident);
+    else if (residentAction === 'archive') deleteResident(resident);
+  });
 }
 
 function renderResidentsTable() {
   const tbody = document.getElementById('records-tbody');
   if (!tbody) return;
+  bindResidentTableActions(tbody);
   tbody.innerHTML = '';
 
   if (RESIDENTS.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9" class="resident-table-message">No resident records found.</td></tr>';
+    tbody.innerHTML = workspaceStateRow(9, 'No resident records found.');
     return;
   }
 
   RESIDENTS.forEach(resident => {
     const row = document.createElement('tr');
-    const archivedBadge = resident.archived ? `<span class="badge badge-red">Archived</span><small>${escapeText(String(resident.archivedAt || '').slice(0, 10))}</small>` : `<span class="badge ${resident.status === 'Active' ? 'badge-green' : 'badge-red'}">${escapeText(resident.status)}</span>`;
+    const archivedBadge = resident.archived ? `${workspaceBadge('Archived', 'red')}<small>${escapeText(String(resident.archivedAt || '').slice(0, 10))}</small>` : workspaceBadge(resident.status, resident.status === 'Active' ? 'green' : 'red');
     const actions = resident.archived
-      ? `<button data-action-permission="records.archive" class="btn btn-xs btn-green" onclick="restoreResident(${resident.databaseId})">Restore</button>`
-      : `<button class="btn btn-xs" onclick="openViewResident('${resident.id}')">View</button>
-         <button data-action-permission="records.update" class="btn btn-xs" onclick="openEditResident('${resident.id}')">Edit</button>
-         <button data-action-permission="records.archive" class="btn btn-xs btn-danger-outline" onclick="deleteResident('${resident.id}')">Archive</button>`;
+      ? `<button type="button" data-action-permission="records.archive" class="btn btn-xs btn-green" data-resident-action="restore" data-database-id="${Number(resident.databaseId)}">Restore</button>`
+      : `<button type="button" class="btn btn-xs" data-resident-action="view" data-resident="${escapeText(resident.id)}">View</button>
+         <button type="button" data-action-permission="records.update" class="btn btn-xs" data-resident-action="edit" data-resident="${escapeText(resident.id)}">Edit</button>
+         <button type="button" data-action-permission="records.archive" class="btn btn-xs btn-danger-outline" data-resident-action="archive" data-resident="${escapeText(resident.id)}">Archive</button>`;
+    const household = resident.household?.household_name || resident.household?.household_number;
 
     row.innerHTML = `
-      <td><span class="resident-number">${escapeText(resident.id)}</span></td>
-      <td><strong>${escapeText(resident.name)}</strong>${calcAge(resident.dob) >= 60 ? '<span class="badge badge-senior">Senior</span>' : ''}${resident.voterStatus === 'active' ? '<span class="badge badge-green" title="Registered voter">Voter</span>' : ''}</td>
+      <td><span class="resident-number" data-no-admin-translate>${escapeText(resident.id)}</span></td>
+      <td><strong data-no-admin-translate>${escapeText(resident.name)}</strong>${calcAge(resident.dob) >= 60 ? workspaceBadge('Senior', 'senior') : ''}${resident.voterStatus === 'active' ? '<span class="badge badge-green" title="Registered voter">Voter</span>' : ''}${!resident.archived && resident.missingDetails?.length ? `<span class="badge badge-amber resident-missing-badge" title="${escapeText(adminText('Missing for certificates:'))} ${escapeText(certificateDetailLabels(resident.missingDetails).join(', '))}">${escapeText(adminText('Missing details'))}</span>` : ''}</td>
       <td>${calcAge(resident.dob)}</td>
-      <td>${escapeText(resident.purok)}</td>
+      <td data-no-admin-translate>${escapeText(resident.purok)}</td>
       <td>${escapeText(resident.gender)}</td>
       <td>${escapeText(resident.civil)}</td>
       <td>${archivedBadge}</td>
-      <td><span class="resident-number">${escapeText(resident.household?.household_name || resident.household?.household_number || 'Unassigned')}</span></td>
+      <td>${household ? `<span class="resident-household" data-no-admin-translate>${escapeText(household)}</span>` : `<span class="resident-household is-unassigned">${escapeText(adminText('Unassigned'))}</span>`}</td>
       <td><div class="resident-actions">${actions}</div></td>`;
     if (!resident.archived) {
       row.classList.add('resident-row-clickable');
@@ -5026,6 +5407,7 @@ async function saveResidentRecord(confirmDuplicate = false) {
     }
     closeModal('modal-resident');
     showToast(payload.message, 'green');
+    if (modalStack.some(entry => entry.id === 'modal-print-release')) void refreshReleaseReadiness();
     await loadResidents(resident ? residentCurrentPage : 1);
     await loadPuroks();
     await populateManualResidentDropdown();
@@ -5084,6 +5466,7 @@ function openViewResident(residentNumber) {
       <div><span>Age</span><strong>${calcAge(resident.dob)} years old</strong></div>
       <div><span>Gender</span><strong>${escapeText(resident.gender)}</strong></div>
       <div><span>Civil Status</span><strong>${escapeText(resident.civil)}</strong></div>
+      <div><span>${escapeText(adminText('Nationality'))}</span><strong>${resident.nationality ? escapeText(resident.nationality) : `<em class="resident-detail-missing">${escapeText(adminText('Not recorded'))}</em>`}</strong></div>
       <div><span>Purok</span><strong>${escapeText(resident.purok)}</strong></div>
       <div><span>Contact</span><strong>${escapeText(resident.contact || 'None')}</strong></div>
       <div><span>Residency Type</span><strong>${escapeText(resident.type)}</strong></div>
@@ -5094,6 +5477,23 @@ function openViewResident(residentNumber) {
       <div><span>Issued Certificates</span><strong>${resident.issuedCertificatesCount}</strong></div>` : ''}
 ${hasStaffPermission('documents.view') || hasStaffPermission('eligibility.view') ? `<div class="resident-detail-wide"><span>Eligibility</span><strong>${resident.goodStanding ? 'In good standing' : 'Not in good standing'}</strong></div>` : ''}
     </div>`;
+  if (resident.missingDetails?.length) {
+    const action = hasStaffPermission('records.update')
+      ? `<button type="button" class="btn btn-xs btn-primary" data-resident-complete="${escapeText(resident.id)}">${escapeText(adminText('Complete missing information'))}</button>`
+      : `<span class="resident-missing-note">${escapeText(adminText('Staff who may update Resident Records complete this.'))}</span>`;
+    document.getElementById('view-resident-content').insertAdjacentHTML('afterbegin', `<section class="resident-missing-panel" aria-labelledby="resident-missing-title">
+      <h3 id="resident-missing-title">${escapeText(adminText('Missing for certificates'))}</h3>
+      <p>${escapeText(certificateDetailLabels(resident.missingDetails).join(', '))}. ${escapeText(adminText('Certificates whose template prints these details cannot be issued until they are recorded. Nothing is filled in automatically.'))}</p>
+      ${action}
+    </section>`);
+    document.querySelector?.('[data-resident-complete]')?.addEventListener('click', () => {
+      closeModal('modal-view-resident');
+      openEditResident(resident.id);
+      const field = document.getElementById(RELEASE_RESIDENT_FIELDS[resident.missingDetails[0]] || '');
+      field?.scrollIntoView?.({ block: 'center' });
+      field?.focus?.();
+    });
+  }
   document.getElementById('view-resident-content').insertAdjacentHTML('beforeend', '<section id="resident-portal-account" class="resident-account-panel" aria-live="polite">Loading portal account...</section>');
   document.getElementById('view-resident-content').insertAdjacentHTML('beforeend', '<section id="resident-household-information" class="resident-account-panel" aria-live="polite">Loading household information...</section>');
   const canSeeIncidents = hasStaffPermission('incidents.view') || hasStaffPermission('vawc.view');
@@ -5190,7 +5590,11 @@ async function householdApi(url, method = 'GET', body) {
   });
   const payload = await response.json();
   // A refusal carries no message of its own; say so plainly instead of blaming household records.
-  if (!response.ok) throw new Error(payload.errors ? Object.values(payload.errors).flat()[0] : payload.message || (response.status === 403 ? 'You do not have access to this information.' : 'Unable to load household records.'));
+  if (!response.ok) {
+    const error = new Error(payload.errors ? Object.values(payload.errors).flat()[0] : payload.message || (response.status === 403 ? 'You do not have access to this information.' : 'Unable to load household records.'));
+    error.fieldErrors = payload.errors || null;
+    throw error;
+  }
   return payload;
 }
 
@@ -5279,7 +5683,7 @@ async function openDemographicMember(id) {
 }
 function householdMembersMarkup(household, manageable = false) {
   if (!household.members.length) return '<p>No household members assigned.</p>';
-  return `<div class="table-scroll"><table class="tbl"><thead><tr><th>Name</th><th>Relationship</th><th>Gender</th><th>Voter registration</th>${manageable ? '<th>Actions</th>' : ''}</tr></thead><tbody>${household.members.map(member => `
+  return `<div class="table-scroll"><table class="tbl"${manageable ? ' data-actions' : ''}><thead><tr><th>Name</th><th>Relationship</th><th>Gender</th><th>Voter registration</th>${manageable ? '<th>Actions</th>' : ''}</tr></thead><tbody>${household.members.map(member => `
     <tr><td>${hasStaffPermission('records.view') ? `<button class="btn btn-xs" onclick="openDemographicMember(${Number(member.id)})">${escapeText(member.full_name)}</button>` : escapeText(member.full_name)}${member.status !== 'active' ? ' <span class="badge badge-gray">Inactive</span>' : ''}</td>
     <td>${escapeText(member.relationship_to_household_head || 'Unspecified')}</td><td>${escapeText(member.gender)}</td><td>${voterStatusBadge(member.voter_status ?? (member.registered_voter ? 'active' : null))}</td>
     ${manageable ? `<td>${hasStaffPermission('households.remove') ? `<button class="btn btn-xs btn-danger-outline" onclick="removeManagedHouseholdMember(${Number(household.id)}, ${Number(member.id)})">Remove</button>` : ''}</td>` : ''}</tr>`).join('')}</tbody></table></div>`;
@@ -5302,9 +5706,84 @@ async function loadResidentHouseholdInformation(residentId) {
   }
 }
 
+/*
+ * The Households dialog has two views. Opening a record (View / Edit, Create household) replaces the list with the
+ * record and moves focus to its heading; Back returns to the list and to the row that opened it. The record used
+ * to be appended below the list, out of sight inside the scrolling dialog, so View / Edit appeared to do nothing.
+ */
+let householdEditorTrigger = null;
+const HOUSEHOLD_FIELD_IDS = { household_name: 'household-name', household_number: 'household-number', address: 'household-address', purok_id: 'household-purok', household_head_resident_id: 'household-head' };
+
+function showHouseholdEditor(trigger, { focus = true } = {}) {
+  if (trigger) householdEditorTrigger = trigger;
+  const editor = document.getElementById('household-editor');
+  const wasHidden = editor.hidden;
+  document.getElementById('household-browser').hidden = true;
+  editor.hidden = false;
+  if (wasHidden || focus) editor.closest?.('.modal')?.scrollTo?.({ top: 0 });
+  if (focus) document.getElementById('household-editor-title').focus?.();
+}
+
+function showHouseholdList() {
+  householdDetailVersion++;
+  clearHouseholdErrors();
+  document.getElementById('household-editor').hidden = true;
+  document.getElementById('household-browser').hidden = false;
+  const trigger = householdEditorTrigger;
+  householdEditorTrigger = null;
+  // The list may have been re-rendered while the record was open: find the same row's button again.
+  const id = trigger?.dataset?.householdId;
+  const again = id ? document.querySelector(`#household-list [data-household-id="${Number(id)}"]`) : null;
+  (again || (trigger?.isConnected ? trigger : document.getElementById('household-search'))).focus?.();
+}
+
+/** Fields stay editable only for staff who may save them; the server enforces the same permissions. */
+function setHouseholdEditable(editable) {
+  ['household-name', 'household-address', 'household-purok', 'household-head'].forEach(id => { document.getElementById(id).disabled = !editable; });
+  document.getElementById('household-readonly-note').hidden = editable;
+  document.getElementById('household-add-member').hidden = !editable;
+}
+
+function clearHouseholdErrors() {
+  const summary = document.getElementById('household-editor-error');
+  summary.hidden = true;
+  summary.textContent = '';
+  Object.values(HOUSEHOLD_FIELD_IDS).forEach(id => {
+    const field = document.getElementById(id);
+    field?.removeAttribute('aria-invalid');
+    field?.removeAttribute('aria-describedby');
+    document.getElementById(`${id}-error`)?.remove();
+  });
+}
+
+/** Shows a save error in the form: the message at the top, and each field's own message under that field. */
+function showHouseholdErrors(message, fieldErrors = null) {
+  clearHouseholdErrors();
+  const summary = document.getElementById('household-editor-error');
+  summary.textContent = adminText(message);
+  summary.hidden = false;
+  let first = null;
+  Object.entries(fieldErrors || {}).forEach(([key, messages]) => {
+    const field = document.getElementById(HOUSEHOLD_FIELD_IDS[key]);
+    if (!field) return;
+    const note = document.createElement('p');
+    note.id = `${field.id}-error`;
+    note.className = 'household-field-error';
+    note.textContent = adminText([messages].flat()[0]);
+    field.insertAdjacentElement('afterend', note);
+    field.setAttribute('aria-invalid', 'true');
+    field.setAttribute('aria-describedby', note.id);
+    first ??= field;
+  });
+  if (first) first.focus?.();
+  else summary.scrollIntoView?.({ block: 'nearest' });
+}
+
 function openHouseholdManagement() {
   document.getElementById('household-search').value = '';
   document.getElementById('household-editor').hidden = true;
+  document.getElementById('household-browser').hidden = false;
+  householdEditorTrigger = null;
   openModal('modal-households');
   void loadManagedHouseholds();
 }
@@ -5317,25 +5796,38 @@ function searchHouseholdManagement() {
 
 async function loadManagedHouseholds(page = 1) {
   const version = ++householdListVersion;
+  const list = document.getElementById('household-list');
+  if (!list.querySelector?.('tbody tr:not(.workspace-state-row)')) list.innerHTML = workspaceState('Loading households...', 'loading');
   const query = new URLSearchParams({ search: document.getElementById('household-search').value.trim(), page, per_page: 15 });
   try {
     const payload = await householdApi(`/staff/households?${query}`);
     if (version !== householdListVersion) return;
-    document.getElementById('household-list').innerHTML = payload.data.length ? `<div class="table-scroll"><table class="tbl"><thead><tr><th>Household</th><th>Head / Address</th><th>Members</th><th>Actions</th></tr></thead><tbody>${payload.data.map(item => `<tr><td>${escapeText(item.household_name || item.household_number)}${item.household_name ? `<br><small>${escapeText(item.household_number)}</small>` : ''}</td><td>${escapeText(item.head?.full_name || 'No household head assigned')}<br>${escapeText(item.address)}</td><td>${Number(item.household_size)}</td><td><button data-action-permission="households.view" class="btn btn-xs" onclick="editManagedHousehold(${Number(item.id)})">View / Edit</button></td></tr>`).join('')}</tbody></table></div>` : '<p>No households found.</p>';
+    const canEdit = hasStaffPermission('households.update');
+    // A refresh can land just after Back returned focus to a row: keep focus on the same household's button.
+    const focusedHouseholdId = list.contains?.(document.activeElement) ? document.activeElement?.dataset?.householdId : null;
+    const rows = payload.data.map(item => `<tr>
+      <td><span data-no-admin-translate>${escapeText(item.household_name || item.household_number)}</span>${item.household_name ? `<br><small class="resident-number" data-no-admin-translate>${escapeText(item.household_number)}</small>` : ''}</td>
+      <td>${item.head?.full_name ? `<span data-no-admin-translate>${escapeText(item.head.full_name)}</span>` : `<span>${escapeText('No household head assigned')}</span>`}<br><small data-no-admin-translate>${escapeText(item.address)}</small></td>
+      <td>${Number(item.household_size)}</td>
+      <td><button type="button" class="btn btn-xs" data-household-id="${Number(item.id)}" onclick="editManagedHousehold(${Number(item.id)}, this)" aria-label="${escapeText(adminText(canEdit ? 'Edit household :name' : 'View household :name', { name: item.household_name || item.household_number }))}">${canEdit ? 'Edit' : 'View'}</button></td>
+    </tr>`).join('');
+    list.innerHTML = `<div class="table-scroll"><table class="tbl" data-num-cols="3" data-actions><thead><tr><th>Household</th><th>Head / Address</th><th>Members</th><th>Actions</th></tr></thead><tbody>${rows || workspaceStateRow(4, 'No households found.')}</tbody></table></div>`;
+    if (focusedHouseholdId) (list.querySelector?.(`[data-household-id="${Number(focusedHouseholdId)}"]`) || document.getElementById('household-search'))?.focus?.();
     householdPagination('household-pagination', payload, 'loadManagedHouseholds');
   } catch (error) {
-    if (version === householdListVersion) document.getElementById('household-list').textContent = error.message;
+    if (version === householdListVersion) list.innerHTML = workspaceError(error, 'loadManagedHouseholds()');
   }
 }
 
-function newManagedHousehold() {
+function newManagedHousehold(trigger) {
   const save = document.getElementById('household-save');
   save.dataset.actionPermission = 'households.create';
   save.hidden = !hasStaffPermission('households.create');
   save.style.display = hasStaffPermission('households.create') ? '' : 'none';
   householdDetailVersion++;
   householdMemberLookupVersion++;
-  document.getElementById('household-editor').hidden = false;
+  clearHouseholdErrors();
+  setHouseholdEditable(true);
   document.getElementById('household-editor-title').textContent = 'New household';
   document.getElementById('household-edit-id').value = '';
   document.getElementById('household-address').value = '';
@@ -5353,6 +5845,7 @@ function newManagedHousehold() {
   householdResidentOptions.clear();
   document.getElementById('household-head').replaceChildren(new Option('Select household head', ''));
   renderDraftHouseholdMembers();
+  showHouseholdEditor(trigger);
   void loadHouseholdResidents();
 }
 
@@ -5363,7 +5856,7 @@ function renderDraftHouseholdMembers(selectedHead = document.getElementById('hou
   const candidates = new Map([...householdResidentOptions, ...draftHouseholdMembers]);
   [...candidates.values()].filter(member => member.status === 'active').forEach(member => head.add(new Option(member.full_name, String(member.id))));
   head.value = draftHouseholdMembers.has(Number(selectedHead)) ? String(selectedHead) : '';
-  document.getElementById('household-members').innerHTML = members.length ? `<h4>Selected existing residents</h4><div class="table-scroll"><table class="tbl"><thead><tr><th>Name</th><th>Relationship to head</th><th>Actions</th></tr></thead><tbody>${members.map(member => `<tr><td>${hasStaffPermission('records.view') ? `<button class="btn btn-xs" onclick="openDemographicMember(${Number(member.id)})">${escapeText(member.full_name)}</button>` : escapeText(member.full_name)}</td><td><input class="form-input" aria-label="Relationship for ${escapeText(member.full_name)}" maxlength="100" value="${escapeText(member.relationship_to_household_head)}" oninput="updateDraftHouseholdRelationship(${Number(member.id)}, this.value)"/></td><td><button class="btn btn-xs btn-danger-outline" onclick="removeDraftHouseholdMember(${Number(member.id)})">Remove</button></td></tr>`).join('')}</tbody></table></div>` : '<p>No residents selected yet.</p>';
+  document.getElementById('household-members').innerHTML = members.length ? `<h4>Selected existing residents</h4><div class="table-scroll"><table class="tbl" data-actions><thead><tr><th>Name</th><th>Relationship to head</th><th>Actions</th></tr></thead><tbody>${members.map(member => `<tr><td>${hasStaffPermission('records.view') ? `<button class="btn btn-xs" onclick="openDemographicMember(${Number(member.id)})">${escapeText(member.full_name)}</button>` : escapeText(member.full_name)}</td><td><input class="form-input" aria-label="Relationship for ${escapeText(member.full_name)}" maxlength="100" value="${escapeText(member.relationship_to_household_head)}" oninput="updateDraftHouseholdRelationship(${Number(member.id)}, this.value)"/></td><td><button class="btn btn-xs btn-danger-outline" onclick="removeDraftHouseholdMember(${Number(member.id)})">Remove</button></td></tr>`).join('')}</tbody></table></div>` : '<p>No residents selected yet.</p>';
 }
 
 async function selectManagedHouseholdHead(residentId) {
@@ -5397,7 +5890,7 @@ function removeDraftHouseholdMember(id) {
   renderDraftHouseholdMembers(Number(selectedHead) === id ? '' : selectedHead);
 }
 
-async function editManagedHousehold(id) {
+async function editManagedHousehold(id, trigger = null, { focus = true } = {}) {
   const save = document.getElementById('household-save');
   save.dataset.actionPermission = 'households.update';
   save.hidden = !hasStaffPermission('households.update');
@@ -5406,7 +5899,8 @@ async function editManagedHousehold(id) {
   try {
     const household = await householdApi(`/staff/households/${id}`);
     if (version !== householdDetailVersion) return;
-    document.getElementById('household-editor').hidden = false;
+    const editable = hasStaffPermission('households.update');
+    clearHouseholdErrors();
     document.getElementById('household-editor-title').textContent = household.household_name || household.household_number;
     document.getElementById('household-name').value = household.household_name || '';
     document.getElementById('household-edit-id').value = String(household.id);
@@ -5420,12 +5914,13 @@ async function editManagedHousehold(id) {
     head.replaceChildren(new Option('No household head assigned', ''));
     household.members.filter(member => member.status === 'active').forEach(member => head.add(new Option(member.full_name, String(member.id))));
     head.value = String(household.head?.id || '');
-    document.getElementById('household-members').innerHTML = `<h4>Household members (${Number(household.household_size)})</h4>${householdMembersMarkup(household, true)}`;
-    document.getElementById('household-add-member').hidden = false;
+    document.getElementById('household-members').innerHTML = `<h4>Household members (${Number(household.household_size)})</h4>${householdMembersMarkup(household, hasStaffPermission('households.remove'))}`;
+    setHouseholdEditable(editable);
+    showHouseholdEditor(trigger, { focus });
     document.getElementById('household-resident-search').value = '';
     document.getElementById('household-resident-relationship').value = '';
     document.getElementById('household-resident-head').checked = false;
-    void loadHouseholdResidents();
+    if (editable) void loadHouseholdResidents();
   } catch (error) { showToast(error.message, 'red'); }
 }
 
@@ -5439,23 +5934,23 @@ async function saveManagedHousehold() {
   if (!id) {
     if (!body.household_head_resident_id) {
       button.disabled = false;
-      return showToast('Select an existing active resident as household head.', 'red');
+      return showHouseholdErrors('Select an existing active resident as household head.', { household_head_resident_id: ['Select an existing active resident as household head.'] });
     }
     body.household_number = document.getElementById('household-number').value.trim() || null;
     body.members = [...draftHouseholdMembers.values()].filter(member => member.id !== body.household_head_resident_id).map(member => ({ resident_id: member.id, relationship_to_household_head: member.relationship_to_household_head.trim() }));
     if (body.members.some(member => !member.relationship_to_household_head)) {
       button.disabled = false;
-      return showToast('Enter the relationship of each member to the household head.', 'red');
+      return showHouseholdErrors('Enter the relationship of each member to the household head.');
     }
   }
   try {
     const payload = await householdApi(id ? `/staff/households/${id}` : '/staff/households', id ? 'PATCH' : 'POST', body);
     showToast(payload.message, 'green');
-    await editManagedHousehold(payload.household.id);
+    await editManagedHousehold(payload.household.id, null, { focus: false });
     await loadManagedHouseholds();
     await loadResidents(residentCurrentPage);
     await refreshHouseholdDemographics();
-  } catch (error) { showToast(error.message, 'red'); }
+  } catch (error) { showHouseholdErrors(error.message, error.fieldErrors); }
   finally { button.disabled = false; }
 }
 
@@ -5508,7 +6003,7 @@ async function addManagedHouseholdMember() {
       is_household_head: isHead
     });
     showToast(payload.message, 'green');
-    await editManagedHousehold(id);
+    await editManagedHousehold(id, null, { focus: false });
     await loadManagedHouseholds();
     await loadResidents(residentCurrentPage);
     await refreshHouseholdDemographics();
@@ -5521,7 +6016,7 @@ async function removeManagedHouseholdMember(id, residentId) {
   try {
     const payload = await householdApi(`/staff/households/${id}/members/${residentId}`, 'DELETE', { super_admin_password: supervisorPassword });
     showToast(payload.message, 'green');
-    await editManagedHousehold(id);
+    await editManagedHousehold(id, null, { focus: false });
     await loadManagedHouseholds();
     await loadResidents(residentCurrentPage);
     await refreshHouseholdDemographics();
@@ -5566,7 +6061,7 @@ async function openViewResidentRequests(residentNumber) {
     if (!response.ok) throw new Error(payload?.message || 'Unable to load request history.');
     const requests = payload.document_requests || [];
     const rows = requests.length === 0
-      ? '<tr><td colspan="5" class="resident-table-message">No linked document requests.</td></tr>'
+      ? workspaceStateRow(5, 'No linked document requests.')
       : requests.map(request => `<tr>
           <td>${escapeText(request.reference_code)}</td>
           <td>${escapeText(request.document_type)}</td>
@@ -5618,16 +6113,50 @@ async function runEligibilityCheck() {
     }
     const result = document.getElementById('elig-result');
     result.style.display = 'block';
-    result.innerHTML = `<div class="eligibility-result ${payload.eligible ? 'eligible' : 'ineligible'}">
-      <strong>${payload.eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE'}</strong>
-      <div>${escapeText(payload.resident.full_name)} — ${escapeText(payload.certificate_type)}</div>
-      ${payload.reasons.map(reason => `<div>${escapeText(reason)}</div>`).join('')}
-    </div>`;
-    document.getElementById('elig-proceed-btn').style.display = payload.eligible ? 'block' : 'none';
+    result.innerHTML = eligibilityResultHtml(payload);
+    result.querySelector?.('[data-eligibility-complete]')?.addEventListener('click', () => {
+      closeModal('modal-eligibility-check');
+      void openResidentRecordForm({ id: payload.resident.id, resident_number: payload.resident.resident_number }, missingDetailKey(payload.missing_details?.[0]));
+    });
+    document.getElementById('elig-proceed-btn').style.display = eligibilityOutcome(payload) === 'eligible' ? 'block' : 'none';
     currentEligResidentId = resident.id;
   } catch (error) {
     showToast(error.message, 'red');
   }
+}
+
+/**
+ * eligible: can be issued now. incomplete: nothing disqualifies the resident, but a staff verification or a record
+ * detail is still missing. ineligible: a disqualification (standing, inactive record, prior certificate, hold).
+ */
+function eligibilityOutcome(payload) {
+  const disqualified = Array.isArray(payload.disqualifications) ? payload.disqualifications.length > 0 : !payload.eligible;
+  if (disqualified) return 'ineligible';
+  return (payload.verifications || []).length || (payload.missing_details || []).length ? 'incomplete' : 'eligible';
+}
+
+function missingDetailKey(label) {
+  return Object.keys(CERTIFICATE_DETAIL_LABELS).find(key => CERTIFICATE_DETAIL_LABELS[key] === label) || '';
+}
+
+function eligibilityResultHtml(payload) {
+  const outcome = eligibilityOutcome(payload);
+  const headings = { eligible: 'Eligible', incomplete: 'Eligible once completed', ineligible: 'Not eligible' };
+  const list = (title, items) => items.length ? `<div class="eligibility-group"><span>${escapeText(adminText(title))}</span><ul>${items.map(item => `<li>${escapeText(item)}</li>`).join('')}</ul></div>` : '';
+  const disqualifications = Array.isArray(payload.disqualifications) ? payload.disqualifications : (payload.eligible ? [] : payload.reasons || []);
+  const missing = (payload.missing_details || []).map(label => adminText(label));
+  const complete = missing.length && hasStaffPermission('records.update')
+    ? `<button type="button" class="btn btn-xs btn-primary" data-eligibility-complete>${escapeText(adminText('Complete missing information'))}</button>`
+    : '';
+  return `<div class="eligibility-result ${outcome}" role="status">
+      <strong>${escapeText(adminText(headings[outcome]))}</strong>
+      <div>${escapeText(payload.resident.full_name)} — ${escapeText(payload.certificate_type)}</div>
+      ${outcome === 'eligible' ? `<div>${escapeText(adminText('Every requirement on record is met.'))}</div>` : ''}
+      ${list('Not eligible because', disqualifications)}
+      ${list('Needs staff verification', payload.verifications || [])}
+      ${list('Missing from the resident record', missing)}
+      ${complete}
+    </div>`;
 }
 
 function elig_proceedRequest() {
@@ -5660,7 +6189,7 @@ async function loadVoterRegistry(page = 1) {
   if (!tbody) return;
   const version = ++voterLoadVersion;
   const columns = hasStaffPermission('voters.update') ? 8 : 7;
-  if (voterRegistrations.length === 0) tbody.innerHTML = `<tr><td colspan="${columns}" class="resident-table-message">Loading voter list...</td></tr>`;
+  if (voterRegistrations.length === 0) tbody.innerHTML = workspaceStateRow(columns, 'Loading voter list...', 'loading');
 
   const query = new URLSearchParams({ page: String(page), per_page: '15' });
   const search = document.getElementById('voter-search')?.value.trim();
@@ -5686,7 +6215,7 @@ async function loadVoterRegistry(page = 1) {
     updateVoterSummary(payload.summary || {});
   } catch (error) {
     if (version === voterLoadVersion) {
-      tbody.innerHTML = `<tr><td colspan="${columns}" class="resident-table-message resident-table-error">${listErrorMarkup(error, 'loadVoterRegistry(voterCurrentPage || 1)')}</td></tr>`;
+      tbody.innerHTML = workspaceErrorRow(columns, error, 'loadVoterRegistry(voterCurrentPage || 1)');
       markStatsUnavailable(['voter-stat-total', 'voter-stat-sk-only', 'voter-stat-sk-regular', 'voter-stat-regular-only']);
     }
   }
@@ -5701,18 +6230,18 @@ function renderVoterRegistry(total) {
     tbody.innerHTML = `<tr><td colspan="${canEdit ? 8 : 7}" class="voter-empty-state"><strong>Walang nakitang botante.</strong><span>Subukang baguhin ang purok, age group, o search.</span></td></tr>`;
   } else {
     tbody.innerHTML = voterRegistrations.map(registration => {
-      const eligibilityClass = registration.voter_eligibility === 'sk_only'
-        ? 'badge-amber'
-        : registration.voter_eligibility === 'sk_and_regular' ? 'badge-green' : 'badge-blue';
+      const eligibilityTone = registration.voter_eligibility === 'sk_only'
+        ? 'amber'
+        : registration.voter_eligibility === 'sk_and_regular' ? 'green' : 'blue';
 
       return `<tr>
-        <td><span class="resident-number">${escapeText(registration.resident_number)}</span></td>
-        <td><strong>${escapeText(registration.resident_name)}</strong></td>
+        <td><span class="resident-number" data-no-admin-translate>${escapeText(registration.resident_number)}</span></td>
+        <td><strong data-no-admin-translate>${escapeText(registration.resident_name)}</strong></td>
         <td><strong>${Number(registration.age)}</strong></td>
-        <td>${escapeText(registration.purok)}</td>
-        <td><span class="badge ${eligibilityClass}">${escapeText(registration.voter_eligibility_label)}</span></td>
-        <td>${escapeText(registration.precinct_number)}</td>
-        <td>${escapeText(registration.cluster_number)}</td>
+        <td data-no-admin-translate>${escapeText(registration.purok)}</td>
+        <td>${workspaceBadge(registration.voter_eligibility_label, eligibilityTone)}</td>
+        <td data-no-admin-translate>${escapeText(registration.precinct_number)}</td>
+        <td data-no-admin-translate>${escapeText(registration.cluster_number)}</td>
         ${canEdit ? `<td><div class="resident-actions">${registration.integrity_valid === false
           ? '<span class="badge badge-red" title="Updates are blocked until an administrator reviews this record.">Locked for review</span>'
           : `<button type="button" class="btn btn-xs" onclick="openEditVoter(${Number(registration.id)})" aria-label="Edit voter record of ${escapeText(registration.resident_name)}">Edit</button>`}</div></td>` : ''}
@@ -6004,19 +6533,36 @@ window.addEventListener('popstate', event => {
   if (entry) showScreen(entry[0], findNavItem(entry[0]), false);
 });
 
-function toggleNavigation(force) {
+/**
+ * Phones and tablets (below 1024px): the sidebar is a drawer opened by the Menu button. Opening moves focus into
+ * it; closing with Escape returns focus to Menu. On wider screens the sidebar is always shown and this only
+ * keeps aria-expanded in step.
+ */
+function toggleNavigation(force, { restoreFocus = false } = {}) {
   const sidebar = document.getElementById('admin-navigation');
   if (!sidebar) return;
-  const open = force ?? !sidebar.classList.contains('is-open');
+  const wasOpen = sidebar.classList.contains('is-open');
+  const open = force ?? !wasOpen;
   sidebar.classList.toggle('is-open', open);
-  document.querySelector('.mobile-menu-button')?.setAttribute('aria-expanded', String(open));
+  const button = document.querySelector('.mobile-menu-button');
+  button?.setAttribute('aria-expanded', String(open));
+  const isDrawer = button && getComputedStyle(button).display !== 'none';
+  if (open && !wasOpen && isDrawer) sidebar.querySelector('.nav-item')?.focus();
+  if (!open && wasOpen && isDrawer && restoreFocus) button.focus();
 }
+
+// A click outside the open drawer closes it, as Escape does.
+document.addEventListener('click', event => {
+  const sidebar = document.getElementById('admin-navigation');
+  if (!sidebar?.classList.contains('is-open') || sidebar.contains(event.target) || event.target.closest?.('.mobile-menu-button')) return;
+  toggleNavigation(false);
+});
 
 document.addEventListener('keydown', event => {
   const modal = topOpenModal();
   if (event.key === 'Escape') {
     if (modal) closeModal(modal.id);
-    toggleNavigation(false);
+    else toggleNavigation(false, { restoreFocus: true });
   }
   if (event.key === 'Tab' && modal) {
     const controls = [...modal.querySelectorAll('button, a[href], input, select, textarea, [tabindex="0"]')].filter(element => !element.disabled && element.getClientRects().length);

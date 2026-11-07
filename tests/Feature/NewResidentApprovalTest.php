@@ -19,8 +19,127 @@ function newResidentApplicationPayload(array $overrides = []): array
 
     return ['first_name' => 'Maria', 'middle_name' => 'Cruz', 'last_name' => 'Newresident', 'date_of_birth' => '1996-02-10',
         'gender' => 'Female', 'civil_status' => 'Single', 'residency_type' => 'Renter', 'purok' => $purok->name,
-        'address' => 'Block 1, Anabu I-G', 'email' => 'newresident@example.test', 'photo' => UploadedFile::fake()->image('resident.jpg'), ...$overrides];
+        'address' => 'Block 1, Anabu I-G', 'email' => 'newresident@example.test', 'photo' => UploadedFile::fake()->image('resident.jpg'),
+        'contact_number' => '0917 123 4567', 'privacy_notice_accepted' => '1', ...$overrides];
 }
+
+test('the application opens with the Data Privacy Notice and cannot be sent without consent', function () {
+    Storage::fake('local');
+    $this->get(route('portal.new-resident.create'))->assertOk()
+        ->assertSeeInOrder(['data-privacy-notice', 'Republic Act 10173', 'National Privacy Commission', 'name="privacy_notice_accepted"', 'data-privacy-notice-cancel', 'data-privacy-notice-continue', 'name="first_name"'], false)
+        ->assertSee('js/privacy-notice.js', false);
+
+    $this->post(route('portal.new-resident.store'), newResidentApplicationPayload(['privacy_notice_accepted' => null]))
+        ->assertSessionHasErrors(['privacy_notice_accepted' => 'Read the Data Privacy Notice and tick the box to agree before you submit.']);
+    $this->assertDatabaseEmpty('resident_registration_applications');
+
+    $this->post(route('portal.new-resident.store'), newResidentApplicationPayload())->assertSessionHasNoErrors();
+    $application = ResidentRegistrationApplication::query()->sole();
+    expect($application->details)->not->toHaveKey('privacy_notice_accepted');
+    $this->assertDatabaseHas('administrative_audits', ['action' => 'portal.application.privacy-notice-accepted', 'record' => $application->reference]);
+});
+
+test('online applicants must be at least 16, counted to the day and across leap years', function (string $today, string $birthDate, bool $allowed) {
+    Storage::fake('local');
+    $this->travelTo($today);
+
+    $response = $this->post(route('portal.new-resident.store'), newResidentApplicationPayload(['date_of_birth' => $birthDate]));
+
+    $allowed
+        ? $response->assertSessionHasNoErrors()
+        : $response->assertSessionHasErrors(['date_of_birth' => 'Online applicants must be at least 16 years old. For a younger resident, please visit the Barangay Hall.']);
+})->with([
+    'sixteenth birthday today' => ['2026-11-07', '2010-11-07', true],
+    'sixteenth birthday tomorrow' => ['2026-11-07', '2010-11-08', false],
+    'future date' => ['2026-11-07', '2027-01-01', false],
+    'leap-day birth, 28 Feb of a non-leap year' => ['2027-02-28', '2011-02-28', true],
+    'born 29 Feb 2008, on 28 Feb 2024' => ['2024-02-28', '2008-02-29', false],
+    'born 29 Feb 2008, on 29 Feb 2024' => ['2024-02-29', '2008-02-29', true],
+]);
+
+test('the date field limit matches the server age rule', function () {
+    $this->travelTo('2026-11-07');
+
+    $this->get(route('portal.new-resident.create'))->assertSee('max="2010-11-07"', false)->assertSee('You must be at least 16 years old to apply online.');
+});
+
+test('a Philippine mobile number is required, and the number is stored as +639', function (string $typed, ?string $stored) {
+    Storage::fake('local');
+
+    $response = $this->post(route('portal.new-resident.store'), newResidentApplicationPayload(['contact_number' => $typed]));
+
+    if ($stored === null) {
+        $response->assertSessionHasErrors('contact_number');
+        $this->assertDatabaseEmpty('resident_registration_applications');
+    } else {
+        $response->assertSessionHasNoErrors();
+        expect(ResidentRegistrationApplication::query()->sole()->details['contact_number'])->toBe($stored);
+    }
+})->with([
+    ['09171234567', '+639171234567'],
+    ['+639171234567', '+639171234567'],
+    ['+63 917-123-4567', '+639171234567'],
+    ['', null],
+    ['9171234567', null],
+    ['(046) 230-2905', null],
+    ['+6391712345678', null],
+]);
+
+test('the application no longer asks for nationality, and a value sent anyway is never stored', function () {
+    Storage::fake('local');
+
+    $form = $this->get(route('portal.new-resident.create'))->assertOk()->getContent();
+    expect($form)->not->toContain('application-nationality')->not->toContain('name="nationality"')
+        ->not->toContain('civil status, nationality,')
+        ->toMatch('/id="application-contact_number"[^>]*type="tel"[^>]*\brequired\b/');
+
+    $this->post(route('portal.new-resident.store'), newResidentApplicationPayload())->assertSessionHasNoErrors();
+    expect(ResidentRegistrationApplication::query()->sole()->details)->not->toHaveKey('nationality');
+
+    ResidentRegistrationApplication::query()->delete();
+    $this->withSession([])->post(route('portal.new-resident.store'), newResidentApplicationPayload(['nationality' => 'Filipino', 'email' => 'second@example.test']))->assertSessionHasNoErrors();
+    expect(ResidentRegistrationApplication::query()->sole()->details)->not->toHaveKey('nationality');
+});
+
+test('approval leaves nationality empty for staff to complete, and keeps one an older application recorded', function (?string $submitted) {
+    Storage::fake('local');
+    Notification::fake();
+    $application = ResidentRegistrationApplication::factory()->create();
+    if ($submitted !== null) {
+        $application->forceFill(['details' => [...$application->details, 'nationality' => $submitted]])->save();
+    }
+
+    $this->actingAs(User::factory()->superAdmin()->create())->post(route('staff.resident-applications.update', $application), ['decision' => 'approved'])
+        ->assertSessionHasNoErrors();
+
+    expect(Resident::query()->sole()->nationality)->toBe($submitted);
+})->with([
+    'new application without nationality' => [null],
+    'older application that recorded it' => ['Filipino'],
+]);
+
+test('the application trims the email and never says whether it already has an account', function () {
+    Storage::fake('local');
+    User::factory()->resident()->create(['email' => 'taken@example.test']);
+
+    $this->post(route('portal.new-resident.store'), newResidentApplicationPayload(['email' => '  Taken@Example.TEST ']))->assertSessionHasNoErrors();
+    expect(ResidentRegistrationApplication::query()->sole()->email)->toBe('taken@example.test');
+
+    $this->post(route('portal.new-resident.store'), newResidentApplicationPayload(['email' => 'not an email', 'first_name' => 'Other']))->assertSessionHasErrors('email');
+});
+
+test('approval still refuses an application whose email already has an account', function () {
+    Storage::fake('local');
+    Notification::fake();
+    $this->post(route('portal.new-resident.store'), newResidentApplicationPayload(['email' => 'taken@example.test']))->assertSessionHasNoErrors();
+    User::factory()->resident()->create(['email' => 'taken@example.test']);
+    $application = ResidentRegistrationApplication::query()->sole();
+
+    $this->actingAs(User::factory()->create(['role' => 'staff', 'staff_permissions' => ['records.review']]))
+        ->post(route('staff.resident-applications.update', $application), ['decision' => 'approved'])
+        ->assertSessionHasErrors(['decision' => 'A matching resident or account now exists. Review the duplicate before approving.']);
+    expect($application->fresh()->status)->toBe('pending');
+});
 
 test('new application remains pending without creating a resident account or record', function () {
     Storage::fake('local');
@@ -198,7 +317,8 @@ test('new application form supports both portal languages and preserves existing
 });
 
 test('new resident entry sits inside the registration card and is translated', function (string $locale) {
-    $response = $this->withCookie('portal_locale', $locale)->get(route('portal.register'))->assertOk();
+    $this->withCookie('portal_locale', $locale)->get(route('portal.register'))->assertOk()->assertSee(route('portal.new-resident.create'), false);
+    $response = $this->withCookie('portal_locale', $locale)->get(route('portal.register', ['step' => 'verify']))->assertOk();
     $document = new DOMDocument;
     @$document->loadHTML($response->getContent());
     $xpath = new DOMXPath($document);
@@ -227,8 +347,12 @@ test('review interface separates the private photo details status and decision c
     $document = new DOMDocument;
     @$document->loadHTML($response->getContent());
     $xpath = new DOMXPath($document);
-    expect($xpath->query('//details[@open]/summary//span[@data-application-state="pending"]'))->toHaveCount(1);
-    expect($xpath->query('//figure/img[@src="'.route('staff.resident-applications.photo', $application).'"]'))->toHaveCount(1);
+    // The list shows each status; the photo, details and decision open in that application's side panel.
+    expect($xpath->query('//tr[@data-application-row]//*[@data-application-state="pending"]'))->toHaveCount(1);
+    $panel = $xpath->query('//ui-modal[@data-application-dialog="'.$application->id.'"]')->item(0);
+    expect($panel)->not->toBeNull()
+        ->and($panel->hasAttribute('data-open-on-load'))->toBeFalse();
+    expect($xpath->query('.//figure/img[@src="'.route('staff.resident-applications.photo', $application).'"]', $panel))->toHaveCount(1);
     expect($xpath->query('//form[@action="'.route('staff.resident-applications.update', $application).'" and @method="POST"]//select[@name="decision"]'))->toHaveCount(1);
     $response->assertSee('Review decision')->assertSee('Required when requesting correction or declining an application.');
 });
@@ -283,8 +407,10 @@ test('review result email reaches the application email with reference decision 
     if ($decision === 'approved') {
         expect($mail->viewData['actionUrl'])->toBe(route('portal.register'));
         expect($mail->viewData['instructions'])->toContain('visit the Barangay Hall with a valid ID');
-        $this->get($mail->viewData['actionUrl'])->assertOk()->assertViewHas('stage', 'code')
-            ->assertSee('name="activation_code"', false)->assertDontSee('name="full_name"', false);
+        // The approval email opens the eligibility step, which explains the Barangay Hall visit and links to the code form.
+        $this->get($mail->viewData['actionUrl'])->assertOk()->assertViewHas('stage', 'eligibility')
+            ->assertSee(route('portal.register', ['step' => 'verify']), false)->assertDontSee('name="full_name"', false);
+        $this->get(route('portal.register', ['step' => 'verify']))->assertSee('name="activation_code"', false);
         app()->setLocale($locale);
     }
     $html = view($mail->view['html'], $mail->viewData)->render();
@@ -311,4 +437,34 @@ test('invalid or unauthorized reviews send no result emails', function () {
     $this->post(route('staff.resident-applications.update', $application), ['decision' => 'approved'])->assertSessionHasErrors('decision');
     Notification::assertNothingSent();
     expect($application->fresh()->status)->toBe('pending');
+});
+
+test('review list filters by status and search, and reopens only the application whose review failed', function () {
+    $pending = ResidentRegistrationApplication::factory()->create(['details' => [...ResidentRegistrationApplication::factory()->raw()['details'], 'first_name' => 'Marisol', 'last_name' => 'Zamora']]);
+    $other = ResidentRegistrationApplication::factory()->create();
+    ResidentRegistrationApplication::factory()->create(['status' => 'declined', 'remarks' => 'Not a resident.']);
+    $this->actingAs(User::factory()->superAdmin()->create());
+    $page = function (string $url): DOMXPath {
+        $document = new DOMDocument;
+        @$document->loadHTML($this->get($url)->assertOk()->getContent());
+
+        return new DOMXPath($document);
+    };
+
+    $document = new DOMDocument;
+    @$document->loadHTML($this->from(route('staff.resident-applications.index'))->followingRedirects()
+        ->post(route('staff.resident-applications.update', $pending), ['_application' => $pending->id, 'decision' => 'declined'])
+        ->assertOk()->assertSee('The remarks field is required unless decision is in approved.')->getContent());
+    $xpath = new DOMXPath($document);
+    $failed = $xpath->query('//ui-modal[@data-application-dialog="'.$pending->id.'"][@data-open-on-load]')->item(0);
+
+    expect($failed)->not->toBeNull()
+        ->and($xpath->query('.//textarea[@name="remarks" and @aria-invalid="true"]', $failed))->toHaveCount(1)
+        ->and($xpath->query('//ui-modal[@data-application-dialog="'.$other->id.'"]//*[@aria-invalid="true"]'))->toHaveCount(0)
+        ->and($pending->fresh()->status)->toBe('pending');
+
+    expect($page(route('staff.resident-applications.index', ['status' => 'declined']))->query('//tr[@data-application-row]//*[@data-application-state]'))->toHaveCount(1)
+        ->and($page(route('staff.resident-applications.index', ['search' => 'Zamora']))->query('//tr[@data-application-row]'))->toHaveCount(1)
+        ->and($page(route('staff.resident-applications.index', ['application' => $other->id]))->query('//ui-modal[@data-application-dialog="'.$other->id.'"][@data-open-on-load]'))->toHaveCount(1);
+    $this->get(route('staff.resident-applications.index', ['status' => 'unknown']))->assertNotFound();
 });

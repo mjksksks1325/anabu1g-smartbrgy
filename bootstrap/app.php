@@ -1,17 +1,26 @@
 <?php
 
+use App\Http\Controllers\ResidentEmailVerificationController;
 use App\Http\Middleware\ApplyPortalLocale;
 use App\Http\Middleware\EnsureActiveAccount;
 use App\Http\Middleware\EnsurePersonnelTwoFactorAccount;
 use App\Http\Middleware\PreventAccountCaching;
+use App\Http\Responses\PasswordResetLinkRequestResponse;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Exceptions\InvalidSignatureException;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -31,9 +40,12 @@ return Application::configure(basePath: dirname(__DIR__))
         );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->render(function (ThrottleRequestsException $exception, Request $request): ?JsonResponse {
+        $exceptions->render(function (ThrottleRequestsException $exception, Request $request): JsonResponse|RedirectResponse|null {
             if ($request->is('portal', 'portal/*') && $request->expectsJson()) {
                 return response()->json(['message' => __('Too many attempts. Please wait before trying again.')], 429, $exception->getHeaders());
+            }
+            if ($request->routeIs('portal.verification.verify', 'portal.verification.send')) {
+                return ResidentEmailVerificationController::rejectedLink(__('Too many attempts. Please wait before trying again.'));
             }
 
             return null;
@@ -45,6 +57,29 @@ return Application::configure(basePath: dirname(__DIR__))
 
             return null;
         });
+        // An expired or altered email confirmation link explains itself instead of showing a bare 403 page.
+        $exceptions->render(function (InvalidSignatureException $exception, Request $request): ?RedirectResponse {
+            return $request->routeIs('portal.verification.verify') ? ResidentEmailVerificationController::rejectedLink() : null;
+        });
+        // A failed reset email is reported but answered like any other reset request, so the reply never
+        // differs between addresses that have accounts and addresses that do not.
+        $exceptions->render(function (TransportExceptionInterface $exception, Request $request): ?Response {
+            return $request->routeIs('password.email') ? (new PasswordResetLinkRequestResponse)->toResponse($request) : null;
+        });
+        // Database errors never reach the screen, even with APP_DEBUG on: their messages carry SQL, bound values (resident
+        // details) and the database file path. People see a generic message with a short reference; the full error is
+        // written to the protected application log under that reference.
+        $databaseError = function (Throwable $exception, Request $request): Response {
+            $reference = Str::upper(Str::random(8));
+            Log::error('Database error (reference '.$reference.')', ['exception' => $exception, 'path' => $request->path(), 'user_id' => $request->user()?->getAuthIdentifier()]);
+            $message = __('Something went wrong on our side and the action was not completed. Try again; if it keeps happening, give the system administrator this reference: :reference.', ['reference' => $reference]);
+
+            return $request->expectsJson() || $request->is('api/*')
+                ? response()->json(['message' => $message, 'reference' => $reference], 500)
+                : response()->view('errors.database', ['reference' => $reference], 500);
+        };
+        $exceptions->render(fn (QueryException $exception, Request $request): Response => $databaseError($exception, $request));
+        $exceptions->render(fn (PDOException $exception, Request $request): Response => $databaseError($exception, $request));
         $exceptions->dontFlash(['activation_code', 'resident_number']);
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),

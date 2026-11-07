@@ -38,7 +38,8 @@ test('registration links an existing resident without changing their record or t
     $resident = portalRegistrationResident(['photo_path' => 'resident-photos/staff-captured.jpg']);
     $this->post(route('portal.register.verify'), ['resident_number' => strtolower($resident->resident_number), 'activation_code' => 'private-test-activation-code'])
         ->assertRedirect(route('portal.register'));
-    $this->get(route('portal.register'))->assertSee('Step 2 of 3')->assertSee('name="email"', false)
+    $this->get(route('portal.register'))->assertSee('Step 3 of 4')->assertSee('name="email"', false)
+        ->assertSee('Verified resident record')->assertSee($resident->full_name)->assertSee($resident->resident_number)
         ->assertDontSee('name="photo"', false);
 
     $this->post(route('portal.register.store'), portalAccountInput(['role' => 'admin', 'resident_id' => 999, 'name' => 'Someone else', 'is_active' => false, 'email_verified_at' => now()->toDateTimeString()]))
@@ -572,7 +573,7 @@ test('guests cannot retrieve status or protected request attachments', function 
 });
 
 test('activation code is visible while typing and accepts previously issued long codes', function () {
-    $response = $this->get(route('portal.register'))->assertOk();
+    $response = $this->get(route('portal.register', ['step' => 'verify']))->assertOk();
 
     $document = new DOMDocument;
     @$document->loadHTML($response->getContent());

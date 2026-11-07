@@ -43,7 +43,7 @@ class StoreResidentRequest extends FormRequest
             'civil_status' => ['required', Rule::in(['Single', 'Married', 'Widowed', 'Separated'])],
             'purok' => ['required', 'string', 'max:100', Rule::exists('puroks', 'name')->where('is_active', true)],
             'address' => ['required', 'string', 'max:1000'],
-            'contact_number' => ['nullable', 'regex:/^(?:\+63|0)9\d{9}$/'],
+            'contact_number' => ['nullable', 'regex:'.Resident::MOBILE_NUMBER_PATTERN],
             'residency_type' => ['required', Rule::in(['Homeowner', 'Renter', 'Boarder'])],
             'special_groups' => ['sometimes', 'array'],
             'special_groups.*' => [Rule::in(Resident::SPECIAL_GROUPS)],

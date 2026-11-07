@@ -140,7 +140,7 @@ test('activation account setup login requests profile and logout retain language
     $this->withCookie(PortalLocalization::COOKIE, $locale);
     $resident = Resident::factory()->create(['portal_registration_hash' => hash('sha256', 'ABCD1234'), 'portal_registration_expires_at' => now()->addDay()]);
     $this->post(route('portal.register.verify'), ['resident_number' => $resident->resident_number, 'activation_code' => 'abcd1234'])->assertRedirect(route('portal.register'));
-    $this->get(route('portal.register'))->assertOk()->assertSee($locale === 'fil' ? 'Hakbang 2 sa 3' : 'Step 2 of 3')->assertDontSee('name="photo"', false);
+    $this->get(route('portal.register'))->assertOk()->assertSee($locale === 'fil' ? 'Hakbang 3 sa 4' : 'Step 3 of 4')->assertDontSee('name="photo"', false);
     $input = ['email' => 'language@example.test', 'password' => 'ResidentPassword123!', 'password_confirmation' => 'ResidentPassword123!'];
     $this->post(route('portal.register.store'), $input)->assertRedirect(route('portal.login'));
     $this->post(route('portal.login.store'), ['email' => $input['email'], 'password' => $input['password']])->assertRedirect(route('portal.dashboard'));

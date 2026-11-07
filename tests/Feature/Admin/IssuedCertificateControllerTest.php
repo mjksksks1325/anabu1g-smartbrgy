@@ -1,5 +1,6 @@
 <?php
 
+use App\CertificateDocument;
 use App\CertificateType;
 use App\Models\DocumentRequest;
 use App\Models\IssuedCertificate;
@@ -8,6 +9,7 @@ use App\Models\User;
 use App\Models\VoterRegistration;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Filesystem\FilesystemManager;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -74,14 +76,15 @@ it('issues every supported online request with the server fee and a real QR file
     int $expectedFee,
 ) {
     Storage::fake('public');
+    Storage::fake('local');
     $user = User::factory()->assignedOperations()->create(['name' => 'Records Officer']);
-    $resident = null;
-    if (in_array($certificateType, [CertificateType::CertificateOfIndigency, CertificateType::RegisteredVoterCertification], true)) {
-        $resident = Resident::factory()->create(['is_verified_indigent' => true, 'is_in_good_standing' => true]);
-        VoterRegistration::factory()->create(['resident_id' => $resident->id]);
-    }
+    $resident = Resident::factory()->create([
+        'date_of_birth' => '1990-01-01', 'nationality' => 'Filipino', 'is_verified_indigent' => true, 'is_in_good_standing' => true,
+        'photo_path' => UploadedFile::fake()->image('resident.jpg')->store('resident-photos', 'local'),
+    ]);
+    VoterRegistration::factory()->create(['resident_id' => $resident->id]);
     $documentRequest = DocumentRequest::query()->create([
-        'resident_id' => $resident?->id,
+        'resident_id' => $resident->id,
         'reference_code' => 'REQ-'.Str::upper(Str::random(12)),
         'document_type' => $certificateType->value,
         'full_name' => 'Maria Santos',
@@ -91,7 +94,7 @@ it('issues every supported online request with the server fee and a real QR file
     ]);
 
     $response = $this->actingAs($user)
-        ->postJson(route('staff.document-requests.issue', $documentRequest));
+        ->postJson(route('staff.document-requests.issue', $documentRequest), ['residing_since' => '2000-01', 'years_of_residency' => 20]);
 
     $response
         ->assertOk()
@@ -144,6 +147,7 @@ it('links an onsite certificate to an eligible resident record', function () {
         'first_name' => 'Ana',
         'middle_name' => null,
         'last_name' => 'Reyes',
+        'date_of_birth' => '1990-01-01',
     ]);
 
     $this->actingAs($user)->postJson(route('staff.issued-certificates.store'), [
@@ -151,6 +155,8 @@ it('links an onsite certificate to an eligible resident record', function () {
         'certificate_type' => CertificateType::CertificateOfResidency->value,
         'resident_name' => 'Client supplied name is replaced',
         'address' => $resident->address,
+        'purpose' => 'School enrollment',
+        'residing_since' => '2000-01',
     ])->assertOk()
         ->assertJsonPath('certificate.resident_id', $resident->id)
         ->assertJsonPath('certificate.resident_name', 'Ana Reyes');
@@ -225,7 +231,7 @@ it('does not issue an online request before it is ready for release', function (
     $this->actingAs($user)
         ->postJson(route('staff.document-requests.issue', $documentRequest))
         ->assertUnprocessable()
-        ->assertJsonPath('message', 'This request is not ready for release.');
+        ->assertJsonPath('message', 'This request is not ready for release yet. On the Certificates board, use "Mark ready" (or set its status to Ready for Release), then issue it.');
 
     expect(IssuedCertificate::query()->count())->toBe(0);
     expect($documentRequest->fresh()->status)->toBe('processing');
@@ -237,9 +243,10 @@ it('returns 409 and keeps one certificate when the same request is issued twice'
     $user = User::factory()->assignedOperations()->create();
     $documentRequest = DocumentRequest::query()->create([
         'reference_code' => 'REQ-2026-DUPLICATE',
-        'document_type' => CertificateType::CertificateOfResidency->value,
+        'document_type' => CertificateType::BarangayClearance->value,
         'full_name' => 'Juan Dela Cruz',
         'address' => 'Anabu I-G, Imus City',
+        'purpose' => 'Employment',
         'status' => 'ready_for_release',
     ]);
 
@@ -270,6 +277,7 @@ it('rolls back issuance and request release when the QR file cannot be saved', f
         'document_type' => CertificateType::BarangayClearance->value,
         'full_name' => 'Juan Dela Cruz',
         'address' => 'Anabu I-G, Imus City',
+        'purpose' => 'Employment',
         'status' => 'ready_for_release',
     ]);
 
@@ -298,7 +306,11 @@ it('renders the matching print template for every certificate type', function (
         'issued_at' => now(),
         'issued_by' => 'Records Officer',
         'qr_code_path' => '/storage/qrcodes/test.svg',
+        'photo_path' => 'certificate-photos/test.jpg',
+        'resident_snapshot' => completeCertificateSnapshot(['full_name' => 'Maria Santos']),
+        'template_version' => CertificateDocument::TEMPLATE_VERSION,
     ]);
+    certificateWithQrFile($certificate);
 
     $response = $this->actingAs($user)
         ->get(route('staff.issued-certificates.print', $certificate))
@@ -307,7 +319,7 @@ it('renders the matching print template for every certificate type', function (
         ->assertSeeText('Maria Santos');
 
     $response->assertSee('OFFICE OF THE SANGGUNIANG BARANGAY')->assertSee('City of Imus footer logo')
-        ->assertSee(asset($certificate->qr_code_path))->assertDontSeeText($certificate->verification_code);
+        ->assertSee('src="data:image/svg+xml;base64,'.base64_encode(FAKE_QR_SVG).'"', false)->assertDontSeeText($certificate->verification_code);
 
     if ($certificateType === CertificateType::BarangayId) {
         $response->assertSeeText($certificate->certificate_number)
@@ -337,12 +349,15 @@ it('publicly verifies a real code through HTML and JSON regardless of letter cas
         ->assertViewIs('certificate.verify')
         ->assertSeeText('Authentic Barangay Document')
         ->assertSeeText('CERT-2026-VERIFY')
-        ->assertSeeText('Maria Santos');
+        ->assertSeeText('M. S.')
+        ->assertDontSeeText('Maria Santos')
+        ->assertDontSeeText('Records Officer');
     $this->getJson(route('certificate.verify', strtolower($certificate->verification_code)))
         ->assertOk()
         ->assertJsonPath('certificate.certificate_number', 'CERT-2026-VERIFY')
-        ->assertJsonPath('certificate.verification_code', 'VALIDVERIFYCODE1')
-        ->assertJsonPath('certificate.resident_name', 'Maria Santos');
+        ->assertJsonPath('certificate.holder_initials', 'M. S.')
+        ->assertJsonMissingPath('certificate.resident_name')
+        ->assertJsonMissingPath('certificate.issued_by');
 });
 
 it('returns 404 for an unknown public verification code', function () {
@@ -361,11 +376,12 @@ it('escapes resident-provided content on public verification and print pages', f
         'purpose' => $dangerousName,
         'amount_paid' => 50,
         'issued_at' => now(),
+        'resident_snapshot' => ['full_name' => $dangerousName, 'address' => $dangerousName],
     ]);
 
     $this->get(route('certificate.verify', $certificate->verification_code))
         ->assertOk()
-        ->assertSee('&lt;script&gt;', false)
+        ->assertSee('&lt;.', false)
         ->assertDontSee($dangerousName, false);
     $this->actingAs($user)
         ->get(route('staff.issued-certificates.print', $certificate))
@@ -430,3 +446,34 @@ it('paginates issued certificate history and filters it by search, type, source 
     $this->getJson(route('staff.issued-certificates.index', ['date_from' => '2026-10-01', 'date_to' => '2026-10-31']))->assertJsonPath('total', 1);
     $this->getJson(route('staff.issued-certificates.index', ['source' => 'mail', 'date_from' => '2026-10-31', 'date_to' => '2026-10-01']))->assertJsonValidationErrors(['source', 'date_to']);
 });
+
+test('a certificate whose QR code file is missing is not printed blank: staff are told, without paths, and the record is unchanged', function () {
+    Storage::fake('public');
+    $certificate = IssuedCertificate::query()->create([
+        'certificate_number' => 'CERT-2026-NOQRFILE', 'verification_code' => 'NOQRFILEVERIFY01', 'certificate_type' => CertificateType::BusinessClearance->value,
+        'resident_name' => 'Maria Santos', 'purpose' => 'Business permit', 'amount_paid' => 200, 'issued_at' => now(),
+        'qr_code_path' => '/storage/qrcodes/CERT-2026-NOQRFILE.svg', 'resident_snapshot' => completeCertificateSnapshot(['full_name' => 'Maria Santos']),
+        'template_version' => CertificateDocument::TEMPLATE_VERSION,
+    ]);
+    $before = $certificate->fresh()->getAttributes();
+
+    $response = $this->actingAs(User::factory()->assignedOperations()->create())->get(route('staff.issued-certificates.print', $certificate))
+        ->assertConflict()->assertSeeText("This certificate's QR code is missing")->assertSeeText('Ask the system administrator to restore the QR code file from a backup')
+        ->assertSeeText('CERT-2026-NOQRFILE')->assertDontSee('Certificate authenticity QR code')->assertDontSee('<img', false);
+    expect($response->getContent())->not->toContain('qrcodes')->not->toContain('/storage')->not->toContain('storage/')->not->toContain(base_path())->not->toContain('NOQRFILEVERIFY01');
+
+    expect($certificate->fresh()->getAttributes())->toBe($before);
+    Storage::disk('public')->assertDirectoryEmpty('qrcodes');
+    $this->get(route('certificate.verify', $certificate->verification_code))->assertOk()->assertSee('data-result="authentic"', false);
+});
+
+test('the QR code storage path is read from every recorded form and never leaves the QR folder', function (?string $recorded, ?string $expected) {
+    expect((new IssuedCertificate(['qr_code_path' => $recorded]))->qrStoragePath())->toBe($expected);
+})->with([
+    'relative URL' => ['/storage/qrcodes/CERT-2026-A.svg', 'qrcodes/CERT-2026-A.svg'],
+    'disk path' => ['qrcodes/CERT-2026-B.svg', 'qrcodes/CERT-2026-B.svg'],
+    'absolute URL' => ['http://localhost:8000/storage/qrcodes/CERT-2026-C.svg', 'qrcodes/CERT-2026-C.svg'],
+    'outside the QR folder' => ['/storage/../.env', null],
+    'traversal inside' => ['/storage/qrcodes/../../.env', null],
+    'none' => [null, null],
+]);

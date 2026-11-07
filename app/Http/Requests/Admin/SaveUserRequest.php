@@ -75,7 +75,7 @@ class SaveUserRequest extends FormRequest
             'password' => [
                 $this->isMethod('POST') ? 'required' : 'nullable',
                 'string',
-                Password::min(12),
+                Password::default(),
                 'max:255',
             ],
 

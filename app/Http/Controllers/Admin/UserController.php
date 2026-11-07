@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class UserController extends Controller
 {
@@ -203,7 +204,12 @@ class UserController extends Controller
             throw ValidationException::withMessages(['user' => 'Reactivate this account before sending a password reset link.']);
         }
 
-        $status = Password::broker()->sendResetLink(['email' => $user->email]);
+        try {
+            $status = Password::broker()->sendResetLink(['email' => $user->email]);
+        } catch (TransportExceptionInterface $exception) {
+            report($exception);
+            $status = null;
+        }
         if ($status === Password::RESET_THROTTLED) {
             throw ValidationException::withMessages(['user' => 'A reset link was sent to this account recently. Wait a minute before sending another.']);
         }

@@ -1,8 +1,14 @@
 <?php
 
+use App\Models\IssuedCertificate;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
+use Symfony\Component\Mailer\Exception\TransportException;
+use Symfony\Component\Mailer\SentMessage;
+use Symfony\Component\Mailer\Transport\AbstractTransport;
 use Tests\TestCase;
 
 /*
@@ -75,4 +81,54 @@ function spreadsheetSheetXml(TestResponse $response): string
     $zip->close();
 
     return $xml;
+}
+
+/** Route mail through a transport that always fails, as an unreachable or refusing SMTP server would. */
+function useFailingMailer(): void
+{
+    Mail::extend('failing', fn (): AbstractTransport => new class extends AbstractTransport
+    {
+        protected function doSend(SentMessage $message): void
+        {
+            throw new TransportException('Connection could not be established with host "127.0.0.1:1".');
+        }
+
+        public function __toString(): string
+        {
+            return 'failing://';
+        }
+    });
+    config(['mail.mailers.failing' => ['transport' => 'failing'], 'mail.default' => 'failing']);
+}
+
+/**
+ * A small SVG standing in for a stored QR code: print pages embed the QR file from the public disk.
+ */
+const FAKE_QR_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2 2"><rect width="1" height="1"/></svg>';
+
+/**
+ * Puts the certificate's QR code file on a fake public disk, as issuance does, so print tests never touch real storage.
+ */
+function certificateWithQrFile(IssuedCertificate $certificate): IssuedCertificate
+{
+    Storage::fake('public');
+    Storage::disk('public')->put((string) $certificate->qrStoragePath(), FAKE_QR_SVG);
+
+    return $certificate;
+}
+
+/**
+ * Every detail an official certificate template can print, as IssueCertificate records it at issuance.
+ *
+ * @param  array<string, mixed>  $overrides
+ * @return array<string, mixed>
+ */
+function completeCertificateSnapshot(array $overrides = []): array
+{
+    return [
+        'full_name' => 'Test Resident', 'first_name' => 'Test', 'middle_name' => 'Middle', 'last_name' => 'Resident', 'suffix' => null,
+        'address' => 'Historical test address', 'date_of_birth' => '1990-02-12', 'gender' => 'Female', 'civil_status' => 'Single',
+        'nationality' => 'Test nationality', 'residing_since' => '2001-07', 'years_of_residency' => 18, 'voter_verified' => false,
+        ...$overrides,
+    ];
 }

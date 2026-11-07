@@ -2,8 +2,12 @@
 
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Support\Facades\Exceptions;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password;
 use Laravel\Fortify\Features;
+use Symfony\Component\Mailer\Exception\TransportException;
 
 beforeEach(function () {
     $this->skipUnlessFortifyHas(Features::resetPasswords());
@@ -52,8 +56,8 @@ test('password can be reset with valid token', function () {
         $response = $this->post(route('password.update'), [
             'token' => $notification->token,
             'email' => $user->email,
-            'password' => 'password',
-            'password_confirmation' => 'password',
+            'password' => 'Staff-Password-2026.',
+            'password_confirmation' => 'Staff-Password-2026.',
         ]);
 
         $response
@@ -93,4 +97,92 @@ test('the reset password screen offers residents the portal log in', function ()
     $this->get(route('password.reset', 'example-token'))
         ->assertOk()
         ->assertSee('href="'.route('portal.login').'"', false);
+});
+
+test('a reset request gets the same answer whether or not the email has an account', function () {
+    Notification::fake();
+    $resident = User::factory()->resident()->create();
+    $neutral = 'If an account uses this email address, we will send it a link to reset the password. The link works for 60 minutes. Check your Spam folder if it does not arrive.';
+    $portal = route('password.request', ['from' => 'portal']);
+
+    foreach ([$resident->email, 'nobody@example.test', $resident->email] as $email) {
+        $this->from($portal)->post(route('password.email'), ['email' => $email])
+            ->assertRedirect($portal)->assertSessionHasNoErrors()->assertSessionHas('status', $neutral);
+    }
+    $this->postJson(route('password.email'), ['email' => 'nobody@example.test'])->assertOk()->assertExactJson(['message' => $neutral]);
+
+    Notification::assertSentToTimes($resident, ResetPassword::class, 1);
+    $this->from($portal)->post(route('password.email'), ['email' => 'not-an-email'])->assertSessionHasErrors('email');
+});
+
+test('a mail server failure during a reset request is reported and answered like any other request', function () {
+    Exceptions::fake();
+    useFailingMailer();
+    $resident = User::factory()->resident()->create();
+    $portal = route('password.request', ['from' => 'portal']);
+
+    $this->from($portal)->post(route('password.email'), ['email' => $resident->email])
+        ->assertRedirect($portal)->assertSessionHasNoErrors()->assertSessionHas('status');
+    Exceptions::assertReported(TransportException::class);
+});
+
+test('resident reset links open the portal reset page and return to the portal log in', function () {
+    Notification::fake();
+    $resident = User::factory()->resident()->create(['email' => 'jane@example.test']);
+    $this->post(route('password.email'), ['email' => $resident->email]);
+
+    Notification::assertSentTo($resident, ResetPassword::class, function (ResetPassword $notification) use ($resident) {
+        $url = $notification->toMail($resident)->actionUrl;
+        expect($url)->toContain('from=portal');
+
+        $this->get($url)->assertOk()->assertViewIs('portal.reset-password')
+            ->assertSee('action="'.route('password.update').'"', false)
+            ->assertSee('value="'.$notification->token.'"', false)
+            ->assertSee('value="jane@example.test"', false);
+
+        $this->from($url)->post(route('password.update'), ['token' => $notification->token, 'email' => $resident->email, 'password' => 'password', 'password_confirmation' => 'password'])
+            ->assertRedirect($url)->assertSessionHasErrors(['password' => 'The password field must be at least 12 characters.']);
+        $this->post(route('password.update'), ['token' => $notification->token, 'email' => $resident->email, 'password' => 'New-Resident-2026!', 'password_confirmation' => 'New-Resident-2026!'])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('portal.login'))
+            ->assertSessionHas('status', 'Your password has been reset. Log in with your new password.');
+
+        return true;
+    });
+    expect(Hash::check('New-Resident-2026!', $resident->fresh()->password))->toBeTrue();
+});
+
+test('staff reset links keep the staff reset screen and staff log in', function () {
+    Notification::fake();
+    $staff = User::factory()->create(['role' => 'staff']);
+    $this->post(route('password.email'), ['email' => $staff->email]);
+
+    Notification::assertSentTo($staff, ResetPassword::class, function (ResetPassword $notification) use ($staff) {
+        $url = $notification->toMail($staff)->actionUrl;
+        expect($url)->not->toContain('from=portal');
+        $this->get($url)->assertOk()->assertViewIs('livewire.auth.reset-password');
+
+        return true;
+    });
+});
+
+test('a wrong token and an unknown email fail a reset with the same message', function () {
+    $resident = User::factory()->resident()->create();
+    $input = ['password' => 'New-Resident-2026!', 'password_confirmation' => 'New-Resident-2026!'];
+
+    $this->post(route('password.update'), ['token' => 'wrong', 'email' => $resident->email, ...$input])
+        ->assertSessionHasErrors(['email' => 'This password reset link is invalid or has expired. Request a new one.']);
+    $this->post(route('password.update'), ['token' => 'wrong', 'email' => 'nobody@example.test', ...$input])
+        ->assertSessionHasErrors(['email' => 'This password reset link is invalid or has expired. Request a new one.']);
+    expect(Hash::check('New-Resident-2026!', $resident->fresh()->password))->toBeFalse();
+});
+
+test('a reset link stops working after 60 minutes', function () {
+    $resident = User::factory()->resident()->create();
+    $token = Password::broker()->createToken($resident);
+    $this->travel(61)->minutes();
+
+    $this->post(route('password.update'), ['token' => $token, 'email' => $resident->email, 'password' => 'New-Resident-2026!', 'password_confirmation' => 'New-Resident-2026!'])
+        ->assertSessionHasErrors('email');
+    expect(Hash::check('New-Resident-2026!', $resident->fresh()->password))->toBeFalse();
 });

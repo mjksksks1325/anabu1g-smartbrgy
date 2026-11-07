@@ -44,6 +44,9 @@
   --staff-quiet-hover: #eef3ef;
   --staff-danger: #b42318;
   --staff-danger-hover: #912018;
+  --staff-warning-bg: #fbf0dc;
+  --staff-warning-border: #e7c27a;
+  --staff-warning-ink: #6b4a00;
   --staff-focus: #17663a;
   --staff-shadow: 0 1px 2px rgba(16, 32, 24, .05), 0 4px 14px rgba(16, 32, 24, .06);
   --staff-shadow-raised: 0 18px 44px rgba(16, 32, 24, .2);
@@ -102,6 +105,9 @@ html[data-theme=dark], html.dark, body:not(.light-mode) #app.admin-interface.adm
   --staff-quiet-hover: #2b3136;
   --staff-danger: #c2392d;
   --staff-danger-hover: #d14a3e;
+  --staff-warning-bg: #3a2d0c;
+  --staff-warning-border: #6b5520;
+  --staff-warning-ink: #f0c96a;
   --staff-focus: #8fd4ab;
   --staff-shadow: 0 1px 2px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .035);
   --staff-shadow-raised: 0 24px 56px rgba(0, 0, 0, .6), 0 0 0 1px rgba(255, 255, 255, .04);
@@ -927,3 +933,178 @@ body #app.admin-interface .incident-status-chip[aria-pressed="true"] { border-co
 body #app.admin-interface .incident-status-chip:focus-visible { outline: 3px solid var(--staff-focus, #2563eb); outline-offset: 2px; }
 body #app.admin-interface .incident-status-chip .badge { min-width: 28px; justify-content: center; }
 #app.admin-interface .restriction-needs-reviewer { display: inline-block; color: var(--staff-muted); font-size: 12px; font-style: italic; }
+
+/* ── IoT/request pages: phone menu ─────────────────────────────── */
+/* Below 650px the side menu folds away behind a Menu button (toggled in personnel-navigation.js). */
+.iot-menu-button { display: none; }
+@media (max-width: 650px) {
+  body[data-personnel-layout="iot"] .iot-menu-button {
+    display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 12px;
+    border: 1px solid var(--staff-quiet-border); border-radius: 6px; background: var(--staff-quiet-bg); color: var(--staff-quiet-ink);
+    font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+  body[data-personnel-layout="iot"] .iot-menu-button[aria-expanded="true"] { border-color: var(--staff-accent-fill); background: var(--staff-active-bg); color: var(--staff-active-ink); }
+  body[data-personnel-layout="iot"] .side-nav:not(.is-open) { display: none; }
+  body[data-personnel-layout="iot"] .side-nav.is-open { border-bottom: 1px solid var(--staff-border); }
+  /* Open, it is a single readable column of groups, not the narrow-screen horizontal strip. */
+  body[data-personnel-layout="iot"] .side-nav.is-open .side-nav-scroll { display: block; overflow: visible; white-space: normal; padding: 8px 14px 14px; }
+  body[data-personnel-layout="iot"] .side-nav.is-open .sidebar-sec { display: block; width: auto; margin: 0 0 6px; }
+  body[data-personnel-layout="iot"] .side-nav.is-open .side-nav-scroll a { display: flex; width: 100%; min-height: 44px; }
+  /* The hidden page title is a spacer on wide screens; here it wraps to its own row, so take it out of the layout. */
+  body[data-personnel-layout="iot"] .workspace-title { display: none; }
+}
+
+/* ── Workspace list patterns (Work Group 3) ────────────────────── */
+/* Loading, empty and error messages rendered by workspaceState/workspaceStateRow/workspaceErrorRow in admin.js. */
+#app.admin-interface .workspace-state { padding: 28px 16px !important; color: var(--staff-muted); font-size: 13px; line-height: 1.5; text-align: center; }
+#app.admin-interface .workspace-state[data-state="loading"] > span::before { content: ''; display: inline-block; width: 12px; height: 12px; margin-right: 8px; border: 2px solid var(--staff-row); border-top-color: var(--civic-primary); border-radius: 50%; vertical-align: -1px; animation: workspace-spin .8s linear infinite; }
+#app.admin-interface .workspace-state[data-state="error"] { color: var(--staff-danger); }
+body:not(.light-mode) #app.admin-interface .workspace-state[data-state="error"] { color: #f87171; }
+#app.admin-interface .workspace-state-row:hover > td { background: transparent !important; }
+#app.admin-interface .workspace-reference { color: var(--civic-primary); font-family: var(--font-mono); }
+#app.admin-interface .workspace-primary-text { color: var(--text-primary); }
+@keyframes workspace-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { #app.admin-interface .workspace-state[data-state="loading"] > span::before { animation: none; } }
+#app.admin-interface .cert-lane-count { min-width: 28px; justify-content: center; }
+
+/* Tablets keep the 218px sidebar, so the content column is phone-width-plus: toolbars and dense rows reflow early. */
+@media (min-width: 761px) and (max-width: 1100px) {
+  #app.admin-interface .audit-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #app.admin-interface .audit-toolbar .search-wrap { grid-column: 1 / -1; }
+  #app.admin-interface .audit-toolbar .incident-date-filter { min-width: 0; }
+  #app.admin-interface .audit-toolbar .incident-date-filter .form-input { width: 100%; min-width: 0; }
+  /* Audit events: category and time on the first line, the action across the row, then who made it. */
+  #app.admin-interface .audit-table-head { display: none !important; }
+  #app.admin-interface .audit-log-row { grid-template-columns: auto minmax(0, 1fr); gap: 6px 12px; align-items: center; text-align: start; }
+  #app.admin-interface .audit-log-row > div:nth-child(3),
+  #app.admin-interface .audit-log-row > .audit-log-user { grid-column: 1 / -1; }
+  #app.admin-interface .audit-log-row .audit-category-badge { justify-self: start; }
+  body #app.admin-interface.admin-interface .user-filter-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body #app.admin-interface.admin-interface .user-filter-row .search-wrap { grid-column: 1 / -1; }
+  body #app.admin-interface.admin-interface #users-list-container .user-card { grid-template-columns: auto minmax(0, 1fr); }
+  body #app.admin-interface.admin-interface .user-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
+}
+
+/* ── Households dialog (Work Group 4): list view and record view ─────── */
+body[data-personnel-layout="admin"] .household-modal { width: min(820px, calc(100vw - 24px)); max-width: none; }
+body[data-personnel-layout="admin"] .household-browser-toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 12px; margin-bottom: 12px; }
+body[data-personnel-layout="admin"] .household-browser-toolbar .form-group { flex: 1 1 280px; margin: 0; }
+body[data-personnel-layout="admin"] .household-browser-toolbar .btn { min-height: 44px; }
+body[data-personnel-layout="admin"] .household-editor-head { display: grid; gap: 8px; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--staff-row); }
+body[data-personnel-layout="admin"] .household-editor-head .household-back { justify-self: start; }
+body[data-personnel-layout="admin"] #household-editor-title { margin: 0; color: var(--text-primary); font-size: 18px; font-weight: 800; }
+body[data-personnel-layout="admin"] #household-editor-title:focus { outline: none; }
+body[data-personnel-layout="admin"] #household-editor-title:focus-visible { outline: 3px solid color-mix(in srgb, var(--civic-primary) 40%, transparent); outline-offset: 3px; }
+body[data-personnel-layout="admin"] #household-editor .form-input:disabled { opacity: 1; background: var(--staff-soft); color: var(--text-primary); cursor: default; }
+body[data-personnel-layout="admin"] .household-form-error { margin: 0 0 14px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--staff-danger) 45%, transparent); border-radius: 8px; background: color-mix(in srgb, var(--staff-danger) 8%, transparent); color: var(--staff-danger); font-size: 13px; font-weight: 600; }
+body[data-personnel-layout="admin"] .household-field-error { margin: 6px 0 0; color: var(--staff-danger); font-size: 12px; font-weight: 600; }
+body[data-personnel-layout="admin"] #household-editor [aria-invalid="true"] { border-color: var(--staff-danger); }
+body:not(.light-mode)[data-personnel-layout="admin"] :is(.household-form-error, .household-field-error) { color: #f87171; }
+body[data-personnel-layout="admin"] .household-save-actions { display: flex; justify-content: flex-end; }
+@media (max-width: 760px) {
+  body[data-personnel-layout="admin"] .household-browser-toolbar .btn { width: 100%; }
+  body[data-personnel-layout="admin"] .household-save-actions .btn { width: 100%; min-height: 44px; }
+}
+
+/* ── User account form: password guidance (Work Group 4) ──────────── */
+/* One required line (enforced by the server) and recommendations; each line shows idle, met or not yet met. */
+body[data-personnel-layout="admin"] .password-guidance { display: grid; gap: 4px; margin: 8px 0 0; padding: 0; list-style: none; font-size: 12.5px; color: var(--staff-muted); }
+body[data-personnel-layout="admin"] .password-guidance li { display: flex; align-items: center; gap: 8px; }
+body[data-personnel-layout="admin"] .password-guidance li::before { content: ""; flex: 0 0 14px; width: 14px; height: 14px; border: 1.5px solid var(--staff-control-border); border-radius: 50%; }
+body[data-personnel-layout="admin"] .password-guidance li.is-met { color: var(--staff-ink); }
+body[data-personnel-layout="admin"] .password-guidance li.is-met::before { border-color: var(--staff-accent-fill); background: var(--staff-accent-fill) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 8.5 2.5 2.5L12 5.5'/%3E%3C/svg%3E") center / 12px no-repeat; }
+body[data-personnel-layout="admin"] .password-guidance li[data-required][data-state="unmet"] { color: var(--staff-danger); }
+body[data-personnel-layout="admin"] .password-guidance li[data-required][data-state="unmet"]::before { border-color: var(--staff-danger); }
+body[data-personnel-layout="admin"] .password-rule-tag { margin-left: auto; padding: 1px 6px; border-radius: 999px; background: var(--staff-soft); color: var(--staff-muted); font-size: 11px; font-weight: 600; }
+body[data-personnel-layout="admin"] .password-guidance li[data-required] .password-rule-tag { background: var(--staff-active-bg); color: var(--staff-active-ink); }
+body:not(.light-mode)[data-personnel-layout="admin"] .password-guidance li[data-required][data-state="unmet"] { color: #f87171; }
+
+/* ── Tablets (761–1023px): the staff menu becomes a drawer (Work Group 4) ───────── */
+/* At these widths a pinned 218px sidebar left 550–806px for tables and forms. Like the account settings layout
+   (Flux sidebar, below 1024px) the menu now opens from the Menu button: the workspace drawer overlays the page;
+   the IoT/request layout opens it as a column above the content, as on phones. */
+@media (min-width: 761px) and (max-width: 1023px) {
+  body #app.admin-interface.admin-interface .mobile-menu-button { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; margin: 0 12px 0 16px; padding: 8px 14px; border: 1px solid var(--staff-quiet-border); border-radius: 6px; background: var(--staff-quiet-bg); color: var(--staff-quiet-ink); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+  body #app.admin-interface.admin-interface .mobile-menu-button[aria-expanded="true"] { border-color: var(--staff-accent-fill); background: var(--staff-active-bg); color: var(--staff-active-ink); }
+  body #app.admin-interface.admin-interface .topbar-logo { flex: 0 0 auto; width: auto; padding-right: 18px; }
+  body #app.admin-interface.admin-interface .sidebar { display: none; position: fixed; top: 80px; bottom: 0; left: 0; z-index: 200; width: min(300px, 80vw); box-shadow: 12px 0 32px rgba(10, 18, 14, .35); }
+  body #app.admin-interface.admin-interface .sidebar.is-open { display: flex; }
+}
+@media (min-width: 651px) and (max-width: 1023px) {
+  body[data-personnel-layout="iot"] .iot-menu-button {
+    display: inline-flex; align-items: center; gap: 6px; min-height: 44px; margin: auto 0 auto 16px; padding: 8px 14px;
+    border: 1px solid var(--staff-quiet-border); border-radius: 6px; background: var(--staff-quiet-bg); color: var(--staff-quiet-ink);
+    font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+  body[data-personnel-layout="iot"] .iot-menu-button[aria-expanded="true"] { border-color: var(--staff-accent-fill); background: var(--staff-active-bg); color: var(--staff-active-ink); }
+  body[data-personnel-layout="iot"] .workspace { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  body[data-personnel-layout="iot"] .workspace > .side-nav { grid-row: 1; }
+  body[data-personnel-layout="iot"] .workspace > .main-content { grid-row: 2; }
+  body[data-personnel-layout="iot"] .side-nav:not(.is-open) { display: none; }
+  /* Open, the menu takes its natural height: the pinned sidebar height would make the account block overlap the links. */
+  body[data-personnel-layout="iot"] .side-nav.is-open { display: flex; flex-direction: column; height: auto; max-height: min(70dvh, 620px); overflow-y: auto; border-right: 0; border-bottom: 1px solid var(--staff-border); }
+  body[data-personnel-layout="iot"] .side-nav.is-open .side-nav-scroll { display: grid; flex: none; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 18px; overflow: visible; padding: 12px 18px; }
+  body[data-personnel-layout="iot"] .side-nav.is-open .side-nav-user { position: static; }
+}
+
+/* ── Workspace KPI rows follow the space they have, not the window (Work Group 4) ─── */
+/* With the sidebar open at 1024–1200px a four-card row squeezed labels and links into three lines. A screen
+   (.content, sized by the flex row) is the container: under 900px of content the cards go two by two. */
+body #app.admin-interface.admin-interface .content { container: workspace-content / inline-size; }
+@container workspace-content (max-width: 900px) {
+  body #app.admin-interface.admin-interface .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container workspace-content (max-width: 520px) {
+  body #app.admin-interface.admin-interface .stats-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Icons inside workspace buttons take the button's text colour (the menu icon colour made "+" on Add New User
+   nearly invisible on green). */
+body #app.admin-interface.admin-interface .btn > svg.nav-icon { color: currentColor; stroke: currentColor; opacity: 1; }
+
+/* The workspace keeps an empty legacy #login-screen marked hidden. admin.css gives #login-screen display:flex as a
+   full-screen dark (#050e1a) overlay, which beats the hidden attribute, so every return to the Dashboard painted it
+   until admin.js hid it after Livewire's navigated event: the black flash. Sign-in is the Fortify page now. */
+#login-screen[hidden] { display: none !important; }
+
+/* ── Print & Release checklist: what staff complete before a certificate can be issued ── */
+body[data-personnel-layout="admin"] .release-readiness { margin: 4px 0 16px; padding: 12px 14px; border: 1px solid var(--staff-warning-border); border-radius: 8px; background: var(--staff-warning-bg); color: var(--staff-ink); font-size: 13px; line-height: 1.45; }
+body[data-personnel-layout="admin"] .release-readiness[data-state="ready"] { border-color: var(--staff-border); background: var(--staff-active-bg); }
+body[data-personnel-layout="admin"] .release-readiness[data-state="loading"], body[data-personnel-layout="admin"] .release-readiness[data-state="error"] { border-color: var(--staff-border); background: var(--staff-soft); }
+body[data-personnel-layout="admin"] .release-readiness-title { margin: 0 0 8px; color: var(--staff-warning-ink); font-size: 14px; font-weight: 700; }
+body[data-personnel-layout="admin"] .release-readiness-status { margin: 0; color: var(--staff-muted); }
+body[data-personnel-layout="admin"] .release-readiness[data-state="ready"] .release-readiness-status { color: var(--staff-active-ink); font-weight: 600; }
+body[data-personnel-layout="admin"] .release-readiness-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+body[data-personnel-layout="admin"] .release-readiness-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 8px 10px; border: 1px solid var(--staff-border); border-radius: 6px; background: var(--staff-card); }
+body[data-personnel-layout="admin"] .release-readiness-kind { grid-column: 1; color: var(--staff-muted); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+body[data-personnel-layout="admin"] .release-readiness-text { grid-column: 1; overflow-wrap: anywhere; }
+body[data-personnel-layout="admin"] .release-readiness-action { grid-column: 2; grid-row: 1 / span 2; justify-self: end; }
+body[data-personnel-layout="admin"] .release-readiness-note { grid-column: 1 / -1; color: var(--staff-muted); font-size: 12px; }
+body[data-personnel-layout="admin"] .release-readiness-footer { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; margin-top: 10px; color: var(--staff-muted); font-size: 12px; }
+@media (max-width: 520px) {
+  body[data-personnel-layout="admin"] .release-readiness-item { grid-template-columns: minmax(0, 1fr); }
+  body[data-personnel-layout="admin"] .release-readiness-action { grid-column: 1; grid-row: auto; justify-self: start; }
+}
+
+/* ── Resident Records: certificate details still missing ── */
+body[data-personnel-layout="admin"] .resident-missing-badge { margin-left: 6px; }
+body[data-personnel-layout="admin"] .resident-household { color: var(--staff-ink); font-size: 13px; }
+body[data-personnel-layout="admin"] .resident-household.is-unassigned { color: var(--staff-muted); }
+body[data-personnel-layout="admin"] .resident-detail-missing { color: var(--staff-warning-ink); font-style: normal; font-weight: 600; }
+body[data-personnel-layout="admin"] .resident-missing-panel { display: grid; gap: 6px; justify-items: start; margin: 0 0 14px; padding: 12px 14px; border: 1px solid var(--staff-warning-border); border-radius: 8px; background: var(--staff-warning-bg); color: var(--staff-ink); font-size: 13px; line-height: 1.45; }
+body[data-personnel-layout="admin"] .resident-missing-panel h3 { margin: 0; color: var(--staff-warning-ink); font-size: 14px; }
+body[data-personnel-layout="admin"] .resident-missing-panel p { margin: 0; }
+body[data-personnel-layout="admin"] .resident-missing-note { color: var(--staff-muted); font-size: 12px; }
+
+/* ── Eligibility checker: eligible, eligible once completed, not eligible ── */
+body[data-personnel-layout="admin"] .eligibility-result.incomplete { border-color: var(--staff-warning-border); background: var(--staff-warning-bg); }
+body[data-personnel-layout="admin"] .eligibility-result.incomplete > strong { color: var(--staff-warning-ink); }
+body[data-personnel-layout="admin"] .eligibility-group span { display: block; color: var(--staff-muted); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+body[data-personnel-layout="admin"] .eligibility-group ul { margin: 2px 0 0; padding-left: 18px; }
+body[data-personnel-layout="admin"] .eligibility-result .btn { align-self: flex-start; }
+
+/* ── Shared table type: reference codes in monospace; dates, times and names in the body font ── */
+body[data-personnel-layout="admin"] #app.admin-interface .audit-log-row > :nth-child(2) { font-family: var(--civic-font-body); font-variant-numeric: tabular-nums; }
+body[data-personnel-layout="admin"] #app.admin-interface .audit-stats-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 1100px) { body[data-personnel-layout="admin"] #app.admin-interface .audit-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { body[data-personnel-layout="admin"] #app.admin-interface .audit-stats-grid { grid-template-columns: minmax(0, 1fr); } }

@@ -154,6 +154,107 @@ test('online release displays the voter certification fee without a custom expir
   assert.equal(fields.get('print-amount-paid').value, 'PHP 25.00');
 });
 
+/** Mirrors App\CertificateType::staffEnteredDetails(), passed as window.CERTIFICATE_STAFF_DETAILS. */
+const STAFF_DETAILS = {
+  'Barangay Clearance': [], 'Certificate of Residency': ['residing_since'], 'Certificate of Indigency': [],
+  'Registered Voter Certification': [], 'Barangay ID': [], 'First Time Jobseeker': ['years_of_residency'], 'Business Clearance': [],
+};
+
+/** A dialog holding the two staff-entered detail groups, as the dashboard renders them. */
+function detailContainer() {
+  const groups = ['residing_since', 'years_of_residency'].map(detail => {
+    const group = { hidden: true, dataset: { certificateDetail: detail } };
+    group.input = {
+      value: '', required: false, type: detail === 'years_of_residency' ? 'number' : 'month', focused: false,
+      closest: () => group, checkValidity() { return this.value !== ''; }, reportValidity() {}, focus() { this.focused = true; },
+    };
+    group.querySelector = () => group.input;
+    return group;
+  });
+  return {
+    groups,
+    querySelectorAll(selector) {
+      const visible = selector.includes(':not([hidden])') ? groups.filter(group => !group.hidden) : groups;
+      return selector.endsWith('input') ? visible.map(group => group.input) : visible;
+    },
+  };
+}
+
+test('releasing a request asks only for the residency detail its certificate prints and sends it with the issue request', async () => {
+  const { context, fields } = await client();
+  context.window.CERTIFICATE_FEES = FEE_SCHEDULE;
+  context.window.CERTIFICATE_STAFF_DETAILS = STAFF_DETAILS;
+  const modal = detailContainer();
+  const [since, years] = modal.groups;
+  fields.set('modal-print-release', modal);
+  for (const id of ['print-document-request-id', 'print-certificate-type', 'print-resident-name', 'print-purpose', 'print-amount-paid', 'print-release-submit']) fields.set(id, { value: '', innerHTML: '', dataset: {} });
+  vm.runInContext("CERT_REQUESTS.push({ code: 'RES', id: 7, type: 'Certificate of Residency' }); openModal = () => {}; closeModal = () => {}; refreshDocumentRequestsLive = async () => {}; refreshIssuedCertificates = async () => {};", context);
+  const requests = [];
+  const opened = [];
+  context.window.open = () => { opened.push(true); return { location: {}, close() {} }; };
+  context.fetch = async (url, options) => { requests.push({ url, body: JSON.parse(options.body) }); return { ok: true, json: async () => ({}) }; };
+
+  context.printCert('RES');
+  assert.equal(since.hidden, false);
+  assert.equal(since.input.required, true);
+  assert.equal(years.hidden, true);
+
+  await context.confirmPrintRelease();
+  assert.equal(requests.length, 0, 'nothing is issued while the month is blank');
+  assert.equal(opened.length, 0);
+  assert.equal(since.input.focused, true);
+
+  since.input.value = '2001-07';
+  await context.confirmPrintRelease();
+  assert.deepEqual(requests, [{ url: '/staff/document-requests/7/issue', body: { residing_since: '2001-07' } }]);
+});
+
+test('previewing a release opens the unsaved certificate with the residency detail typed so far', async () => {
+  const { context, fields } = await client();
+  context.window.CERTIFICATE_STAFF_DETAILS = STAFF_DETAILS;
+  const modal = detailContainer();
+  fields.set('modal-print-release', modal);
+  fields.set('print-document-request-id', { value: '7' });
+  const opened = [];
+  context.window.open = (url, target, features) => opened.push([url, target, features]);
+
+  context.previewCertificateRelease();
+  modal.groups[0].hidden = false;
+  modal.groups[0].input.value = '2001-07';
+  context.previewCertificateRelease();
+
+  assert.deepEqual(opened, [
+    ['/staff/document-requests/7/certificate-preview', '_blank', 'noopener'],
+    ['/staff/document-requests/7/certificate-preview?residing_since=2001-07', '_blank', 'noopener'],
+  ]);
+});
+
+test('onsite issuance shows the years of residency field only for First Time Jobseeker and sends it as a number', async () => {
+  const { context, fields } = await client();
+  context.window.CERTIFICATE_FEES = FEE_SCHEDULE;
+  context.window.CERTIFICATE_STAFF_DETAILS = STAFF_DETAILS;
+  const form = detailContainer();
+  const [since, years] = form.groups;
+  const type = { value: 'First Time Jobseeker' };
+  fields.set('manual-certificate-form', form);
+  fields.set('manual-certificate-type', type);
+  fields.set('manual-certificate-fee', { value: '' });
+
+  context.updateManualCertificateFee();
+  assert.equal(years.hidden, false);
+  assert.equal(years.input.required, true);
+  assert.equal(since.hidden, true);
+  years.input.value = '18';
+  assert.deepEqual({ ...context.certificateDetailPayload(form) }, { years_of_residency: 18 });
+
+  type.value = 'Barangay Clearance';
+  context.updateManualCertificateFee();
+  assert.equal(years.hidden, true);
+  assert.equal(years.input.required, false);
+  assert.equal(years.input.value, '');
+  assert.deepEqual({ ...context.certificateDetailPayload(form) }, {});
+});
+
 test('staff fee displays read the server schedule and mark an unconfirmed fee everywhere', async () => {
   const { context, fields } = await client();
   context.window.CERTIFICATE_FEES = FEE_SCHEDULE;
@@ -1028,6 +1129,19 @@ test('notification read state survives a refresh without storing request or inci
   assert.equal(fields.get('notif-count').textContent, 0);
 });
 
+test('a dashboard summary that returns after the staff member left the workspace changes nothing', async () => {
+  const { context, fields } = await client();
+  let activityRendered = false;
+  context.hasStaffPermission = () => true;
+  context.renderDashboardActivity = () => { activityRendered = true; };
+  context.fetch = async () => ({ ok: true, json: async () => ({ summary: { pending_requests: 2 }, recent_activity: [] }) });
+  fields.delete('dash-sub-pending');
+  fields.delete('dash-sub-incidents');
+
+  assert.equal(await context.refreshDashboardStats(), false);
+  assert.deepEqual([activityRendered, context.messages], [false, []]);
+});
+
 test('deleting a user requires confirmation and sends the delete request', async () => {
   const { context, fields } = await client();
   fields.set('users-list-container', { innerHTML: '', querySelectorAll: () => [] });
@@ -1409,6 +1523,7 @@ test('issued certificate history requests the selected page and filters and rend
   fields.set('issued-search', { value: ' Maria ' });
   fields.set('issued-type-filter', { value: 'Barangay Clearance' });
   fields.set('issued-source-filter', { value: 'online' });
+  fields.set('issued-status-filter', { value: 'revoked' });
   fields.set('issued-date-from', { value: '2026-10-01' });
   fields.set('issued-date-to', { value: '' });
   const requested = [];
@@ -1422,12 +1537,43 @@ test('issued certificate history requests the selected page and filters and rend
   assert.equal(params.get('search'), 'Maria');
   assert.equal(params.get('certificate_type'), 'Barangay Clearance');
   assert.equal(params.get('source'), 'online');
+  assert.equal(params.get('status'), 'revoked');
   assert.equal(params.get('date_from'), '2026-10-01');
   assert.equal(params.has('date_to'), false);
   assert.match(pagination.innerHTML, /Showing 11–20 of 23 <span>certificates<\/span>/);
   assert.match(pagination.innerHTML, /Page 2 of 3/);
   assert.match(pagination.innerHTML, /onclick="refreshIssuedCertificates\(1\)"/);
   assert.match(tbody.innerHTML, /No issued certificates match these filters/);
+});
+
+test('revoking a certificate needs a reason and the supervisor password before anything is sent', async () => {
+  const { context, fields } = await client();
+  const reason = { value: '', focused: false, focus() { this.focused = true; } };
+  const error = { hidden: true, textContent: '' };
+  fields.set('revoke-certificate-number', { textContent: '' });
+  fields.set('revoke-certificate-reason', reason);
+  fields.set('revoke-certificate-reason-error', error);
+  const requests = [];
+  let passwordPrompts = 0;
+  context.fetch = async (url, options) => { requests.push({ url, method: options.method, body: JSON.parse(options.body) }); return { ok: true, json: async () => ({ message: 'Certificate revoked.' }) }; };
+  vm.runInContext('openModal = () => {}; closeModal = () => {}; refreshIssuedCertificates = async () => {};', context);
+  context.confirmDestructiveAction = async () => { passwordPrompts++; return passwordPrompts === 1 ? null : 'captain-password'; };
+
+  context.openRevokeCertificate({ id: 9, certificate_number: 'CERT-2026-ABC' });
+  assert.equal(fields.get('revoke-certificate-number').textContent, 'CERT-2026-ABC');
+  reason.value = 'Mistake';
+  await context.submitRevokeCertificate({ preventDefault() {} });
+  assert.equal(error.hidden, false);
+  assert.equal(reason.focused, true);
+  assert.equal(passwordPrompts, 0);
+
+  reason.value = 'Issued to the wrong person by mistake.';
+  await context.submitRevokeCertificate({ preventDefault() {} });
+  assert.equal(requests.length, 0, 'cancelling the password prompt sends nothing');
+
+  await context.submitRevokeCertificate({ preventDefault() {} });
+  assert.deepEqual(requests, [{ url: '/staff/issued-certificates/9/revoke', method: 'POST', body: { reason: 'Issued to the wrong person by mistake.', super_admin_password: 'captain-password' } }]);
+  assert.deepEqual({ ...context.messages.at(-1) }, { message: 'Certificate revoked.', type: 'green' });
 });
 
 test('voter rows offer Edit only with voters.update, and editing sends the record version without changing the resident', async () => {
@@ -1665,4 +1811,230 @@ test('the reset-link action shows for active accounts the viewer may change, nev
   context.window.AUTHENTICATED_USER = { id: 1, role: 'admin', is_super_admin: true, is_administrator: true };
   context.showUserResetLink({ id: 1, role: 'admin', is_super_admin: true, is_active: true });
   assert.equal(row.hidden, false);
+});
+test('password guidance marks each required rule of the staff policy as the password is typed', () => {
+  const source = readFileSync(new URL('../../public/js/admin.js', import.meta.url), 'utf8');
+  const code = source.slice(source.indexOf('const PASSWORD_RULES = {'), source.indexOf('function openAddUser() {'));
+  const items = ['length', 'uppercase', 'lowercase', 'number', 'symbol'].map(rule => ({ dataset: { passwordRule: rule }, classes: new Set(), classList: { toggle(name, on) { on ? this.owner.classes.add(name) : this.owner.classes.delete(name); } } }));
+  items.forEach(item => { item.classList.owner = item; });
+  const fields = { 'adduser-password': { value: '' }, 'adduser-pass-label': { textContent: '' } };
+  const context = vm.createContext({
+    adminText: text => text,
+    document: { getElementById: id => fields[id], querySelectorAll: () => items },
+  });
+  vm.runInContext(code, context);
+  const states = () => Object.fromEntries(items.map(item => [item.dataset.passwordRule, item.dataset.state]));
+
+  context.setPasswordGuidanceMode(false);
+  assert.equal(fields['adduser-pass-label'].textContent, 'Required. The password must meet every requirement below.');
+  assert.deepEqual(states(), { length: 'idle', uppercase: 'idle', lowercase: 'idle', number: 'idle', symbol: 'idle' });
+
+  fields['adduser-password'].value = 'barangay.hall';
+  context.updatePasswordGuidance();
+  assert.deepEqual(states(), { length: 'met', uppercase: 'unmet', lowercase: 'met', number: 'unmet', symbol: 'met' }, 'a period counts as a symbol');
+
+  fields['adduser-password'].value = 'Barangay.Hall2026';
+  context.updatePasswordGuidance();
+  assert.deepEqual(states(), { length: 'met', uppercase: 'met', lowercase: 'met', number: 'met', symbol: 'met' });
+
+  fields['adduser-password'].value = 'BarangayHall2026';
+  context.updatePasswordGuidance();
+  assert.equal(states().symbol, 'unmet', 'letters and numbers alone are not a symbol');
+
+  context.setPasswordGuidanceMode(true);
+  assert.match(fields['adduser-pass-label'].textContent, /^Leave blank to keep the current password/);
+});
+
+test('the tablet and phone drawer moves focus in when opened and back to Menu when Escape closes it', () => {
+  const source = readFileSync(new URL('../../public/js/admin.js', import.meta.url), 'utf8');
+  const code = source.slice(source.indexOf('function toggleNavigation(force'), source.indexOf('// A click outside the open drawer closes it'));
+  const classes = new Set();
+  let focused = null;
+  const firstItem = { focus() { focused = 'first item'; } };
+  const sidebar = { classList: { contains: name => classes.has(name), toggle(name, on) { on ? classes.add(name) : classes.delete(name); } }, querySelector: () => firstItem };
+  const attributes = {};
+  const button = { setAttribute(name, value) { attributes[name] = value; }, focus() { focused = 'Menu'; } };
+  let buttonDisplay = 'inline-flex';
+  const context = vm.createContext({
+    document: { getElementById: () => sidebar, querySelector: () => button },
+    getComputedStyle: () => ({ display: buttonDisplay }),
+  });
+  vm.runInContext(code, context);
+
+  context.toggleNavigation();
+  assert.equal(classes.has('is-open'), true);
+  assert.equal(attributes['aria-expanded'], 'true');
+  assert.equal(focused, 'first item');
+
+  context.toggleNavigation(false, { restoreFocus: true });
+  assert.equal(classes.has('is-open'), false);
+  assert.equal(focused, 'Menu');
+
+  // Desktop: the sidebar is always shown, so opening state changes never move focus.
+  buttonDisplay = 'none';
+  focused = null;
+  context.toggleNavigation(true);
+  context.toggleNavigation(false, { restoreFocus: true });
+  assert.equal(focused, null);
+});
+
+test('an approved request waits in Processing for "Mark ready", because only a ready request can be issued', async () => {
+  const { context } = await client();
+  const card = status => context.boardRequestFromServer({ id: 3, reference_code: 'REQ-1', status, source: 'online' });
+
+  assert.equal(context.getLane(card('approved').status, 'Online'), 'processing');
+  assert.equal(context.getLane(card('ready_for_release').status, 'Online'), 'ready');
+  assert.equal(context.getLane(card('released').status, 'Online'), 'completed');
+});
+
+test('request details lead to the issued certificate, or say why a released request has none to reprint', async () => {
+  const { context, fields } = await client();
+  const wrap = { hidden: true };
+  const target = { innerHTML: '' };
+  fields.set('vreq-certificate-wrap', wrap);
+  fields.set('vreq-certificate', target);
+  const request = (status, issued) => context.boardRequestFromServer({ id: 6, reference_code: 'REQ-6', status, issued_certificate: issued });
+
+  context.renderRequestCertificate(request('released', { id: 41, certificate_number: 'CERT-2026-ABC', revoked_at: null }));
+  assert.equal(wrap.hidden, false);
+  assert.match(target.innerHTML, /CERT-2026-ABC/);
+  assert.match(target.innerHTML, /href="\/staff\/issued-certificates\/41\/print"/);
+
+  context.renderRequestCertificate(request('released', { id: 41, certificate_number: 'CERT-2026-ABC', revoked_at: '2026-11-01T00:00:00Z' }));
+  assert.match(target.innerHTML, /Revoked/);
+  assert.doesNotMatch(target.innerHTML, /\/print/);
+
+  context.renderRequestCertificate(request('released', null));
+  assert.equal(wrap.hidden, false);
+  assert.match(target.innerHTML, /No certificate was issued for this request/);
+  assert.match(target.innerHTML, /href="\/staff\/document-requests\/6"/);
+
+  context.renderRequestCertificate(request('processing', null));
+  assert.equal(wrap.hidden, true);
+});
+
+test('staff without print access see the certificate number in request details but no reprint', async () => {
+  const { context, fields } = await client();
+  const target = { innerHTML: '' };
+  fields.set('vreq-certificate-wrap', { hidden: true });
+  fields.set('vreq-certificate', target);
+  context.window.PERSONNEL_PERMISSIONS = ['documents.view'];
+
+  context.renderRequestCertificate(context.boardRequestFromServer({ id: 6, reference_code: 'REQ-6', status: 'released', issued_certificate: { id: 41, certificate_number: 'CERT-2026-ABC', revoked_at: null } }));
+  assert.match(target.innerHTML, /CERT-2026-ABC/);
+  assert.doesNotMatch(target.innerHTML, /Reprint|\/print/);
+});
+
+function readinessFields(fields) {
+  const panel = { hidden: true, dataset: {}, innerHTML: '', querySelectorAll: () => [], querySelector: () => null };
+  const submit = { disabled: false, attributes: {}, setAttribute(name, value) { this.attributes[name] = value; }, removeAttribute(name) { delete this.attributes[name]; } };
+  fields.set('print-release-readiness', panel);
+  fields.set('print-release-submit', submit);
+  fields.set('print-document-request-id', { value: '4' });
+  return { panel, submit };
+}
+
+test('Print & Release lists what is missing and keeps Issue & Print off until it is complete', async () => {
+  const { context, fields } = await client();
+  const { panel, submit } = readinessFields(fields);
+  context.window.PERSONNEL_PERMISSIONS = ['documents.issue', 'records.update'];
+
+  context.renderReleaseReadiness({ ready: false, resident: { id: 7, resident_number: 'ANB-2026-X' }, items: [
+    { kind: 'verification', message: 'Indigency must be verified by authorized barangay staff.', action: 'indigency', field: 'is_verified_indigent' },
+    { kind: 'missing', message: 'Nationality', action: 'resident', field: 'nationality' },
+    { kind: 'blocked', message: 'Resident is not in good standing.', action: null, field: null },
+  ] });
+
+  assert.equal(panel.dataset.state, 'blocked');
+  assert.equal(submit.disabled, true);
+  assert.equal(submit.attributes['aria-describedby'], 'print-release-readiness-title');
+  assert.match(panel.innerHTML, /Complete before issuing/);
+  assert.match(panel.innerHTML, /Missing from the resident record:<\/span>|Missing from the resident record: <strong>Nationality<\/strong>/);
+  assert.match(panel.innerHTML, /data-readiness-field="is_verified_indigent">Verify in Resident Records/);
+  assert.match(panel.innerHTML, /data-readiness-field="nationality">Complete missing information/);
+  assert.match(panel.innerHTML, /Resident is not in good standing\./);
+  assert.match(panel.innerHTML, /data-readiness-recheck/);
+
+  context.renderReleaseReadiness({ ready: true, resident: null, items: [] });
+  assert.equal(panel.dataset.state, 'ready');
+  assert.equal(submit.disabled, false);
+});
+
+test('staff without Resident Records or Voters access are told who completes an item, with no button', async () => {
+  const { context, fields } = await client();
+  const { panel } = readinessFields(fields);
+  context.window.PERSONNEL_PERMISSIONS = ['documents.issue'];
+
+  context.renderReleaseReadiness({ ready: false, resident: { id: 7, resident_number: 'ANB-2026-X' }, items: [
+    { kind: 'missing', message: 'Nationality', action: 'resident', field: 'nationality' },
+    { kind: 'verification', message: 'An active verified voter registration is required.', action: 'voters', field: null },
+  ] });
+
+  assert.doesNotMatch(panel.innerHTML, /data-readiness-field|href="\/staff\/voters"/);
+  assert.match(panel.innerHTML, /Staff who may update Resident Records complete this\./);
+  assert.match(panel.innerHTML, /Staff who manage voters complete this\./);
+});
+
+test('a failed check never blocks issuing, which enforces every rule itself', async () => {
+  const { context, fields } = await client();
+  const { panel, submit } = readinessFields(fields);
+  context.fetch = async () => ({ ok: false, json: async () => ({ message: 'Server error' }) });
+
+  await context.refreshReleaseReadiness();
+  assert.equal(panel.dataset.state, 'error');
+  assert.equal(submit.disabled, false);
+  assert.match(panel.innerHTML, /Issue &amp; Print still checks every requirement/);
+});
+
+test('completing missing information opens the saved resident record at the missing field, never a new record', async () => {
+  const { context, fields } = await client();
+  readinessFields(fields);
+  const requests = [];
+  const focused = [];
+  context.fetch = async url => { requests.push(url); return { ok: true, json: async () => ({ data: [{ id: 7, resident_number: 'ANB-2026-X', first_name: 'Ana', last_name: 'Reyes', full_name: 'Ana Reyes', household_id: 3, household: { household_number: 'HH-1', address: 'Purok 1' }, status: 'active' }] }) }; };
+  fields.set('res-nationality', { focus() { focused.push('res-nationality'); }, scrollIntoView() {} });
+  const opened = [];
+  vm.runInContext('fillResidentForm = resident => { filled = resident; }; var filled = null;', context);
+  context.openModal = id => opened.push(id);
+  vm.runInContext(`releaseReadiness = { ready: false, resident: { id: 7, resident_number: 'ANB-2026-X' }, items: [] };`, context);
+
+  await context.openResidentForCertificate('nationality');
+  assert.match(requests[0], /^\/staff\/residents\?search=ANB-2026-X/);
+  assert.equal(vm.runInContext('filled.databaseId', context), 7);
+  assert.equal(vm.runInContext('filled.householdId', context), 3);
+  assert.equal(vm.runInContext("RESIDENTS.filter(r => r.databaseId === 7).length", context), 1);
+  assert.deepEqual(opened, ['modal-resident']);
+  assert.deepEqual(focused, ['res-nationality']);
+});
+
+test('the eligibility checker says eligible, eligible once completed, or not eligible, and offers Proceed only when ready', async () => {
+  const { context } = await client();
+  context.window.PERSONNEL_PERMISSIONS = ['eligibility.view', 'records.update'];
+  const base = { resident: { id: 7, resident_number: 'ANB-2026-X', full_name: 'Ana Reyes' }, certificate_type: 'Certificate of Indigency' };
+
+  const incomplete = { ...base, eligible: false, reasons: ['Indigency must be verified.'], disqualifications: [], verifications: ['Indigency must be verified.'], missing_details: ['Nationality'] };
+  assert.equal(context.eligibilityOutcome(incomplete), 'incomplete');
+  const html = context.eligibilityResultHtml(incomplete);
+  assert.match(html, /Eligible once completed/);
+  assert.match(html, /Needs staff verification/);
+  assert.match(html, /Missing from the resident record[\s\S]*Nationality/);
+  assert.match(html, /data-eligibility-complete/);
+
+  assert.equal(context.eligibilityOutcome({ ...base, eligible: true, reasons: [], disqualifications: [], verifications: [], missing_details: ['Resident photo'] }), 'incomplete');
+  assert.equal(context.eligibilityOutcome({ ...base, eligible: true, reasons: [], disqualifications: [], verifications: [], missing_details: [] }), 'eligible');
+  const ineligible = { ...base, eligible: false, reasons: ['Resident is not in good standing.'], disqualifications: ['Resident is not in good standing.'], verifications: [], missing_details: [] };
+  assert.equal(context.eligibilityOutcome(ineligible), 'ineligible');
+  assert.match(context.eligibilityResultHtml(ineligible), /Not eligible because[\s\S]*not in good standing/);
+  assert.equal(context.eligibilityOutcome({ ...base, eligible: false, reasons: ['Older server reason.'] }), 'ineligible');
+});
+
+test('resident rows flag records missing certificate details, and household names use the body font', async () => {
+  const { context, fields } = await client();
+  const tbody = { innerHTML: '', dataset: {}, addEventListener() {}, appendChild(row) { this.rows = [...(this.rows || []), row]; } };
+  fields.set('records-tbody', tbody);
+  context.document.createElement = () => ({ innerHTML: '', classList: { add() {} }, setAttribute() {}, addEventListener() {}, querySelectorAll: () => [] });
+  vm.runInContext(`RESIDENTS.splice(0, RESIDENTS.length, residentFromApi({ id: 1, resident_number: 'ANB-1', full_name: 'Ana Reyes', date_of_birth: '1990-01-01', status: 'active', missing_certificate_details: ['nationality', 'photo'], household: null }))`, context);
+  context.renderResidentsTable();
+  assert.match(tbody.rows[0].innerHTML, /resident-missing-badge[^>]*title="Missing for certificates: Nationality, Resident photo">Missing details/);
+  assert.match(tbody.rows[0].innerHTML, /resident-household is-unassigned">Unassigned/);
 });

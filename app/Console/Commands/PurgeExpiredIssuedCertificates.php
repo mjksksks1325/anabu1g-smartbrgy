@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\CertificateEvidence;
 use App\Models\IssuedCertificate;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Collection;
@@ -18,7 +19,8 @@ class PurgeExpiredIssuedCertificates extends Command
         $dryRun = (bool) $this->option('dry-run');
         $purgedCount = 0;
 
-        IssuedCertificate::query()->chunkById(100, function (Collection $certificates) use (&$purgedCount, $dryRun): void {
+        // Revoked certificates are kept as a record of the revocation.
+        IssuedCertificate::query()->whereNull('revoked_at')->chunkById(100, function (Collection $certificates) use (&$purgedCount, $dryRun): void {
             foreach ($certificates as $certificate) {
                 if (! $certificate->isExpired()) {
                     continue;
@@ -30,8 +32,14 @@ class PurgeExpiredIssuedCertificates extends Command
                     continue;
                 }
 
+                // Its evidence photographs go with it, so they never fall back to being drafts.
+                $evidence = CertificateEvidence::query()->where('issued_certificate_id', $certificate->id)->get();
                 if (! $certificate->delete()) {
                     continue;
+                }
+                foreach ($evidence as $photograph) {
+                    $photograph->delete();
+                    Storage::disk('local')->delete($photograph->path);
                 }
 
                 $purgedCount++;
@@ -48,7 +56,7 @@ class PurgeExpiredIssuedCertificates extends Command
 
     private function deleteCertificateFiles(IssuedCertificate $certificate): void
     {
-        $qrPath = $this->qrStoragePath($certificate->qr_code_path);
+        $qrPath = $certificate->qrStoragePath();
         if ($qrPath !== null) {
             Storage::disk('public')->delete($qrPath);
         }
@@ -57,20 +65,5 @@ class PurgeExpiredIssuedCertificates extends Command
         if ($photoPath !== null && str_starts_with($photoPath, 'certificate-photos/')) {
             Storage::disk('local')->delete($photoPath);
         }
-    }
-
-    private function qrStoragePath(?string $path): ?string
-    {
-        if ($path === null) {
-            return null;
-        }
-
-        $path = parse_url($path, PHP_URL_PATH) ?: $path;
-        $path = ltrim($path, '/');
-        if (str_starts_with($path, 'storage/')) {
-            $path = substr($path, strlen('storage/'));
-        }
-
-        return str_starts_with($path, 'qrcodes/') ? $path : null;
     }
 }

@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
-use App\CertificateType;
+use App\AdditionalCertificateType;
 use App\Models\ResidentRequestRestriction;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -20,7 +20,7 @@ class StoreResidentRequestRestrictionRequest extends FormRequest
         return [
             'resident_id' => ['required', 'integer', Rule::exists('residents', 'id')->whereNull('deleted_at')],
             'incident_id' => ['nullable', 'integer', Rule::exists('incidents', 'id')->whereNull('deleted_at')],
-            'affected_document_type' => ['nullable', Rule::in(CertificateType::values())],
+            'affected_document_type' => ['nullable', Rule::in(AdditionalCertificateType::allCertificateValues())],
             'reason_category' => ['required', 'string', 'max:100'],
             'internal_reason' => ['required', 'string', 'max:5000'],
             'resident_visible_reason' => ['nullable', 'string', 'max:255'],

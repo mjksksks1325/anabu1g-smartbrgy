@@ -10,6 +10,7 @@ use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -29,11 +30,22 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
+     * `@scopeErrors($bag)` sets the validation errors that the following form controls see, until the next `@scopeErrors`.
+     * Pages with several forms sharing field names (one per record) give each form only its own errors.
+     * Flux reads both the template's `$errors` and the shared bag, so both are set.
+     */
+    protected function registerBladeDirectives(): void
+    {
+        Blade::directive('scopeErrors', fn (string $expression): string => "<?php \$errors = {$expression}; \$__env->share('errors', \$errors); ?>");
+    }
+
+    /**
      * Bootstrap any application services.
      */
     public function boot(): void
     {
         $this->configureDefaults();
+        $this->registerBladeDirectives();
         RateLimiter::for('cabinet-device', function (Request $request): Limit {
             $cabinet = $request->route('cabinet');
 
@@ -94,14 +106,14 @@ class AppServiceProvider extends ServiceProvider
             app()->isProduction(),
         );
 
-        Password::defaults(fn (): ?Password => app()->isProduction()
-            ? Password::min(12)
-                ->mixedCase()
-                ->letters()
-                ->numbers()
-                ->symbols()
-                ->uncompromised()
-            : null,
-        );
+        // One staff password policy everywhere (creation by an administrator, the first Super Admin command,
+        // a change in Settings and a reset): 12+ characters, upper and lower case, a number and a symbol (any
+        // punctuation, so a period counts). The breach check calls an external service, so it runs in production only.
+        // Existing password hashes are not affected; the policy applies the next time a password is set.
+        Password::defaults(function (): Password {
+            $rule = Password::min(12)->mixedCase()->letters()->numbers()->symbols();
+
+            return app()->isProduction() ? $rule->uncompromised() : $rule;
+        });
     }
 }

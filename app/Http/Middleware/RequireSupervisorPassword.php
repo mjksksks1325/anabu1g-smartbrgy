@@ -16,21 +16,21 @@ class RequireSupervisorPassword
     {
         $actor = $request->user();
         if (! $actor instanceof User) {
-            return response()->json(['message' => 'Kailangan mag-login bilang staff bago magpatuloy.'], 401);
+            return response()->json(['message' => __('Sign in as staff to continue.')], 401);
         }
 
         $password = $request->isJson() ? $request->json('super_admin_password') : null;
         if (! is_string($password) || $password === '' || strlen($password) > 255) {
             return response()->json([
-                'message' => 'Kailangan ang password ng active Barangay Captain o Super Admin para mag-archive o mag-delete.',
-                'errors' => ['super_admin_password' => ['Ilagay ang password ng active Barangay Captain o Super Admin.']],
+                'message' => __('The active Barangay Captain or Super Admin password is required to archive or delete.'),
+                'errors' => ['super_admin_password' => [__('Enter the active Barangay Captain or Super Admin password.')]],
             ], 422);
         }
 
         $rateLimitKey = 'supervisor-record-approval:'.$actor->id.'|'.$request->ip();
         if (RateLimiter::tooManyAttempts($rateLimitKey, 5)) {
             return response()->json([
-                'message' => 'Masyadong maraming maling password. Subukan ulit pagkalipas ng ilang sandali.',
+                'message' => __('Too many incorrect passwords. Try again in a moment.'),
             ], 429)->header('Retry-After', (string) RateLimiter::availableIn($rateLimitKey));
         }
 
@@ -38,8 +38,8 @@ class RequireSupervisorPassword
             RateLimiter::hit($rateLimitKey, 60);
 
             return response()->json([
-                'message' => 'Hindi tama ang password ng active Barangay Captain o Super Admin. Walang binagong record.',
-                'errors' => ['super_admin_password' => ['Hindi tama ang password ng active Barangay Captain o Super Admin.']],
+                'message' => __('The active Barangay Captain or Super Admin password is incorrect. No record was changed.'),
+                'errors' => ['super_admin_password' => [__('The active Barangay Captain or Super Admin password is incorrect.')]],
             ], 422);
         }
 

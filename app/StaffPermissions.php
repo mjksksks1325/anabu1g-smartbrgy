@@ -15,7 +15,7 @@ class StaffPermissions
             'rfid' => ['label' => 'RFID File Tracking', 'actions' => ['view' => 'View file movements']],
             'records' => ['label' => 'Resident Records', 'actions' => ['view' => 'View records', 'create' => 'Register', 'update' => 'Edit / upload photo', 'archive' => 'Archive / restore', 'import' => 'Import profiling', 'export' => 'Export', 'activate' => 'Issue portal activation', 'review' => 'Review / approve new resident applications']],
             'households' => ['label' => 'Households', 'actions' => ['view' => 'View households', 'create' => 'Create', 'update' => 'Edit / assign members', 'remove' => 'Remove members']],
-            'documents' => ['label' => 'Document Requests & Certificates', 'actions' => ['view' => 'View requests and certificate history', 'process' => 'Process / reject requests', 'issue' => 'Issue certificates', 'print' => 'Print / reprint']],
+            'documents' => ['label' => 'Document Requests & Certificates', 'actions' => ['view' => 'View requests and certificate history', 'process' => 'Process / reject requests', 'issue' => 'Issue certificates', 'print' => 'Print / reprint', 'revoke' => 'Revoke issued certificates']],
             'announcements' => ['label' => 'Barangay Announcements', 'actions' => ['view' => 'View announcements', 'create' => 'Create drafts', 'update' => 'Edit announcements', 'publish' => 'Publish / unpublish', 'archive' => 'Archive / restore']],
             'eligibility' => ['label' => 'Request Eligibility', 'actions' => ['view' => 'View eligibility', 'export' => 'Export request records']],
             'voters' => ['label' => 'Voter Records', 'actions' => ['view' => 'View voters', 'create' => 'Register', 'update' => 'Edit', 'import' => 'Import CSV', 'export' => 'Export']],
@@ -46,6 +46,8 @@ class StaffPermissions
                 $secretary[] = $module.'.'.$action;
             }
         }
+        // Revoking an issued certificate is granted deliberately by an administrator, never through a preset.
+        $secretary = array_values(array_diff($secretary, ['documents.revoke']));
 
         // Presets only pre-tick checkboxes; saving stores plain keys, so changing a preset never changes an existing account.
         // Archive, import, export, portal activation and account work stay unticked: an administrator adds them deliberately.
@@ -110,8 +112,12 @@ class StaffPermissions
             'staff.voter-registrations.export' => ['voters.export'],
             'staff.document-requests.index', 'staff.document-requests.list', 'staff.document-requests.show', 'staff.document-requests.attachment', 'staff.document-requests.live', 'staff.issued-certificates.index' => ['documents.view'],
             'staff.document-requests.update-status' => ['documents.process'],
-            'staff.issued-certificates.store', 'staff.document-requests.issue' => ['documents.issue'],
+            'staff.issued-certificates.store', 'staff.document-requests.issue', 'staff.document-requests.certificate-preview', 'staff.document-requests.certificate-readiness',
+            'staff.additional-certificates.index', 'staff.additional-certificates.create', 'staff.additional-certificates.preview', 'staff.additional-certificates.store',
+            'staff.additional-certificates.evidence.store', 'staff.certificate-evidence.destroy' => ['documents.issue'],
+            'staff.certificate-evidence.show' => ['documents.issue', 'documents.print'],
             'staff.issued-certificates.print', 'staff.issued-certificates.photo' => ['documents.print'],
+            'staff.issued-certificates.revoke' => ['documents.revoke'],
             'staff.request-eligibility', 'staff.request-records.index', 'staff.request-restrictions.index', 'staff.residents.eligibility' => ['eligibility.view', 'documents.view'],
             'staff.request-records.export' => ['eligibility.export'],
             'staff.incidents.index' => ['incidents.view', 'vawc.view', 'incidents.submit', 'vawc.submit'],

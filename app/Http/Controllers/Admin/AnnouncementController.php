@@ -30,6 +30,13 @@ class AnnouncementController extends Controller
                 ->paginate(10)
                 ->withQueryString(),
             'status' => $status,
+            'statusCounts' => Announcement::query()
+                ->toBase()
+                ->selectRaw('status, count(*) as aggregate')
+                ->groupBy('status')
+                ->pluck('aggregate', 'status')
+                ->map(fn (mixed $count): int => (int) $count)
+                ->all(),
         ]);
     }
 

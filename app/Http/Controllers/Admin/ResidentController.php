@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\CheckCertificateReadiness;
 use App\Actions\ManageHouseholds;
 use App\Actions\ResidentIdentity;
 use App\Actions\WriteRecordsSpreadsheet;
@@ -40,7 +41,8 @@ class ResidentController extends Controller
             $query->withCount(['documentRequests', 'issuedCertificates']);
         }
 
-        $residents = $query->paginate(min(max($request->integer('per_page', 15), 1), 100));
+        $residents = $query->paginate(min(max($request->integer('per_page', 15), 1), 100))
+            ->through(fn (Resident $resident): Resident => $resident->setAttribute('missing_certificate_details', $resident->missingCertificateDetails()));
 
         return response()->json($residents);
     }
@@ -172,7 +174,11 @@ class ResidentController extends Controller
         ]);
     }
 
-    public function eligibility(Request $request, Resident $resident): JsonResponse
+    /**
+     * Whether the resident may receive the certificate, with what is still missing kept apart from actual
+     * ineligibility: disqualifications, staff verifications pending, and record details to complete.
+     */
+    public function eligibility(Request $request, Resident $resident, CheckCertificateReadiness $checkReadiness): JsonResponse
     {
         abort_unless($request->user()->hasAnyPermission(['eligibility.view', 'documents.view']), 403);
         $validated = $request->validate([
@@ -184,6 +190,7 @@ class ResidentController extends Controller
             'resident' => $resident,
             'certificate_type' => $certificateType->value,
             ...$resident->certificateEligibility($certificateType),
+            ...$checkReadiness->forResident($resident, $certificateType),
         ]);
     }
 
@@ -263,6 +270,7 @@ class ResidentController extends Controller
             ->when($request->filled('search'), fn (Builder $query) => $query->matchingSearch($request->string('search')->toString(), ['purok']))
             ->when(in_array($status, ['active', 'inactive'], true), fn (Builder $query) => $query->where('status', $status))
             ->when($status === 'senior', fn (Builder $query) => $query->whereDate('date_of_birth', '<=', today()->subYears(60)))
+            ->when($status === 'incomplete', fn (Builder $query) => $query->missingCertificateDetails())
             ->when($request->filled('purok'), fn (Builder $query) => $query->where('purok', $request->string('purok')->toString()))
             ->when($request->string('special_group')->toString() === 'Senior Citizen', fn (Builder $query) => $query->whereDate('date_of_birth', '<=', today()->subYears(60)))
             ->when(in_array($request->string('special_group')->toString(), Resident::SPECIAL_GROUPS, true), fn (Builder $query) => $query->whereJsonContains('special_groups', $request->string('special_group')->toString()))

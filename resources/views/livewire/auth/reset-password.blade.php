@@ -24,6 +24,7 @@
             <flux:input
                 name="password"
                 :label="__('Password')"
+                :description="__('At least 12 characters, with an uppercase and a lowercase letter, a number and a symbol (a period counts).').(app()->isProduction() ? ' '.__('It must not appear in a known data breach.') : '')"
                 type="password"
                 required
                 autocomplete="new-password"

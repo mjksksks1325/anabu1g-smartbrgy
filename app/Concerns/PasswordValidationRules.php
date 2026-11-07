@@ -18,6 +18,17 @@ trait PasswordValidationRules
     }
 
     /**
+     * Resident Portal passwords: the rule shown on the registration and reset pages, used for both, so a
+     * resident who resets a password meets the same requirement they met when creating the account.
+     *
+     * @return array<int, Password|ValidationRule|array<mixed>|string>
+     */
+    protected function residentPasswordRules(): array
+    {
+        return ['required', 'string', 'confirmed', Password::min(12)->mixedCase()->numbers(), 'max:255'];
+    }
+
+    /**
      * Get the validation rules used to validate the current password.
      *
      * @return array<int, Password|ValidationRule|array<mixed>|string>

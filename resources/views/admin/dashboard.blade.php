@@ -6,6 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Barangay Anabu I-G — Staff Workspace</title>
 <link rel="icon" type="image/jpeg" href="{{ asset('images/anabu-logo.jpg') }}">
+@include('partials.staff-theme-boot')
 <link rel="stylesheet" href="{{ asset('css/admin.css') }}?v={{ filemtime(public_path('css/admin.css')) }}">
 <link rel="stylesheet" href="{{ asset('css/government.css') }}?v={{ filemtime(public_path('css/government.css')) }}">
 <link rel="stylesheet" href="{{ asset('css/figma-tokens.css') }}?v={{ filemtime(public_path('css/figma-tokens.css')) }}">
@@ -13,16 +14,18 @@
 <link rel="preload" href="{{ asset('css/admin-iot.css') }}?v={{ filemtime(public_path('css/admin-iot.css')) }}" as="style">
 <link rel="preload" href="{{ asset('css/figma-iot.css') }}?v={{ filemtime(public_path('css/figma-iot.css')) }}" as="style">
 @include('partials.admin-localization-scripts')
-<script src="{{ asset('js/personnel-navigation.js') }}?v={{ filemtime(public_path('js/personnel-navigation.js')) }}" data-navigate-once></script>
-<script defer data-navigate-once src="{{ asset('js/admin.js') }}?v={{ filemtime(public_path('js/admin.js')) }}"></script>
-<script defer data-navigate-once src="{{ asset('js/household-profiling.js') }}?v={{ filemtime(public_path('js/household-profiling.js')) }}"></script>
-<script defer data-navigate-once src="{{ asset('js/case-management.js') }}?v={{ filemtime(public_path('js/case-management.js')) }}"></script>
-<script defer data-navigate-once src="{{ asset('js/personnel-password-confirmation.js') }}?v={{ filemtime(public_path('js/personnel-password-confirmation.js')) }}"></script>
+<script src="{{ asset('js/personnel-navigation.js') }}?v={{ filemtime(public_path('js/personnel-navigation.js')) }}" data-navigate-once data-navigate-track></script>
+<script defer data-navigate-once data-navigate-track src="{{ asset('js/admin.js') }}?v={{ filemtime(public_path('js/admin.js')) }}"></script>
+<script defer data-navigate-once data-navigate-track src="{{ asset('js/household-profiling.js') }}?v={{ filemtime(public_path('js/household-profiling.js')) }}"></script>
+<script defer data-navigate-once data-navigate-track src="{{ asset('js/case-management.js') }}?v={{ filemtime(public_path('js/case-management.js')) }}"></script>
+<script defer data-navigate-once data-navigate-track src="{{ asset('js/personnel-password-confirmation.js') }}?v={{ filemtime(public_path('js/personnel-password-confirmation.js')) }}"></script>
 <link rel="stylesheet" href="{{ asset('css/password-visibility.css') }}?v={{ filemtime(public_path('css/password-visibility.css')) }}">
-<script defer data-navigate-once src="{{ asset('js/password-visibility.js') }}?v={{ filemtime(public_path('js/password-visibility.js')) }}"></script>
+<script defer data-navigate-once data-navigate-track src="{{ asset('js/password-visibility.js') }}?v={{ filemtime(public_path('js/password-visibility.js')) }}"></script>
 <link rel="stylesheet" href="{{ asset('css/form-feedback.css') }}?v={{ filemtime(public_path('css/form-feedback.css')) }}">
-<script defer data-navigate-once src="{{ asset('js/form-feedback.js') }}?v={{ filemtime(public_path('js/form-feedback.js')) }}"></script>
+<script defer data-navigate-once data-navigate-track src="{{ asset('js/form-feedback.js') }}?v={{ filemtime(public_path('js/form-feedback.js')) }}"></script>
 <link rel="stylesheet" href="{{ asset('css/staff-theme.css') }}?v={{ filemtime(public_path('css/staff-theme.css')) }}">
+{{-- Loaded but kept disabled until a workspace screen migrates to Flux, so navigating to a migrated page never waits for it (see personnel-navigation.js). --}}
+@vite('resources/css/staff-ui.css')
 </head>
 <body class="light-mode" data-personnel-layout="admin" data-admin-localization data-personnel-super-admin="{{ auth()->user()->hasAdministrativeAccess() ? 'true' : 'false' }}">
 <script>window.PersonnelNavigation.syncStyles();</script>
@@ -34,7 +37,7 @@
 <div id="login-screen" hidden></div>
 
 <!-- MAIN APPLICATION -->
-<div id="app" class="admin-interface">
+<div id="app" class="admin-interface visible">
   <!-- TOPBAR -->
   <div class="topbar">
     <button class="mobile-menu-button" type="button" aria-controls="admin-navigation" aria-expanded="false" onclick="toggleNavigation()">Menu</button>
@@ -61,93 +64,7 @@
     <!-- SIDEBAR -->
     <nav class="sidebar" id="admin-navigation" aria-label="Staff navigation">
       <div class="sidebar-scroll">
-      @if(auth()->user()->hasAnyPermission(['dashboard.view', 'demographics.view']))
-      <div class="sidebar-sec">
-        <div class="sidebar-label">Overview</div>
-        @if(auth()->user()->hasAnyPermission(['dashboard.view']))<a class="nav-item{{ $activeScreen === 'dashboard' ? ' active' : '' }}" onclick="showScreen('dashboard',this);return false" data-perm="Dashboard" data-screen="dashboard" aria-current="{{ $activeScreen === 'dashboard' ? 'page' : 'false' }}" href="{{ route(auth()->user()->hasAdministrativeAccess() ? 'admin.dashboard' : 'staff.dashboard') }}">
-          <x-staff-icon name="dashboard" />
-          Dashboard
-        </a>@endif
-        @if(auth()->user()->hasAnyPermission(['demographics.view']))<a class="nav-item{{ $activeScreen === 'demographics' ? ' active' : '' }}" onclick="showScreen('demographics',this);return false" data-perm="Records" data-screen="demographics" aria-current="{{ $activeScreen === 'demographics' ? 'page' : 'false' }}" href="{{ route('staff.demographics') }}">
-          <x-staff-icon name="people" />
-          Demographics
-        </a>@endif
-      </div>
-      @endif
-      @if(auth()->user()->hasAnyPermission(['records.view', 'households.view', 'voters.view', 'documents.view', 'eligibility.view', 'incidents.view', 'vawc.view', 'incidents.submit', 'vawc.submit']))
-      <div class="sidebar-sec">
-        <div class="sidebar-label">Records</div>
-        @if(auth()->user()->hasPermission('households.view') && !auth()->user()->hasPermission('records.view'))<a wire:navigate.hover class="nav-item" data-screen="records" href="{{ route('staff.households.page') }}"><x-staff-icon name="people" />Households</a>@endif
-        @if(auth()->user()->hasAnyPermission(['records.view']))<a class="nav-item{{ $activeScreen === 'records' ? ' active' : '' }}" onclick="showScreen('records',this);return false" data-perm="Records" data-screen="records" aria-current="{{ $activeScreen === 'records' ? 'page' : 'false' }}" href="{{ route('staff.residents.index') }}">
-          <x-staff-icon name="document" />
-          Resident Records
-        </a>@endif
-        @if(auth()->user()->hasAnyPermission(['voters.view']))<a class="nav-item{{ $activeScreen === 'voters' ? ' active' : '' }}" onclick="showScreen('voters',this);return false" data-perm="Records" data-screen="voters" aria-current="{{ $activeScreen === 'voters' ? 'page' : 'false' }}" href="{{ route('staff.voters') }}">
-          <x-staff-icon name="voters" />
-          Voters
-        </a>@endif
-        @if(auth()->user()->hasAnyPermission(['documents.view']))<a class="nav-item{{ $activeScreen === 'certificates' ? ' active' : '' }}" onclick="showScreen('certificates',this);return false" data-perm="Certificates" data-screen="certificates" aria-current="{{ $activeScreen === 'certificates' ? 'page' : 'false' }}" href="{{ route('staff.document-requests.index') }}">
-          <x-staff-icon name="certificate" />
-          Certificates & Clearances
-          <span class="nav-badge" id="cert-nav-badge" style="display:none;">0</span>
-        </a>@endif
-        @if(auth()->user()->hasAnyPermission(['eligibility.view', 'documents.view']))<a class="nav-item{{ $activeScreen === 'request-records' ? ' active' : '' }}" onclick="showScreen('request-records',this);return false" data-perm="Requests" data-screen="request-records" aria-current="{{ $activeScreen === 'request-records' ? 'page' : 'false' }}" href="{{ route('staff.request-eligibility') }}">
-          <x-staff-icon name="clipboard" />
-          Request Eligibility
-        </a>@endif
-        @if(auth()->user()->hasAnyPermission(['incidents.view', 'vawc.view', 'incidents.submit', 'vawc.submit']))<a class="nav-item{{ $activeScreen === 'incidents' ? ' active' : '' }}" onclick="showScreen('incidents',this);return false" data-perm="Incidents" data-screen="incidents" aria-current="{{ $activeScreen === 'incidents' ? 'page' : 'false' }}" href="{{ route('staff.incidents.index') }}">
-          <x-staff-icon name="alert" />
-          Incident Reports
-        </a>@endif
-
-      </div>
-      @endif
-      @if(auth()->user()->hasPermission('announcements.view'))
-      <div class="sidebar-sec">
-        <div class="sidebar-label">Public Information</div>
-        <a wire:navigate.hover class="nav-item" href="{{ route('staff.announcements.index') }}"><x-staff-icon name="announcement" />Announcements</a>
-      </div>
-      @endif
-      @if(auth()->user()->hasPermission('rfid.view'))
-      <div class="sidebar-sec">
-        <div class="sidebar-label">IoT Security</div>
-        @if(auth()->user()->hasAnyPermission(['rfid.view']))<a wire:navigate.hover class="nav-item" href="{{ route('staff.rfid-files.index') }}">
-          <x-staff-icon name="card" />
-          RFID File Tracking
-        </a>@endif
-      </div>
-      @endif
-      @if(auth()->user()->hasAdministrativeAccess())
-      <div class="sidebar-sec">
-        <div class="sidebar-label">Administration</div>
-        <a wire:navigate.hover class="nav-item" href="{{ route('admin.smart-cabinet.index') }}"><x-staff-icon name="cabinet" />Smart Cabinet</a>
-        <a wire:navigate.hover class="nav-item" href="{{ route('admin.cabinet-access.index') }}"><x-staff-icon name="key" />Employee Cabinet Access</a>
-        <a class="nav-item{{ $activeScreen === 'audit' ? ' active' : '' }}" onclick="showScreen('audit',this);return false" data-perm="Audit" data-screen="audit" aria-current="{{ $activeScreen === 'audit' ? 'page' : 'false' }}" href="{{ route('admin.audit') }}">
-          <x-staff-icon name="audit" />
-          Audit Log
-        </a>
-        <a class="nav-item{{ $activeScreen === 'users' ? ' active' : '' }}" onclick="showScreen('users',this);return false" data-perm="Users" data-screen="users" aria-current="{{ $activeScreen === 'users' ? 'page' : 'false' }}" href="{{ route('admin.users.index') }}">
-          <x-staff-icon name="user" />
-          User Management
-        </a>
-        <a class="nav-item{{ $activeScreen === 'settings' ? ' active' : '' }}" onclick="showScreen('settings',this);return false" data-perm="Settings" data-screen="settings" aria-current="{{ $activeScreen === 'settings' ? 'page' : 'false' }}" href="{{ route('admin.settings') }}">
-          <x-staff-icon name="settings" />
-          Settings
-        </a>
-      </div>
-      @endif
-      <div class="sidebar-sec">
-        @unless(auth()->user()->hasAdministrativeAccess())
-        <a class="nav-item" aria-current="false" href="{{ route('profile.edit') }}">
-          <x-staff-icon name="settings" />
-          Settings
-        </a>
-        @endunless
-        <a class="nav-item staff-settings-portal" href="{{ route('home') }}" target="_blank" rel="noopener" title="Opens the public Resident Portal in a new tab">
-          <x-staff-icon name="globe" />
-          {{ __('Resident Portal') }}<span class="sr-only"> (opens in a new tab)</span>
-        </a>
-      </div>
+        <x-staff.nav variant="workspace" :active-screen="$activeScreen" />
       </div>
       <div class="sidebar-footer">
         <x-desktop-user-menu :personnel="true" />
@@ -288,6 +205,7 @@
         <button type="button" class="status-pill" aria-pressed="false" data-resident-status="inactive" onclick="filterResidentStatus('Inactive',this)">Inactive</button>
         <button type="button" class="status-pill" aria-pressed="false" data-resident-status="senior" onclick="filterResidentStatus('Senior',this)">Senior Citizens</button>
         <button type="button" class="status-pill" aria-pressed="false" data-resident-status="archived" onclick="filterResidentStatus('Archived',this)">Archived</button>
+        <button type="button" class="status-pill" aria-pressed="false" data-resident-status="incomplete" onclick="filterResidentStatus('Incomplete',this)">{{ __('Missing certificate details') }}</button>
         <label class="resident-group-select" for="resident-group-filter"><span>Special group</span>
           <select class="form-input" id="resident-group-filter" onchange="filterResidentSpecialGroup(this.value)">
             <option value="">All special groups</option>
@@ -298,7 +216,7 @@
         </label>
       </div>
       <div class="card" @cannot('records.view') hidden style="display:none;" @endcannot>
-        <div class="table-scroll"><table class="tbl">
+        <div class="table-scroll"><table class="tbl" data-num-cols="3" data-actions>
           <thead><tr><th>Resident ID</th><th>Full Name</th><th>Age</th><th>Purok</th><th>Gender</th><th>Civil Status</th><th>Status</th><th>Household</th><th>Actions</th></tr></thead>
           <tbody id="records-tbody"></tbody>
         </table></div>
@@ -338,9 +256,9 @@
       </div>
 
       <div class="card voter-table-card">
-        <div class="table-scroll"><table class="tbl voter-table">
+        <div class="table-scroll"><table class="tbl voter-table" data-num-cols="3" data-actions>
           <thead><tr><th>Resident ID</th><th>Buong Pangalan</th><th>Edad</th><th>Purok</th><th>Maaaring Iboto</th><th>Precinct</th><th>Cluster</th>@can('voters.update')<th>Actions</th>@endcan</tr></thead>
-          <tbody id="voter-registry-tbody"><tr><td colspan="7" class="resident-table-message">Loading voter list...</td></tr></tbody>
+          <tbody id="voter-registry-tbody"><tr class="workspace-state-row"><td colspan="{{ auth()->user()->hasPermission('voters.update') ? 8 : 7 }}" class="resident-table-message workspace-state" data-state="loading"><span role="status" aria-busy="true">Loading voter list...</span></td></tr></tbody>
         </table></div>
         <div class="resident-pagination" id="voter-pagination"></div>
       </div>
@@ -401,16 +319,22 @@
             @foreach(App\CertificateType::cases() as $certificateType)
             <option value="{{ $certificateType->value }}">{{ $certificateType->value }}</option>
             @endforeach
+            <optgroup label="{{ __('Staff-only certificates') }}">
+              @foreach(App\AdditionalCertificateType::cases() as $certificateType)
+              <option value="{{ $certificateType->value }}">{{ $certificateType->value }}</option>
+              @endforeach
+            </optgroup>
           </select>
+          <select class="form-input" id="issued-status-filter" aria-label="{{ __('Certificate status') }}" onchange="refreshIssuedCertificates(1)"><option value="">{{ __('All statuses') }}</option><option value="valid">{{ __('Valid') }}</option><option value="expired">{{ __('Expired') }}</option><option value="revoked">{{ __('Revoked') }}</option></select>
           <select class="form-input" id="issued-source-filter" aria-label="Request source" onchange="refreshIssuedCertificates(1)"><option value="">All sources</option><option value="online">Online</option><option value="onsite">Walk-in / onsite</option></select>
           <label class="incident-date-filter"><span>From</span><input class="form-input" type="date" id="issued-date-from" aria-label="Issued from" onchange="refreshIssuedCertificates(1)"/></label>
           <label class="incident-date-filter"><span>To</span><input class="form-input" type="date" id="issued-date-to" aria-label="Issued to" onchange="refreshIssuedCertificates(1)"/></label>
         </form>
         <div class="table-scroll">
-          <table class="tbl issued-history-table">
+          <table class="tbl issued-history-table" data-num-cols="5" data-actions>
             <thead><tr><th>Certificate No.</th><th>Resident</th><th>Document</th><th>Source</th><th>Fee</th><th>Date Issued</th><th>Issued By</th><th>Actions</th></tr></thead>
             <tbody id="issued-certificates-tbody">
-              <tr><td colspan="8" style="text-align:center;color:var(--text-muted);">Loading issued certificates...</td></tr>
+              <tr class="workspace-state-row"><td colspan="8" class="resident-table-message workspace-state" data-state="loading"><span role="status" aria-busy="true">Loading issued certificates...</span></td></tr>
             </tbody>
           </table>
         </div>
@@ -439,9 +363,9 @@
         <select class="form-input" id="incident-assignee-filter" aria-label="Assigned staff" onchange="filterIncidents()"><option value="">All assigned staff</option></select>
       </div>
       <div class="card">
-        <div class="table-scroll" tabindex="0" role="region" aria-label="Incident reports table"><table class="tbl incident-table">
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Incident reports table"><table class="tbl incident-table" data-actions>
           <thead><tr><th>Incident</th><th>Date</th><th>Location</th><th>Complainant</th><th>Respondent</th><th>Severity</th><th>Status</th><th>Actions</th></tr></thead>
-          <tbody id="incidents-tbody"><tr><td colspan="8" class="resident-table-message">Loading incident reports...</td></tr></tbody>
+          <tbody id="incidents-tbody"><tr class="workspace-state-row"><td colspan="8" class="resident-table-message workspace-state" data-state="loading"><span role="status" aria-busy="true">Loading incident reports...</span></td></tr></tbody>
         </table></div>
         <div class="resident-pagination" id="incident-pagination"></div>
       </div>
@@ -493,7 +417,7 @@
           @can('create', App\Models\ResidentRequestRestriction::class)<button class="btn btn-primary btn-sm" onclick="openRestrictionForm()">Add restriction</button>@endcan
         </div>
         <form class="rr-toolbar" role="search" aria-label="Search restrictions" onsubmit="event.preventDefault(); loadRestrictions(1);"><div class="search-wrap"><span class="si"></span><input class="search-input" id="restriction-search" type="search" autocomplete="off" aria-label="Search restrictions by resident" placeholder="Search resident name or resident number"/></div><button class="btn" type="submit">Search</button></form>
-        <div class="table-scroll"><table class="tbl"><thead><tr><th>Resident</th><th>Document scope</th><th>Status</th><th>Dates / decision</th><th>Actions</th></tr></thead><tbody id="restrictions-tbody"></tbody></table></div>
+        <div class="table-scroll"><table class="tbl" data-actions><thead><tr><th>Resident</th><th>Document scope</th><th>Status</th><th>Dates / decision</th><th>Actions</th></tr></thead><tbody id="restrictions-tbody"></tbody></table></div>
         <div class="resident-pagination" id="restrictions-pagination"></div>
       </div>
     </div>
@@ -509,11 +433,11 @@
       </div>
 
       <!-- Audit Stats -->
-      <div class="audit-stats">
-        <div class="audit-stat"><div class="audit-stat-val" id="astat-total">0</div><div class="audit-stat-label">Total Events</div></div>
-        <div class="audit-stat"><div class="audit-stat-val" style="color:var(--blue-400);" id="astat-records">0</div><div class="audit-stat-label">Record Changes</div></div>
-        <div class="audit-stat"><div class="audit-stat-val" style="color:#F59E0B;" id="astat-certs">0</div><div class="audit-stat-label">Certificates</div></div>
-        <div class="audit-stat"><div class="audit-stat-val" style="color:#EF4444;" id="astat-security">0</div><div class="audit-stat-label">Security &amp; cabinet</div></div>
+      <div class="stats-grid audit-stats-grid">
+        <div class="stat-card green"><div class="stat-label">Total Events</div><div class="stat-value" id="astat-total">0</div><div class="stat-icon"><x-staff-icon name="audit" /></div></div>
+        <div class="stat-card blue"><div class="stat-label">Record Changes</div><div class="stat-value" id="astat-records">0</div><div class="stat-icon"><x-staff-icon name="people" /></div></div>
+        <div class="stat-card amber"><div class="stat-label">Certificates</div><div class="stat-value" id="astat-certs">0</div><div class="stat-icon"><x-staff-icon name="certificate" /></div></div>
+        <div class="stat-card red"><div class="stat-label">Security &amp; cabinet</div><div class="stat-value" id="astat-security">0</div><div class="stat-icon"><x-staff-icon name="shield" /></div></div>
       </div>
 
       <div class="card">
@@ -708,8 +632,22 @@
       >
     </div>
 
+    <div class="form-group" data-certificate-detail="residing_since" hidden>
+      <label for="print-residing-since">{{ __('Resident since (month and year)') }}</label>
+      <input type="month" id="print-residing-since" class="form-input" max="{{ now()->format('Y-m') }}" aria-describedby="print-residing-since-note">
+      <p class="form-note" id="print-residing-since-note">{{ __('Printed on the Certificate of Residency. Confirm it with the resident before issuing.') }}</p>
+    </div>
+
+    <div class="form-group" data-certificate-detail="years_of_residency" hidden>
+      <label for="print-years-of-residency">{{ __('Years of residency in Anabu I-G') }}</label>
+      <input type="number" id="print-years-of-residency" class="form-input" min="0" max="130" step="1" inputmode="numeric" aria-describedby="print-years-of-residency-note">
+      <p class="form-note" id="print-years-of-residency-note">{{ __('Printed on the First Time Jobseeker certification and Oath of Undertaking. Confirm it with the resident before issuing.') }}</p>
+    </div>
+
+    <section class="release-readiness" id="print-release-readiness" aria-live="polite" hidden></section>
+
     <div class="form-group">
-      <p class="form-note">{{ __('Certificates and QR verification are valid for three months from issue. Barangay IDs and their QR verification are valid for one year.') }}</p>
+      <p class="form-note">{{ __('Certificates and QR verification are valid for three months from issue. First Time Jobseeker certificates, Barangay IDs and their QR verification are valid for one year.') }}</p>
     </div>
     <div class="form-group">
       <label>PAYMENT</label>
@@ -727,6 +665,7 @@
 
     <div class="modal-footer">
 
+      <button type="button" class="btn" id="print-release-preview" data-action-permission="documents.issue" onclick="previewCertificateRelease()">{{ __('Preview certificate') }}</button>
       <button
         type="button"
         class="btn btn-green"
@@ -739,6 +678,30 @@
 
   </div>
 </div>
+<!-- Revoke an issued certificate -->
+<div class="modal-overlay" id="modal-revoke-certificate">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="revoke-certificate-title" aria-describedby="revoke-certificate-note">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="revoke-certificate-title">{{ __('Revoke certificate') }} <span id="revoke-certificate-number" data-no-admin-translate></span></div>
+        <div class="modal-sub" id="revoke-certificate-note">{{ __('The certificate stays on record but can no longer be printed, and QR verification will show it as revoked. A revocation cannot be undone and no replacement is issued.') }}</div>
+      </div>
+      <button type="button" class="modal-close" onclick="closeModal('modal-revoke-certificate')" aria-label="Close">&times;</button>
+    </div>
+    <form id="revoke-certificate-form" onsubmit="submitRevokeCertificate(event)" novalidate>
+      <div class="form-group">
+        <label class="form-label" for="revoke-certificate-reason">{{ __('Reason for revoking') }}</label>
+        <textarea class="form-input" id="revoke-certificate-reason" rows="3" minlength="10" maxlength="1000" required aria-describedby="revoke-certificate-reason-error"></textarea>
+        <p class="form-error" id="revoke-certificate-reason-error" role="alert" hidden></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn" onclick="closeModal('modal-revoke-certificate')">{{ __('Cancel') }}</button>
+        <button type="submit" class="btn btn-danger" id="revoke-certificate-submit" data-action-permission="documents.revoke">{{ __('Continue to revoke') }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- Add/Edit Resident -->
 <div class="modal-overlay" id="modal-resident">
   <div class="modal">
@@ -849,7 +812,7 @@
       <button class="btn btn-primary" type="submit">Search</button><button class="btn" type="button" onclick="clearPurokHouseholdSearch()">Clear</button>
     </form>
     <p class="purok-households-results" id="purok-households-results" role="status" aria-live="polite"></p>
-    <div class="table-scroll"><table class="tbl"><thead><tr><th>Household</th><th>Head</th><th>Address</th><th>Members</th></tr></thead><tbody id="purok-households-tbody"></tbody></table></div>
+    <div class="table-scroll"><table class="tbl" data-num-cols="4"><thead><tr><th>Household</th><th>Head</th><th>Address</th><th>Members</th></tr></thead><tbody id="purok-households-tbody"></tbody></table></div>
     <div class="resident-pagination" id="purok-households-pagination"></div>
   </div>
 </div>
@@ -872,14 +835,24 @@
   </div>
 </div>
 <div class="modal-overlay" id="modal-households">
-  <div class="modal">
-    <div class="modal-header"><div class="modal-title">Households</div><button type="button" class="modal-close" onclick="closeModal('modal-households')" aria-label="Close">&times;</button></div>
-    <div class="form-group"><label class="form-label" for="household-search">Search by household name, number, head or address</label><input class="form-input" id="household-search" autocomplete="off" maxlength="100" oninput="searchHouseholdManagement()"/></div>
-    <div id="household-list" aria-live="polite"></div>
-    <div class="resident-pagination" id="household-pagination"></div>
-    <button data-action-permission="households.create" class="btn btn-sm" onclick="newManagedHousehold()">Create household</button>
-    <section class="resident-account-panel" id="household-editor" hidden>
-      <h3 id="household-editor-title">New household</h3>
+  <div class="modal household-modal" role="dialog" aria-modal="true" aria-labelledby="households-modal-title">
+    <div class="modal-header"><div class="modal-title" id="households-modal-title">Households</div><button type="button" class="modal-close" onclick="closeModal('modal-households')" aria-label="Close">&times;</button></div>
+    {{-- List view and record view share the dialog: opening a record replaces the list instead of appending below it. --}}
+    <div id="household-browser">
+      <div class="household-browser-toolbar">
+        <div class="form-group"><label class="form-label" for="household-search">Search by household name, number, head or address</label><input class="form-input" id="household-search" type="search" autocomplete="off" maxlength="100" oninput="searchHouseholdManagement()"/></div>
+        <button type="button" data-action-permission="households.create" class="btn btn-green btn-sm" onclick="newManagedHousehold(this)">Create household</button>
+      </div>
+      <div id="household-list" aria-live="polite"></div>
+      <div class="resident-pagination" id="household-pagination"></div>
+    </div>
+    <section class="household-editor" id="household-editor" aria-labelledby="household-editor-title" hidden>
+      <div class="household-editor-head">
+        <button type="button" class="btn btn-sm household-back" onclick="showHouseholdList()"><span aria-hidden="true">&larr;</span> Back to households</button>
+        <h3 id="household-editor-title" tabindex="-1">New household</h3>
+        <p class="card-sub" id="household-readonly-note" hidden>View only. Your access does not include changing households.</p>
+      </div>
+      <div class="household-form-error" id="household-editor-error" role="alert" hidden></div>
       <input type="hidden" id="household-edit-id"/>
       <div class="form-group"><label class="form-label" for="household-name">Household Name</label><input class="form-input" id="household-name" maxlength="150" placeholder="e.g. Pamilya Manalac"/></div>
       <div class="form-group"><label class="form-label" for="household-number">Household Number</label><input class="form-input" id="household-number" maxlength="100" placeholder="Leave blank to generate HH-000001"/></div>
@@ -1010,6 +983,10 @@
         <div style="font-size:13px;color:var(--text-primary);background:var(--bg-glass);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;" id="vreq-purpose">—</div>
       </div>
     </div>
+    <div id="vreq-certificate-wrap" hidden style="margin-bottom:14px;">
+      <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">{{ __('Issued certificate') }}</div>
+      <div id="vreq-certificate" style="font-size:13px;color:var(--text-primary);"></div>
+    </div>
     <div id="vreq-attachment-wrap" style="display:none;margin-bottom:14px;">
       <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Attachment / Valid ID</div>
       <div id="vreq-attachment"></div>
@@ -1021,6 +998,9 @@
   <div class="modal cert-issue-modal" role="dialog" aria-modal="true" aria-labelledby="cert-issue-title">
     <div class="modal-header"><div class="modal-title" id="cert-issue-title">Certificates &amp; Fees</div><button type="button" class="modal-close" onclick="closeModal('modal-cert-issue')" aria-label="Close">&times;</button></div>
     <p class="cert-fees-note">Fees are paid at the Barangay Hall upon release. Review the available documents and fees, then complete the form to issue a certificate.</p>
+    @can('documents.issue')
+      <p class="cert-fees-note"><a href="{{ route('staff.additional-certificates.index') }}" data-additional-certificates-link>{{ __('Other official certificates (staff only): Low Income, Guardianship, Cohabitation, Fact of Birth, Probation, National ID, 4Ps Move-Out, No Objection, Nonagenarian') }}</a></p>
+    @endcan
     <details class="cert-fees-details" open>
       <summary>Available certificates and fees</summary>
       <div id="cert-types-list" class="cert-fees-list"></div>
@@ -1044,8 +1024,10 @@
       <div class="form-group"><div class="form-label">Full Name ng Resident</div><input class="form-input" id="manual-resident-name" maxlength="255" required placeholder="Type the resident's full name..."/></div>
       <div class="form-group"><div class="form-label">Address ng Resident</div><input class="form-input" id="manual-resident-address" maxlength="1000" row="2" required placeholder="Type the resident's address..."/></div>
       <div class="form-group"><div class="form-label">Purpose / Reason</div><input class="form-input" id="manual-certificate-purpose" maxlength="500" placeholder="Employment, Loan, Scholarship..."/></div>
+      <div class="form-group" data-certificate-detail="residing_since" hidden><label class="form-label" for="manual-residing-since">{{ __('Resident since (month and year)') }}</label><input type="month" class="form-input" id="manual-residing-since" max="{{ now()->format('Y-m') }}" aria-describedby="manual-residing-since-note"/><p class="form-note" id="manual-residing-since-note">{{ __('Printed on the Certificate of Residency. Confirm it with the resident before issuing.') }}</p></div>
+      <div class="form-group" data-certificate-detail="years_of_residency" hidden><label class="form-label" for="manual-years-of-residency">{{ __('Years of residency in Anabu I-G') }}</label><input type="number" class="form-input" id="manual-years-of-residency" min="0" max="130" step="1" inputmode="numeric" aria-describedby="manual-years-of-residency-note"/><p class="form-note" id="manual-years-of-residency-note">{{ __('Printed on the First Time Jobseeker certification and Oath of Undertaking. Confirm it with the resident before issuing.') }}</p></div>
       <div class="form-group"><div class="form-label">Payment</div><input class="form-input" id="manual-certificate-fee" value="{{ \App\CertificateType::BarangayClearance->feeLabel() }}" readonly/></div>
-      <div style="background:var(--green-dim);border:1px solid var(--border-green);border-radius:var(--radius-sm);padding:10px;font-size:11.5px;color:var(--text-secondary);margin-bottom:14px;">{{ __('The official fee is set by the server. Certificates and QR verification are valid for three months from issue. Barangay IDs and their QR verification are valid for one year.') }}</div>
+      <div style="background:var(--green-dim);border:1px solid var(--border-green);border-radius:var(--radius-sm);padding:10px;font-size:11.5px;color:var(--text-secondary);margin-bottom:14px;">{{ __('The official fee is set by the server. Certificates and QR verification are valid for three months from issue. First Time Jobseeker certificates, Barangay IDs and their QR verification are valid for one year.') }}</div>
       <div class="modal-footer">
         <button type="submit" class="btn btn-green" data-action-permission="documents.issue" id="manual-certificate-submit"> Issue & Print</button>
       </div>
@@ -1184,8 +1166,17 @@
     </div>
     <div class="form-group user-account-password">
       <label for="adduser-password" class="form-label">Password</label>
-      <span class="password-visibility-field"><input class="form-input" id="adduser-password" type="password" minlength="12" autocomplete="new-password"><x-password-toggle target="adduser-password" /></span>
-      <p class="card-sub" id="adduser-pass-label">At least 12 characters. Leave blank when editing to keep the current password.</p>
+      <span class="password-visibility-field"><input class="form-input" id="adduser-password" name="password" type="password" minlength="12" maxlength="255" autocomplete="new-password" aria-describedby="adduser-pass-label adduser-password-guidance" oninput="updatePasswordGuidance()"><x-password-toggle target="adduser-password" /></span>
+      {{-- The staff password policy the server enforces (Password::defaults() in AppServiceProvider); every line is required. --}}
+      <p class="card-sub" id="adduser-pass-label">Required. The password must meet every requirement below.</p>
+      <ul class="password-guidance" id="adduser-password-guidance" data-password-guidance>
+        <li data-password-rule="length" data-required>12 or more characters <span class="password-rule-tag">Required</span></li>
+        <li data-password-rule="uppercase" data-required>An uppercase letter (A–Z) <span class="password-rule-tag">Required</span></li>
+        <li data-password-rule="lowercase" data-required>A lowercase letter (a–z) <span class="password-rule-tag">Required</span></li>
+        <li data-password-rule="number" data-required>A number (0–9) <span class="password-rule-tag">Required</span></li>
+        <li data-password-rule="symbol" data-required>A symbol, such as a period (.) or ! <span class="password-rule-tag">Required</span></li>
+        @if(app()->isProduction())<li data-required>Not found in a known data breach (checked when you save) <span class="password-rule-tag">Required</span></li>@endif
+      </ul>
       <p class="card-sub" id="adduser-credential-lock" hidden>Only this Super Admin can change their own email address and password. Use the password reset link or the server command.</p>
       <div class="user-reset-link" id="adduser-reset-link-row" hidden><button type="button" class="btn btn-sm" id="adduser-reset-link" onclick="sendUserPasswordResetLink(this)">Send password reset link</button><p class="card-sub">Emails the account owner a link that expires in 60 minutes. They choose their own password; you never see it.</p></div>
     </div>
@@ -1310,6 +1301,7 @@
     window.ADMIN_RESIDENT_APPLICATIONS_URL = @json(route('staff.resident-applications.index'));
     window.PERSONNEL_LOGIN_GREETING = {{ Illuminate\Support\Js::from(session()->pull('personnel_login_greeting', false)) }};
     window.CERTIFICATE_FEES = {{ Illuminate\Support\Js::from(App\CertificateType::feeSchedule()) }};
+    window.CERTIFICATE_STAFF_DETAILS = {{ Illuminate\Support\Js::from(collect(App\CertificateType::cases())->mapWithKeys(fn (App\CertificateType $type): array => [$type->value => $type->staffEnteredDetails()])) }};
     window.ADMIN_ACTIVE_SCREEN = {{ Illuminate\Support\Js::from($activeScreen) }};
     window.ADMIN_SCREEN_ROUTES = {{ Illuminate\Support\Js::from($screenRoutes) }};
     window.STAFF_PERMISSION_PRESETS = {{ Illuminate\Support\Js::from(App\StaffPermissions::presets()) }};
@@ -1319,6 +1311,7 @@
 </script>
 
 @livewireScripts
+@fluxScripts
 @include('partials.personnel-password-confirmation')
 </body>
 </html>

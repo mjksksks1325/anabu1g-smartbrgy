@@ -11,4 +11,4 @@ Barangay Anabu I-G / {{ __('Resident Portal') }}
 {{ $remarks }}
 @endif
 
-{{ __($actionLabel) }}: {{ $actionUrl }}
+{{ __($actionLabel) }}: {!! $actionUrl !!}

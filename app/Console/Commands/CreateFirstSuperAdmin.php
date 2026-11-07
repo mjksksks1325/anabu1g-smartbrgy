@@ -36,7 +36,7 @@ class CreateFirstSuperAdmin extends Command
         $validator = Validator::make(compact('name', 'email', 'password'), [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', Password::min(12), 'max:255'],
+            'password' => ['required', 'string', Password::default(), 'max:255'],
         ]);
 
         if ($validator->fails()) {

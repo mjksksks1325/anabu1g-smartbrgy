@@ -48,9 +48,21 @@ class Resident extends Model
 
     protected $hidden = ['photo_path', 'portal_registration_hash', 'portal_registration_expires_at', 'portal_registration_email', 'portal_registration_sent_at'];
 
+    /** Philippine mobile numbers as typed: 09XXXXXXXXX or +639XXXXXXXXX, after spaces, dashes and brackets are removed. */
+    public const MOBILE_NUMBER_PATTERN = '/^(?:\+63|0)9\d{9}$/';
+
     /**
-     * Store mobile numbers in one local format: spaces, dashes and brackets are removed and +639XXXXXXXXX
-     * becomes 09XXXXXXXXX. Anything else is returned as typed so validation can reject it.
+     * Eligibility reasons that wait on a staff verification rather than disqualify the resident: each says where
+     * authorized staff record it. Until then a certificate can be previewed as a draft but not issued.
+     */
+    public const INDIGENCY_NOT_VERIFIED = 'Indigency must be verified by authorized barangay staff. Staff who may update resident records: in Resident Records, edit this resident and tick "Indigency verified by barangay staff" once indigency is confirmed, then issue again.';
+
+    public const VOTER_REGISTRATION_NOT_VERIFIED = 'An active verified voter registration is required for the official certificate wording. Staff who manage voters: record or update the voter registration of this resident in Voters, then issue again.';
+
+    /**
+     * Store new mobile numbers in the international format: spaces, dashes and brackets are removed and
+     * 09XXXXXXXXX becomes +639XXXXXXXXX. Anything else is returned as typed so validation can reject it.
+     * Numbers already stored as 09XXXXXXXXX are left as they are until the record is next saved.
      */
     public static function normalizeContactNumber(mixed $value): ?string
     {
@@ -60,7 +72,7 @@ class Resident extends Model
             return null;
         }
 
-        return preg_match('/^\+639\d{9}$/', $number) === 1 ? '0'.substr($number, 3) : $number;
+        return preg_match('/^09\d{9}$/', $number) === 1 ? '+63'.substr($number, 1) : $number;
     }
 
     /** @return HasOne<User, $this> */
@@ -87,6 +99,42 @@ class Resident extends Model
         return collect([$this->first_name, $this->middle_name, $this->last_name, $this->suffix])
             ->filter()
             ->implode(' ');
+    }
+
+    /**
+     * Record details official certificate templates print (CertificateType::requiredDetails()), as detail keys.
+     * Name and address are required on every record; these may be left blank, e.g. nationality, which the public
+     * new-resident application no longer collects.
+     */
+    public const CERTIFICATE_RECORD_DETAILS = ['address', 'date_of_birth', 'gender', 'civil_status', 'nationality', 'photo'];
+
+    /**
+     * The certificate details this record lacks, so staff can complete them before a certificate needs them.
+     * Whether a particular certificate is blocked depends on its own template (CertificateType::requiredDetails()).
+     *
+     * @return list<string>
+     */
+    public function missingCertificateDetails(): array
+    {
+        return array_values(array_filter(self::CERTIFICATE_RECORD_DETAILS, fn (string $detail): bool => $detail === 'photo'
+            ? $this->photo_path === null
+            : blank($this->getAttribute($detail))));
+    }
+
+    /**
+     * Residents missing at least one detail in CERTIFICATE_RECORD_DETAILS.
+     *
+     * @param  Builder<Resident>  $query
+     * @return Builder<Resident>
+     */
+    public function scopeMissingCertificateDetails(Builder $query): Builder
+    {
+        return $query->where(function (Builder $query): void {
+            $query->whereNull('photo_path');
+            foreach (array_diff(self::CERTIFICATE_RECORD_DETAILS, ['photo']) as $column) {
+                $query->orWhereNull($column)->orWhere($column, '');
+            }
+        });
     }
 
     public function getHasPhotoAttribute(): bool
@@ -194,12 +242,12 @@ class Resident extends Model
         if (in_array($certificateType, [CertificateType::RegisteredVoterCertification, CertificateType::CertificateOfIndigency], true)) {
             $registration = $this->voterRegistration;
             if ($registration === null || $registration->status !== 'active' || ! $registration->integrity_valid) {
-                $reasons[] = 'An active verified voter registration is required for the official certificate wording.';
+                $reasons[] = self::VOTER_REGISTRATION_NOT_VERIFIED;
             }
         }
 
         if ($certificateType === CertificateType::CertificateOfIndigency && ! $this->is_verified_indigent) {
-            $reasons[] = 'Indigency must be verified by authorized barangay staff.';
+            $reasons[] = self::INDIGENCY_NOT_VERIFIED;
         }
 
         if ($certificateType === CertificateType::FirstTimeJobseeker
@@ -215,6 +263,19 @@ class Resident extends Model
             'eligible' => $reasons === [],
             'reasons' => $reasons === [] ? ['Resident is eligible for this document.'] : $reasons,
         ];
+    }
+
+    /**
+     * Whether every reason this resident is not yet eligible waits on a staff verification (indigency, voter
+     * registration), with no disqualification such as an inactive record, standing, a prior First Time Jobseeker
+     * certificate or a document hold.
+     */
+    public function awaitsOnlyVerification(CertificateType $certificateType): bool
+    {
+        $eligibility = $this->certificateEligibility($certificateType);
+
+        return ! $eligibility['eligible']
+            && array_diff($eligibility['reasons'], [self::INDIGENCY_NOT_VERIFIED, self::VOTER_REGISTRATION_NOT_VERIFIED]) === [];
     }
 
     /** @return array<string, string> */

@@ -21,6 +21,19 @@ class CheckRequestRestrictions
     }
 
     /**
+     * A reviewed hold in force on every document or on this certificate name; used for the staff-only certificates
+     * (AdditionalCertificateType), which have no CertificateType.
+     */
+    public function activeFor(Resident $resident, string $certificateName): ?ResidentRequestRestriction
+    {
+        $this->expire($resident->id);
+
+        return $this->inForce($resident)
+            ->where(fn (Builder $query) => $query->whereNull('affected_document_type')->orWhere('affected_document_type', $certificateName))
+            ->first();
+    }
+
+    /**
      * Every reviewed hold in force for the resident, for the notice on the request page.
      *
      * @return Collection<int, ResidentRequestRestriction>

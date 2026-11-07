@@ -487,3 +487,45 @@ body.dark-mode .form-input[readonly] { border-color: var(--v2-line); background:
 body.dark-mode :is(.form-input, select, textarea):disabled, body.dark-mode .btn:disabled { border-color: var(--v2-line); background: var(--v2-subtle); color: var(--v2-muted); opacity: 1; }
 body.dark-mode .request-item + .request-item { border-top: 1px solid var(--v2-line); }
 body.dark-mode .request-item:hover { background: var(--v2-brand-tint); }
+
+/* Data Privacy Notice before a new resident application. Modal with JavaScript; inline (not modal) without it. */
+.rp-privacy-dialog { width: min(640px, calc(100% - 32px)); max-height: min(88dvh, 760px); padding: 0; border: 1px solid var(--v2-line); border-radius: var(--rp-radius-sm, 12px); background: var(--v2-card); color: var(--v2-ink); box-shadow: 0 24px 60px rgba(9, 19, 28, .28); }
+.rp-privacy-dialog:not(:modal) { position: static; width: auto; max-height: none; margin: 0 0 24px; box-shadow: none; }
+.rp-privacy-dialog::backdrop { background: rgba(9, 19, 28, .6); }
+.rp-privacy-dialog-inner { display: flex; flex-direction: column; gap: 14px; max-height: inherit; padding: 24px; }
+.rp-privacy-dialog-header h2 { margin: 2px 0 6px; font-size: 22px; }
+.rp-privacy-dialog-header p { margin: 0; color: var(--v2-muted); }
+.rp-privacy-dialog-eyebrow { font-size: 13px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--v2-brand) !important; }
+.rp-privacy-dialog-body { flex: 1 1 auto; min-height: 140px; overflow-y: auto; overscroll-behavior: contain; padding: 4px 16px 12px; border: 1px solid var(--v2-line); border-radius: 8px; background: color-mix(in srgb, var(--v2-card) 92%, var(--v2-green-50)); line-height: 1.6; }
+.rp-privacy-dialog:not(:modal) .rp-privacy-dialog-body { max-height: 320px; }
+.rp-privacy-dialog-body:focus-visible { outline: 3px solid var(--v2-brand); outline-offset: 2px; }
+.rp-privacy-dialog-body h3 { margin: 14px 0 4px; font-size: 16px; }
+.rp-privacy-dialog-body p { margin: 0; }
+.rp-privacy-dialog-hint { margin: 0; font-size: 14px; color: var(--v2-muted); }
+.rp-privacy-dialog-consent { align-items: flex-start; gap: 10px; }
+.rp-privacy-dialog-consent input { flex: none; width: 20px; height: 20px; margin-top: 3px; }
+.rp-privacy-dialog-consent input:disabled + label { opacity: .6; }
+.rp-privacy-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; }
+.rp-privacy-dialog-actions .btn:disabled { opacity: .55; cursor: not-allowed; }
+@media (max-width: 520px) {
+  .rp-privacy-dialog-inner { padding: 18px; }
+  .rp-privacy-dialog-actions .btn { flex: 1 1 140px; }
+}
+body.dark-mode .rp-privacy-dialog { border-color: var(--v2-line-elevated); background: var(--v2-elevated); }
+body.dark-mode .rp-privacy-dialog-body { border-color: var(--v2-line-elevated); background: var(--v2-card); }
+.new-resident-privacy-review { margin-right: auto; }
+.new-resident-card .new-resident-form-actions { flex-wrap: wrap; align-items: center; gap: 12px; }
+.rp-privacy-dialog:modal { display: flex; flex-direction: column; overflow: hidden; }
+.rp-privacy-dialog:modal .rp-privacy-dialog-inner { flex: 1 1 auto; min-height: 0; max-height: none; overflow-y: auto; }
+.rp-privacy-dialog:modal .rp-privacy-dialog-body { min-height: 120px; }
+@media (max-width: 520px) { .rp-privacy-dialog:modal { width: calc(100% - 20px); max-height: calc(100dvh - 20px); } }
+
+/* Emergency hotlines: one card per service, which may have several numbers, a note and a Pending verification tag. */
+ul.rp-hotlines > li { display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 10px; min-width: 0; }
+.rp-hotlines .rp-hotline-label { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
+.rp-hotlines .rp-hotline-note { font-size: 13px; font-weight: 500; opacity: .85; }
+.rp-hotlines .rp-hotline-numbers { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.rp-hotlines .rp-hotline-numbers a { white-space: nowrap; }
+.rp-hotlines .tag-unconfirmed { color: var(--v2-warning); white-space: nowrap; }
+.rp-hotlines .tag-unconfirmed span { color: inherit; }
+.rp-office-days { font-size: .9em; opacity: .85; }

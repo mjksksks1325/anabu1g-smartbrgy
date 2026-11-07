@@ -107,12 +107,11 @@
         <p class="office-intro"><span data-portal-i18n="Dito kukunin ang mga dokumento at dito rin magpapatulong sa account o record.">{{ __('Dito kukunin ang mga dokumento at dito rin magpapatulong sa account o record.') }}</span></p>
         <dl class="info-list">
             <div><dt><span data-portal-i18n="Address">{{ __('Address') }}</span></dt><dd><span data-portal-i18n="Barangay Anabu I-G, Lungsod ng Imus, Cavite">{{ __('Barangay Anabu I-G, Lungsod ng Imus, Cavite') }}</span></dd></div>
-            <div><dt><span data-portal-i18n="Telepono">{{ __('Telepono') }}</span></dt><dd><span class="tag-unconfirmed"><span data-portal-i18n="Hindi pa kumpirmado">{{ __('Hindi pa kumpirmado') }}</span></span></dd></div>
-            <div><dt><span data-portal-i18n="Office hours">{{ __('Office hours') }}</span></dt><dd><span class="tag-unconfirmed"><span data-portal-i18n="Hindi pa kumpirmado">{{ __('Hindi pa kumpirmado') }}</span></span></dd></div>
+            @include('portal.partials.barangay-hall-contact')
             <div><dt><span data-portal-i18n="Land Area">{{ __('Land Area') }}</span></dt><dd><span class="tag-unconfirmed"><span data-portal-i18n="To be confirmed">{{ __('To be confirmed') }}</span></span></dd></div>
             <div id="population"><dt><span data-portal-i18n="Populasyon">{{ __('Populasyon') }}</span></dt><dd><span data-portal-i18n="2,345 na residente ayon sa 2024 Census of Population ng PSA.">{{ __('2,345 na residente ayon sa 2024 Census of Population ng PSA.') }}</span> <a href="https://psa.gov.ph/classification/psgc/barangays/0402109000" target="_blank" rel="noopener noreferrer"><span data-portal-i18n="PSA data">{{ __('PSA data') }}</span></a></dd></div>
         </dl>
-        <p class="office-note"><span data-portal-i18n="Habang wala pang kumpirmadong numero at oras, pumunta nang personal sa Barangay Hall.">{{ __('Habang wala pang kumpirmadong numero at oras, pumunta nang personal sa Barangay Hall.') }}</span></p>
+        <p class="office-note"><span data-portal-i18n="The office days are not yet confirmed. Call the Barangay Hall before you visit.">{{ __('The office days are not yet confirmed. Call the Barangay Hall before you visit.') }}</span></p>
     </div>
     <div class="office-map" id="location">
         <div class="map-panel">
@@ -125,14 +124,9 @@
 <section class="home-section hotline-panel" id="contacts" aria-labelledby="contacts-title">
     <div class="hotline-head">
         <h2 id="contacts-title"><span data-portal-i18n="Emergency hotlines">{{ __('Emergency hotlines') }}</span></h2>
-        <p><span data-portal-i18n="Mula sa">{{ __('Mula sa') }}</span> <a href="https://cityofimus.gov.ph/" target="_blank" rel="noopener noreferrer"><span data-portal-i18n="City of Imus website">{{ __('City of Imus website') }}</span></a></p>
+        <p><span data-portal-i18n="Numbers marked Pending verification are awaiting confirmation from the barangay. Other numbers are from the">{{ __('Numbers marked Pending verification are awaiting confirmation from the barangay. Other numbers are from the') }}</span> <a href="https://cityofimus.gov.ph/" target="_blank" rel="noopener noreferrer"><span data-portal-i18n="City of Imus website">{{ __('City of Imus website') }}</span></a>.</p>
     </div>
-    <ul class="hotline-list">
-        <li><span><span data-portal-i18n="National emergency hotline">{{ __('National emergency hotline') }}</span></span><a href="tel:911">911</a></li>
-        <li><span><span data-portal-i18n="City of Imus emergency">{{ __('City of Imus emergency') }}</span></span><a href="tel:+63468889911">(046) 888 9911</a></li>
-        <li><span><span data-portal-i18n="Imus PNP">{{ __('Imus PNP') }}</span></span><a href="tel:+639985985601">0998 598 5601</a></li>
-        <li><span><span data-portal-i18n="Bureau of Fire Protection">{{ __('Bureau of Fire Protection') }}</span></span><a href="tel:+639155283256">0915 528 3256</a></li>
-    </ul>
+    @include('portal.partials.emergency-hotlines', ['listClass' => 'hotline-list'])
 </section>
 
 @if ($complaintHotline)

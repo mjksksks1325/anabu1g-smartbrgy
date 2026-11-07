@@ -10,3 +10,4 @@ Artisan::command('inspire', function () {
 
 Schedule::command('restrictions:expire')->hourly()->withoutOverlapping();
 Schedule::command('certificates:purge-expired')->dailyAt('02:00')->withoutOverlapping();
+Schedule::command('certificates:purge-draft-evidence')->dailyAt('02:30')->withoutOverlapping();

@@ -1,10 +1,12 @@
 <?php
 
+use App\Http\Controllers\Admin\AdditionalCertificateController;
 use App\Http\Controllers\Admin\AdminLocaleController;
 use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BarangayProtectionOrderController;
 use App\Http\Controllers\Admin\CabinetFileController;
+use App\Http\Controllers\Admin\CertificateEvidenceController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DocumentRequestController as AdminDocumentRequestController;
 use App\Http\Controllers\Admin\EmployeeCabinetAccessController;
@@ -220,10 +222,24 @@ Route::middleware(['auth:web', 'can:operate-personnel', EnsureStaffAccess::class
 
     Route::post('/document-requests/{documentRequest}/issue', [IssuedCertificateController::class, 'issueFromRequest']
     )->name('document-requests.issue');
+    Route::get('/document-requests/{documentRequest}/certificate-preview', [IssuedCertificateController::class, 'preview'])
+        ->name('document-requests.certificate-preview');
+    Route::get('/document-requests/{documentRequest}/certificate-readiness', [IssuedCertificateController::class, 'certificateReadiness'])
+        ->name('document-requests.certificate-readiness');
 
     Route::get('/issued-certificates/{issuedCertificate}/photo', [IssuedCertificateController::class, 'photo'])->name('issued-certificates.photo');
     Route::get('/issued-certificates/{issuedCertificate}/print', [IssuedCertificateController::class, 'print']
     )->name('issued-certificates.print');
+    Route::get('/additional-certificates', [AdditionalCertificateController::class, 'index'])->name('additional-certificates.index');
+    Route::get('/additional-certificates/{type}', [AdditionalCertificateController::class, 'create'])->name('additional-certificates.create');
+    Route::post('/additional-certificates/{type}/preview', [AdditionalCertificateController::class, 'preview'])->name('additional-certificates.preview');
+    Route::post('/additional-certificates/{type}', [AdditionalCertificateController::class, 'store'])->name('additional-certificates.store');
+    Route::post('/additional-certificates/{type}/residents/{resident}/evidence', [CertificateEvidenceController::class, 'store'])->name('additional-certificates.evidence.store');
+    Route::get('/certificate-evidence/{certificateEvidence}', [CertificateEvidenceController::class, 'show'])->name('certificate-evidence.show');
+    Route::delete('/certificate-evidence/{certificateEvidence}', [CertificateEvidenceController::class, 'destroy'])->name('certificate-evidence.destroy');
+    Route::post('/issued-certificates/{issuedCertificate}/revoke', [IssuedCertificateController::class, 'revoke'])
+        ->middleware(RequireSupervisorPassword::class)
+        ->name('issued-certificates.revoke');
 
 });
 

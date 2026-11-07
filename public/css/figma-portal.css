@@ -628,3 +628,16 @@ body.dark-mode .site-main .btn-outline:hover { background: var(--civic-card); bo
     body.has-hero-header .portal-band { min-height: max(380px, calc(100svh - 96px)); }
     body.has-hero-header .portal-band-inner { padding-top: 24px; padding-bottom: 28px; }
 }
+
+/* Create account: eligibility step and the record matched by the activation code (Work Group 4). */
+.registration-eligibility { display: grid; gap: 12px; margin: 18px 0 24px; padding: 0; list-style: none; counter-reset: eligibility; }
+.registration-eligibility > li { position: relative; padding: 16px 18px 16px 52px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface-alt); counter-increment: eligibility; }
+.registration-eligibility > li::before { content: counter(eligibility); position: absolute; top: 16px; left: 16px; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--civic-primary, #17663a); color: #fff; font-size: 13px; font-weight: 700; }
+.registration-eligibility strong { display: block; color: var(--ink); font-size: 15px; }
+.registration-eligibility p { margin: 6px 0 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.registration-eligibility .btn { margin-top: 12px; min-height: 44px; }
+.registration-verified-record { display: grid; gap: 10px; margin: 0 0 8px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface-alt); }
+.registration-verified-record > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; }
+.registration-verified-record dt { color: var(--muted); font-size: 13px; }
+.registration-verified-record dd { margin: 0; color: var(--ink); font-weight: 700; overflow-wrap: anywhere; }
+.registration-verified-record + .form-note { margin: 0 0 20px; }

@@ -128,3 +128,16 @@ test('an empty required staff field shows the required message in the chosen lan
   assert.equal(elements['adduser-name-feedback'].textContent, 'Kailangan ang field na ito.');
   assert.equal(elements['adduser-email-feedback'].textContent, 'Please include an @ in the email address.');
 });
+test('a server error for a Flux input is placed below the input wrapper, not inside it', () => {
+  const field = createField({ id: 'announcement-archive-password', name: 'super_admin_password' });
+  const placements = [];
+  const wrapper = { insertAdjacentElement: (position, element) => placements.push(['wrapper', position, element.className]) };
+  field.insertAdjacentElement = (position, element) => placements.push(['field', position, element.className]);
+  field.closest = selector => (selector.includes('[data-flux-input]') ? wrapper : null);
+  const { window } = load([field]);
+
+  window.FormFeedback.markInvalid(field, 'Hindi tama ang password.');
+
+  assert.deepEqual(placements, [['wrapper', 'afterend', 'field-feedback-message']]);
+  assert.equal(field.getAttribute('aria-invalid'), 'true');
+});

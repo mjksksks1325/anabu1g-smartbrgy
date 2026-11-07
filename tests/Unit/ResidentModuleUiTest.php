@@ -5,7 +5,7 @@ test('resident dashboard uses the persistent API and recoverable archive control
     $adminScript = str_replace("\r\n", "\n", file_get_contents(dirname(__DIR__, 2).'/public/js/admin.js'));
 
     expect($dashboard)
-        ->toContain('id="app" class="admin-interface"')
+        ->toContain('id="app" class="admin-interface visible"')
         ->toContain('id="resident-pagination"')
         ->toContain("filterResidentStatus('Archived',this)")
         ->toContain('id="res-middlename"')

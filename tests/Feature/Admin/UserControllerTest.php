@@ -7,9 +7,11 @@ use App\Models\Incident;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
+use Symfony\Component\Mailer\Exception\TransportException;
 
 it('requires authentication and administrator access to account management', function () {
     $this->getJson(route('admin.users.index'))->assertUnauthorized();
@@ -282,6 +284,17 @@ it('emails the owner a reset link the administrator never sees, refuses the wron
     $this->actingAs($staff)->postJson(route('admin.users.password-reset-link', $captain))->assertForbidden();
 });
 
+it('tells the administrator when the reset email could not be sent', function () {
+    Exceptions::fake();
+    useFailingMailer();
+    $captain = User::factory()->create(['role' => 'captain']);
+    $staff = User::factory()->create(['role' => 'staff', 'staff_permissions' => ['dashboard.view']]);
+
+    $this->actingAs($captain)->postJson(route('admin.users.password-reset-link', $staff))->assertUnprocessable()
+        ->assertJsonPath('errors.user.0', 'The reset link could not be sent. Check the mail settings and try again.');
+    Exceptions::assertReported(TransportException::class);
+});
+
 it('lets a Super Admin send a reset link only to their own Super Admin account', function () {
     Notification::fake();
     $super = User::factory()->superAdmin()->create();
@@ -302,4 +315,60 @@ it('records a completed reset and keeps two-factor authentication in place', fun
         ->and($staff->fresh()->two_factor_secret)->toBe($secret);
     $this->assertDatabaseHas('administrative_audits', ['action' => 'auth.password-reset-completed', 'user_id' => $staff->id]);
     expect(DB::table('administrative_audits')->get()->toJson())->not->toContain('Owner-Chosen-2026!')->not->toContain($token);
+});
+
+it('describes the staff password policy the server enforces, with every requirement required', function () {
+    $admin = User::factory()->superAdmin()->create(['role' => 'admin']);
+    $content = $this->actingAs($admin)->get(route('admin.users.index'))->assertOk()->getContent();
+    $document = new DOMDocument;
+    @$document->loadHTML($content);
+    $xpath = new DOMXPath($document);
+
+    // The new-account wording only; the edit wording is set by admin.js when an account is opened.
+    expect(trim($xpath->query('//*[@id="adduser-pass-label"]')->item(0)->textContent))->toBe('Required. The password must meet every requirement below.')
+        ->and(collect($xpath->query('//*[@id="adduser-password-guidance"]/li[@data-required]'))->map(fn (DOMElement $rule): string => $rule->getAttribute('data-password-rule'))->all())->toBe(['length', 'uppercase', 'lowercase', 'number', 'symbol'])
+        ->and($xpath->query('//*[@id="adduser-password-guidance"]/li[not(@data-required)]'))->toHaveCount(0)
+        ->and($content)->not->toContain('Recommended')
+        ->and($xpath->query('//input[@id="adduser-password" and @minlength="12" and contains(@aria-describedby, "adduser-password-guidance")]'))->toHaveCount(1);
+});
+
+it('applies one staff password policy when an administrator creates or sets a password', function (string $password, bool $accepted) {
+    $admin = User::factory()->superAdmin()->create(['role' => 'admin']);
+
+    $response = $this->actingAs($admin)->postJson(route('admin.users.store'), ['name' => 'New Staff', 'email' => 'new-staff@example.test', 'password' => $password, 'role' => 'staff', 'is_active' => true]);
+
+    $accepted ? $response->assertCreated() : $response->assertUnprocessable()->assertJsonValidationErrors(['password']);
+})->with([
+    'meets every rule, period as the symbol' => ['Barangay.Staff2026', true],
+    'meets every rule, ! as the symbol' => ['Barangay!Staff2026', true],
+    'eleven characters' => ['Brgy.Staf26', false],
+    'twelve lowercase letters (the old rule)' => ['abcdefghijkl', false],
+    'no symbol' => ['BarangayStaff2026', false],
+    'no number' => ['Barangay.Staff', false],
+    'no uppercase' => ['barangay.staff2026', false],
+    'no lowercase' => ['BARANGAY.STAFF2026', false],
+]);
+
+it('keeps an existing staff password hash when an account is edited without a new password', function () {
+    $admin = User::factory()->superAdmin()->create(['role' => 'admin']);
+    $staff = User::factory()->create(['role' => 'staff', 'staff_permissions' => ['dashboard.view'], 'password' => 'short-old-pass']);
+    $hash = $staff->password;
+
+    $this->actingAs($admin)->patchJson(route('admin.users.update', $staff), ['name' => 'Renamed Staff', 'email' => $staff->email, 'role' => 'staff', 'is_active' => true])->assertOk();
+
+    expect($staff->fresh()->password)->toBe($hash)
+        ->and(Hash::check('short-old-pass', $staff->fresh()->password))->toBeTrue();
+});
+
+it('applies the same staff password policy to a reset and to the first Super Admin command', function () {
+    $staff = User::factory()->create(['role' => 'staff', 'staff_permissions' => ['dashboard.view']]);
+    $token = Password::broker()->createToken($staff);
+
+    $this->post(route('password.update'), ['token' => $token, 'email' => $staff->email, 'password' => 'abcdefghijkl', 'password_confirmation' => 'abcdefghijkl'])->assertSessionHasErrors('password');
+    $this->post(route('password.update'), ['token' => $token, 'email' => $staff->email, 'password' => 'Barangay.Staff2026', 'password_confirmation' => 'Barangay.Staff2026'])->assertSessionHasNoErrors();
+
+    $this->artisan('user:create-first-super-admin')
+        ->expectsQuestion('Full name', 'First Admin')->expectsQuestion('Email address', 'first@example.test')
+        ->expectsQuestion('Password', 'abcdefghijkl')->expectsQuestion('Confirm password', 'abcdefghijkl')
+        ->assertFailed();
 });

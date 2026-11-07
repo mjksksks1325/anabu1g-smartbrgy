@@ -1,0 +1,59 @@
+{{--
+    Shown instead of a certificate when its record lacks a detail the printed template states (an issued certificate),
+    when a request cannot be issued yet (a preview: missing details or eligibility problems), or when a request's
+    document type has no printed layout, so there is nothing to preview (an unsupported preview).
+--}}
+@php($isPreview = $isPreview ?? false)
+@php($isUnsupported = $isPreview && ($isUnsupported ?? false))
+@php($problems = $problems ?? [])
+@php($documentLabel = $certificate->certificate_type === \App\CertificateType::BarangayId->value ? 'Barangay ID' : 'certificate')
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex">
+    <title>{{ match (true) { $isUnsupported => 'No preview for this document type', $isPreview => ucfirst($documentLabel).' cannot be issued yet', default => 'Certificate cannot be printed' } }}</title>
+    <style>
+        body { margin: 0; background: #f3f4f6; color: #111827; font: 15px/1.5 system-ui, -apple-system, 'Segoe UI', Arial, sans-serif; }
+        main { max-width: 560px; margin: 48px auto; padding: 24px 28px; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; }
+        h1 { margin: 0 0 8px; font-size: 20px; }
+        ul { padding-left: 20px; }
+        a { color: #1d4ed8; }
+    </style>
+</head>
+<body>
+<main>
+    @if ($isUnsupported)
+        <h1>No preview for this document type</h1>
+        <p>"{{ $certificate->certificate_type }}" has no printed layout in Smart Barangay, so there is nothing to preview. Nothing has been issued, and the request is unchanged.</p>
+    @elseif ($isPreview)
+        <h1>This {{ $documentLabel }} cannot be issued yet</h1>
+        <p>The {{ $certificate->certificate_type }} for this request would not be complete. Resolve the following, then preview it again:</p>
+    @else
+        <h1>This certificate cannot be printed</h1>
+        <p>{{ $certificate->certificate_type }} {{ $certificate->certificate_number }} does not record every detail its printed form states, and a certificate is never printed with blank details. Missing:</p>
+    @endif
+    @if ($problems !== [] || $missingDetails !== [])
+        <ul>
+            @foreach ($problems as $problem)
+                <li>{{ $problem }}</li>
+            @endforeach
+            @foreach ($missingDetails as $detail)
+                <li>{{ $isPreview ? 'Missing: '.$detail : $detail }}</li>
+            @endforeach
+        </ul>
+    @endif
+    @if ($isPreview && ! $isUnsupported)
+        <p>Details from the resident record are completed in Resident Records. Residency details are entered in the Print &amp; Release dialog.</p>
+        @if (($residentNumber ?? null) !== null && auth()->user()?->hasPermission('records.view'))
+            <p><a href="{{ route('staff.residents.index', ['search' => $residentNumber]) }}" data-complete-missing-information>{{ __('Complete missing information in Resident Records') }}</a></p>
+            <p>{{ __('The Print & Release dialog checks the request again when you return to it.') }}</p>
+        @endif
+    @elseif (! $isPreview)
+        <p>Issued certificates cannot be edited. Complete the resident record in Resident Records, then issue a new certificate.</p>
+    @endif
+    <p><a href="{{ route('staff.document-requests.index') }}">Back to certificates</a></p>
+</main>
+</body>
+</html>
