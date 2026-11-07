@@ -106,7 +106,8 @@ export async function createEnvironment({ mailPort }) {
         async close({ keep = false } = {}) {
             server.kill();
             await sleep(500);
-            if (!keep) fs.rmSync(runDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 400 });
+            // The browser can hold its profile files for a moment after closing; keep retrying for up to ten seconds.
+            if (!keep) fs.rmSync(runDir, { recursive: true, force: true, maxRetries: 20, retryDelay: 500 });
         },
     };
 }
