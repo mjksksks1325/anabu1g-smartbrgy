@@ -481,6 +481,17 @@
           <button class="btn btn-green" onclick="openAddUser()"><x-staff-icon name="plus" />Add New User</button>
         </div>
       </div>
+      @php($mailProblems = \App\MailDelivery::problems())
+      @if ($mailProblems !== [])
+        <section class="workspace-warning" role="status" aria-labelledby="mail-delivery-warning-title" data-mail-delivery-warning>
+          <h2 id="mail-delivery-warning-title">{{ __('Account emails are not being delivered') }}</h2>
+          <ul>
+            @foreach ($mailProblems as $problem)
+              <li>{{ $problem }}</li>
+            @endforeach
+          </ul>
+        </section>
+      @endif
 
       <div class="stats-grid user-management-kpis">
         <div class="stat-card user-kpi user-kpi-total"><div class="stat-label">Total accounts</div><div class="stat-value" id="usr-total">0</div><div class="stat-sub">Personnel accounts on record</div><div class="stat-icon"><x-staff-icon name="people" /></div><button type="button" class="stat-link" onclick="showUserKpi('all')">Show all accounts</button></div>
@@ -725,7 +736,7 @@
       <div class="form-group"><label class="form-label" for="res-civil">Civil Status <span class="required-mark" aria-hidden="true">*</span></label><select class="form-input" id="res-civil" name="civil_status" required aria-required="true"><option>Single</option><option>Married</option><option>Widowed</option><option>Separated</option></select></div>
       <div class="form-group"><label class="form-label" for="res-nationality">Nationality</label><input class="form-input" id="res-nationality" name="nationality" maxlength="100" placeholder="Not provided"></div>
     </div>
-    <div class="form-group"><label class="form-label" for="res-photo">Resident photo</label><p class="form-hint" id="res-photo-hint">Optional. An image file up to 5 MB.</p><input class="form-input" type="file" id="res-photo" aria-describedby="res-photo-hint" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.avif,.heic,.heif,image/jpeg,image/png,image/gif,image/bmp,image/webp,image/avif,image/heic,image/heif" onchange="validateResidentPhoto(this)"><img id="res-photo-preview" alt="Current resident photo" style="max-width:90px;max-height:100px;display:none"></div>
+    <div class="form-group"><label class="form-label" for="res-photo">Resident photo</label><p class="form-hint" id="res-photo-hint">Optional. An image file up to 10 MB.</p><input class="form-input" type="file" id="res-photo" aria-describedby="res-photo-hint" accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.avif,.heic,.heif,image/jpeg,image/png,image/gif,image/bmp,image/webp,image/avif,image/heic,image/heif" onchange="validateResidentPhoto(this)"><img id="res-photo-preview" alt="Current resident photo" style="max-width:90px;max-height:100px;display:none"></div>
 
     <h3 class="form-section-heading">Address and contact</h3>
     <div class="form-row">

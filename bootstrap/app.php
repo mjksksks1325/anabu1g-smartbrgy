@@ -1,11 +1,15 @@
 <?php
 
+use App\Exceptions\MailDeliveryUnavailableException;
 use App\Http\Controllers\ResidentEmailVerificationController;
 use App\Http\Middleware\ApplyPortalLocale;
 use App\Http\Middleware\EnsureActiveAccount;
 use App\Http\Middleware\EnsurePersonnelTwoFactorAccount;
 use App\Http\Middleware\PreventAccountCaching;
+use App\Http\Middleware\RequirePrivilegedTwoFactor;
+use App\Http\Middleware\SecurityHeaders;
 use App\Http\Responses\PasswordResetLinkRequestResponse;
+use App\MailDelivery;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Database\QueryException;
@@ -30,14 +34,16 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->web(prepend: [PreventAccountCaching::class], append: [ApplyPortalLocale::class, EnsureActiveAccount::class, EnsurePersonnelTwoFactorAccount::class]);
+        $middleware->web(prepend: [PreventAccountCaching::class], append: [ApplyPortalLocale::class, EnsureActiveAccount::class, EnsurePersonnelTwoFactorAccount::class, RequirePrivilegedTwoFactor::class]);
         $middleware->prependToPriorityList(AuthenticatesRequests::class, ApplyPortalLocale::class);
+        // Only proxies listed in TRUSTED_PROXIES (config/trustedproxy.php) are believed; by default none are. From
+        // them, only the client address, port and scheme are taken, never the host.
         $middleware->trustProxies(
-            at: '*',
             headers: Request::HEADER_X_FORWARDED_FOR
                 | Request::HEADER_X_FORWARDED_PORT
                 | Request::HEADER_X_FORWARDED_PROTO,
         );
+        $middleware->append(SecurityHeaders::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (ThrottleRequestsException $exception, Request $request): JsonResponse|RedirectResponse|null {
@@ -61,10 +67,16 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (InvalidSignatureException $exception, Request $request): ?RedirectResponse {
             return $request->routeIs('portal.verification.verify') ? ResidentEmailVerificationController::rejectedLink() : null;
         });
-        // A failed reset email is reported but answered like any other reset request, so the reply never
-        // differs between addresses that have accounts and addresses that do not.
-        $exceptions->render(function (TransportExceptionInterface $exception, Request $request): ?Response {
-            return $request->routeIs('password.email') ? (new PasswordResetLinkRequestResponse)->toResponse($request) : null;
+        // A reset email that was not sent (mail server failure, or a server that does not deliver email) is reported
+        // and recorded in the audit log for administrators, but answered like any other reset request, so the reply
+        // never differs between addresses that have accounts and addresses that do not.
+        $exceptions->render(function (TransportExceptionInterface|MailDeliveryUnavailableException $exception, Request $request): ?Response {
+            if (! $request->routeIs('password.email')) {
+                return null;
+            }
+            MailDelivery::recordResetEmailFailure($request, $exception);
+
+            return (new PasswordResetLinkRequestResponse)->toResponse($request);
         });
         // Database errors never reach the screen, even with APP_DEBUG on: their messages carry SQL, bound values (resident
         // details) and the database file path. People see a generic message with a short reference; the full error is

@@ -82,6 +82,8 @@ APP_ENV=production
 APP_DEBUG=false
 APP_URL=https://barangay.example.com
 LOG_LEVEL=warning
+LOG_STACK=daily
+LOG_DAILY_DAYS=30
 
 DB_CONNECTION=mysql
 DB_HOST=localhost
@@ -93,6 +95,7 @@ DB_PASSWORD="REPLACE_WITH_A_LONG_RANDOM_PASSWORD"
 SESSION_DRIVER=database
 SESSION_SECURE_COOKIE=true
 SESSION_DOMAIN=null
+TRUSTED_PROXIES=
 CACHE_STORE=database
 QUEUE_CONNECTION=database
 FILESYSTEM_DISK=public
@@ -101,6 +104,10 @@ FILESYSTEM_DISK=public
 `FILESYSTEM_DISK=public` makes the attachment URLs match the public disk where this application stores uploads. ID attachments currently use public storage: someone with their exact URL can access them. Before accepting real resident IDs on a public deployment, move these attachments behind authenticated access; HTTPS alone does not restrict who can open their URL.
 
 Configure a real SMTP provider for password-reset emails: set `MAIL_MAILER=smtp`, `MAIL_SCHEME=smtp`, `MAIL_HOST`, `MAIL_PORT` (commonly 587), `MAIL_USERNAME`, `MAIL_PASSWORD`, and verified `MAIL_FROM_ADDRESS`. Follow your provider's TLS settings. `MAIL_MAILER=log` only writes mail to logs and does not deliver it. Document requests do not currently send automatic status emails.
+
+The application does not send account emails through `MAIL_MAILER=log`: password reset links are then not sent at all (the request is recorded in the Audit Log as `auth.password-reset-mail-unavailable`), because the log mailer would only write the link, with its token, into `storage/logs`. User Management shows a warning while email delivery is off or `MAIL_FROM_ADDRESS` is still a placeholder such as `hello@example.com`. After configuring SMTP, send yourself a reset link from the staff Forgot Password page and confirm it arrives; a failed delivery appears in the Audit Log as `auth.password-reset-mail-failed`.
+
+Personnel with privileged access (Super Admin, Barangay Captain, and staff who handle VAWC cases, edit or verify resident records, or issue or revoke certificates) must set up two-factor authentication at their first sign-in; they can reach only the security settings until they do. This is always enforced in production.
 
 For a **new empty database only**:
 
@@ -121,13 +128,16 @@ sudo find /var/www/anabu1g-smartbrgy -type f -exec chmod g+r,o-rwx {} +
 sudo chmod -R ug+rwX storage bootstrap/cache
 sudo chmod 640 .env
 sudo tee /etc/php/8.4/fpm/conf.d/99-anabu.ini > /dev/null <<'INI'
-upload_max_filesize = 6M
-post_max_size = 8M
+upload_max_filesize = 12M
+post_max_size = 16M
+memory_limit = 256M
 expose_php = Off
 INI
 sudo systemctl restart php8.4-fpm
 sudo nano /etc/nginx/sites-available/anabu1g
 ```
+
+Resident photos may be up to 10 MB, so PHP must accept a 10 MB file inside a slightly larger form: `upload_max_filesize` at least 12M, `post_max_size` at least 16M, and Nginx `client_max_body_size` at least 16m. With lower values PHP discards the photo before the application sees it and the resident reads "The photo could not be uploaded. The file may be too large." `memory_limit = 256M` lets the application resize and clean very large phone photos (up to 6000 × 6000 pixels); with less memory such photos are still accepted, but stored as uploaded. Check the values in effect with `php-fpm8.4 -i | grep -E 'upload_max_filesize|post_max_size|memory_limit'`.
 
 Paste the configuration below and replace the domain. The document root must end in `/public`, as required by [Laravel's deployment guide](https://laravel.com/docs/13.x/deployment).
 
@@ -139,10 +149,7 @@ server {
     root /var/www/anabu1g-smartbrgy/public;
     index index.php;
     charset utf-8;
-    client_max_body_size 8m;
-
-    add_header X-Frame-Options SAMEORIGIN;
-    add_header X-Content-Type-Options nosniff;
+    client_max_body_size 16m;
 
     location / {
         try_files $uri $uri/ /index.php?$query_string;
@@ -163,7 +170,9 @@ server {
 }
 ```
 
-The forwarded headers are cleared because this configuration serves requests directly. The application currently trusts proxies; if adding a load balancer/CDN, configure trusted proxy addresses and forwarding deliberately.
+The forwarded headers are cleared because this configuration serves requests directly. Keep `TRUSTED_PROXIES` empty for this setup: the application then ignores every `X-Forwarded-*` header and uses the connecting address. If you later put a load balancer or CDN in front, set `TRUSTED_PROXIES` to its addresses or CIDR ranges only (never `*` on a server clients can reach directly), and stop clearing the forwarded headers above.
+
+Do not add security headers in Nginx: the application sends `Content-Security-Policy`, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy` and `Permissions-Policy` on every response, and `Strict-Transport-Security` (one year) for HTTPS requests when `APP_ENV=production`. Adding them again in Nginx would send duplicate, conflicting values.
 
 ```bash
 sudo ln -s /etc/nginx/sites-available/anabu1g /etc/nginx/sites-enabled/anabu1g
@@ -303,9 +312,11 @@ If `git status` shows server edits, review them before pulling; do not discard t
 Check `/portal`, `/login`, and the actual workflows again after updating. If there is an error:
 
 ```bash
-tail -n 80 storage/logs/laravel.log
+tail -n 80 "$(ls -t storage/logs/laravel*.log | head -n 1)"
 sudo tail -n 80 /var/log/nginx/error.log
 sudo journalctl -u anabu-queue -n 80 --no-pager
 ```
+
+With `LOG_STACK=daily` the application writes one file per day (`storage/logs/laravel-YYYY-MM-DD.log`) and deletes files older than `LOG_DAILY_DAYS` days, so logs cannot fill the disk. Choose the number of days your records policy requires, and copy logs you must keep longer to protected storage before they expire. A `storage/logs/laravel.log` left from earlier single-file logging is no longer written to; review it, then archive or remove it deliberately, because it may hold account emails and older password reset links (expired, but still personal data).
 
 Do not publish log contents containing resident information or credentials. Keep automated snapshots plus protected database/upload backups outside the instance, and test restoration periodically.

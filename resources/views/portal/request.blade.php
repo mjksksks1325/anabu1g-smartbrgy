@@ -233,7 +233,7 @@
           </div>
           <button class="btn btn-outline btn-small copy-code-button" type="button" onclick="copyReferenceCode()"><span data-portal-i18n="Kopyahin ang code">{{ __('Kopyahin ang code') }}</span></button>
         </div>
-        <p><span data-portal-i18n="I-screenshot o isulat ang reference number. Kailangan ito pagkuha ng dokumento.">{{ __('I-screenshot o isulat ang reference number. Kailangan ito pagkuha ng dokumento.') }}</span></p>
+        <p class="confirm-hint"><span data-portal-i18n="I-screenshot o isulat ang reference number. Kailangan ito pagkuha ng dokumento.">{{ __('I-screenshot o isulat ang reference number. Kailangan ito pagkuha ng dokumento.') }}</span></p>
 
         <h3 class="fieldset-title" style="margin-top:24px;"><span data-portal-i18n="Buod ng request">{{ __('Buod ng request') }}</span></h3>
         <div id="conf-summary"></div>

@@ -3,8 +3,12 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Exceptions\MailDeliveryUnavailableException;
+use App\MailDelivery;
+use App\Notifications\ResidentEmailVerificationNotification;
 use App\StaffPermissions;
 use Database\Factories\UserFactory;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -59,6 +63,34 @@ class User extends Authenticatable
         return $this->hasMany(FileMovementEvent::class);
     }
 
+    /**
+     * Email the reset link only through a mailer that delivers it. With the `log` mailer the link, and the token in
+     * it, would only be written to the application log, so nothing is sent and the caller reports the failure.
+     *
+     * @throws MailDeliveryUnavailableException
+     */
+    public function sendPasswordResetNotification(#[\SensitiveParameter] $token): void
+    {
+        if (! MailDelivery::configured()) {
+            throw new MailDeliveryUnavailableException;
+        }
+
+        $this->notify(new ResetPassword($token));
+    }
+
+    /**
+     * Send the Resident Portal email confirmation link, in the current language. Refused, like password reset
+     * links, when this server does not deliver email: the log mailer would only write the signed link to the log.
+     */
+    public function sendResidentEmailConfirmation(): void
+    {
+        if (! MailDelivery::configured()) {
+            throw new MailDeliveryUnavailableException('the email confirmation');
+        }
+
+        $this->notify((new ResidentEmailVerificationNotification)->locale(app()->getLocale()));
+    }
+
     public function canLoginAsPersonnel(): bool
     {
         return $this->is_active && $this->resident_id === null && in_array($this->role, ['admin', 'captain', 'staff'], true);
@@ -72,6 +104,33 @@ class User extends Authenticatable
     public function isBarangayCaptain(): bool
     {
         return $this->role === 'captain' && $this->is_active && $this->resident_id === null;
+    }
+
+    /**
+     * Permissions that reach confidential cases, change resident identity or verification details, or issue and
+     * revoke official certificates. An account holding any of them must use two-factor authentication.
+     */
+    public const PRIVILEGED_PERMISSIONS = [
+        'vawc.view', 'vawc.submit', 'vawc.update', 'vawc.archive',
+        'records.create', 'records.update', 'records.archive', 'records.activate', 'records.review',
+        'documents.issue', 'documents.revoke',
+    ];
+
+    /**
+     * Whether this personnel account must complete two-factor authentication before using the workspace: the
+     * Super Admin, the Barangay Captain (who also manage users and Smart Cabinet access) and staff whose current
+     * assignments include a privileged permission. Read from the current assignments on every request.
+     */
+    public function requiresTwoFactorAuthentication(): bool
+    {
+        return $this->canLoginAsPersonnel()
+            && ($this->hasAdministrativeAccess() || $this->role === 'admin' || $this->hasAnyPermission(self::PRIVILEGED_PERMISSIONS));
+    }
+
+    /** Two-factor authentication is set up only once the authenticator code was confirmed; a secret alone is not. */
+    public function hasConfirmedTwoFactor(): bool
+    {
+        return $this->two_factor_secret !== null && $this->two_factor_confirmed_at !== null;
     }
 
     public function hasAdministrativeAccess(): bool

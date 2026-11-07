@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Actions\StoreResidentPhoto;
 use App\Models\Resident;
 use Carbon\CarbonInterface;
 use Illuminate\Foundation\Http\FormRequest;
@@ -48,7 +49,7 @@ class StoreResidentApplicationRequest extends FormRequest
             'contact_number' => ['required', 'string', 'regex:'.Resident::MOBILE_NUMBER_PATTERN],
             'residency_type' => ['required', Rule::in(['Homeowner', 'Renter', 'Boarder'])],
             'email' => ['required', 'string', 'email', 'max:255'],
-            'photo' => ['required', 'image', 'mimes:jpg,jpeg,png,gif,bmp,webp,avif,heic,heif', 'extensions:jpg,jpeg,png,gif,bmp,webp,avif,heic,heif', 'max:5120', 'dimensions:max_width=6000,max_height=6000'],
+            'photo' => StoreResidentPhoto::rules(),
             'privacy_notice_accepted' => ['accepted'],
             ...array_fill_keys(['status', 'role', 'is_active', 'resident_id', 'reviewed_by', 'reviewed_at', 'reference', 'remarks', 'staff_permissions', 'portal_registration_hash', 'is_in_good_standing', 'is_verified_indigent', 'password'], ['prohibited']),
         ];

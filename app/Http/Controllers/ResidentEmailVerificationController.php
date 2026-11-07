@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Actions\RecordPortalAccountEvent;
 use App\Models\User;
-use App\Notifications\ResidentEmailVerificationNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Throwable;
@@ -51,17 +50,18 @@ class ResidentEmailVerificationController extends Controller
     }
 
     /**
-     * Send a fresh confirmation link to the signed-in resident's own email address. A mail server that is
-     * down or refuses the message is reported and explained to the resident instead of ending in an error page.
+     * Send a fresh confirmation link to the signed-in resident's own email address. A mail server that is down
+     * or refuses the message, or a server that does not deliver email at all, is explained to the resident instead
+     * of claiming the link was sent, and recorded in the audit log.
      */
-    public function send(Request $request): RedirectResponse
+    public function send(Request $request, RecordPortalAccountEvent $events): RedirectResponse
     {
         $account = $request->user();
         if ($account->email_verified_at === null) {
             try {
-                $account->notify((new ResidentEmailVerificationNotification)->locale(app()->getLocale()));
+                $account->sendResidentEmailConfirmation();
             } catch (Throwable $exception) {
-                report($exception);
+                $events->confirmationMailNotSent($exception, $account);
 
                 return back()->withErrors(['verification' => __(self::SEND_FAILED_MESSAGE)]);
             }

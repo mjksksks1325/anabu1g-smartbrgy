@@ -170,12 +170,10 @@ html[data-theme=dark] .drawer-access-form select { border-color: var(--staff-qui
 .document-request-detail .btn-green:hover { border-color: var(--civic-primary-hover); background: var(--civic-primary-hover); }
 
 html:not([data-theme=dark]) { background: #d4e1eb; }
-html:not([data-theme=dark]) .site-header { background: #eaf1f6; border-bottom-color: #9eb5c6; }
+/* The header, sidebar, page, panel and panel-heading surfaces come from staff-theme.css, shared with the workspace.
+   Light blue versions here had the same specificity, so whichever sheet loaded last won: after in-app navigation
+   from the workspace (Livewire appends this sheet after staff-theme.css), these pages turned light blue. */
 html:not([data-theme=dark]) .brand { border-right-color: #a9bfce; }
-html:not([data-theme=dark]) .side-nav { background: #e4edf3; }
-html:not([data-theme=dark]) .main-content { background: #d9e6ef; }
-html:not([data-theme=dark]) .panel, html:not([data-theme=dark]) .filter-panel { background: #f4f8fb; border-color: #9eb5c6; box-shadow: 0 8px 22px rgba(13, 45, 77, .11); }
-html:not([data-theme=dark]) .panel-heading { background: #e8f0f6; border-bottom-color: #adc2d1; }
 html:not([data-theme=dark]) .employee-access-panel > .employee-card { border-color: #adc2d1; }
 html:not([data-theme=dark]) .employee-details-dialog { border-color: #9eb5c6; }
 html:not([data-theme=dark]) .employee-details-heading { border-color: #adc2d1; background: #f4f8fb; }

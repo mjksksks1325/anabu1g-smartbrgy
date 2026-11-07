@@ -20,4 +20,16 @@ return [
 
     'vawc_explicit_assignment' => (bool) env('VAWC_EXPLICIT_ASSIGNMENT', false),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Two-factor authentication for privileged personnel
+    |--------------------------------------------------------------------------
+    |
+    | Accounts with privileged access (App\Models\User::requiresTwoFactorAuthentication) must finish setting up
+    | two-factor authentication before they can use the workspace. Always on in production; it can be turned
+    | off only outside production (the automated test suite does, and tests the rule on its own).
+    |
+    */
+    'privileged_two_factor' => env('APP_ENV') === 'production' || (bool) env('PRIVILEGED_TWO_FACTOR', true),
+
 ];

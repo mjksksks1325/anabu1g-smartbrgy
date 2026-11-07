@@ -1,7 +1,10 @@
 <?php
 
+use App\Http\Responses\PasswordResetLinkRequestResponse;
+use App\MailDelivery;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
@@ -185,4 +188,47 @@ test('a reset link stops working after 60 minutes', function () {
     $this->post(route('password.update'), ['token' => $token, 'email' => $resident->email, 'password' => 'New-Resident-2026!', 'password_confirmation' => 'New-Resident-2026!'])
         ->assertSessionHasErrors('email');
     expect(Hash::check('New-Resident-2026!', $resident->fresh()->password))->toBeFalse();
+});
+
+test('a server that does not deliver email sends no reset link, keeps the reply neutral and records the failure', function (string $mailer) {
+    Notification::fake();
+    config(['mail.default' => $mailer]);
+    $resident = User::factory()->resident()->create();
+    $staff = User::factory()->create(['role' => 'staff']);
+    $portal = route('password.request', ['from' => 'portal']);
+
+    $known = $this->from($portal)->post(route('password.email'), ['email' => $resident->email]);
+    $unknown = $this->from($portal)->post(route('password.email'), ['email' => 'nobody@example.test']);
+    $this->from(route('password.request'))->post(route('password.email'), ['email' => $staff->email]);
+
+    $known->assertRedirect($portal)->assertSessionHas('status', PasswordResetLinkRequestResponse::MESSAGE);
+    $unknown->assertRedirect($portal)->assertSessionHas('status', PasswordResetLinkRequestResponse::MESSAGE);
+    Notification::assertNothingSent();
+    $this->assertDatabaseHas('administrative_audits', ['action' => 'auth.password-reset-mail-unavailable', 'type' => 'security', 'record' => 'resident_portal:'.$resident->id, 'user_id' => null]);
+    $this->assertDatabaseHas('administrative_audits', ['action' => 'auth.password-reset-mail-unavailable', 'record' => (string) $staff->id]);
+    $this->assertDatabaseCount('administrative_audits', 2);
+})->with(['log']);
+
+test('a mail server failure during a reset request is recorded for administrators without the address or token', function () {
+    Exceptions::fake();
+    useFailingMailer();
+    $staff = User::factory()->create(['role' => 'staff']);
+
+    $this->from(route('password.request'))->post(route('password.email'), ['email' => $staff->email])
+        ->assertRedirect(route('password.request'))->assertSessionHas('status', PasswordResetLinkRequestResponse::MESSAGE);
+
+    $audit = DB::table('administrative_audits')->where('action', 'auth.password-reset-mail-failed')->sole();
+    expect($audit->record)->toBe((string) $staff->id)->and($audit->type)->toBe('security')
+        ->and(json_encode($audit))->not->toContain($staff->email)->not->toContain('token');
+});
+
+test('MailDelivery accepts only mailers that send', function () {
+    config(['mail.default' => 'smtp']);
+    expect(MailDelivery::configured())->toBeTrue();
+    config(['mail.default' => 'log']);
+    expect(MailDelivery::configured())->toBeFalse()->and(MailDelivery::problems()[0])->toContain('MAIL_MAILER=log');
+    config(['mail.default' => 'smtp', 'mail.from.address' => 'hello@example.com']);
+    expect(MailDelivery::problems())->toHaveCount(1)->and(MailDelivery::problems()[0])->toContain('placeholder');
+    config(['mail.from.address' => 'records@anabu1g.gov.ph']);
+    expect(MailDelivery::problems())->toBe([]);
 });

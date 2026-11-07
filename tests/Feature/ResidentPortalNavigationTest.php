@@ -157,6 +157,21 @@ test('document request page asks residents to review before submitting', functio
         ->assertSee('Hindi pa kumpirmado ng barangay ang office hours');
 });
 
+test('the submitted screen leads with a compact confirmation, a prominent reference number and its copy button', function (string $locale, string $heading, string $copy) {
+    $this->withSession(['locale' => $locale])->actingAs(User::factory()->resident()->create(), 'resident')
+        ->get(route('portal.request.create'))
+        ->assertOk()
+        ->assertSeeInOrder(['id="screen-confirm"', 'class="confirm-mark" aria-hidden="true"', $heading, 'class="confirm-code" id="conf-code"', 'onclick="copyReferenceCode()"', $copy, 'class="confirm-hint"', 'id="conf-summary"', 'class="confirm-steps"'], false);
+
+    $styles = file_get_contents(public_path('css/portal-resident.css'));
+    expect($styles)->toContain('#screen-confirm .confirm-code { margin: 4px 0 0; color: var(--v2-ink); font-size: clamp(26px, 5vw, 32px);')
+        ->toContain('width: 48px; height: 48px;')
+        ->not->toContain('width: 84px; height: 84px;');
+})->with([
+    'English' => ['en', 'Your request has been submitted', 'Copy code'],
+    'Filipino' => ['fil', 'Na-submit na ang request ninyo', 'Kopyahin ang code'],
+]);
+
 test('navigation shows account entry points for guests and account links for residents', function () {
     $this->get(route('home'))
         ->assertOk()
@@ -415,7 +430,7 @@ test('my account is one page with resident information, photo upload and passwor
         ->assertSee($user->resident->resident_number)
         ->assertSee($user->resident->address)
         ->assertSee($user->email)
-        ->assertSee('JPG, PNG, WEBP, HEIC and other image files, up to 5 MB.');
+        ->assertSee('JPG, PNG, WEBP, HEIC and other image files, up to 10 MB.');
 
     $document = new DOMDocument;
     @$document->loadHTML($response->getContent());

@@ -7,7 +7,6 @@ use App\Http\Requests\RegisterResidentAccountRequest;
 use App\Http\Requests\VerifyResidentAccountRequest;
 use App\Models\Resident;
 use App\Models\User;
-use App\Notifications\ResidentEmailVerificationNotification;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -154,9 +153,9 @@ class ResidentRegistrationController extends Controller
         }
 
         try {
-            $account->notify((new ResidentEmailVerificationNotification)->locale(app()->getLocale()));
+            $account->sendResidentEmailConfirmation();
         } catch (Throwable $exception) {
-            report($exception);
+            $this->events->confirmationMailNotSent($exception, $account);
 
             return redirect()->route('portal.login')
                 ->with('status', 'Your resident account is ready, but we could not send the confirmation email. Sign in and select Send a new confirmation link.');

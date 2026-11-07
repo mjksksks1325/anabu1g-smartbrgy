@@ -78,10 +78,10 @@ test('resident photo picker accepts a supported image under the size limit', () 
   assert.equal(picker.error.hidden, true);
 });
 
-test('resident photo picker rejects files larger than 5 MB', () => {
+test('resident photo picker rejects files larger than 10 MB', () => {
   const picker = createPhotoInput();
 
-  picker.select({ name: 'resident.png', size: 5 * 1024 * 1024 + 1, type: 'image/png' });
+  picker.select({ name: 'resident.png', size: 10 * 1024 * 1024 + 1, type: 'image/png' });
 
   assert.equal(picker.input.value, '');
   assert.equal(picker.error.hidden, false);

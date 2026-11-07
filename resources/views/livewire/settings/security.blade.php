@@ -42,6 +42,13 @@
             <section class="mt-12">
                 <flux:heading>{{ __('Two-factor authentication') }}</flux:heading>
                 <flux:subheading>{{ __('Manage your two-factor authentication settings') }}</flux:subheading>
+                @php($twoFactorRequired = config('access.privileged_two_factor') && auth()->user()->requiresTwoFactorAuthentication())
+                @if ($twoFactorRequired && ! $twoFactorEnabled)
+                    <flux:callout variant="warning" icon="shield-exclamation" class="mt-4" data-two-factor-required>
+                        <flux:callout.heading>{{ __('Two-factor authentication is required for your account') }}</flux:callout.heading>
+                        <flux:callout.text>{{ __('Your account has privileged access (confidential cases, resident records, certificates or administration). Set up two-factor authentication with an authenticator app to continue using the workspace. Keep the recovery codes somewhere safe.') }}</flux:callout.text>
+                    </flux:callout>
+                @endif
 
                 <div class="flex flex-col w-full mx-auto space-y-6 text-sm" wire:cloak>
                     @if ($twoFactorEnabled)
@@ -50,14 +57,18 @@
                                 {{ __('You will be prompted for a secure, random pin during login, which you can retrieve from the TOTP-supported application on your phone.') }}
                             </flux:text>
 
-                            <div class="flex justify-start">
-                                <flux:button
-                                    variant="danger"
-                                    wire:click="disable"
-                                >
-                                    {{ __('Disable 2FA') }}
-                                </flux:button>
-                            </div>
+                            @if ($twoFactorRequired)
+                                <flux:text variant="subtle">{{ __('Two-factor authentication is required for your account, so it cannot be turned off.') }}</flux:text>
+                            @else
+                                <div class="flex justify-start">
+                                    <flux:button
+                                        variant="danger"
+                                        wire:click="disable"
+                                    >
+                                        {{ __('Disable 2FA') }}
+                                    </flux:button>
+                                </div>
+                            @endif
 
                             <livewire:settings.two-factor.recovery-codes :$requiresConfirmation />
                         </div>

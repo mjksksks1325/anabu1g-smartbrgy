@@ -506,14 +506,17 @@ test('resident records show which certificate details each record lacks, and can
     $staff = User::factory()->assignedOperations()->create();
     $complete = Resident::factory()->create(['last_name' => 'Complete', 'nationality' => 'Filipino', 'photo_path' => 'resident-photos/complete.jpg']);
     $incomplete = Resident::factory()->create(['last_name' => 'Incomplete', 'nationality' => null, 'photo_path' => null]);
+    // Nationality alone is not flagged: residents are not asked for it, and only some certificates print it.
+    $noNationality = Resident::factory()->create(['last_name' => 'Nonationality', 'nationality' => null, 'photo_path' => 'resident-photos/no-nationality.jpg']);
 
     $rows = collect($this->actingAs($staff)->getJson(route('staff.residents.index'))->assertOk()->json('data'))->keyBy('id');
     expect($rows[$complete->id]['missing_certificate_details'])->toBe([])
-        ->and($rows[$incomplete->id]['missing_certificate_details'])->toBe(['nationality', 'photo']);
+        ->and($rows[$incomplete->id]['missing_certificate_details'])->toBe(['photo'])
+        ->and($rows[$noNationality->id]['missing_certificate_details'])->toBe([]);
 
     $this->getJson(route('staff.residents.index', ['status' => 'incomplete']))->assertOk()
         ->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $incomplete->id);
-    expect($incomplete->fresh()->nationality)->toBeNull();
+    expect($incomplete->fresh()->nationality)->toBeNull()->and($noNationality->fresh()->nationality)->toBeNull();
 });
 
 test('the eligibility check keeps missing details and pending verification apart from actual ineligibility', function () {

@@ -30,6 +30,8 @@ test('portal renders email as the required notification field', function () {
 });
 
 test('portal assets use https when the request is forwarded through a trusted proxy', function () {
+    config(['trustedproxy.proxies' => '127.0.0.1']);
+
     $this->withHeader('X-Forwarded-Proto', 'https')
         ->get('http://public.example.test/portal')
         ->assertOk()

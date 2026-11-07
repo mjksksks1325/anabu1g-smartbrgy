@@ -1090,7 +1090,7 @@ body[data-personnel-layout="admin"] .release-readiness-footer { display: flex; f
 body[data-personnel-layout="admin"] .resident-missing-badge { margin-left: 6px; }
 body[data-personnel-layout="admin"] .resident-household { color: var(--staff-ink); font-size: 13px; }
 body[data-personnel-layout="admin"] .resident-household.is-unassigned { color: var(--staff-muted); }
-body[data-personnel-layout="admin"] .resident-detail-missing { color: var(--staff-warning-ink); font-style: normal; font-weight: 600; }
+body[data-personnel-layout="admin"] .resident-detail-not-recorded { color: var(--text-muted); font-style: normal; font-weight: 500; }
 body[data-personnel-layout="admin"] .resident-missing-panel { display: grid; gap: 6px; justify-items: start; margin: 0 0 14px; padding: 12px 14px; border: 1px solid var(--staff-warning-border); border-radius: 8px; background: var(--staff-warning-bg); color: var(--staff-ink); font-size: 13px; line-height: 1.45; }
 body[data-personnel-layout="admin"] .resident-missing-panel h3 { margin: 0; color: var(--staff-warning-ink); font-size: 14px; }
 body[data-personnel-layout="admin"] .resident-missing-panel p { margin: 0; }
@@ -1108,3 +1108,8 @@ body[data-personnel-layout="admin"] #app.admin-interface .audit-log-row > :nth-c
 body[data-personnel-layout="admin"] #app.admin-interface .audit-stats-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 @media (max-width: 1100px) { body[data-personnel-layout="admin"] #app.admin-interface .audit-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 520px) { body[data-personnel-layout="admin"] #app.admin-interface .audit-stats-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* ── Workspace warning: a configuration problem administrators must fix (e.g. email delivery) ── */
+body[data-personnel-layout="admin"] .workspace-warning { margin: 0 0 16px; padding: 12px 16px; border: 1px solid var(--staff-warning-border); border-radius: 8px; background: var(--staff-warning-bg); color: var(--staff-ink); font-size: 13px; line-height: 1.5; }
+body[data-personnel-layout="admin"] .workspace-warning h2 { margin: 0 0 4px; color: var(--staff-warning-ink); font-size: 14px; }
+body[data-personnel-layout="admin"] .workspace-warning ul { margin: 0; padding-left: 18px; }

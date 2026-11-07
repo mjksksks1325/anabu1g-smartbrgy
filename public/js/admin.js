@@ -5344,9 +5344,9 @@ function validateResidentPhoto(input) {
     showToast('Resident photo must be an image file. PDF and other document files are not supported.', 'red');
     return false;
   }
-  if (photo.size > 5 * 1024 * 1024) {
+  if (photo.size > 10 * 1024 * 1024) {
     input.value = '';
-    showToast('Resident photo must be 5 MB or smaller.', 'red');
+    showToast('Resident photo must be 10 MB or smaller.', 'red');
     return false;
   }
   return true;
@@ -5466,7 +5466,7 @@ function openViewResident(residentNumber) {
       <div><span>Age</span><strong>${calcAge(resident.dob)} years old</strong></div>
       <div><span>Gender</span><strong>${escapeText(resident.gender)}</strong></div>
       <div><span>Civil Status</span><strong>${escapeText(resident.civil)}</strong></div>
-      <div><span>${escapeText(adminText('Nationality'))}</span><strong>${resident.nationality ? escapeText(resident.nationality) : `<em class="resident-detail-missing">${escapeText(adminText('Not recorded'))}</em>`}</strong></div>
+      <div><span>${escapeText(adminText('Nationality'))}</span><strong>${resident.nationality ? escapeText(resident.nationality) : `<em class="resident-detail-not-recorded">${escapeText(adminText('Not recorded'))}</em>`}</strong></div>
       <div><span>Purok</span><strong>${escapeText(resident.purok)}</strong></div>
       <div><span>Contact</span><strong>${escapeText(resident.contact || 'None')}</strong></div>
       <div><span>Residency Type</span><strong>${escapeText(resident.type)}</strong></div>
@@ -6477,7 +6477,9 @@ async function initializePersonnelWorkspace() {
   isLightMode = document.body.classList.contains('light-mode');
   const authenticatedUser = window.AUTHENTICATED_USER;
   if (authenticatedUser) {
-    const screen = window.ADMIN_ACTIVE_SCREEN || 'dashboard';
+    // Browser Back or Forward can restore the workspace as it was first loaded while the address names a screen
+    // opened in place later (showScreen() pushes its URL), so the address decides, as it does for popstate.
+    const screen = screenForAddress() || window.ADMIN_ACTIVE_SCREEN || 'dashboard';
     launchApp(authenticatedUser.name, authenticatedUser.role);
     const navigation = findNavItem(screen);
     if (navigation && navigation.style.display !== 'none') showScreen(screen, navigation, false);
@@ -6527,10 +6529,16 @@ function restoreAdminFiltersFromUrl() {
   }
 }
 
+/** The workspace screen whose URL is the current address, if any. */
+function screenForAddress() {
+  const entry = Object.entries(window.ADMIN_SCREEN_ROUTES || {}).find(([, url]) => new URL(url, window.location.href).pathname === window.location.pathname);
+  return entry ? entry[0] : null;
+}
+
 window.addEventListener('popstate', event => {
   if (event?.state?.alpine) return;
-  const entry = Object.entries(window.ADMIN_SCREEN_ROUTES || {}).find(([, url]) => new URL(url, window.location.href).pathname === window.location.pathname);
-  if (entry) showScreen(entry[0], findNavItem(entry[0]), false);
+  const screen = screenForAddress();
+  if (screen) showScreen(screen, findNavItem(screen), false);
 });
 
 /**

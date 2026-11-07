@@ -32,6 +32,51 @@
     document.documentElement.append(indicator);
   }
 
+  /*
+   * The staff menu keeps its scroll position from page to page. Livewire replaces the whole body when a menu link is
+   * followed (and some pages open with a full page load), so the new menu would otherwise start at the top. The saved
+   * position is restored once the page's styles are in place, and the menu moves only if the current item would be out
+   * of view. On phones the menu is a closed drawer with no scroll area, so nothing changes there.
+   */
+  const NAV_SCROLL_KEY = 'smartbrgy_nav_scroll';
+  let navScrollPending = false;
+
+  function navScroller() {
+    for (const element of document.querySelectorAll('#app .sidebar-scroll, #staff-side-nav .side-nav-scroll, .staff-settings-navigation')) {
+      for (let node = element; node && node !== document.body; node = node.parentElement) {
+        const overflow = getComputedStyle(node).overflowY;
+        if ((overflow === 'auto' || overflow === 'scroll') && node.scrollHeight > node.clientHeight) return node;
+      }
+    }
+    return null;
+  }
+
+  function rememberNavScroll() {
+    const scroller = navScroller();
+    if (!scroller) return;
+    try { sessionStorage.setItem(NAV_SCROLL_KEY, String(Math.round(scroller.scrollTop))); } catch (_) {}
+  }
+
+  function restoreNavScroll() {
+    navScrollPending = false;
+    const scroller = navScroller();
+    if (!scroller) return;
+    let saved = null;
+    try { saved = sessionStorage.getItem(NAV_SCROLL_KEY); } catch (_) {}
+    if (saved !== null) scroller.scrollTop = Number(saved) || 0;
+    const current = scroller.querySelector('[aria-current="page"]');
+    if (!current) return;
+    const item = current.getBoundingClientRect();
+    const area = scroller.getBoundingClientRect();
+    if (item.top < area.top) scroller.scrollTop -= area.top - item.top + 8;
+    else if (item.bottom > area.bottom) scroller.scrollTop += item.bottom - area.bottom + 8;
+  }
+
+  function finishNavigation() {
+    hideNavigationLoading();
+    if (navScrollPending) restoreNavScroll();
+  }
+
   function hideNavigationLoading() {
     window.clearTimeout(navigationLoadingTimer);
     window.clearTimeout(navigationLoadingFailsafe);
@@ -144,7 +189,7 @@
         stylesheetLoadListeners.add(link);
         const synchronizeAfterStylesheetLoad = () => {
           loadedStylesheets.add(link);
-          if (document.body.dataset.personnelLayout === layout && syncStyles()) hideNavigationLoading();
+          if (document.body.dataset.personnelLayout === layout && syncStyles()) finishNavigation();
         };
         link.addEventListener('load', synchronizeAfterStylesheetLoad, { once: true });
         link.addEventListener('error', () => {
@@ -235,6 +280,8 @@
     // Livewire fires this after fetching the destination and immediately before
     // swapping the body. Keep the current page visible while fetching, then
     // cover the swap so an incoming layout stylesheet cannot expose a blank page.
+    rememberNavScroll();
+    navScrollPending = true;
     window.clearTimeout(navigationLoadingTimer);
     showNavigationLoading();
     window.clearTimeout(navigationLoadingFailsafe);
@@ -246,8 +293,13 @@
   document.addEventListener('livewire:navigated', () => {
     if (restoringHistory) window.PERSONNEL_LOGIN_GREETING = false;
     restoringHistory = false;
-    if (syncStyles()) hideNavigationLoading();
+    if (syncStyles()) finishNavigation();
     else showNavigationLoading();
   });
-  document.addEventListener('DOMContentLoaded', syncStyles, { once: true });
+  // A full page load (reload, or a page opened without in-app navigation) keeps the menu where it was too.
+  window.addEventListener?.('pagehide', rememberNavScroll);
+  document.addEventListener('DOMContentLoaded', () => {
+    syncStyles();
+    restoreNavScroll();
+  }, { once: true });
 })();

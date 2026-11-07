@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\StoreResidentPhoto;
 use App\Http\Requests\StoreResidentApplicationRequest;
 use App\Models\Purok;
 use App\Models\ResidentRegistrationApplication;
@@ -55,7 +56,7 @@ class ResidentApplicationController extends Controller
             throw ValidationException::withMessages(['first_name' => __('A matching resident record already exists. Use the existing resident activation flow or ask barangay staff for help.')]);
         }
         $photo = $request->file('photo');
-        $path = $photo->store('resident-photos', 'local');
+        $path = app(StoreResidentPhoto::class)->handle($photo);
         abort_if($path === false, 500);
         $oldPath = null;
         try {
