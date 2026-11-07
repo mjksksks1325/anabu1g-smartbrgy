@@ -389,6 +389,7 @@ test('household module and lookup endpoints do not expose the full resident regi
 });
 
 test('document processing and issuance are distinct actions', function () {
+    Storage::fake('public');
     $request = DocumentRequest::query()->create(['reference_code' => 'REQ-DISTINCT', 'document_type' => 'Barangay Clearance', 'full_name' => 'Test Resident', 'address' => 'Anabu', 'purpose' => 'Employment', 'status' => 'pending']);
     $processor = assignedStaff(['documents.view', 'documents.process']);
     $this->actingAs($processor)->patchJson(route('staff.document-requests.update-status', $request), ['status' => 'ready_for_release'])->assertOk();
@@ -397,6 +398,7 @@ test('document processing and issuance are distinct actions', function () {
     $this->actingAs($issuer)->patchJson(route('staff.document-requests.update-status', $request), ['status' => 'rejected', 'rejection_reason' => 'A long rejection reason.'])->assertForbidden();
     $this->postJson(route('staff.document-requests.issue', $request))->assertOk();
     $certificate = $request->issuedCertificate()->sole();
+    Storage::disk('public')->assertExists('qrcodes/'.$certificate->certificate_number.'.svg');
     $this->get(route('staff.issued-certificates.print', $certificate))->assertForbidden();
     $this->actingAs(assignedStaff(['documents.view', 'documents.print']))->get(route('staff.issued-certificates.print', $certificate))->assertOk();
 });
