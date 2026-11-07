@@ -115,6 +115,26 @@ test('staff active navigation remains dark blue when the html theme is dark', fu
         ->toContain('.dark body.civic-settings .civic-settings-sidebar [data-flux-sidebar-item][data-current] { background: var(--staff-nav-active-bg); color: var(--staff-nav-active-ink); }');
 });
 
+test('IoT-layout pages take their page, header, sidebar and panel surfaces from the shared staff theme, whatever the sheet order', function () {
+    $root = dirname(__DIR__, 2);
+    $iot = file_get_contents($root.'/public/css/figma-iot.css');
+    $theme = file_get_contents($root.'/public/css/staff-theme.css');
+
+    // In-app navigation from the workspace appends figma-iot.css after staff-theme.css; equal-specificity light-blue
+    // surfaces there then won, so Announcements, RFID File Tracking and Smart Cabinet turned light blue.
+    expect($iot)
+        ->not->toContain('html:not([data-theme=dark]) .main-content { background: #d9e6ef; }')
+        ->not->toContain('html:not([data-theme=dark]) .site-header { background: #eaf1f6;')
+        ->not->toContain('html:not([data-theme=dark]) .side-nav { background: #e4edf3; }')
+        ->not->toContain('html:not([data-theme=dark]) .panel, html:not([data-theme=dark]) .filter-panel { background: #f4f8fb;')
+        ->not->toContain('html:not([data-theme=dark]) .panel-heading { background: #e8f0f6;')
+        ->not->toContain('#d9e6ef');
+    expect($theme)
+        ->toContain('body #app.admin-interface.admin-interface .app-body, body #app.admin-interface.admin-interface .content, body[data-personnel-layout="iot"] .main-content,')
+        ->toContain('body[data-personnel-layout="iot"] .site-header, html[data-theme=dark] body[data-personnel-layout="iot"] .site-header,')
+        ->toContain('body[data-personnel-layout="iot"] .panel-heading, html[data-theme=dark] body[data-personnel-layout="iot"] .panel-heading');
+});
+
 test('staff theme icon stays borderless and dark navigation keeps its dark highlight', function () {
     $styles = file_get_contents(dirname(__DIR__, 2).'/public/css/figma-admin.css');
 
