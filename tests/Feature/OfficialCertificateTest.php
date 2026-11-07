@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\IssueCertificate;
+use App\CertificateDocument;
 use App\CertificateType;
 use App\Models\DocumentRequest;
 use App\Models\IssuedCertificate;
@@ -269,7 +270,7 @@ test('official print fields escape resident supplied content', function () {
     $certificate = IssuedCertificate::query()->create([
         'certificate_number' => 'CERT-TEST-ESCAPING', 'verification_code' => 'TESTOFFICIALVERIFY',
         'certificate_type' => CertificateType::RegisteredVoterCertification->value,
-        'resident_name' => $input, 'purpose' => $input, 'issued_at' => now(), 'photo_path' => 'certificate-photos/test.jpg',
+        'resident_name' => $input, 'purpose' => $input, 'issued_at' => now(), 'photo_path' => 'certificate-photos/test.jpg', 'template_version' => CertificateDocument::TEMPLATE_VERSION,
         'resident_snapshot' => completeCertificateSnapshot(['full_name' => $input, 'first_name' => $input, 'address' => $input, 'nationality' => $input]),
     ]);
     $this->actingAs(User::factory()->assignedOperations()->create())->get(route('staff.issued-certificates.print', $certificate))
@@ -285,7 +286,7 @@ function printableCertificate(CertificateType $type, array $attributes = []): Is
         'certificate_number' => 'CERT-PRINT-'.Str::upper(Str::random(6)), 'verification_code' => 'PRINT'.Str::upper(Str::random(11)),
         'certificate_type' => $type->value, 'resident_name' => 'Test Resident', 'purpose' => 'Test purpose',
         'issued_at' => '2026-10-03 09:00:00', 'qr_code_path' => '/storage/qrcodes/print-test.svg',
-        'photo_path' => 'certificate-photos/print-test.jpg', 'resident_snapshot' => completeCertificateSnapshot(),
+        'photo_path' => 'certificate-photos/print-test.jpg', 'resident_snapshot' => completeCertificateSnapshot(), 'template_version' => CertificateDocument::TEMPLATE_VERSION,
         ...$attributes,
     ]);
 }
@@ -382,7 +383,7 @@ test('clearances keep their wording in the official letterhead and print only th
 ]);
 
 test('a certificate whose record lacks a detail its template prints is never printed with blanks', function () {
-    $legacy = printableCertificate(CertificateType::CertificateOfIndigency, ['resident_name' => 'Historical Resident', 'photo_path' => null, 'resident_snapshot' => null]);
+    $legacy = printableCertificate(CertificateType::CertificateOfIndigency, ['resident_name' => 'Historical Resident', 'photo_path' => null, 'resident_snapshot' => ['full_name' => 'Historical Resident']]);
 
     $this->actingAs(User::factory()->assignedOperations()->create())->get(route('staff.issued-certificates.print', $legacy))
         ->assertStatus(409)->assertViewIs('admin.certificates.incomplete')

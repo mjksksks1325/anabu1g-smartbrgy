@@ -12,6 +12,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property CarbonInterface|null $expires_on
  * @property array<string, string|null>|null $resident_snapshot
  * @property string|null $photo_path
+ * @property string|null $template_version
+ * @property CarbonInterface|null $revoked_at
+ * @property int|null $revoked_by
+ * @property string|null $revocation_reason
  */
 class IssuedCertificate extends Model
 {
@@ -21,6 +25,7 @@ class IssuedCertificate extends Model
         'certificate_number',
         'verification_code',
         'certificate_type',
+        'template_version',
         'resident_name',
         'purpose',
         'amount_paid',
@@ -32,13 +37,20 @@ class IssuedCertificate extends Model
         'photo_path',
     ];
 
-    protected $hidden = ['resident_snapshot', 'photo_path'];
+    protected $hidden = ['resident_snapshot', 'photo_path', 'revocation_reason'];
 
+    /**
+     * The last day the certificate is valid. Certificates issued before the 2026 templates keep the rule in force
+     * when they were issued (one year for Barangay IDs, three months for everything else).
+     */
     public function validUntil(): ?CarbonInterface
     {
         $certificateType = CertificateType::tryFromLabel((string) $this->certificate_type);
+        $months = $this->template_version === null
+            ? ($certificateType === CertificateType::BarangayId ? 12 : 3)
+            : ($certificateType?->validityPeriodInMonths() ?? 3);
         $validityLimit = $this->issued_at?->copy()
-            ->addMonthsNoOverflow($certificateType?->validityPeriodInMonths() ?? 3)
+            ->addMonthsNoOverflow($months)
             ->startOfDay();
 
         if ($validityLimit === null) {
@@ -50,6 +62,17 @@ class IssuedCertificate extends Model
         }
 
         return $this->expires_on->copy();
+    }
+
+    public function isRevoked(): bool
+    {
+        return $this->revoked_at !== null;
+    }
+
+    /** @return BelongsTo<User, $this> */
+    public function revoker(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'revoked_by');
     }
 
     public function isExpired(): bool
@@ -81,6 +104,7 @@ class IssuedCertificate extends Model
         return [
             'issued_at' => 'datetime',
             'expires_on' => 'date',
+            'revoked_at' => 'datetime',
             'resident_snapshot' => 'array',
             'amount_paid' => 'decimal:2',
         ];

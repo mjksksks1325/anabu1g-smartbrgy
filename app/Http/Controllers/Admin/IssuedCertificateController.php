@@ -15,6 +15,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -169,10 +170,30 @@ class IssuedCertificateController extends Controller
      * The printable certificate in its official layout. A certificate whose record lacks a detail its template
      * states is not printed: staff see which details are missing instead.
      */
-    public function print(IssuedCertificate $issuedCertificate): Response
+    public function print(Request $request, IssuedCertificate $issuedCertificate): Response
     {
         Gate::authorize('documents.print');
+
+        if ($issuedCertificate->isRevoked()) {
+            return response()->view('admin.certificates.unavailable', ['certificate' => $issuedCertificate, 'reason' => 'revoked'], 409);
+        }
+
         $document = new CertificateDocument($issuedCertificate);
+
+        // Issued before the official 2026 templates: reprint with the wording and details recorded at issuance.
+        if ($issuedCertificate->template_version === null && $document->type() !== CertificateType::BarangayId) {
+            if ($issuedCertificate->resident_snapshot === null) {
+                return response()->view('admin.certificates.unavailable', ['certificate' => $issuedCertificate, 'reason' => 'not-reconstructable'], 409);
+            }
+
+            DB::table('administrative_audits')->insert([
+                'user_id' => $request->user()->id, 'actor' => $request->user()->name, 'action' => 'admin.issued-certificates.historical-reprint',
+                'type' => 'cert', 'record' => (string) $issuedCertificate->id, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+
+            return response()->view('admin.certificates.historical', ['certificate' => $issuedCertificate, 'document' => $document]);
+        }
+
         $missingDetails = $document->missingDetails();
 
         if ($missingDetails !== []) {

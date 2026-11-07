@@ -1,5 +1,6 @@
 <?php
 
+use App\CertificateDocument;
 use App\CertificateType;
 use App\Models\DocumentRequest;
 use App\Models\IssuedCertificate;
@@ -307,6 +308,7 @@ it('renders the matching print template for every certificate type', function (
         'qr_code_path' => '/storage/qrcodes/test.svg',
         'photo_path' => 'certificate-photos/test.jpg',
         'resident_snapshot' => completeCertificateSnapshot(['full_name' => 'Maria Santos']),
+        'template_version' => CertificateDocument::TEMPLATE_VERSION,
     ]);
 
     $response = $this->actingAs($user)

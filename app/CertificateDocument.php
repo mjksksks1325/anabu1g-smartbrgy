@@ -13,6 +13,9 @@ use Illuminate\Support\Str;
  */
 final class CertificateDocument
 {
+    /** Stored on certificates issued with the official 2026 templates; reprints of older ones use their own wording. */
+    public const TEMPLATE_VERSION = '2026.11';
+
     /**
      * @param  bool  $isPreview  An unsaved certificate shown to staff before issuance: no QR, marked as not valid.
      * @param  string|null  $previewPhotoUrl  The resident photo a preview shows (an issued certificate shows its own copy).

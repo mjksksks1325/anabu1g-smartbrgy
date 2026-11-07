@@ -128,6 +128,7 @@ class IssueCertificate
                     'certificate_number' => $certificateNumber,
                     'verification_code' => $verificationCode,
                     'certificate_type' => $certificateType->value,
+                    'template_version' => CertificateDocument::TEMPLATE_VERSION,
                     'resident_name' => $resident === null ? $attributes['resident_name'] : $resident->full_name,
                     'purpose' => $attributes['purpose'] ?? null,
                     'amount_paid' => $certificateType->fee(),

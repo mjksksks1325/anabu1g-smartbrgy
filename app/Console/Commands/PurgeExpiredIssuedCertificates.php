@@ -18,7 +18,8 @@ class PurgeExpiredIssuedCertificates extends Command
         $dryRun = (bool) $this->option('dry-run');
         $purgedCount = 0;
 
-        IssuedCertificate::query()->chunkById(100, function (Collection $certificates) use (&$purgedCount, $dryRun): void {
+        // Revoked certificates are kept as a record of the revocation.
+        IssuedCertificate::query()->whereNull('revoked_at')->chunkById(100, function (Collection $certificates) use (&$purgedCount, $dryRun): void {
             foreach ($certificates as $certificate) {
                 if (! $certificate->isExpired()) {
                     continue;

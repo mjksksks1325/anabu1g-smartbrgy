@@ -22,6 +22,7 @@
         .certificate-controls .print-note { color: #4b5563; font-size: 13px; }
         .certificate-alert { max-width: 210mm; margin: 12px auto 0; padding: 10px 14px; border: 1px solid #b45309; border-radius: 6px; background: #fff7ed; color: #7c2d12; font: 14px/1.45 system-ui, -apple-system, 'Segoe UI', Arial, sans-serif; }
         .certificate-alert[hidden] { display: none; }
+        .certificate-note { max-width: 210mm; margin: 12px auto 0; padding: 10px 14px; border: 1px solid #1d4ed8; border-radius: 6px; background: #eff6ff; color: #1e3a8a; font: 14px/1.45 system-ui, -apple-system, 'Segoe UI', Arial, sans-serif; }
         .sheets { padding: 16px 0 24px; }
 
         .sheet { position: relative; width: 210mm; height: 297mm; margin: 0 auto 16px; overflow: hidden; background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, .18); color: #000; font-family: Cambria, 'Cambria Math', Georgia, 'Times New Roman', serif; font-size: 12pt; line-height: 4.95mm; }
@@ -67,7 +68,7 @@
 
         @media print {
             body { background: #fff; }
-            .certificate-controls, .certificate-alert { display: none !important; }
+            .certificate-controls, .certificate-alert, .certificate-note { display: none !important; }
             .sheets { padding: 0; }
             .sheet { margin: 0; box-shadow: none; break-after: page; }
             .sheet:last-child { break-after: auto; }
@@ -88,6 +89,7 @@
     @endif
 </nav>
 <p class="certificate-alert" data-fit-warning hidden role="alert">This certificate does not fit on its A4 page without text running into the logos, photo or signature areas, so it cannot be printed. Shorten the purpose or the address on the resident record, then issue a new certificate.</p>
+@yield('notice')
 <main class="sheets">
     @yield('sheets')
 </main>
