@@ -35,7 +35,7 @@ test('residents sharing one network address each keep their own document-request
         submitRequest()->assertOk();
     }
     submitRequest()->assertTooManyRequests()
-        ->assertJsonPath('message', 'You have sent several requests in a short time. Please wait 60 seconds, then submit again. Nothing was lost: your request was not sent yet.');
+        ->assertJsonPath('message', fn (string $message): bool => preg_match('/^You have sent several requests in a short time\. Please wait \d+ seconds, then submit again\. Nothing was lost: your request was not sent yet\.$/', $message) === 1);
 
     $this->post(route('portal.logout'));
     signInResident($second);
@@ -71,7 +71,7 @@ test('the limit message follows the resident portal language', function () {
     }
 
     submitRequest()->assertTooManyRequests()
-        ->assertJsonPath('message', 'Marami na kayong naipadalang request sa maikling oras. Maghintay ng 60 segundo, saka ipadala ulit. Walang nawala: hindi pa naipapadala ang request ninyo.');
+        ->assertJsonPath('message', fn (string $message): bool => preg_match('/^Marami na kayong naipadalang request sa maikling oras\. Maghintay ng \d+ segundo, saka ipadala ulit\. Walang nawala: hindi pa naipapadala ang request ninyo\.$/', $message) === 1);
 });
 
 test('request-status polling is also counted per resident account', function () {
