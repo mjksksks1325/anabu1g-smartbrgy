@@ -82,6 +82,8 @@ APP_ENV=production
 APP_DEBUG=false
 APP_URL=https://barangay.example.com
 LOG_LEVEL=warning
+LOG_STACK=daily
+LOG_DAILY_DAYS=30
 
 DB_CONNECTION=mysql
 DB_HOST=localhost
@@ -307,9 +309,11 @@ If `git status` shows server edits, review them before pulling; do not discard t
 Check `/portal`, `/login`, and the actual workflows again after updating. If there is an error:
 
 ```bash
-tail -n 80 storage/logs/laravel.log
+tail -n 80 "$(ls -t storage/logs/laravel*.log | head -n 1)"
 sudo tail -n 80 /var/log/nginx/error.log
 sudo journalctl -u anabu-queue -n 80 --no-pager
 ```
+
+With `LOG_STACK=daily` the application writes one file per day (`storage/logs/laravel-YYYY-MM-DD.log`) and deletes files older than `LOG_DAILY_DAYS` days, so logs cannot fill the disk. Choose the number of days your records policy requires, and copy logs you must keep longer to protected storage before they expire. A `storage/logs/laravel.log` left from earlier single-file logging is no longer written to; review it, then archive or remove it deliberately, because it may hold account emails and older password reset links (expired, but still personal data).
 
 Do not publish log contents containing resident information or credentials. Keep automated snapshots plus protected database/upload backups outside the instance, and test restoration periodically.
