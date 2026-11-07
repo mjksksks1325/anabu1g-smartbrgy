@@ -76,6 +76,14 @@ return Application::configure(basePath: dirname(__DIR__))
         // and recorded in the audit log for administrators, but answered like any other reset request, so the reply
         // never differs between addresses that have accounts and addresses that do not.
         $exceptions->render(function (TransportExceptionInterface|MailDeliveryUnavailableException $exception, Request $request): ?Response {
+            // A staff member asking for a new verification link is told it was not sent, never that it was.
+            if ($request->routeIs('verification.send')) {
+                if ($exception instanceof TransportExceptionInterface) {
+                    report($exception);
+                }
+
+                return back()->withErrors(['email' => __('The verification email was not sent: this server does not send email yet, or the mail server refused it. Ask the system administrator to check the email settings.')]);
+            }
             if (! $request->routeIs('password.email')) {
                 return null;
             }

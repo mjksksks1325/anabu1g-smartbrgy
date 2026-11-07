@@ -2380,5 +2380,6 @@
     "File too large": "File too large",
     "The file you sent is too large.": "The file you sent is too large.",
     "Nothing was saved. Go back, choose a smaller photo or file, and submit the form again. Resident photos can be up to 10 MB. If a smaller photo also fails, contact the barangay office.": "Nothing was saved. Go back, choose a smaller photo or file, and submit the form again. Resident photos can be up to 10 MB. If a smaller photo also fails, contact the barangay office.",
-    "You have sent several requests in a short time. Please wait :seconds seconds, then submit again. Nothing was lost: your request was not sent yet.": "You have sent several requests in a short time. Please wait :seconds seconds, then submit again. Nothing was lost: your request was not sent yet."
+    "You have sent several requests in a short time. Please wait :seconds seconds, then submit again. Nothing was lost: your request was not sent yet.": "You have sent several requests in a short time. Please wait :seconds seconds, then submit again. Nothing was lost: your request was not sent yet.",
+    "The verification email was not sent: this server does not send email yet, or the mail server refused it. Ask the system administrator to check the email settings.": "The verification email was not sent: this server does not send email yet, or the mail server refused it. Ask the system administrator to check the email settings."
 }

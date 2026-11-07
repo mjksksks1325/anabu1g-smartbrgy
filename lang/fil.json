@@ -2548,5 +2548,6 @@
     "File too large": "Masyadong malaki ang file",
     "The file you sent is too large.": "Masyadong malaki ang file na ipinadala.",
     "Nothing was saved. Go back, choose a smaller photo or file, and submit the form again. Resident photos can be up to 10 MB. If a smaller photo also fails, contact the barangay office.": "Walang na-save. Bumalik, pumili ng mas maliit na larawan o file, at ipadala muli ang form. Hanggang 10 MB ang larawan ng residente. Kung hindi pa rin ma-upload ang mas maliit na larawan, makipag-ugnayan sa barangay office.",
-    "You have sent several requests in a short time. Please wait :seconds seconds, then submit again. Nothing was lost: your request was not sent yet.": "Marami na kayong naipadalang request sa maikling oras. Maghintay ng :seconds segundo, saka ipadala ulit. Walang nawala: hindi pa naipapadala ang request ninyo."
+    "You have sent several requests in a short time. Please wait :seconds seconds, then submit again. Nothing was lost: your request was not sent yet.": "Marami na kayong naipadalang request sa maikling oras. Maghintay ng :seconds segundo, saka ipadala ulit. Walang nawala: hindi pa naipapadala ang request ninyo.",
+    "The verification email was not sent: this server does not send email yet, or the mail server refused it. Ask the system administrator to check the email settings.": "Hindi naipadala ang verification email: hindi pa nagpapadala ng email ang server na ito, o tinanggihan ito ng mail server. Ipasuri sa system administrator ang email settings."
 }
