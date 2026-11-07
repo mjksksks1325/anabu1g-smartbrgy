@@ -62,7 +62,7 @@ Route::get('/portal/email/verify/{account}/{hash}', [ResidentEmailVerificationCo
     ->middleware(['signed', 'throttle:6,1'])
     ->name('portal.verification.verify');
 Route::post('/portal/email/verification-notification', [ResidentEmailVerificationController::class, 'send'])
-    ->middleware([EnsureResidentAccount::class, 'throttle:3,1'])
+    ->middleware([EnsureResidentAccount::class, 'throttle:resident-confirmation-email'])
     ->name('portal.verification.send');
 
 Route::get('/dashboard', function (): RedirectResponse {

@@ -2,8 +2,10 @@
 
 namespace App\Actions;
 
+use App\Exceptions\MailDeliveryUnavailableException;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 /**
  * Audit entries for Resident Portal activation and verification. They record the event, the resident
@@ -22,5 +24,18 @@ class RecordPortalAccountEvent
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+    }
+
+    /**
+     * Record that an email confirmation link was not sent: `confirmation-mail-unavailable` when this server does not
+     * deliver email, `confirmation-mail-failed` (and reported) when the mail server refused or could not be reached.
+     */
+    public function confirmationMailNotSent(Throwable $exception, User $account): void
+    {
+        $unavailable = $exception instanceof MailDeliveryUnavailableException;
+        if (! $unavailable) {
+            report($exception);
+        }
+        $this->handle($unavailable ? 'portal.email.confirmation-mail-unavailable' : 'portal.email.confirmation-mail-failed', $account->resident_id, $account);
     }
 }

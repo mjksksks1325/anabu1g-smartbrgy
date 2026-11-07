@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Exceptions\MailDeliveryUnavailableException;
 use App\MailDelivery;
+use App\Notifications\ResidentEmailVerificationNotification;
 use App\StaffPermissions;
 use Database\Factories\UserFactory;
 use Illuminate\Auth\Notifications\ResetPassword;
@@ -75,6 +76,19 @@ class User extends Authenticatable
         }
 
         $this->notify(new ResetPassword($token));
+    }
+
+    /**
+     * Send the Resident Portal email confirmation link, in the current language. Refused, like password reset
+     * links, when this server does not deliver email: the log mailer would only write the signed link to the log.
+     */
+    public function sendResidentEmailConfirmation(): void
+    {
+        if (! MailDelivery::configured()) {
+            throw new MailDeliveryUnavailableException('the email confirmation');
+        }
+
+        $this->notify((new ResidentEmailVerificationNotification)->locale(app()->getLocale()));
     }
 
     public function canLoginAsPersonnel(): bool

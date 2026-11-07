@@ -37,7 +37,7 @@ class MailDelivery
     {
         $problems = [];
         if (! self::configured()) {
-            $problems[] = 'Email delivery is off (MAIL_MAILER='.config('mail.default').'): password reset links are not sent, and activation and email confirmation messages are only written to the application log. Configure an SMTP provider.';
+            $problems[] = 'Email delivery is off (MAIL_MAILER='.config('mail.default').'): password reset and resident email confirmation links are not sent, and activation messages are only written to the application log. Configure an SMTP provider.';
         }
         if (Str::endsWith(Str::lower((string) config('mail.from.address')), ['@example.com', '@example.org', '@example.net'])) {
             $problems[] = 'The sender address is still the placeholder '.config('mail.from.address').'. Mail providers reject or flag it: set MAIL_FROM_ADDRESS to an address verified with the provider.';

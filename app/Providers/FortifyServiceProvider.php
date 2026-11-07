@@ -13,6 +13,7 @@ use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -109,6 +110,13 @@ class FortifyServiceProvider extends ServiceProvider
             $key = Str::transliterate(Str::lower((string) $request->input('email')).'|'.$request->ip());
 
             return Limit::perMinute(5)->by('resident-login:'.$key);
+        });
+        // Per resident account, not per address: residents behind one mobile network or the barangay hall Wi-Fi share
+        // an IP, and the route's throttle runs before the resident is attached to the request.
+        RateLimiter::for('resident-confirmation-email', function (Request $request): Limit {
+            $account = Auth::guard('resident')->id();
+
+            return Limit::perMinute(3)->by('resident-confirmation-email:'.($account !== null ? 'account:'.$account : 'ip:'.$request->ip()));
         });
         RateLimiter::for('two-factor', function (Request $request) {
             return Limit::perMinute(5)->by($request->session()->get('login.id'));

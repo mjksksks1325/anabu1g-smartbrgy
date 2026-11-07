@@ -5,12 +5,16 @@ use App\Models\Resident;
 use App\Models\User;
 use App\Notifications\ResidentEmailVerificationNotification;
 use App\Notifications\ResidentPortalActivationNotification;
+use Illuminate\Http\Request;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
 use Symfony\Component\Mailer\Exception\TransportException;
 
 /*
@@ -291,6 +295,62 @@ test('a new account is told when its first confirmation email could not be sent'
         ->assertSessionHas('status', 'Your resident account is ready, but we could not send the confirmation email. Sign in and select Send a new confirmation link.');
     expect($resident->fresh()->portalAccount()->sole()->email_verified_at)->toBeNull();
     Exceptions::assertReported(TransportException::class);
+});
+
+test('the resend limit belongs to each resident account, not to a shared network address', function () {
+    Notification::fake();
+    [$first, $second] = User::factory()->resident()->count(2)->create(['email_verified_at' => null]);
+    // Sign in through the portal form, as residents do (actingAs() would also make the resident guard the default).
+    $this->post(route('portal.login.store'), ['email' => $first->email, 'password' => 'password'])->assertRedirect();
+
+    for ($attempt = 0; $attempt < 3; $attempt++) {
+        $this->post(route('portal.verification.send'))->assertSessionHasNoErrors();
+    }
+    $this->post(route('portal.verification.send'))->assertSessionHasErrors(['verification' => 'Too many attempts. Please wait before trying again.']);
+
+    $this->post(route('portal.logout'));
+    $this->post(route('portal.login.store'), ['email' => $second->email, 'password' => 'password'])->assertRedirect();
+    $this->post(route('portal.verification.send'))->assertSessionHasNoErrors()->assertSessionHas('status');
+    Notification::assertSentToTimes($first, ResidentEmailVerificationNotification::class, 3);
+    Notification::assertSentToTimes($second, ResidentEmailVerificationNotification::class, 1);
+
+    // On a live server the route throttle runs before the resident is attached to the request, so a plain
+    // `throttle:3,1` counts per IP address; the named limiter reads the resident guard itself.
+    expect(Route::getRoutes()->getByName('portal.verification.send')->gatherMiddleware())->toContain('throttle:resident-confirmation-email');
+    Auth::guard('resident')->setUser($second);
+    $limit = RateLimiter::limiter('resident-confirmation-email')(Request::create('/portal/email/verification-notification', 'POST', server: ['REMOTE_ADDR' => '203.0.113.5']));
+    expect($limit->key)->toBe('resident-confirmation-email:account:'.$second->id)->and($limit->maxAttempts)->toBe(3);
+});
+
+test('a server that does not deliver email never claims a confirmation link was sent, or logs the link', function () {
+    Notification::fake();
+    config(['mail.default' => 'log']);
+    $resident = staffCodeResident();
+    $this->post(route('portal.register.verify'), activationAttempt($resident, 'ABCD2345'))->assertRedirect(route('portal.register'));
+
+    $this->post(route('portal.register.store'), ['email' => 'jane@example.test', 'password' => 'ResidentPassword123!', 'password_confirmation' => 'ResidentPassword123!'])
+        ->assertRedirect(route('portal.login'))
+        ->assertSessionHas('status', 'Your resident account is ready, but we could not send the confirmation email. Sign in and select Send a new confirmation link.');
+    $account = $resident->fresh()->portalAccount()->sole();
+
+    $this->actingAs($account, 'resident')->from(route('portal.request.create'))->post(route('portal.verification.send'))
+        ->assertRedirect(route('portal.request.create'))
+        ->assertSessionHasErrors(['verification' => 'We could not send the confirmation email right now. Please try again in a few minutes. If it keeps failing, ask the Barangay Hall for help.'])
+        ->assertSessionMissing('status');
+
+    Notification::assertNothingSent();
+    expect(DB::table('administrative_audits')->where('action', 'portal.email.confirmation-mail-unavailable')->where('record', 'resident:'.$resident->id)->count())->toBe(2)
+        ->and($account->fresh()->email_verified_at)->toBeNull();
+});
+
+test('a mail server failure while sending a confirmation link is recorded for administrators', function () {
+    Exceptions::fake();
+    useFailingMailer();
+    $account = User::factory()->resident()->create(['email_verified_at' => null]);
+
+    $this->actingAs($account, 'resident')->post(route('portal.verification.send'))->assertSessionHasErrors('verification');
+
+    $this->assertDatabaseHas('administrative_audits', ['action' => 'portal.email.confirmation-mail-failed', 'user_id' => $account->id, 'record' => 'resident:'.$account->resident_id]);
 });
 
 test('a signed-in resident can ask for a new confirmation link, within a limit', function () {
