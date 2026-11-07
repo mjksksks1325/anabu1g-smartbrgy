@@ -70,7 +70,7 @@ Route::get('/dashboard', function (): RedirectResponse {
 })->middleware('auth')->name('dashboard');
 
 Route::post('/portal/request', [DocumentRequestController::class, 'store'])
-    ->middleware([EnsureResidentAccount::class, EnsureResidentEmailVerified::class, 'throttle:10,1'])
+    ->middleware([EnsureResidentAccount::class, EnsureResidentEmailVerified::class, 'throttle:resident-document-requests'])
     ->name('portal.request.store');
 
 Route::get('/portal/csrf-token', [DocumentRequestController::class, 'csrfToken'])
@@ -105,7 +105,7 @@ Route::post('/staff/logout', [EmployeeSessionController::class, 'destroy'])->mid
 Route::middleware(EnsureResidentAccount::class)->group(function () {
     Route::get('/portal/account', [ResidentPortalController::class, 'account'])->name('portal.account');
     Route::get('/portal/account/statuses', [ResidentPortalController::class, 'requestStatuses'])
-        ->middleware('throttle:30,1')
+        ->middleware('throttle:resident-request-status')
         ->name('portal.account.statuses');
     Route::get('/portal/account/requests/{referenceCode}', [ResidentPortalController::class, 'showRequest'])->name('portal.account.requests.show');
     Route::get('/portal/dashboard', [ResidentPortalController::class, 'dashboard'])->name('portal.dashboard');

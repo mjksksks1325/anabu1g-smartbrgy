@@ -47,6 +47,11 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (ThrottleRequestsException $exception, Request $request): JsonResponse|RedirectResponse|null {
+            if ($request->routeIs('portal.request.store')) {
+                $seconds = max(1, (int) ($exception->getHeaders()['Retry-After'] ?? 60));
+
+                return response()->json(['message' => __('You have sent several requests in a short time. Please wait :seconds seconds, then submit again. Nothing was lost: your request was not sent yet.', ['seconds' => $seconds])], 429, $exception->getHeaders());
+            }
             if ($request->is('portal', 'portal/*') && $request->expectsJson()) {
                 return response()->json(['message' => __('Too many attempts. Please wait before trying again.')], 429, $exception->getHeaders());
             }

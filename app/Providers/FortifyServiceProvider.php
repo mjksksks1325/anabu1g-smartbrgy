@@ -96,6 +96,21 @@ class FortifyServiceProvider extends ServiceProvider
     }
 
     /**
+     * Per-minute limits for a signed-in resident's portal action: one per account and a higher one per address.
+     *
+     * @return list<Limit>
+     */
+    private static function residentLimits(Request $request, string $name, int $perAccount, int $perAddress): array
+    {
+        $account = Auth::guard('resident')->id();
+
+        return [
+            Limit::perMinute($perAccount)->by($name.':'.($account !== null ? 'account:'.$account : 'ip:'.$request->ip())),
+            Limit::perMinute($perAddress)->by($name.':address:'.$request->ip()),
+        ];
+    }
+
+    /**
      * Configure rate limiting.
      */
     private function configureRateLimiting(): void
@@ -118,6 +133,10 @@ class FortifyServiceProvider extends ServiceProvider
 
             return Limit::perMinute(3)->by('resident-confirmation-email:'.($account !== null ? 'account:'.$account : 'ip:'.$request->ip()));
         });
+        // Document requests and request-status polling: each resident has their own quota, whichever device they use,
+        // and a looser cap per network address still stops scripted floods from one place.
+        RateLimiter::for('resident-document-requests', fn (Request $request): array => self::residentLimits($request, 'resident-document-requests', 10, 60));
+        RateLimiter::for('resident-request-status', fn (Request $request): array => self::residentLimits($request, 'resident-request-status', 30, 300));
         RateLimiter::for('two-factor', function (Request $request) {
             return Limit::perMinute(5)->by($request->session()->get('login.id'));
         });
