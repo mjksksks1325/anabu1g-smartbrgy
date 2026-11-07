@@ -1,6 +1,7 @@
 {{--
-    Shown instead of a certificate that must not be printed: a revoked certificate, or one issued before resident details
-    were recorded at issuance (before 4 October 2026), whose printed form cannot be reconstructed without guessing.
+    Shown instead of a certificate that must not be printed: a revoked certificate, one issued before resident details
+    were recorded at issuance (before 4 October 2026), whose printed form cannot be reconstructed without guessing, or
+    one whose QR code file is missing from storage, so its printed copy could not be verified.
     Staff see what the record holds so they can review it; nothing is generated.
 --}}
 <!DOCTYPE html>
@@ -9,7 +10,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex">
-    <title>{{ $reason === 'revoked' ? 'Certificate revoked' : 'Certificate cannot be reprinted' }}</title>
+    <title>{{ match ($reason) { 'revoked' => 'Certificate revoked', 'qr-missing' => 'QR code missing', default => 'Certificate cannot be reprinted' } }}</title>
     <style>
         body { margin: 0; background: #f3f4f6; color: #111827; font: 15px/1.5 system-ui, -apple-system, 'Segoe UI', Arial, sans-serif; }
         main { max-width: 600px; margin: 48px auto; padding: 24px 28px; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; }
@@ -25,6 +26,9 @@
     @if ($reason === 'revoked')
         <h1>This certificate was revoked</h1>
         <p>Revoked certificates are kept on record but are never printed, and QR verification shows them as revoked.</p>
+    @elseif ($reason === 'qr-missing')
+        <h1>This certificate's QR code is missing</h1>
+        <p>The QR code image recorded for this certificate is no longer in storage, so it is not printed: a copy without its QR code could not be verified. The certificate and its online verification are unchanged. Ask the system administrator to restore the QR code file from a backup before printing it.</p>
     @else
         <h1>This certificate cannot be reprinted</h1>
         <p>It was issued before the system recorded the resident's details at issuance, and its earlier print layouts changed over time, so its printed form cannot be reconstructed without guessing. Review the record below with the resident. If a current certificate is needed, issue a new one; this record is not changed.</p>

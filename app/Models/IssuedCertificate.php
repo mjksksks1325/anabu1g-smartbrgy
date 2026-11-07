@@ -75,6 +75,24 @@ class IssuedCertificate extends Model
             ->implode(' ');
     }
 
+    /**
+     * Where the QR code file lives on the public disk ("qrcodes/CERT-….svg"), from the stored path in either of its
+     * recorded forms ("/storage/qrcodes/…", "qrcodes/…" or an absolute URL); null when none is recorded.
+     */
+    public function qrStoragePath(): ?string
+    {
+        if ($this->qr_code_path === null || $this->qr_code_path === '') {
+            return null;
+        }
+
+        $path = ltrim(parse_url($this->qr_code_path, PHP_URL_PATH) ?: $this->qr_code_path, '/');
+        if (str_starts_with($path, 'storage/')) {
+            $path = substr($path, strlen('storage/'));
+        }
+
+        return str_starts_with($path, 'qrcodes/') && ! str_contains($path, '..') ? $path : null;
+    }
+
     public function isRevoked(): bool
     {
         return $this->revoked_at !== null;

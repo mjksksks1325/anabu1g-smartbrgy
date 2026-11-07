@@ -113,8 +113,8 @@
                 <div class="qr-pending">QR code added at issuance</div>
                 <div>Preview only: not verifiable</div>
             @else
-                @if ($certificate->qr_code_path)
-                    <img class="qr" src="{{ asset($certificate->qr_code_path) }}" alt="Certificate authenticity QR code">
+                @if ($document->qrUrl())
+                    <img class="qr" src="{{ $document->qrUrl() }}" alt="Certificate authenticity QR code">
                 @endif
                 <div>Scan QR code to verify</div>
             @endif

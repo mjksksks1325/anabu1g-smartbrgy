@@ -16,14 +16,14 @@ use Illuminate\Support\Facades\Storage;
  */
 function historicalCertificate(CertificateType $type, array $attributes = []): IssuedCertificate
 {
-    return IssuedCertificate::query()->create([
+    return certificateWithQrFile(IssuedCertificate::query()->create([
         'certificate_number' => 'CERT-2026-HIST'.fake()->unique()->numerify('####'), 'verification_code' => 'HIST'.fake()->unique()->numerify('############'),
         'certificate_type' => $type->value, 'resident_name' => 'Historical Resident', 'purpose' => 'Historical purpose',
         'issued_at' => '2026-10-20 10:00:00', 'expires_on' => '2027-01-20', 'issued_by' => 'Former Clerk',
         'qr_code_path' => '/storage/qrcodes/historical.svg',
         'resident_snapshot' => ['full_name' => 'Historical Resident', 'address' => 'Historical address', 'date_of_birth' => '1980-05-01', 'gender' => 'Male', 'civil_status' => 'Married', 'nationality' => null],
         ...$attributes,
-    ]);
+    ]));
 }
 
 test('a certificate issued before the 2026 templates reprints with the wording and details recorded at issuance', function (CertificateType $type, array $wording, array $absent) {

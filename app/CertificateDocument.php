@@ -5,6 +5,7 @@ namespace App;
 use App\Models\IssuedCertificate;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use NumberFormatter;
 
@@ -207,9 +208,34 @@ final class CertificateDocument
             : null;
     }
 
+    /**
+     * The QR code image, embedded from the public disk, so the printed certificate and its PDF show it whatever the
+     * web server serves at /storage (with no storage link, that URL is refused). Null when no QR code is recorded
+     * or its file is missing.
+     */
     public function qrUrl(): ?string
     {
-        return $this->certificate->qr_code_path ? asset($this->certificate->qr_code_path) : null;
+        $path = $this->certificate->qrStoragePath();
+        $disk = Storage::disk('public');
+
+        if ($path === null || ! $disk->exists($path)) {
+            return null;
+        }
+
+        $type = str_ends_with($path, '.svg') ? 'image/svg+xml' : ($disk->mimeType($path) ?: 'application/octet-stream');
+
+        return 'data:'.$type.';base64,'.base64_encode((string) $disk->get($path));
+    }
+
+    /**
+     * Whether the certificate records a QR code whose file is no longer in storage: printing it would leave the
+     * authenticity mark blank.
+     */
+    public function qrFileMissing(): bool
+    {
+        $path = $this->certificate->qrStoragePath();
+
+        return filled($this->certificate->qr_code_path) && ($path === null || ! Storage::disk('public')->exists($path));
     }
 
     /**

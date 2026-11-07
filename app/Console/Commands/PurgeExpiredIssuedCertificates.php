@@ -56,7 +56,7 @@ class PurgeExpiredIssuedCertificates extends Command
 
     private function deleteCertificateFiles(IssuedCertificate $certificate): void
     {
-        $qrPath = $this->qrStoragePath($certificate->qr_code_path);
+        $qrPath = $certificate->qrStoragePath();
         if ($qrPath !== null) {
             Storage::disk('public')->delete($qrPath);
         }
@@ -65,20 +65,5 @@ class PurgeExpiredIssuedCertificates extends Command
         if ($photoPath !== null && str_starts_with($photoPath, 'certificate-photos/')) {
             Storage::disk('local')->delete($photoPath);
         }
-    }
-
-    private function qrStoragePath(?string $path): ?string
-    {
-        if ($path === null) {
-            return null;
-        }
-
-        $path = parse_url($path, PHP_URL_PATH) ?: $path;
-        $path = ltrim($path, '/');
-        if (str_starts_with($path, 'storage/')) {
-            $path = substr($path, strlen('storage/'));
-        }
-
-        return str_starts_with($path, 'qrcodes/') ? $path : null;
     }
 }

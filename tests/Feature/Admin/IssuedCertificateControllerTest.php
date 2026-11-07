@@ -310,6 +310,7 @@ it('renders the matching print template for every certificate type', function (
         'resident_snapshot' => completeCertificateSnapshot(['full_name' => 'Maria Santos']),
         'template_version' => CertificateDocument::TEMPLATE_VERSION,
     ]);
+    certificateWithQrFile($certificate);
 
     $response = $this->actingAs($user)
         ->get(route('staff.issued-certificates.print', $certificate))
@@ -318,7 +319,7 @@ it('renders the matching print template for every certificate type', function (
         ->assertSeeText('Maria Santos');
 
     $response->assertSee('OFFICE OF THE SANGGUNIANG BARANGAY')->assertSee('City of Imus footer logo')
-        ->assertSee(asset($certificate->qr_code_path))->assertDontSeeText($certificate->verification_code);
+        ->assertSee('src="data:image/svg+xml;base64,'.base64_encode(FAKE_QR_SVG).'"', false)->assertDontSeeText($certificate->verification_code);
 
     if ($certificateType === CertificateType::BarangayId) {
         $response->assertSeeText($certificate->certificate_number)
@@ -445,3 +446,34 @@ it('paginates issued certificate history and filters it by search, type, source 
     $this->getJson(route('staff.issued-certificates.index', ['date_from' => '2026-10-01', 'date_to' => '2026-10-31']))->assertJsonPath('total', 1);
     $this->getJson(route('staff.issued-certificates.index', ['source' => 'mail', 'date_from' => '2026-10-31', 'date_to' => '2026-10-01']))->assertJsonValidationErrors(['source', 'date_to']);
 });
+
+test('a certificate whose QR code file is missing is not printed blank: staff are told, without paths, and the record is unchanged', function () {
+    Storage::fake('public');
+    $certificate = IssuedCertificate::query()->create([
+        'certificate_number' => 'CERT-2026-NOQRFILE', 'verification_code' => 'NOQRFILEVERIFY01', 'certificate_type' => CertificateType::BusinessClearance->value,
+        'resident_name' => 'Maria Santos', 'purpose' => 'Business permit', 'amount_paid' => 200, 'issued_at' => now(),
+        'qr_code_path' => '/storage/qrcodes/CERT-2026-NOQRFILE.svg', 'resident_snapshot' => completeCertificateSnapshot(['full_name' => 'Maria Santos']),
+        'template_version' => CertificateDocument::TEMPLATE_VERSION,
+    ]);
+    $before = $certificate->fresh()->getAttributes();
+
+    $response = $this->actingAs(User::factory()->assignedOperations()->create())->get(route('staff.issued-certificates.print', $certificate))
+        ->assertConflict()->assertSeeText("This certificate's QR code is missing")->assertSeeText('Ask the system administrator to restore the QR code file from a backup')
+        ->assertSeeText('CERT-2026-NOQRFILE')->assertDontSee('Certificate authenticity QR code')->assertDontSee('<img', false);
+    expect($response->getContent())->not->toContain('qrcodes')->not->toContain('/storage')->not->toContain('storage/')->not->toContain(base_path())->not->toContain('NOQRFILEVERIFY01');
+
+    expect($certificate->fresh()->getAttributes())->toBe($before);
+    Storage::disk('public')->assertDirectoryEmpty('qrcodes');
+    $this->get(route('certificate.verify', $certificate->verification_code))->assertOk()->assertSee('data-result="authentic"', false);
+});
+
+test('the QR code storage path is read from every recorded form and never leaves the QR folder', function (?string $recorded, ?string $expected) {
+    expect((new IssuedCertificate(['qr_code_path' => $recorded]))->qrStoragePath())->toBe($expected);
+})->with([
+    'relative URL' => ['/storage/qrcodes/CERT-2026-A.svg', 'qrcodes/CERT-2026-A.svg'],
+    'disk path' => ['qrcodes/CERT-2026-B.svg', 'qrcodes/CERT-2026-B.svg'],
+    'absolute URL' => ['http://localhost:8000/storage/qrcodes/CERT-2026-C.svg', 'qrcodes/CERT-2026-C.svg'],
+    'outside the QR folder' => ['/storage/../.env', null],
+    'traversal inside' => ['/storage/qrcodes/../../.env', null],
+    'none' => [null, null],
+]);

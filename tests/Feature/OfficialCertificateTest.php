@@ -54,7 +54,8 @@ test('official certificates preserve all historical details and private photos t
     $print->assertDontSee('Changed address');
     $print->assertDontSeeText('Certificate No.:')->assertDontSeeText('Verification code:')
         ->assertDontSeeText($certificate->certificate_number)->assertDontSeeText($certificate->verification_code)
-        ->assertSee(asset($certificate->qr_code_path));
+        ->assertSee('<img src="data:image/svg+xml;base64,'.base64_encode((string) Storage::disk('public')->get($certificate->qrStoragePath())).'" alt="Certificate authenticity QR code">', false)
+        ->assertDontSee('/storage/qrcodes/', false);
     $print->assertSee(asset('images/certificates/anabu-source-seal.png'))
         ->assertSeeInOrder(['To Whom it may concern', 'FULL:', 'PURPOSE:', 'DATE ISSUE:', 'EXPIRATION DATE:', 'Issued this', 'Scan QR code to verify', 'City of Imus footer logo']);
     // Each layout follows its template: the Indigency template shows the photo, the bona fide voter template does not
@@ -288,13 +289,13 @@ test('official print fields escape resident supplied content', function () {
  */
 function printableCertificate(CertificateType $type, array $attributes = []): IssuedCertificate
 {
-    return IssuedCertificate::query()->create([
+    return certificateWithQrFile(IssuedCertificate::query()->create([
         'certificate_number' => 'CERT-PRINT-'.Str::upper(Str::random(6)), 'verification_code' => 'PRINT'.Str::upper(Str::random(11)),
         'certificate_type' => $type->value, 'resident_name' => 'Test Resident', 'purpose' => 'Test purpose',
         'issued_at' => '2026-10-03 09:00:00', 'qr_code_path' => '/storage/qrcodes/print-test.svg',
         'photo_path' => 'certificate-photos/print-test.jpg', 'resident_snapshot' => completeCertificateSnapshot(), 'template_version' => CertificateDocument::TEMPLATE_VERSION,
         ...$attributes,
-    ]);
+    ]));
 }
 
 test('indigency and bona fide resident certificates print the official template wording and details', function (CertificateType $type, array $wording, array $absent) {
@@ -427,12 +428,12 @@ test('long details are fitted in documented steps with an 11 pt floor, and never
 });
 
 test('the ID card reuses its private photo while keeping its identification fields', function () {
-    $certificate = IssuedCertificate::query()->create([
+    $certificate = certificateWithQrFile(IssuedCertificate::query()->create([
         'certificate_number' => 'CERT-ID-TEST', 'verification_code' => 'IDPRINTVERIFY',
         'certificate_type' => CertificateType::BarangayId->value,
         'resident_name' => 'Test Resident', 'issued_at' => now(), 'photo_path' => 'certificate-photos/test.jpg',
         'qr_code_path' => '/storage/qrcodes/id-test.svg',
-    ]);
+    ]));
     $this->actingAs(User::factory()->assignedOperations()->create())->get(route('staff.issued-certificates.print', $certificate))
         ->assertOk()->assertSee('BARANGAY RESIDENT IDENTIFICATION CARD')->assertSeeText('ID No.:')->assertSeeText('CERT-ID-TEST')
         ->assertSeeText('Valid Until:')->assertSeeText($certificate->validUntil()?->format('M d, Y'))
@@ -605,7 +606,7 @@ test('after a Barangay ID preview, issuing and printing work as before: number, 
     $this->get(route('staff.issued-certificates.print', $certificate))
         ->assertOk()->assertViewIs('admin.certificates.barangay-id')->assertSee('data-printable="true"', false)
         ->assertSee('<main class="id-card"', false)->assertSee('Print Barangay ID</button>', false)
-        ->assertSeeText($certificate->certificate_number)->assertSee(asset($certificate->qr_code_path))->assertSeeText('Scan QR code to verify')
+        ->assertSeeText($certificate->certificate_number)->assertSee('<img class="qr" src="data:image/svg+xml;base64,', false)->assertSeeText('Scan QR code to verify')
         ->assertSee(route('staff.issued-certificates.photo', $certificate))->assertSee('Resident photo at issuance')
         ->assertDontSeeText('Assigned at issuance')->assertDontSeeText('Preview only: this ID');
 });

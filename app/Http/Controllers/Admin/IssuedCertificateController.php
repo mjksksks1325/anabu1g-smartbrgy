@@ -208,18 +208,24 @@ class IssuedCertificateController extends Controller
         }
 
         $document = new CertificateDocument($issuedCertificate);
-
         $additionalType = AdditionalCertificateType::tryFrom((string) $issuedCertificate->certificate_type);
+        // Issued before the official 2026 templates: reprinted with the wording and details recorded at issuance.
+        $isHistorical = $additionalType === null && $issuedCertificate->template_version === null && $document->type() !== CertificateType::BarangayId;
+
+        if ($isHistorical && $issuedCertificate->resident_snapshot === null) {
+            return response()->view('admin.certificates.unavailable', ['certificate' => $issuedCertificate, 'reason' => 'not-reconstructable'], 409);
+        }
+
+        // A copy printed without its QR code could not be verified, so a missing QR file is reported, never printed blank.
+        if ($document->qrFileMissing()) {
+            return response()->view('admin.certificates.unavailable', ['certificate' => $issuedCertificate, 'reason' => 'qr-missing'], 409);
+        }
+
         if ($additionalType !== null) {
             return response()->view($additionalType->printView(), ['certificate' => $issuedCertificate, 'document' => $document, 'type' => $additionalType]);
         }
 
-        // Issued before the official 2026 templates: reprint with the wording and details recorded at issuance.
-        if ($issuedCertificate->template_version === null && $document->type() !== CertificateType::BarangayId) {
-            if ($issuedCertificate->resident_snapshot === null) {
-                return response()->view('admin.certificates.unavailable', ['certificate' => $issuedCertificate, 'reason' => 'not-reconstructable'], 409);
-            }
-
+        if ($isHistorical) {
             DB::table('administrative_audits')->insert([
                 'user_id' => $request->user()->id, 'actor' => $request->user()->name, 'action' => 'admin.issued-certificates.historical-reprint',
                 'type' => 'cert', 'record' => (string) $issuedCertificate->id, 'created_at' => now(), 'updated_at' => now(),

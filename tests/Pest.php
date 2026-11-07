@@ -1,8 +1,10 @@
 <?php
 
+use App\Models\IssuedCertificate;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
 use Symfony\Component\Mailer\Exception\TransportException;
 use Symfony\Component\Mailer\SentMessage;
@@ -97,6 +99,22 @@ function useFailingMailer(): void
         }
     });
     config(['mail.mailers.failing' => ['transport' => 'failing'], 'mail.default' => 'failing']);
+}
+
+/**
+ * A small SVG standing in for a stored QR code: print pages embed the QR file from the public disk.
+ */
+const FAKE_QR_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2 2"><rect width="1" height="1"/></svg>';
+
+/**
+ * Puts the certificate's QR code file on a fake public disk, as issuance does, so print tests never touch real storage.
+ */
+function certificateWithQrFile(IssuedCertificate $certificate): IssuedCertificate
+{
+    Storage::fake('public');
+    Storage::disk('public')->put((string) $certificate->qrStoragePath(), FAKE_QR_SVG);
+
+    return $certificate;
 }
 
 /**
