@@ -20,7 +20,7 @@
                 <tr>
                     <th scope="col">Certificate</th>
                     <th scope="col" class="hidden lg:table-cell">Still to be approved</th>
-                    <th scope="col">Issuing</th>
+                    <th scope="col" class="hidden sm:table-cell">Issuing</th>
                     <th scope="col" class="text-end"><span class="sr-only">Action</span></th>
                 </tr>
             </thead>
@@ -30,6 +30,13 @@
                         <td>
                             <span class="block font-medium text-zinc-800 dark:text-white">{{ $type->value }}</span>
                             <span class="block text-xs text-zinc-500 dark:text-zinc-400" data-no-admin-translate>Template: {{ $type->officialReference() }}</span>
+                            <span class="mt-1 block sm:hidden">
+                                @if ($type->issuanceEnabled())
+                                    <x-ui.status-badge tone="success">On · {{ $type->fee() === 0 ? 'Free' : 'PHP '.number_format($type->fee(), 2) }}</x-ui.status-badge>
+                                @else
+                                    <x-ui.status-badge tone="warning">Off until approved</x-ui.status-badge>
+                                @endif
+                            </span>
                         </td>
                         <td class="hidden lg:table-cell">
                             <ul class="list-disc space-y-1 ps-4 text-sm">
@@ -38,7 +45,7 @@
                                 @endforeach
                             </ul>
                         </td>
-                        <td>
+                        <td class="hidden sm:table-cell">
                             @if ($type->issuanceEnabled())
                                 <x-ui.status-badge tone="success">On · {{ $type->fee() === 0 ? 'Free' : 'PHP '.number_format($type->fee(), 2) }}</x-ui.status-badge>
                             @else
