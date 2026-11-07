@@ -7,6 +7,7 @@ use App\Http\Middleware\EnsureActiveAccount;
 use App\Http\Middleware\EnsurePersonnelTwoFactorAccount;
 use App\Http\Middleware\PreventAccountCaching;
 use App\Http\Middleware\RequirePrivilegedTwoFactor;
+use App\Http\Middleware\SecurityHeaders;
 use App\Http\Responses\PasswordResetLinkRequestResponse;
 use App\MailDelivery;
 use Illuminate\Auth\AuthenticationException;
@@ -35,12 +36,14 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(prepend: [PreventAccountCaching::class], append: [ApplyPortalLocale::class, EnsureActiveAccount::class, EnsurePersonnelTwoFactorAccount::class, RequirePrivilegedTwoFactor::class]);
         $middleware->prependToPriorityList(AuthenticatesRequests::class, ApplyPortalLocale::class);
+        // Only proxies listed in TRUSTED_PROXIES (config/trustedproxy.php) are believed; by default none are. From
+        // them, only the client address, port and scheme are taken, never the host.
         $middleware->trustProxies(
-            at: '*',
             headers: Request::HEADER_X_FORWARDED_FOR
                 | Request::HEADER_X_FORWARDED_PORT
                 | Request::HEADER_X_FORWARDED_PROTO,
         );
+        $middleware->append(SecurityHeaders::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (ThrottleRequestsException $exception, Request $request): JsonResponse|RedirectResponse|null {
