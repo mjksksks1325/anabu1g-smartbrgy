@@ -20,7 +20,7 @@ function newResidentApplicationPayload(array $overrides = []): array
     return ['first_name' => 'Maria', 'middle_name' => 'Cruz', 'last_name' => 'Newresident', 'date_of_birth' => '1996-02-10',
         'gender' => 'Female', 'civil_status' => 'Single', 'residency_type' => 'Renter', 'purok' => $purok->name,
         'address' => 'Block 1, Anabu I-G', 'email' => 'newresident@example.test', 'photo' => UploadedFile::fake()->image('resident.jpg'),
-        'nationality' => 'Filipino', 'contact_number' => '0917 123 4567', 'privacy_notice_accepted' => '1', ...$overrides];
+        'contact_number' => '0917 123 4567', 'privacy_notice_accepted' => '1', ...$overrides];
 }
 
 test('the application opens with the Data Privacy Notice and cannot be sent without consent', function () {
@@ -63,7 +63,7 @@ test('the date field limit matches the server age rule', function () {
     $this->get(route('portal.new-resident.create'))->assertSee('max="2010-11-07"', false)->assertSee('You must be at least 16 years old to apply online.');
 });
 
-test('nationality and a Philippine mobile number are required, and the number is stored as +639', function (string $typed, ?string $stored) {
+test('a Philippine mobile number is required, and the number is stored as +639', function (string $typed, ?string $stored) {
     Storage::fake('local');
 
     $response = $this->post(route('portal.new-resident.store'), newResidentApplicationPayload(['contact_number' => $typed]));
@@ -85,16 +85,38 @@ test('nationality and a Philippine mobile number are required, and the number is
     ['+6391712345678', null],
 ]);
 
-test('nationality is required on the application', function () {
+test('the application no longer asks for nationality, and a value sent anyway is never stored', function () {
     Storage::fake('local');
 
-    $this->post(route('portal.new-resident.store'), newResidentApplicationPayload(['nationality' => '  ']))->assertSessionHasErrors('nationality');
-    $this->assertDatabaseEmpty('resident_registration_applications');
-
-    $form = $this->get(route('portal.new-resident.create'))->getContent();
-    expect($form)->toMatch('/id="application-nationality"[^>]*\brequired\b/')
+    $form = $this->get(route('portal.new-resident.create'))->assertOk()->getContent();
+    expect($form)->not->toContain('application-nationality')->not->toContain('name="nationality"')
+        ->not->toContain('civil status, nationality,')
         ->toMatch('/id="application-contact_number"[^>]*type="tel"[^>]*\brequired\b/');
+
+    $this->post(route('portal.new-resident.store'), newResidentApplicationPayload())->assertSessionHasNoErrors();
+    expect(ResidentRegistrationApplication::query()->sole()->details)->not->toHaveKey('nationality');
+
+    ResidentRegistrationApplication::query()->delete();
+    $this->withSession([])->post(route('portal.new-resident.store'), newResidentApplicationPayload(['nationality' => 'Filipino', 'email' => 'second@example.test']))->assertSessionHasNoErrors();
+    expect(ResidentRegistrationApplication::query()->sole()->details)->not->toHaveKey('nationality');
 });
+
+test('approval leaves nationality empty for staff to complete, and keeps one an older application recorded', function (?string $submitted) {
+    Storage::fake('local');
+    Notification::fake();
+    $application = ResidentRegistrationApplication::factory()->create();
+    if ($submitted !== null) {
+        $application->forceFill(['details' => [...$application->details, 'nationality' => $submitted]])->save();
+    }
+
+    $this->actingAs(User::factory()->superAdmin()->create())->post(route('staff.resident-applications.update', $application), ['decision' => 'approved'])
+        ->assertSessionHasNoErrors();
+
+    expect(Resident::query()->sole()->nationality)->toBe($submitted);
+})->with([
+    'new application without nationality' => [null],
+    'older application that recorded it' => ['Filipino'],
+]);
 
 test('the application trims the email and never says whether it already has an account', function () {
     Storage::fake('local');

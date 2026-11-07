@@ -43,7 +43,6 @@ class StoreResidentApplicationRequest extends FormRequest
             'date_of_birth' => ['required', 'date_format:Y-m-d', 'after_or_equal:1900-01-01', 'before_or_equal:'.self::latestBirthDate()->toDateString()],
             'gender' => ['required', Rule::in(['Male', 'Female'])],
             'civil_status' => ['required', Rule::in(['Single', 'Married', 'Widowed', 'Separated'])],
-            'nationality' => ['required', 'string', 'max:100'],
             'purok' => ['required', 'string', Rule::exists('puroks', 'name')->where('is_active', true)],
             'address' => ['required', 'string', 'max:1000'],
             'contact_number' => ['required', 'string', 'regex:'.Resident::MOBILE_NUMBER_PATTERN],
@@ -68,7 +67,7 @@ class StoreResidentApplicationRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        foreach (['first_name', 'middle_name', 'last_name', 'suffix', 'address', 'nationality', 'email'] as $field) {
+        foreach (['first_name', 'middle_name', 'last_name', 'suffix', 'address', 'email'] as $field) {
             if (is_string($this->input($field))) {
                 $value = Str::squish($this->input($field));
                 $this->merge([$field => $field === 'email' ? Str::lower($value) : $value]);

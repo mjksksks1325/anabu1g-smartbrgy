@@ -29,7 +29,7 @@
                     @csrf
                     @include('portal.partials.new-resident-privacy-notice')
                     @php($sections = [
-                        'Personal information' => ['first_name' => 'First name', 'last_name' => 'Last name', 'middle_name' => 'Middle name', 'suffix' => 'Suffix', 'date_of_birth' => 'Date of birth', 'gender' => 'Gender', 'civil_status' => 'Civil status', 'nationality' => 'Nationality'],
+                        'Personal information' => ['first_name' => 'First name', 'last_name' => 'Last name', 'middle_name' => 'Middle name', 'suffix' => 'Suffix', 'date_of_birth' => 'Date of birth', 'gender' => 'Gender', 'civil_status' => 'Civil status'],
                         'Residential address' => ['purok' => 'Purok', 'residency_type' => 'Residency type', 'address' => 'Address'],
                         'Contact details' => ['email' => 'Email address', 'contact_number' => 'Contact number'],
                     ])

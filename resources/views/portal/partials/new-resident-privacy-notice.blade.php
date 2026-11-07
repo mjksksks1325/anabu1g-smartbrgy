@@ -15,7 +15,7 @@
         </header>
         <div class="rp-privacy-dialog-body" tabindex="0" role="region" aria-labelledby="privacy-notice-title" data-privacy-notice-body>
             <h3><span data-portal-i18n="What we collect">{{ __('What we collect') }}</span></h3>
-            <p><span data-portal-i18n="This application asks for your name, date of birth, gender, civil status, nationality, purok, address, residency type, email address, mobile number and photo.">{{ __('This application asks for your name, date of birth, gender, civil status, nationality, purok, address, residency type, email address, mobile number and photo.') }}</span></p>
+            <p><span data-portal-i18n="This application asks for your name, date of birth, gender, civil status, purok, address, residency type, email address, mobile number and photo.">{{ __('This application asks for your name, date of birth, gender, civil status, purok, address, residency type, email address, mobile number and photo.') }}</span></p>
             <h3><span data-portal-i18n="Why we collect it">{{ __('Why we collect it') }}</span></h3>
             <p><span data-portal-i18n="Barangay Anabu I-G uses this information to review your application for a barangay resident record, to contact you about the review, and, if approved, to keep your record in the official barangay records.">{{ __('Barangay Anabu I-G uses this information to review your application for a barangay resident record, to contact you about the review, and, if approved, to keep your record in the official barangay records.') }}</span></p>
             <h3><span data-portal-i18n="Who sees it">{{ __('Who sees it') }}</span></h3>

@@ -12,7 +12,7 @@ class ResidentRegistrationApplicationFactory extends Factory
     {
         $details = ['first_name' => fake()->firstName(), 'last_name' => fake()->lastName(), 'middle_name' => null, 'suffix' => null,
             'date_of_birth' => '1995-01-15', 'gender' => 'Female', 'civil_status' => 'Single', 'purok' => 'Purok 1',
-            'address' => fake()->address(), 'residency_type' => 'Renter', 'contact_number' => null, 'nationality' => 'Filipino'];
+            'address' => fake()->address(), 'residency_type' => 'Renter', 'contact_number' => null];
         $email = fake()->unique()->safeEmail();
 
         return ['reference' => 'REG-'.fake()->unique()->bothify('########????'), 'details' => $details, 'email' => $email,
