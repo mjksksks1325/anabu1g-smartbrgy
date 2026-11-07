@@ -1523,6 +1523,7 @@ test('issued certificate history requests the selected page and filters and rend
   fields.set('issued-search', { value: ' Maria ' });
   fields.set('issued-type-filter', { value: 'Barangay Clearance' });
   fields.set('issued-source-filter', { value: 'online' });
+  fields.set('issued-status-filter', { value: 'revoked' });
   fields.set('issued-date-from', { value: '2026-10-01' });
   fields.set('issued-date-to', { value: '' });
   const requested = [];
@@ -1536,6 +1537,7 @@ test('issued certificate history requests the selected page and filters and rend
   assert.equal(params.get('search'), 'Maria');
   assert.equal(params.get('certificate_type'), 'Barangay Clearance');
   assert.equal(params.get('source'), 'online');
+  assert.equal(params.get('status'), 'revoked');
   assert.equal(params.get('date_from'), '2026-10-01');
   assert.equal(params.has('date_to'), false);
   assert.match(pagination.innerHTML, /Showing 11–20 of 23 <span>certificates<\/span>/);

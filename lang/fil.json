@@ -2431,5 +2431,9 @@
     "A certificate holds at most :max photographs. Remove one before adding more.": "Hanggang :max litrato lang ang kaya ng isang certificate. Magtanggal muna bago magdagdag.",
     ":count photograph added.|:count photographs added.": ":count litrato ang naidagdag.|:count litrato ang naidagdag.",
     "Photograph removed.": "Natanggal ang litrato.",
-    "This photograph belongs to an issued certificate and cannot be removed.": "Kasama ang litratong ito sa na-issue na certificate kaya hindi ito matatanggal."
+    "This photograph belongs to an issued certificate and cannot be removed.": "Kasama ang litratong ito sa na-issue na certificate kaya hindi ito matatanggal.",
+    "Staff-only certificates": "Mga certificate na pang-staff lamang",
+    "Certificate status": "Status ng certificate",
+    "Expired": "Expired",
+    "Revoked": "Binawi"
 }

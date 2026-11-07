@@ -29,7 +29,8 @@ class IssuedCertificateController extends Controller
         Gate::authorize('viewAny', DocumentRequest::class);
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
-            'certificate_type' => ['nullable', Rule::enum(CertificateType::class)],
+            'certificate_type' => ['nullable', Rule::in(AdditionalCertificateType::allCertificateValues())],
+            'status' => ['nullable', Rule::in(['valid', 'expired', 'revoked'])],
             'source' => ['nullable', Rule::in(['online', 'onsite'])],
             'date_from' => ['nullable', 'date_format:Y-m-d'],
             'date_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date_from'],
@@ -47,6 +48,9 @@ class IssuedCertificateController extends Controller
             ->when(($filters['source'] ?? null) === 'onsite', fn (Builder $query) => $query->whereDoesntHave('documentRequest', fn (Builder $query) => $query->where('source', 'online')))
             ->when($filters['date_from'] ?? null, fn (Builder $query, string $date) => $query->whereDate('issued_at', '>=', $date))
             ->when($filters['date_to'] ?? null, fn (Builder $query, string $date) => $query->whereDate('issued_at', '<=', $date))
+            ->when(($filters['status'] ?? null) === 'revoked', fn (Builder $query) => $query->whereNotNull('revoked_at'))
+            ->when(($filters['status'] ?? null) === 'expired', fn (Builder $query) => $query->whereNull('revoked_at')->where(fn (Builder $query) => $this->whereExpired($query)))
+            ->when(($filters['status'] ?? null) === 'valid', fn (Builder $query) => $query->whereNull('revoked_at')->whereNot(fn (Builder $query) => $this->whereExpired($query)))
             ->latest('issued_at')
             ->latest('id')
             ->paginate((int) ($filters['per_page'] ?? 10))
@@ -61,11 +65,27 @@ class IssuedCertificateController extends Controller
                 'issued_at' => $certificate->issued_at?->toIso8601String(),
                 'issued_by' => $certificate->issued_by,
                 'revoked_at' => $certificate->revoked_at?->toIso8601String(),
+                'status' => $certificate->isRevoked() ? 'revoked' : ($certificate->isExpired() ? 'expired' : 'valid'),
+                'valid_until' => $certificate->validUntil()?->toDateString(),
                 'print_url' => route('staff.issued-certificates.print', $certificate),
                 'verification_url' => route('certificate.verify', $certificate->verification_code),
             ]);
 
         return response()->json($certificates);
+    }
+
+    /**
+     * Certificates past their last valid day, as IssuedCertificate::isExpired() decides: the stored expiry date, or for
+     * older records without one, the issue date plus the period then in force (one year for IDs, three months otherwise).
+     *
+     * @param  Builder<IssuedCertificate>  $query
+     */
+    private function whereExpired(Builder $query): void
+    {
+        $query->where(fn (Builder $query) => $query->whereNotNull('expires_on')->whereDate('expires_on', '<', today()))
+            ->orWhere(fn (Builder $query) => $query->whereNull('expires_on')->whereNull('issued_at'))
+            ->orWhere(fn (Builder $query) => $query->whereNull('expires_on')->where('certificate_type', CertificateType::BarangayId->value)->whereDate('issued_at', '<', today()->subMonthsNoOverflow(12)))
+            ->orWhere(fn (Builder $query) => $query->whereNull('expires_on')->where('certificate_type', '!=', CertificateType::BarangayId->value)->whereDate('issued_at', '<', today()->subMonthsNoOverflow(3)));
     }
 
     public function store(

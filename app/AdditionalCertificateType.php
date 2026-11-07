@@ -44,6 +44,17 @@ enum AdditionalCertificateType: string
         };
     }
 
+    /**
+     * Every certificate name the system issues: the resident-requestable types and these staff-only ones. Used where
+     * staff filter or hold documents; the Resident Portal keeps using CertificateType alone.
+     *
+     * @return list<string>
+     */
+    public static function allCertificateValues(): array
+    {
+        return [...CertificateType::values(), ...array_map(fn (self $type): string => $type->value, self::cases())];
+    }
+
     public static function fromSlug(string $slug): ?self
     {
         return collect(self::cases())->first(fn (self $type): bool => $type->slug() === $slug);
@@ -216,7 +227,7 @@ enum AdditionalCertificateType: string
             $problems[] = 'Resident record is inactive.';
         }
 
-        if (app(CheckRequestRestrictions::class)->activeForEveryDocument($resident) !== null) {
+        if (app(CheckRequestRestrictions::class)->activeFor($resident, $this->value) !== null) {
             $problems[] = ResidentRequestRestriction::MESSAGE;
         }
 

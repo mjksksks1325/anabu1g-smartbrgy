@@ -1616,6 +1616,7 @@ function issuedCertificateFilters() {
   return {
     search: value('issued-search'),
     certificate_type: value('issued-type-filter'),
+    status: value('issued-status-filter'),
     source: value('issued-source-filter'),
     date_from: value('issued-date-from'),
     date_to: value('issued-date-to'),
@@ -1798,7 +1799,7 @@ function renderIssuedCertificates(certificates, meta = null) {
     row.innerHTML = `
       <td><span class="workspace-reference" data-no-admin-translate>${escapeText(certificate.certificate_number)}</span></td>
       <td><strong class="workspace-primary-text" data-no-admin-translate>${escapeText(certificate.resident_name)}</strong></td>
-      <td>${escapeText(certificate.certificate_type)}${revoked ? ` ${workspaceBadge('Revoked', 'red')}` : ''}</td>
+      <td>${escapeText(certificate.certificate_type)}${revoked ? ` ${workspaceBadge('Revoked', 'red')}` : (certificate.status === 'expired' ? ` ${workspaceBadge('Expired', 'gray')}` : '')}</td>
       <td>${workspaceBadge(online ? 'Online' : 'Walk-in', online ? 'purple' : 'gray')}</td>
       <td>${escapeText(fee)}</td>
       <td class="issued-date">${escapeText(issuedDate)}<small>${escapeText(issuedTime)}</small></td>

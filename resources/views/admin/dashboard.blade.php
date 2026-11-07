@@ -318,7 +318,13 @@
             @foreach(App\CertificateType::cases() as $certificateType)
             <option value="{{ $certificateType->value }}">{{ $certificateType->value }}</option>
             @endforeach
+            <optgroup label="{{ __('Staff-only certificates') }}">
+              @foreach(App\AdditionalCertificateType::cases() as $certificateType)
+              <option value="{{ $certificateType->value }}">{{ $certificateType->value }}</option>
+              @endforeach
+            </optgroup>
           </select>
+          <select class="form-input" id="issued-status-filter" aria-label="{{ __('Certificate status') }}" onchange="refreshIssuedCertificates(1)"><option value="">{{ __('All statuses') }}</option><option value="valid">{{ __('Valid') }}</option><option value="expired">{{ __('Expired') }}</option><option value="revoked">{{ __('Revoked') }}</option></select>
           <select class="form-input" id="issued-source-filter" aria-label="Request source" onchange="refreshIssuedCertificates(1)"><option value="">All sources</option><option value="online">Online</option><option value="onsite">Walk-in / onsite</option></select>
           <label class="incident-date-filter"><span>From</span><input class="form-input" type="date" id="issued-date-from" aria-label="Issued from" onchange="refreshIssuedCertificates(1)"/></label>
           <label class="incident-date-filter"><span>To</span><input class="form-input" type="date" id="issued-date-to" aria-label="Issued to" onchange="refreshIssuedCertificates(1)"/></label>
