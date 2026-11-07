@@ -2333,5 +2333,7 @@
     "How the place of birth and parents' names are confirmed": "How the place of birth and parents' names are confirmed",
     "Confirmation that the 4Ps beneficiary flag in Resident Records may be relied on": "Confirmation that the 4Ps beneficiary flag in Resident Records may be relied on",
     "The inspection the wording mentions, and the validity period (it depends on CENRO certification)": "The inspection the wording mentions, and the validity period (it depends on CENRO certification)",
-    "The Barangay Health Worker who co-signs, and how a representative's authority is confirmed": "The Barangay Health Worker who co-signs, and how a representative's authority is confirmed"
+    "The Barangay Health Worker who co-signs, and how a representative's authority is confirmed": "The Barangay Health Worker who co-signs, and how a representative's authority is confirmed",
+    "Something went wrong on our side and the action was not completed. Try again; if it keeps happening, give the system administrator this reference: :reference.": "Something went wrong on our side and the action was not completed. Try again; if it keeps happening, give the system administrator this reference: :reference.",
+    "Something went wrong": "Something went wrong"
 }

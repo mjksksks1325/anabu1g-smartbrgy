@@ -8,6 +8,7 @@ use App\Http\Middleware\PreventAccountCaching;
 use App\Http\Responses\PasswordResetLinkRequestResponse;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -16,6 +17,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Exceptions\InvalidSignatureException;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
@@ -63,6 +66,20 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (TransportExceptionInterface $exception, Request $request): ?Response {
             return $request->routeIs('password.email') ? (new PasswordResetLinkRequestResponse)->toResponse($request) : null;
         });
+        // Database errors never reach the screen, even with APP_DEBUG on: their messages carry SQL, bound values (resident
+        // details) and the database file path. People see a generic message with a short reference; the full error is
+        // written to the protected application log under that reference.
+        $databaseError = function (Throwable $exception, Request $request): Response {
+            $reference = Str::upper(Str::random(8));
+            Log::error('Database error (reference '.$reference.')', ['exception' => $exception, 'path' => $request->path(), 'user_id' => $request->user()?->getAuthIdentifier()]);
+            $message = __('Something went wrong on our side and the action was not completed. Try again; if it keeps happening, give the system administrator this reference: :reference.', ['reference' => $reference]);
+
+            return $request->expectsJson() || $request->is('api/*')
+                ? response()->json(['message' => $message, 'reference' => $reference], 500)
+                : response()->view('errors.database', ['reference' => $reference], 500);
+        };
+        $exceptions->render(fn (QueryException $exception, Request $request): Response => $databaseError($exception, $request));
+        $exceptions->render(fn (PDOException $exception, Request $request): Response => $databaseError($exception, $request));
         $exceptions->dontFlash(['activation_code', 'resident_number']);
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),

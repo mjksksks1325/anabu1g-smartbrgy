@@ -2501,5 +2501,7 @@
     "How the place of birth and parents' names are confirmed": "Paano kinukumpirma ang lugar ng kapanganakan at pangalan ng mga magulang",
     "Confirmation that the 4Ps beneficiary flag in Resident Records may be relied on": "Kumpirmasyon na maaasahan ang tanda ng 4Ps beneficiary sa Resident Records",
     "The inspection the wording mentions, and the validity period (it depends on CENRO certification)": "Ang inspeksyong binanggit ng wording, at ang bisa nito (nakadepende sa certification ng CENRO)",
-    "The Barangay Health Worker who co-signs, and how a representative's authority is confirmed": "Ang Barangay Health Worker na kasamang pipirma, at paano kinukumpirma ang awtoridad ng kinatawan"
+    "The Barangay Health Worker who co-signs, and how a representative's authority is confirmed": "Ang Barangay Health Worker na kasamang pipirma, at paano kinukumpirma ang awtoridad ng kinatawan",
+    "Something went wrong on our side and the action was not completed. Try again; if it keeps happening, give the system administrator this reference: :reference.": "May nagkaproblema sa aming system at hindi natapos ang ginagawa. Subukang muli; kung mangyari ulit, ibigay sa system administrator ang reference na ito: :reference.",
+    "Something went wrong": "May nagkaproblema"
 }
