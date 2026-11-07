@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Actions\CheckCertificateReadiness;
 use App\Actions\ManageHouseholds;
+use App\Actions\RecordResidentVerificationChange;
 use App\Actions\ResidentIdentity;
 use App\Actions\WriteRecordsSpreadsheet;
 use App\CertificateType;
@@ -85,6 +86,7 @@ class ResidentController extends Controller
 
             return $this->households->saveResident($validated);
         });
+        app(RecordResidentVerificationChange::class)->handle($request->user(), $resident, RecordResidentVerificationChange::snapshot(null), created: true);
 
         return response()->json([
             'message' => 'Resident registered successfully.',
@@ -133,10 +135,12 @@ class ResidentController extends Controller
         $validated = $request->validated();
         $expectedVersion = Arr::pull($validated, 'expected_updated_at');
         $validated['date_of_birth'] = Carbon::parse($validated['date_of_birth'])->toDateString();
+        $before = RecordResidentVerificationChange::snapshot($resident);
         try {
-            Cache::lock($this->residentIdentityLockKey($validated), 15)->block(5, function () use ($request, $resident, $validated, $expectedVersion): void {
+            Cache::lock($this->residentIdentityLockKey($validated), 15)->block(5, function () use ($request, $resident, $validated, $expectedVersion, $before): void {
                 $this->rejectDuplicate($validated, $request->boolean('confirm_duplicate'), $resident);
-                $this->households->saveResident($validated, $resident, $expectedVersion ? Carbon::parse($expectedVersion) : null);
+                $saved = $this->households->saveResident($validated, $resident, $expectedVersion ? Carbon::parse($expectedVersion) : null);
+                app(RecordResidentVerificationChange::class)->handle($request->user(), $saved, $before);
             });
         } catch (StaleRecordException) {
             return response()->json([

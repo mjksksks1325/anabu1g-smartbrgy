@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\RecordResidentVerificationChange;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -34,7 +35,7 @@ class AuditLogController extends Controller
                     : ($event->action === 'auth.login' ? 'Login' : str_replace(['admin.', '-', '.'], ['', ' ', ' / '], $event->action)),
                 'detail' => $event->action === 'admin.users.permissions-changed'
                     ? 'Staff #'.$event->target_user_id.' - Before: '.$event->before_assignments.'; After: '.$event->after_assignments
-                    : ($event->type === 'cabinet'
+                    : ($event->action === RecordResidentVerificationChange::ACTION ? RecordResidentVerificationChange::describe((string) $event->record, $event->changed_fields) : ($event->type === 'cabinet'
                     ? implode(' · ', array_filter([
                         'Cabinet: '.$event->cabinet_identifier,
                         $event->user_id ? 'Employee ID: '.$event->user_id : null,
@@ -45,7 +46,7 @@ class AuditLogController extends Controller
                     ]))
                     : ($event->action === 'auth.login'
                         ? 'Successful sign in'
-                        : ($event->action === 'portal.account.registered' ? 'Resident portal account created' : ($event->record ? 'Record ID: '.$event->record : 'Administrative operation')))),
+                        : ($event->action === 'portal.account.registered' ? 'Resident portal account created' : ($event->record ? 'Record ID: '.$event->record : 'Administrative operation'))))),
                 'user' => $event->actor,
                 'actor_id' => $event->user_id,
                 'target_staff_id' => $event->target_user_id,

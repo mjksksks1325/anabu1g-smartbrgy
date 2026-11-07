@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\RecordResidentVerificationChange;
 use App\Http\Controllers\Controller;
 use App\Models\Resident;
 use Illuminate\Http\JsonResponse;
@@ -31,10 +32,12 @@ class ResidentPhotoController extends Controller
         abort_if($path === false, 500, 'Photo could not be saved.');
 
         try {
-            $oldPath = DB::transaction(function () use ($resident, $path): ?string {
+            $oldPath = DB::transaction(function () use ($request, $resident, $path): ?string {
                 $lockedResident = Resident::query()->lockForUpdate()->findOrFail($resident->id);
                 $oldPath = $lockedResident->photo_path;
+                $before = RecordResidentVerificationChange::snapshot($lockedResident);
                 $lockedResident->update(['photo_path' => $path]);
+                app(RecordResidentVerificationChange::class)->handle($request->user(), $lockedResident, $before);
 
                 return $oldPath;
             });
