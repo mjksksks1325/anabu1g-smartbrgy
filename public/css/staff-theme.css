@@ -1108,3 +1108,8 @@ body[data-personnel-layout="admin"] #app.admin-interface .audit-log-row > :nth-c
 body[data-personnel-layout="admin"] #app.admin-interface .audit-stats-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 @media (max-width: 1100px) { body[data-personnel-layout="admin"] #app.admin-interface .audit-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 520px) { body[data-personnel-layout="admin"] #app.admin-interface .audit-stats-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* ── Workspace warning: a configuration problem administrators must fix (e.g. email delivery) ── */
+body[data-personnel-layout="admin"] .workspace-warning { margin: 0 0 16px; padding: 12px 16px; border: 1px solid var(--staff-warning-border); border-radius: 8px; background: var(--staff-warning-bg); color: var(--staff-ink); font-size: 13px; line-height: 1.5; }
+body[data-personnel-layout="admin"] .workspace-warning h2 { margin: 0 0 4px; color: var(--staff-warning-ink); font-size: 14px; }
+body[data-personnel-layout="admin"] .workspace-warning ul { margin: 0; padding-left: 18px; }

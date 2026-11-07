@@ -3,8 +3,11 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Exceptions\MailDeliveryUnavailableException;
+use App\MailDelivery;
 use App\StaffPermissions;
 use Database\Factories\UserFactory;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -57,6 +60,21 @@ class User extends Authenticatable
     public function fileMovements(): HasMany
     {
         return $this->hasMany(FileMovementEvent::class);
+    }
+
+    /**
+     * Email the reset link only through a mailer that delivers it. With the `log` mailer the link, and the token in
+     * it, would only be written to the application log, so nothing is sent and the caller reports the failure.
+     *
+     * @throws MailDeliveryUnavailableException
+     */
+    public function sendPasswordResetNotification(#[\SensitiveParameter] $token): void
+    {
+        if (! MailDelivery::configured()) {
+            throw new MailDeliveryUnavailableException;
+        }
+
+        $this->notify(new ResetPassword($token));
     }
 
     public function canLoginAsPersonnel(): bool

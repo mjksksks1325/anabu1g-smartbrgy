@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Actions\DeleteStaffUser;
 use App\Actions\WriteRecordsSpreadsheet;
+use App\Exceptions\MailDeliveryUnavailableException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SaveUserRequest;
+use App\MailDelivery;
 use App\Models\EmployeeCabinetAccess;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -206,8 +208,12 @@ class UserController extends Controller
 
         try {
             $status = Password::broker()->sendResetLink(['email' => $user->email]);
+        } catch (MailDeliveryUnavailableException $exception) {
+            MailDelivery::recordResetEmailFailure($request->merge(['email' => $user->email]), $exception, $request->user());
+            throw ValidationException::withMessages(['user' => 'This server does not send email yet (MAIL_MAILER='.config('mail.default').'), so no reset link was sent. Ask the system administrator to configure an SMTP provider.']);
         } catch (TransportExceptionInterface $exception) {
             report($exception);
+            MailDelivery::recordResetEmailFailure($request->merge(['email' => $user->email]), $exception, $request->user());
             $status = null;
         }
         if ($status === Password::RESET_THROTTLED) {

@@ -372,3 +372,25 @@ it('applies the same staff password policy to a reset and to the first Super Adm
         ->expectsQuestion('Password', 'abcdefghijkl')->expectsQuestion('Confirm password', 'abcdefghijkl')
         ->assertFailed();
 });
+
+it('tells the administrator plainly when this server does not send email, and records it', function () {
+    Notification::fake();
+    config(['mail.default' => 'log']);
+    $captain = User::factory()->create(['role' => 'captain']);
+    $staff = User::factory()->create(['role' => 'staff', 'staff_permissions' => ['dashboard.view']]);
+
+    $this->actingAs($captain)->postJson(route('admin.users.password-reset-link', $staff))->assertUnprocessable()
+        ->assertJsonPath('errors.user.0', 'This server does not send email yet (MAIL_MAILER=log), so no reset link was sent. Ask the system administrator to configure an SMTP provider.');
+    Notification::assertNothingSent();
+    $this->assertDatabaseHas('administrative_audits', ['action' => 'auth.password-reset-mail-unavailable', 'user_id' => $captain->id, 'record' => (string) $staff->id]);
+});
+
+it('warns administrators in User Management when account emails cannot be delivered', function () {
+    $admin = User::factory()->superAdmin()->create();
+    config(['mail.default' => 'log', 'mail.from.address' => 'hello@example.com']);
+    $this->actingAs($admin)->get(route('admin.users.index'))->assertOk()
+        ->assertSee('data-mail-delivery-warning', false)->assertSeeText('MAIL_MAILER=log')->assertSeeText('placeholder hello@example.com');
+
+    config(['mail.default' => 'smtp', 'mail.from.address' => 'records@anabu1g.gov.ph']);
+    $this->get(route('admin.users.index'))->assertOk()->assertDontSee('data-mail-delivery-warning', false);
+});

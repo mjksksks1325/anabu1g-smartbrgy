@@ -481,6 +481,17 @@
           <button class="btn btn-green" onclick="openAddUser()"><x-staff-icon name="plus" />Add New User</button>
         </div>
       </div>
+      @php($mailProblems = \App\MailDelivery::problems())
+      @if ($mailProblems !== [])
+        <section class="workspace-warning" role="status" aria-labelledby="mail-delivery-warning-title" data-mail-delivery-warning>
+          <h2 id="mail-delivery-warning-title">{{ __('Account emails are not being delivered') }}</h2>
+          <ul>
+            @foreach ($mailProblems as $problem)
+              <li>{{ $problem }}</li>
+            @endforeach
+          </ul>
+        </section>
+      @endif
 
       <div class="stats-grid user-management-kpis">
         <div class="stat-card user-kpi user-kpi-total"><div class="stat-label">Total accounts</div><div class="stat-value" id="usr-total">0</div><div class="stat-sub">Personnel accounts on record</div><div class="stat-icon"><x-staff-icon name="people" /></div><button type="button" class="stat-link" onclick="showUserKpi('all')">Show all accounts</button></div>
