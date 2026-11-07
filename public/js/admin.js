@@ -1532,6 +1532,129 @@ function printCert(code) {
   syncCertificateDetailFields(modal, req.type);
 
   openModal('modal-print-release');
+  void refreshReleaseReadiness();
+}
+
+/** The open Print & Release request's checklist, as the server last reported it. */
+let releaseReadiness = null;
+let releaseReadinessVersion = 0;
+
+/** Resident record fields the checklist can send staff to, by the server's detail key. */
+const RELEASE_RESIDENT_FIELDS = {
+  full_name: 'res-name', address: 'res-address', date_of_birth: 'res-dob', gender: 'res-gender',
+  civil_status: 'res-civil', nationality: 'res-nationality', photo: 'res-photo', is_verified_indigent: 'res-verified-indigent'
+};
+
+/**
+ * Ask the server what the selected request still needs before it can be issued: missing record details, staff
+ * verifications and disqualifications, each with where authorized staff complete it. Only informs: issuing checks
+ * every rule again, and nothing here verifies or fills in a detail.
+ */
+async function refreshReleaseReadiness() {
+  const requestId = document.getElementById('print-document-request-id')?.value;
+  const panel = document.getElementById('print-release-readiness');
+  if (!requestId || !panel) return;
+  const version = ++releaseReadinessVersion;
+  releaseReadiness = null;
+  panel.hidden = false;
+  panel.dataset.state = 'loading';
+  panel.innerHTML = `<p class="release-readiness-status" role="status">${escapeText(adminText('Checking what this certificate needs...'))}</p>`;
+  setReleaseSubmitBlocked(false);
+  try {
+    const response = await fetch(`/staff/document-requests/${encodeURIComponent(requestId)}/certificate-readiness`, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
+    const readiness = await response.json().catch(() => null);
+    if (version !== releaseReadinessVersion) return;
+    if (!response.ok || !readiness || !Array.isArray(readiness.items)) throw new Error(readiness?.message || 'Unable to check this request.');
+    renderReleaseReadiness(readiness);
+  } catch (error) {
+    if (version !== releaseReadinessVersion) return;
+    panel.dataset.state = 'error';
+    panel.innerHTML = `<p class="release-readiness-status">${escapeText(adminText('Could not check this request. Issue & Print still checks every requirement.'))}</p>`;
+  }
+}
+
+function setReleaseSubmitBlocked(blocked) {
+  const submit = document.getElementById('print-release-submit');
+  if (!submit) return;
+  submit.disabled = blocked;
+  if (blocked) submit.setAttribute('aria-describedby', 'print-release-readiness-title');
+  else submit.removeAttribute?.('aria-describedby');
+}
+
+function releaseReadinessAction(item) {
+  if (item.action === 'resident' || item.action === 'indigency') {
+    if (!hasStaffPermission('records.update')) return `<span class="release-readiness-note">${escapeText(adminText('Staff who may update Resident Records complete this.'))}</span>`;
+    const label = item.action === 'indigency' ? 'Verify in Resident Records' : 'Complete missing information';
+    return `<button type="button" class="btn btn-xs btn-primary release-readiness-action" data-readiness-field="${escapeText(item.field || '')}">${escapeText(adminText(label))}</button>`;
+  }
+  if (item.action === 'voters') {
+    if (!hasStaffPermission('voters.update') && !hasStaffPermission('voters.create')) return `<span class="release-readiness-note">${escapeText(adminText('Staff who manage voters complete this.'))}</span>`;
+    return `<a class="btn btn-xs release-readiness-action" href="/staff/voters" target="_blank" rel="noopener">${escapeText(adminText('Open Voters'))}</a>`;
+  }
+  return '';
+}
+
+function renderReleaseReadiness(readiness) {
+  const panel = document.getElementById('print-release-readiness');
+  if (!panel) return;
+  releaseReadiness = readiness;
+  // Redrawing removes the control that had focus (e.g. after returning from the resident form): keep focus in the
+  // dialog, on Issue & Print once everything is complete, otherwise on the first remaining action.
+  const focusWasLost = typeof document.activeElement === 'undefined' || !document.activeElement || document.activeElement === document.body || panel.contains?.(document.activeElement);
+  const dialogOnTop = modalStack.at(-1)?.id === 'modal-print-release';
+  if (readiness.ready) {
+    panel.dataset.state = 'ready';
+    panel.innerHTML = `<p class="release-readiness-status">${escapeText(adminText('Every required detail and verification is complete.'))}</p>`;
+    setReleaseSubmitBlocked(false);
+    if (focusWasLost && dialogOnTop) document.getElementById('print-release-submit')?.focus?.();
+    return;
+  }
+  const kinds = { missing: 'Missing information', verification: 'Needs staff verification', blocked: 'Cannot be issued' };
+  const items = readiness.items.map(item => {
+    const text = item.kind === 'missing'
+      ? `${escapeText(adminText('Missing from the resident record:'))} <strong>${escapeText(adminText(item.message))}</strong>`
+      : escapeText(item.message);
+    return `<li class="release-readiness-item" data-kind="${escapeText(item.kind)}"><span class="release-readiness-kind">${escapeText(adminText(kinds[item.kind] || kinds.blocked))}</span><span class="release-readiness-text">${text}</span>${releaseReadinessAction(item)}</li>`;
+  }).join('');
+  panel.dataset.state = 'blocked';
+  panel.innerHTML = `<h3 class="release-readiness-title" id="print-release-readiness-title">${escapeText(adminText('Complete before issuing'))}</h3>
+    <ul class="release-readiness-list">${items}</ul>
+    <div class="release-readiness-footer"><span>${escapeText(adminText('Issue & Print stays off until everything above is complete. The preview remains available.'))}</span><button type="button" class="btn btn-xs" data-readiness-recheck>${escapeText(adminText('Check again'))}</button></div>`;
+  panel.querySelectorAll('[data-readiness-field]').forEach(button => button.addEventListener('click', () => openResidentForCertificate(button.dataset.readinessField)));
+  panel.querySelector('[data-readiness-recheck]')?.addEventListener('click', () => refreshReleaseReadiness());
+  setReleaseSubmitBlocked(true);
+  if (focusWasLost && dialogOnTop) panel.querySelector('button, a')?.focus?.();
+}
+
+/**
+ * Open the request's resident in the Resident Records edit form on top of Print & Release, at the field to complete.
+ * The record is loaded from the Resident Records list, so the form starts from the saved record (household
+ * included); saving re-checks the request in the dialog underneath.
+ */
+async function openResidentForCertificate(field) {
+  const target = releaseReadiness?.resident;
+  if (!target) return;
+  try {
+    const query = new URLSearchParams({ search: target.resident_number, per_page: '15' });
+    const response = await fetch(`/staff/residents?${query}`, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload?.message || 'Unable to open the resident record.');
+    const row = (payload.data || []).find(item => item.id === target.id);
+    if (!row) throw new Error('The resident record could not be found.');
+    const resident = residentFromApi(row);
+    const index = RESIDENTS.findIndex(item => item.databaseId === resident.databaseId);
+    if (index >= 0) RESIDENTS[index] = resident;
+    else RESIDENTS.push(resident);
+    fillResidentForm(resident);
+    openModal('modal-resident');
+    const control = document.getElementById(RELEASE_RESIDENT_FIELDS[field] || '');
+    if (control) {
+      control.scrollIntoView?.({ block: 'center' });
+      control.focus?.();
+    }
+  } catch (error) {
+    showToast(requestErrorMessage(error, 'Unable to open the resident record.'), 'red');
+  }
 }
 
 function updateManualCertificateFee() {
@@ -5269,6 +5392,7 @@ async function saveResidentRecord(confirmDuplicate = false) {
     }
     closeModal('modal-resident');
     showToast(payload.message, 'green');
+    if (modalStack.some(entry => entry.id === 'modal-print-release')) void refreshReleaseReadiness();
     await loadResidents(resident ? residentCurrentPage : 1);
     await loadPuroks();
     await populateManualResidentDropdown();

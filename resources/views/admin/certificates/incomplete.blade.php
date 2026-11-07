@@ -46,6 +46,10 @@
     @endif
     @if ($isPreview && ! $isUnsupported)
         <p>Details from the resident record are completed in Resident Records. Residency details are entered in the Print &amp; Release dialog.</p>
+        @if (($residentNumber ?? null) !== null && auth()->user()?->hasPermission('records.view'))
+            <p><a href="{{ route('staff.residents.index', ['search' => $residentNumber]) }}" data-complete-missing-information>{{ __('Complete missing information in Resident Records') }}</a></p>
+            <p>{{ __('The Print & Release dialog checks the request again when you return to it.') }}</p>
+        @endif
     @elseif (! $isPreview)
         <p>Issued certificates cannot be edited. Complete the resident record in Resident Records, then issue a new certificate.</p>
     @endif

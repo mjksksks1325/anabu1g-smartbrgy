@@ -112,7 +112,7 @@ class StaffPermissions
             'staff.voter-registrations.export' => ['voters.export'],
             'staff.document-requests.index', 'staff.document-requests.list', 'staff.document-requests.show', 'staff.document-requests.attachment', 'staff.document-requests.live', 'staff.issued-certificates.index' => ['documents.view'],
             'staff.document-requests.update-status' => ['documents.process'],
-            'staff.issued-certificates.store', 'staff.document-requests.issue', 'staff.document-requests.certificate-preview',
+            'staff.issued-certificates.store', 'staff.document-requests.issue', 'staff.document-requests.certificate-preview', 'staff.document-requests.certificate-readiness',
             'staff.additional-certificates.index', 'staff.additional-certificates.create', 'staff.additional-certificates.preview', 'staff.additional-certificates.store',
             'staff.additional-certificates.evidence.store', 'staff.certificate-evidence.destroy' => ['documents.issue'],
             'staff.certificate-evidence.show' => ['documents.issue', 'documents.print'],

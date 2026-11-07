@@ -685,3 +685,75 @@ test('a document hold blocks the draft preview even while a verification is also
         ->assertUnprocessable()->assertSeeText(ResidentRequestRestriction::MESSAGE)->assertSeeText(Resident::INDIGENCY_NOT_VERIFIED)
         ->assertDontSee('class="sheet', false)->assertDontSee('data-issuance-blockers', false);
 });
+
+test('the Print & Release checklist lists each missing detail and pending verification with where staff complete it', function () {
+    Storage::fake('local');
+    $request = indigencyRequestFor(['nationality' => null]);
+    $staff = User::factory()->assignedOperations()->create();
+
+    $this->actingAs($staff)->getJson(route('staff.document-requests.certificate-readiness', $request))
+        ->assertOk()
+        ->assertExactJson([
+            'ready' => false,
+            'resident' => ['id' => $request->resident_id, 'resident_number' => $request->resident->resident_number],
+            'items' => [
+                ['kind' => 'verification', 'message' => Resident::INDIGENCY_NOT_VERIFIED, 'action' => 'indigency', 'field' => 'is_verified_indigent'],
+                ['kind' => 'missing', 'message' => 'Nationality', 'action' => 'resident', 'field' => 'nationality'],
+            ],
+        ]);
+
+    expect($this->getJson(route('staff.document-requests.certificate-readiness', $request))->headers->get('Cache-Control'))->toContain('no-store');
+    $this->assertDatabaseEmpty('issued_certificates');
+    $this->assertDatabaseEmpty('administrative_audits');
+    expect($request->fresh()->status)->toBe('ready_for_release')
+        ->and($request->resident->fresh()->only(['nationality', 'is_verified_indigent']))->toBe(['nationality' => null, 'is_verified_indigent' => false]);
+
+    $request->resident->update(['nationality' => 'Filipino', 'is_verified_indigent' => true]);
+    $this->getJson(route('staff.document-requests.certificate-readiness', $request))
+        ->assertOk()->assertJsonPath('ready', true)->assertJsonPath('items', []);
+});
+
+test('the checklist separates disqualifications from what staff can complete, and leaves dialog details to the dialog', function () {
+    Storage::fake('local');
+    $staff = User::factory()->assignedOperations()->create();
+    $disqualified = indigencyRequestFor(['is_in_good_standing' => false, 'is_verified_indigent' => true]);
+    $residency = indigencyRequestFor(['is_verified_indigent' => true]);
+    $residency->update(['document_type' => CertificateType::CertificateOfResidency->value]);
+    $unlinked = DocumentRequest::query()->create([
+        'reference_code' => 'REQ-UNLINKED-RVC', 'document_type' => CertificateType::RegisteredVoterCertification->value,
+        'full_name' => 'Walk-in Applicant', 'address' => 'Walk-in address', 'purpose' => 'Employment', 'status' => 'ready_for_release',
+    ]);
+
+    $this->actingAs($staff)->getJson(route('staff.document-requests.certificate-readiness', $disqualified))
+        ->assertOk()->assertJsonPath('ready', false)
+        ->assertJsonPath('items', [['kind' => 'blocked', 'message' => 'Resident is not in good standing.', 'action' => null, 'field' => null]]);
+    $this->getJson(route('staff.document-requests.certificate-readiness', $residency))
+        ->assertOk()->assertJsonPath('ready', true)->assertJsonPath('items', []);
+    $unlinkedItems = $this->getJson(route('staff.document-requests.certificate-readiness', $unlinked))->assertOk()->assertJsonPath('resident', null)->json('items');
+    expect($unlinkedItems[0])->toBe(['kind' => 'blocked', 'message' => 'Select a verified resident record for this certificate.', 'action' => null, 'field' => null])
+        ->and(collect($unlinkedItems)->where('kind', 'missing')->pluck('action')->unique()->all())->toBe([null]);
+});
+
+test('only staff who may issue certificates can read the checklist', function () {
+    Storage::fake('local');
+    $request = indigencyRequestFor();
+
+    $this->actingAs(User::factory()->create(['role' => 'staff', 'staff_permissions' => ['documents.view']]))
+        ->getJson(route('staff.document-requests.certificate-readiness', $request))->assertForbidden();
+    $this->actingAs(User::factory()->resident()->create(['resident_id' => $request->resident_id]), 'web')
+        ->getJson(route('staff.document-requests.certificate-readiness', $request))->assertForbidden();
+});
+
+test('a blocked preview links staff who can open Resident Records to the resident, and no one else', function () {
+    Storage::fake('local');
+    $request = indigencyRequestFor(['nationality' => null]);
+    $link = route('staff.residents.index', ['search' => $request->resident->resident_number]);
+
+    $this->actingAs(User::factory()->assignedOperations()->create())->get(route('staff.document-requests.certificate-preview', $request))
+        ->assertUnprocessable()->assertSeeText('Missing: Nationality')
+        ->assertSee('href="'.e($link).'" data-complete-missing-information', false)
+        ->assertSeeText('Complete missing information in Resident Records');
+    $this->actingAs(User::factory()->create(['role' => 'staff', 'staff_permissions' => ['documents.view', 'documents.issue']]))
+        ->get(route('staff.document-requests.certificate-preview', $request))
+        ->assertUnprocessable()->assertSeeText('Missing: Nationality')->assertDontSee('data-complete-missing-information', false);
+});

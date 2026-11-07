@@ -643,6 +643,8 @@
       <p class="form-note" id="print-years-of-residency-note">{{ __('Printed on the First Time Jobseeker certification and Oath of Undertaking. Confirm it with the resident before issuing.') }}</p>
     </div>
 
+    <section class="release-readiness" id="print-release-readiness" aria-live="polite" hidden></section>
+
     <div class="form-group">
       <p class="form-note">{{ __('Certificates and QR verification are valid for three months from issue. First Time Jobseeker certificates, Barangay IDs and their QR verification are valid for one year.') }}</p>
     </div>

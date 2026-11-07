@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\CheckCertificateReadiness;
 use App\Actions\IssueCertificate;
 use App\AdditionalCertificateType;
 use App\CertificateDocument;
@@ -139,51 +140,36 @@ class IssuedCertificateController extends Controller
      * verification (indigency, voter registration) gets a draft preview headed by what must be completed first; it
      * still cannot be issued. A Barangay ID previews on its own card layout, with the photo on the resident record.
      */
-    public function preview(Request $request, DocumentRequest $documentRequest, IssueCertificate $issueCertificate): Response
+    public function preview(Request $request, DocumentRequest $documentRequest, CheckCertificateReadiness $checkReadiness): Response
     {
         Gate::authorize('documents.issue');
         $details = $request->validate(StoreIssuedCertificateRequest::staffEnteredDetailRules());
-        $certificateType = CertificateType::tryFromLabel((string) $documentRequest->document_type);
-        $resident = $documentRequest->resident;
+        $readiness = $checkReadiness->check($documentRequest, [
+            'residing_since' => $details['residing_since'] ?? null,
+            'years_of_residency' => isset($details['years_of_residency']) ? (int) $details['years_of_residency'] : null,
+        ]);
+        ['type' => $certificateType, 'resident' => $resident, 'photo' => $photo] = $readiness;
         $previewCertificate = new IssuedCertificate([
             'certificate_type' => $certificateType->value ?? $documentRequest->document_type,
             'resident_name' => $resident->full_name ?? $documentRequest->full_name,
             'purpose' => $documentRequest->purpose,
             'issued_at' => now(),
         ]);
-        $eligibility = $certificateType !== null ? $resident?->certificateEligibility($certificateType) : null;
-        $awaitsVerification = $certificateType !== null && $resident?->awaitsOnlyVerification($certificateType) === true;
-        $problems = match (true) {
-            $certificateType === null => [],
-            $resident === null && in_array($certificateType, [CertificateType::RegisteredVoterCertification, CertificateType::CertificateOfIndigency], true) => ['Select a verified resident record for this certificate.'],
-            $awaitsVerification => [],
-            $eligibility !== null && ! $eligibility['eligible'] => $eligibility['reasons'],
-            default => [],
-        };
-        $issuanceBlockers = $awaitsVerification ? $eligibility['reasons'] ?? [] : [];
 
-        if ($certificateType === null || $problems !== []) {
-            return response()->view('admin.certificates.incomplete', ['certificate' => $previewCertificate, 'missingDetails' => [], 'problems' => $problems, 'isPreview' => true, 'isUnsupported' => $certificateType === null], 422);
+        if ($certificateType === null || $readiness['problems'] !== []) {
+            return response()->view('admin.certificates.incomplete', ['certificate' => $previewCertificate, 'missingDetails' => [], 'problems' => $readiness['problems'], 'isPreview' => true, 'isUnsupported' => $certificateType === null, 'residentNumber' => $resident?->resident_number], 422);
         }
 
-        $snapshot = $issueCertificate->snapshot($certificateType, $resident, [
-            'resident_name' => $documentRequest->full_name,
-            'residing_since' => $details['residing_since'] ?? null,
-            'years_of_residency' => isset($details['years_of_residency']) ? (int) $details['years_of_residency'] : null,
-        ], $documentRequest);
-        $disk = Storage::disk('local');
-        $photo = $resident?->photo_path !== null && $disk->exists($resident->photo_path) ? $resident->photo_path : null;
-        $missingDetails = CertificateDocument::missingFor($certificateType, $snapshot, $documentRequest->purpose, $photo !== null);
-
-        if ($missingDetails !== []) {
-            return response()->view('admin.certificates.incomplete', ['certificate' => $previewCertificate, 'missingDetails' => $missingDetails, 'problems' => $issuanceBlockers, 'isPreview' => true], 422);
+        if ($readiness['missing'] !== []) {
+            return response()->view('admin.certificates.incomplete', ['certificate' => $previewCertificate, 'missingDetails' => $readiness['missing'], 'problems' => $readiness['verifications'], 'isPreview' => true, 'residentNumber' => $resident?->resident_number], 422);
         }
 
         $previewCertificate->forceFill([
-            'resident_snapshot' => $snapshot,
+            'resident_snapshot' => $readiness['snapshot'],
             'photo_path' => $photo,
             'expires_on' => now()->addMonthsNoOverflow($certificateType->validityPeriodInMonths())->toDateString(),
         ]);
+        $disk = Storage::disk('local');
         $photoUrl = $photo === null ? null : 'data:'.$disk->mimeType($photo).';base64,'.base64_encode((string) $disk->get($photo));
 
         return response()->view($certificateType->printView(), [
@@ -191,8 +177,19 @@ class IssuedCertificateController extends Controller
             'document' => new CertificateDocument($previewCertificate, isPreview: true, previewPhotoUrl: $photoUrl),
             'isPreview' => true,
             'linkedToResident' => $resident !== null,
-            'issuanceBlockers' => $issuanceBlockers,
+            'issuanceBlockers' => $readiness['verifications'],
         ])->header('Cache-Control', 'private, no-store');
+    }
+
+    /**
+     * The Print & Release checklist for a request: each missing detail, pending verification or disqualification, and
+     * where authorized staff complete it. Read-only, like the preview; issuance enforces the same rules.
+     */
+    public function certificateReadiness(DocumentRequest $documentRequest, CheckCertificateReadiness $checkReadiness): JsonResponse
+    {
+        Gate::authorize('documents.issue');
+
+        return response()->json($checkReadiness->checklist($documentRequest))->header('Cache-Control', 'private, no-store');
     }
 
     /**

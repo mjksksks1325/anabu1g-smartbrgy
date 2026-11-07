@@ -1924,3 +1924,85 @@ test('staff without print access see the certificate number in request details b
   assert.match(target.innerHTML, /CERT-2026-ABC/);
   assert.doesNotMatch(target.innerHTML, /Reprint|\/print/);
 });
+
+function readinessFields(fields) {
+  const panel = { hidden: true, dataset: {}, innerHTML: '', querySelectorAll: () => [], querySelector: () => null };
+  const submit = { disabled: false, attributes: {}, setAttribute(name, value) { this.attributes[name] = value; }, removeAttribute(name) { delete this.attributes[name]; } };
+  fields.set('print-release-readiness', panel);
+  fields.set('print-release-submit', submit);
+  fields.set('print-document-request-id', { value: '4' });
+  return { panel, submit };
+}
+
+test('Print & Release lists what is missing and keeps Issue & Print off until it is complete', async () => {
+  const { context, fields } = await client();
+  const { panel, submit } = readinessFields(fields);
+  context.window.PERSONNEL_PERMISSIONS = ['documents.issue', 'records.update'];
+
+  context.renderReleaseReadiness({ ready: false, resident: { id: 7, resident_number: 'ANB-2026-X' }, items: [
+    { kind: 'verification', message: 'Indigency must be verified by authorized barangay staff.', action: 'indigency', field: 'is_verified_indigent' },
+    { kind: 'missing', message: 'Nationality', action: 'resident', field: 'nationality' },
+    { kind: 'blocked', message: 'Resident is not in good standing.', action: null, field: null },
+  ] });
+
+  assert.equal(panel.dataset.state, 'blocked');
+  assert.equal(submit.disabled, true);
+  assert.equal(submit.attributes['aria-describedby'], 'print-release-readiness-title');
+  assert.match(panel.innerHTML, /Complete before issuing/);
+  assert.match(panel.innerHTML, /Missing from the resident record:<\/span>|Missing from the resident record: <strong>Nationality<\/strong>/);
+  assert.match(panel.innerHTML, /data-readiness-field="is_verified_indigent">Verify in Resident Records/);
+  assert.match(panel.innerHTML, /data-readiness-field="nationality">Complete missing information/);
+  assert.match(panel.innerHTML, /Resident is not in good standing\./);
+  assert.match(panel.innerHTML, /data-readiness-recheck/);
+
+  context.renderReleaseReadiness({ ready: true, resident: null, items: [] });
+  assert.equal(panel.dataset.state, 'ready');
+  assert.equal(submit.disabled, false);
+});
+
+test('staff without Resident Records or Voters access are told who completes an item, with no button', async () => {
+  const { context, fields } = await client();
+  const { panel } = readinessFields(fields);
+  context.window.PERSONNEL_PERMISSIONS = ['documents.issue'];
+
+  context.renderReleaseReadiness({ ready: false, resident: { id: 7, resident_number: 'ANB-2026-X' }, items: [
+    { kind: 'missing', message: 'Nationality', action: 'resident', field: 'nationality' },
+    { kind: 'verification', message: 'An active verified voter registration is required.', action: 'voters', field: null },
+  ] });
+
+  assert.doesNotMatch(panel.innerHTML, /data-readiness-field|href="\/staff\/voters"/);
+  assert.match(panel.innerHTML, /Staff who may update Resident Records complete this\./);
+  assert.match(panel.innerHTML, /Staff who manage voters complete this\./);
+});
+
+test('a failed check never blocks issuing, which enforces every rule itself', async () => {
+  const { context, fields } = await client();
+  const { panel, submit } = readinessFields(fields);
+  context.fetch = async () => ({ ok: false, json: async () => ({ message: 'Server error' }) });
+
+  await context.refreshReleaseReadiness();
+  assert.equal(panel.dataset.state, 'error');
+  assert.equal(submit.disabled, false);
+  assert.match(panel.innerHTML, /Issue &amp; Print still checks every requirement/);
+});
+
+test('completing missing information opens the saved resident record at the missing field, never a new record', async () => {
+  const { context, fields } = await client();
+  readinessFields(fields);
+  const requests = [];
+  const focused = [];
+  context.fetch = async url => { requests.push(url); return { ok: true, json: async () => ({ data: [{ id: 7, resident_number: 'ANB-2026-X', first_name: 'Ana', last_name: 'Reyes', full_name: 'Ana Reyes', household_id: 3, household: { household_number: 'HH-1', address: 'Purok 1' }, status: 'active' }] }) }; };
+  fields.set('res-nationality', { focus() { focused.push('res-nationality'); }, scrollIntoView() {} });
+  const opened = [];
+  vm.runInContext('fillResidentForm = resident => { filled = resident; }; var filled = null;', context);
+  context.openModal = id => opened.push(id);
+  vm.runInContext(`releaseReadiness = { ready: false, resident: { id: 7, resident_number: 'ANB-2026-X' }, items: [] };`, context);
+
+  await context.openResidentForCertificate('nationality');
+  assert.match(requests[0], /^\/staff\/residents\?search=ANB-2026-X/);
+  assert.equal(vm.runInContext('filled.databaseId', context), 7);
+  assert.equal(vm.runInContext('filled.householdId', context), 3);
+  assert.equal(vm.runInContext("RESIDENTS.filter(r => r.databaseId === 7).length", context), 1);
+  assert.deepEqual(opened, ['modal-resident']);
+  assert.deepEqual(focused, ['res-nationality']);
+});

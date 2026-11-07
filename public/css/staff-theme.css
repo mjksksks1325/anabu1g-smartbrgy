@@ -44,6 +44,9 @@
   --staff-quiet-hover: #eef3ef;
   --staff-danger: #b42318;
   --staff-danger-hover: #912018;
+  --staff-warning-bg: #fbf0dc;
+  --staff-warning-border: #e7c27a;
+  --staff-warning-ink: #6b4a00;
   --staff-focus: #17663a;
   --staff-shadow: 0 1px 2px rgba(16, 32, 24, .05), 0 4px 14px rgba(16, 32, 24, .06);
   --staff-shadow-raised: 0 18px 44px rgba(16, 32, 24, .2);
@@ -102,6 +105,9 @@ html[data-theme=dark], html.dark, body:not(.light-mode) #app.admin-interface.adm
   --staff-quiet-hover: #2b3136;
   --staff-danger: #c2392d;
   --staff-danger-hover: #d14a3e;
+  --staff-warning-bg: #3a2d0c;
+  --staff-warning-border: #6b5520;
+  --staff-warning-ink: #f0c96a;
   --staff-focus: #8fd4ab;
   --staff-shadow: 0 1px 2px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .035);
   --staff-shadow-raised: 0 24px 56px rgba(0, 0, 0, .6), 0 0 0 1px rgba(255, 255, 255, .04);
@@ -1060,3 +1066,22 @@ body #app.admin-interface.admin-interface .btn > svg.nav-icon { color: currentCo
    full-screen dark (#050e1a) overlay, which beats the hidden attribute, so every return to the Dashboard painted it
    until admin.js hid it after Livewire's navigated event: the black flash. Sign-in is the Fortify page now. */
 #login-screen[hidden] { display: none !important; }
+
+/* ── Print & Release checklist: what staff complete before a certificate can be issued ── */
+body[data-personnel-layout="admin"] .release-readiness { margin: 4px 0 16px; padding: 12px 14px; border: 1px solid var(--staff-warning-border); border-radius: 8px; background: var(--staff-warning-bg); color: var(--staff-ink); font-size: 13px; line-height: 1.45; }
+body[data-personnel-layout="admin"] .release-readiness[data-state="ready"] { border-color: var(--staff-border); background: var(--staff-active-bg); }
+body[data-personnel-layout="admin"] .release-readiness[data-state="loading"], body[data-personnel-layout="admin"] .release-readiness[data-state="error"] { border-color: var(--staff-border); background: var(--staff-soft); }
+body[data-personnel-layout="admin"] .release-readiness-title { margin: 0 0 8px; color: var(--staff-warning-ink); font-size: 14px; font-weight: 700; }
+body[data-personnel-layout="admin"] .release-readiness-status { margin: 0; color: var(--staff-muted); }
+body[data-personnel-layout="admin"] .release-readiness[data-state="ready"] .release-readiness-status { color: var(--staff-active-ink); font-weight: 600; }
+body[data-personnel-layout="admin"] .release-readiness-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+body[data-personnel-layout="admin"] .release-readiness-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 8px 10px; border: 1px solid var(--staff-border); border-radius: 6px; background: var(--staff-card); }
+body[data-personnel-layout="admin"] .release-readiness-kind { grid-column: 1; color: var(--staff-muted); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+body[data-personnel-layout="admin"] .release-readiness-text { grid-column: 1; overflow-wrap: anywhere; }
+body[data-personnel-layout="admin"] .release-readiness-action { grid-column: 2; grid-row: 1 / span 2; justify-self: end; }
+body[data-personnel-layout="admin"] .release-readiness-note { grid-column: 1 / -1; color: var(--staff-muted); font-size: 12px; }
+body[data-personnel-layout="admin"] .release-readiness-footer { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; margin-top: 10px; color: var(--staff-muted); font-size: 12px; }
+@media (max-width: 520px) {
+  body[data-personnel-layout="admin"] .release-readiness-item { grid-template-columns: minmax(0, 1fr); }
+  body[data-personnel-layout="admin"] .release-readiness-action { grid-column: 1; grid-row: auto; justify-self: start; }
+}
