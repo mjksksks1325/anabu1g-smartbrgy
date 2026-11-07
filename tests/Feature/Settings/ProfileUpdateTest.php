@@ -2,6 +2,7 @@
 
 use App\Livewire\Settings\Profile;
 use App\Models\User;
+use Livewire\Exceptions\ComponentNotFoundException;
 use Livewire\Livewire;
 
 test('profile page is displayed', function () {
@@ -180,7 +181,7 @@ test('the self-deletion endpoint no longer exists, so a direct Livewire call can
     $this->actingAs($user);
 
     expect(fn () => Livewire::test('settings.delete-user-form')->set('password', 'captain-password-123')->call('deleteUser'))
-        ->toThrow(\Livewire\Exceptions\ComponentNotFoundException::class);
+        ->toThrow(ComponentNotFoundException::class);
     expect(class_exists('App\Livewire\Settings\DeleteUserForm'))->toBeFalse()
         ->and($user->fresh())->not->toBeNull()
         ->and(auth()->check())->toBeTrue();
