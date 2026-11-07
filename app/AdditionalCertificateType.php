@@ -107,6 +107,12 @@ enum AdditionalCertificateType: string
         return in_array($this, [self::LowIncome, self::Probation, self::NationalIdRegistration, self::FourPsMoveOut], true);
     }
 
+    /** Whether staff attach evidence photographs (the Probation template's community-service page). */
+    public function acceptsEvidence(): bool
+    {
+        return $this === self::Probation;
+    }
+
     /** Whether the page carries the right thumb mark box and the resident's signature line. */
     public function hasResidentSignature(): bool
     {
@@ -285,7 +291,7 @@ enum AdditionalCertificateType: string
             self::Guardianship => ['How staff confirm guardianship and that the dependents live at the same address'],
             self::Cohabitation => ['How staff confirm the declared years together; the wording names the couple "husband and wife"'],
             self::FactOfBirth => ['How the child\'s birth details are verified; whether the other parent must also be a registered voter of legal age'],
-            self::Probation => ['How completed community service is confirmed; the photographs page of the template is not produced yet'],
+            self::Probation => ['How completed community service is confirmed, and what the photographs must show'],
             self::NationalIdRegistration => ['How the place of birth and parents\' names are confirmed'],
             self::FourPsMoveOut => ['Confirmation that the 4Ps beneficiary flag in Resident Records may be relied on'],
             self::NoObjection => ['The inspection the wording mentions, and the validity period (it depends on CENRO certification)'],

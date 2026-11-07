@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\CertificateEvidence;
 use App\Models\IssuedCertificate;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Collection;
@@ -31,8 +32,14 @@ class PurgeExpiredIssuedCertificates extends Command
                     continue;
                 }
 
+                // Its evidence photographs go with it, so they never fall back to being drafts.
+                $evidence = CertificateEvidence::query()->where('issued_certificate_id', $certificate->id)->get();
                 if (! $certificate->delete()) {
                     continue;
+                }
+                foreach ($evidence as $photograph) {
+                    $photograph->delete();
+                    Storage::disk('local')->delete($photograph->path);
                 }
 
                 $purgedCount++;

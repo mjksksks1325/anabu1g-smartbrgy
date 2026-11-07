@@ -8,6 +8,7 @@ use App\CertificateDocument;
 use App\Exceptions\CertificateIssuanceException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AdditionalCertificateRequest;
+use App\Models\CertificateEvidence;
 use App\Models\Resident;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
@@ -37,14 +38,21 @@ class AdditionalCertificateController extends Controller
         $search = $request->validate([
             'resident_search' => ['nullable', 'string', 'max:100'],
             'partner_search' => ['nullable', 'string', 'max:100'],
+            'resident_id' => ['nullable', 'integer'],
         ]);
+        $chosenId = old('resident_id', $search['resident_id'] ?? null);
+        $chosen = is_numeric($chosenId) ? Resident::query()->find((int) $chosenId) : null;
 
         return view('admin.additional-certificates.create', [
             'type' => $certificateType,
             'residentSearch' => $search['resident_search'] ?? '',
             'partnerSearch' => $search['partner_search'] ?? '',
-            'residents' => $this->matchingResidents($search['resident_search'] ?? null, old('resident_id')),
+            'residents' => $this->matchingResidents($search['resident_search'] ?? null, $chosen?->id),
             'partners' => $certificateType->needsPartner() ? $this->matchingResidents($search['partner_search'] ?? null, old('partner_resident_id')) : null,
+            'chosenResident' => $chosen,
+            'evidence' => $chosen !== null && $certificateType->acceptsEvidence()
+                ? CertificateEvidence::query()->draftFor($chosen, $certificateType->value)->get()
+                : new Collection,
         ]);
     }
 
@@ -60,9 +68,12 @@ class AdditionalCertificateController extends Controller
         ['certificate' => $certificate, 'problems' => $problems, 'missing' => $missing, 'photo' => $photo] = $issue->prepare($certificateType, $resident, $partner, $request->certificateDetails());
 
         if ($problems !== [] || $missing !== []) {
+            $recordDetails = array_values(array_diff($missing, [IssueAdditionalCertificate::EVIDENCE_LABEL]));
+
             return back()->withInput()->withErrors(['certificate' => [
                 ...$problems,
-                ...($missing === [] ? [] : ['Complete these details in Resident Records first: '.implode(', ', $missing).'.']),
+                ...($recordDetails === [] ? [] : ['Complete these details in Resident Records first: '.implode(', ', $recordDetails).'.']),
+                ...(in_array(IssueAdditionalCertificate::EVIDENCE_LABEL, $missing, true) ? ['Upload at least one community service photograph in step 3.'] : []),
             ]]);
         }
 

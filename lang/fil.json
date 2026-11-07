@@ -2426,5 +2426,10 @@
     "Certificate revoked.": "Nabawi na ang certificate.",
     "Certificate revoked. It stays on record, cannot be printed, and QR verification shows it as revoked.": "Nabawi na ang certificate. Mananatili ito sa record, hindi na maipi-print, at ipapakita ng QR verification na binawi na ito.",
     "This certificate was already revoked.": "Nabawi na dati ang certificate na ito.",
-    "Other official certificates (staff only): Low Income, Guardianship, Cohabitation, Fact of Birth, Probation, National ID, 4Ps Move-Out, No Objection, Nonagenarian": "Iba pang opisyal na certificate (staff lamang): Low Income, Guardianship, Cohabitation, Fact of Birth, Probation, National ID, 4Ps Move-Out, No Objection, Nonagenarian"
+    "Other official certificates (staff only): Low Income, Guardianship, Cohabitation, Fact of Birth, Probation, National ID, 4Ps Move-Out, No Objection, Nonagenarian": "Iba pang opisyal na certificate (staff lamang): Low Income, Guardianship, Cohabitation, Fact of Birth, Probation, National ID, 4Ps Move-Out, No Objection, Nonagenarian",
+    "Each file must be a real JPEG, PNG or WebP photograph.": "Dapat totoong JPEG, PNG o WebP na litrato ang bawat file.",
+    "A certificate holds at most :max photographs. Remove one before adding more.": "Hanggang :max litrato lang ang kaya ng isang certificate. Magtanggal muna bago magdagdag.",
+    ":count photograph added.|:count photographs added.": ":count litrato ang naidagdag.|:count litrato ang naidagdag.",
+    "Photograph removed.": "Natanggal ang litrato.",
+    "This photograph belongs to an issued certificate and cannot be removed.": "Kasama ang litratong ito sa na-issue na certificate kaya hindi ito matatanggal."
 }

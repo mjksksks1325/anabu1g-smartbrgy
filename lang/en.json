@@ -2258,5 +2258,10 @@
     "Certificate revoked.": "Certificate revoked.",
     "Certificate revoked. It stays on record, cannot be printed, and QR verification shows it as revoked.": "Certificate revoked. It stays on record, cannot be printed, and QR verification shows it as revoked.",
     "This certificate was already revoked.": "This certificate was already revoked.",
-    "Other official certificates (staff only): Low Income, Guardianship, Cohabitation, Fact of Birth, Probation, National ID, 4Ps Move-Out, No Objection, Nonagenarian": "Other official certificates (staff only): Low Income, Guardianship, Cohabitation, Fact of Birth, Probation, National ID, 4Ps Move-Out, No Objection, Nonagenarian"
+    "Other official certificates (staff only): Low Income, Guardianship, Cohabitation, Fact of Birth, Probation, National ID, 4Ps Move-Out, No Objection, Nonagenarian": "Other official certificates (staff only): Low Income, Guardianship, Cohabitation, Fact of Birth, Probation, National ID, 4Ps Move-Out, No Objection, Nonagenarian",
+    "Each file must be a real JPEG, PNG or WebP photograph.": "Each file must be a real JPEG, PNG or WebP photograph.",
+    "A certificate holds at most :max photographs. Remove one before adding more.": "A certificate holds at most :max photographs. Remove one before adding more.",
+    ":count photograph added.|:count photographs added.": ":count photograph added.|:count photographs added.",
+    "Photograph removed.": "Photograph removed.",
+    "This photograph belongs to an issued certificate and cannot be removed.": "This photograph belongs to an issued certificate and cannot be removed."
 }

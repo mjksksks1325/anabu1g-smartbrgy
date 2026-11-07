@@ -5,6 +5,7 @@ namespace App\Actions;
 use App\AdditionalCertificateType;
 use App\CertificateDocument;
 use App\Exceptions\CertificateIssuanceException;
+use App\Models\CertificateEvidence;
 use App\Models\IssuedCertificate;
 use App\Models\Resident;
 use F9WebLtd\QrCode\Generator;
@@ -19,6 +20,8 @@ use Throwable;
  */
 class IssueAdditionalCertificate
 {
+    public const EVIDENCE_LABEL = 'Community service photographs';
+
     public function __construct(
         private readonly FilesystemManager $filesystem,
         private readonly Generator $qrCode,
@@ -28,7 +31,7 @@ class IssueAdditionalCertificate
      * The certificate as it would be issued now (unsaved), with what still stands in the way.
      *
      * @param  array<string, mixed>  $details
-     * @return array{certificate: IssuedCertificate, problems: list<string>, missing: list<string>, photo: string|null}
+     * @return array{certificate: IssuedCertificate, problems: list<string>, missing: list<string>, photo: string|null, evidence: list<string>}
      */
     public function prepare(AdditionalCertificateType $type, Resident $resident, ?Resident $partner, array $details): array
     {
@@ -54,6 +57,15 @@ class IssueAdditionalCertificate
         if ($type->requiresPhoto() && $photo === null) {
             $missing[] = 'Resident photo';
         }
+        $evidence = $type->acceptsEvidence()
+            ? array_values(array_map(strval(...), CertificateEvidence::query()->draftFor($resident, $type->value)->pluck('uuid')->all()))
+            : [];
+        if ($type->acceptsEvidence()) {
+            $snapshot['evidence'] = $evidence;
+            if ($evidence === []) {
+                $missing[] = self::EVIDENCE_LABEL;
+            }
+        }
 
         $certificate = new IssuedCertificate([
             'resident_id' => $resident->id,
@@ -73,6 +85,7 @@ class IssueAdditionalCertificate
             'problems' => $type->eligibilityProblems($resident, $partner, $details, $issuedAt),
             'missing' => $missing,
             'photo' => $photo,
+            'evidence' => $evidence,
         ];
     }
 
@@ -92,13 +105,13 @@ class IssueAdditionalCertificate
             return DB::transaction(function () use ($type, $residentId, $partnerId, $details, $issuedBy, &$qrStoragePath, &$photoStoragePath): IssuedCertificate {
                 $resident = Resident::query()->lockForUpdate()->findOrFail($residentId);
                 $partner = $partnerId === null ? null : Resident::query()->find($partnerId);
-                ['certificate' => $certificate, 'problems' => $problems, 'missing' => $missing, 'photo' => $photo] = $this->prepare($type, $resident, $partner, $details);
+                ['certificate' => $certificate, 'problems' => $problems, 'missing' => $missing, 'photo' => $photo, 'evidence' => $evidence] = $this->prepare($type, $resident, $partner, $details);
 
                 if ($problems !== []) {
                     throw CertificateIssuanceException::residentIsNotEligible($problems[0]);
                 }
                 if ($missing !== []) {
-                    throw CertificateIssuanceException::incompleteDetails($missing, 'Update the resident record in Resident Records first.');
+                    throw CertificateIssuanceException::incompleteDetails($missing, $missing === [self::EVIDENCE_LABEL] ? 'Upload at least one community service photograph.' : 'Update the resident record in Resident Records first.');
                 }
 
                 $certificateNumber = 'CERT-'.now()->format('Y').'-'.Str::upper(Str::random(8));
@@ -123,6 +136,14 @@ class IssueAdditionalCertificate
                     'photo_path' => $photoStoragePath,
                     'issued_by' => $issuedBy,
                 ])->save();
+
+                if ($evidence !== []) {
+                    $linked = CertificateEvidence::query()->whereIn('uuid', $evidence)->whereNull('issued_certificate_id')
+                        ->where('resident_id', $resident->id)->update(['issued_certificate_id' => $certificate->id]);
+                    if ($linked !== count($evidence)) {
+                        throw CertificateIssuanceException::invalidDetail('The evidence photographs changed while issuing. Review them and try again.');
+                    }
+                }
 
                 return $certificate;
             });

@@ -3,6 +3,7 @@
 use App\AdditionalCertificateType;
 use App\CertificateDocument;
 use App\CertificateType;
+use App\Models\CertificateEvidence;
 use App\Models\Household;
 use App\Models\IssuedCertificate;
 use App\Models\Resident;
@@ -62,6 +63,9 @@ function additionalCertificateCases(): array
 function additionalCertificateForm(AdditionalCertificateType $type, Resident $resident, array $details): array
 {
     $form = ['resident_id' => $resident->id, 'details' => $details];
+    if ($type->acceptsEvidence()) {
+        CertificateEvidence::factory()->create(['resident_id' => $resident->id, 'certificate_type' => $type->value]);
+    }
     if ($type->needsPartner()) {
         $partner = eligibleResident(['first_name' => 'Pedro', 'middle_name' => null, 'last_name' => 'Santos', 'gender' => 'Male', 'household_id' => $resident->household_id]);
         $form['partner_resident_id'] = $partner->id;
