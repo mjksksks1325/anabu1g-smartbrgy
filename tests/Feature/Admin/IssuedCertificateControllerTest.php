@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\VoterRegistration;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Filesystem\FilesystemManager;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -74,14 +75,15 @@ it('issues every supported online request with the server fee and a real QR file
     int $expectedFee,
 ) {
     Storage::fake('public');
+    Storage::fake('local');
     $user = User::factory()->assignedOperations()->create(['name' => 'Records Officer']);
-    $resident = null;
-    if (in_array($certificateType, [CertificateType::CertificateOfIndigency, CertificateType::RegisteredVoterCertification], true)) {
-        $resident = Resident::factory()->create(['is_verified_indigent' => true, 'is_in_good_standing' => true]);
-        VoterRegistration::factory()->create(['resident_id' => $resident->id]);
-    }
+    $resident = Resident::factory()->create([
+        'date_of_birth' => '1990-01-01', 'nationality' => 'Filipino', 'is_verified_indigent' => true, 'is_in_good_standing' => true,
+        'photo_path' => UploadedFile::fake()->image('resident.jpg')->store('resident-photos', 'local'),
+    ]);
+    VoterRegistration::factory()->create(['resident_id' => $resident->id]);
     $documentRequest = DocumentRequest::query()->create([
-        'resident_id' => $resident?->id,
+        'resident_id' => $resident->id,
         'reference_code' => 'REQ-'.Str::upper(Str::random(12)),
         'document_type' => $certificateType->value,
         'full_name' => 'Maria Santos',
@@ -91,7 +93,7 @@ it('issues every supported online request with the server fee and a real QR file
     ]);
 
     $response = $this->actingAs($user)
-        ->postJson(route('staff.document-requests.issue', $documentRequest));
+        ->postJson(route('staff.document-requests.issue', $documentRequest), ['residing_since' => '2000-01', 'years_of_residency' => 20]);
 
     $response
         ->assertOk()
@@ -144,6 +146,7 @@ it('links an onsite certificate to an eligible resident record', function () {
         'first_name' => 'Ana',
         'middle_name' => null,
         'last_name' => 'Reyes',
+        'date_of_birth' => '1990-01-01',
     ]);
 
     $this->actingAs($user)->postJson(route('staff.issued-certificates.store'), [
@@ -151,6 +154,8 @@ it('links an onsite certificate to an eligible resident record', function () {
         'certificate_type' => CertificateType::CertificateOfResidency->value,
         'resident_name' => 'Client supplied name is replaced',
         'address' => $resident->address,
+        'purpose' => 'School enrollment',
+        'residing_since' => '2000-01',
     ])->assertOk()
         ->assertJsonPath('certificate.resident_id', $resident->id)
         ->assertJsonPath('certificate.resident_name', 'Ana Reyes');
@@ -237,9 +242,10 @@ it('returns 409 and keeps one certificate when the same request is issued twice'
     $user = User::factory()->assignedOperations()->create();
     $documentRequest = DocumentRequest::query()->create([
         'reference_code' => 'REQ-2026-DUPLICATE',
-        'document_type' => CertificateType::CertificateOfResidency->value,
+        'document_type' => CertificateType::BarangayClearance->value,
         'full_name' => 'Juan Dela Cruz',
         'address' => 'Anabu I-G, Imus City',
+        'purpose' => 'Employment',
         'status' => 'ready_for_release',
     ]);
 
@@ -270,6 +276,7 @@ it('rolls back issuance and request release when the QR file cannot be saved', f
         'document_type' => CertificateType::BarangayClearance->value,
         'full_name' => 'Juan Dela Cruz',
         'address' => 'Anabu I-G, Imus City',
+        'purpose' => 'Employment',
         'status' => 'ready_for_release',
     ]);
 
@@ -298,6 +305,8 @@ it('renders the matching print template for every certificate type', function (
         'issued_at' => now(),
         'issued_by' => 'Records Officer',
         'qr_code_path' => '/storage/qrcodes/test.svg',
+        'photo_path' => 'certificate-photos/test.jpg',
+        'resident_snapshot' => completeCertificateSnapshot(['full_name' => 'Maria Santos']),
     ]);
 
     $response = $this->actingAs($user)
@@ -361,6 +370,7 @@ it('escapes resident-provided content on public verification and print pages', f
         'purpose' => $dangerousName,
         'amount_paid' => 50,
         'issued_at' => now(),
+        'resident_snapshot' => ['full_name' => $dangerousName, 'address' => $dangerousName],
     ]);
 
     $this->get(route('certificate.verify', $certificate->verification_code))

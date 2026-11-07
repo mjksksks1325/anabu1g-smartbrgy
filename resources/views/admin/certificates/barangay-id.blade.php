@@ -18,6 +18,7 @@
         .id-title { display: block; margin-top: .45mm; color: #163650; font-size: 5.2pt; font-weight: bold; letter-spacing: .1pt; }
         .id-body { display: flex; gap: 2mm; padding: 1.6mm .7mm 0; }
         .photo { flex: 0 0 auto; width: 18mm; height: 21mm; border: .25mm solid #163650; object-fit: cover; }
+        .photo-missing { display: flex; align-items: center; justify-content: center; padding: 1mm; color: #4b5563; font: 4.5pt/1.2 Arial, sans-serif; text-align: center; }
         .details { min-width: 0; flex: 1; padding-top: .2mm; font-size: 5.5pt; line-height: 1.18; }
         .name { display: block; max-height: 7mm; margin-bottom: 1mm; overflow: hidden; color: #163650; font-size: 8pt; font-weight: bold; line-height: 1.05; text-transform: uppercase; overflow-wrap: anywhere; }
         .field { display: flex; gap: 1mm; margin-top: .65mm; }
@@ -63,7 +64,11 @@
     </header>
 
     <section class="id-body" aria-label="Resident identity details">
-        <img class="photo" src="{{ $certificate->photo_path ? route('staff.issued-certificates.photo', $certificate) : asset('images/official-placeholder.svg') }}" alt="{{ $certificate->photo_path ? 'Resident photo at issuance' : 'Resident photo not provided' }}">
+        @if ($certificate->photo_path)
+            <img class="photo" src="{{ route('staff.issued-certificates.photo', $certificate) }}" alt="Resident photo at issuance">
+        @else
+            <div class="photo photo-missing">No photo on file</div>
+        @endif
         <div class="details">
             <strong class="name">{{ $certificate->resident_name }}</strong>
             <div class="field"><strong>ID No.:</strong><span>{{ $certificate->certificate_number }}</span></div>

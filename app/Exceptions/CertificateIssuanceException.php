@@ -36,6 +36,19 @@ class CertificateIssuanceException extends Exception
         return new self($reason, 422);
     }
 
+    /**
+     * @param  list<string>  $missingDetails  Labels of the details the printed certificate needs.
+     */
+    public static function incompleteDetails(array $missingDetails, ?string $hint = null): self
+    {
+        return new self(trim('Complete these details before issuing this certificate: '.implode(', ', $missingDetails).'. '.$hint), 422);
+    }
+
+    public static function invalidDetail(string $message): self
+    {
+        return new self($message, 422);
+    }
+
     public function httpStatus(): int
     {
         return $this->httpStatus;

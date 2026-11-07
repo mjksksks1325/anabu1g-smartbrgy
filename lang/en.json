@@ -975,9 +975,9 @@
     "Supported image files only, up to 5 MB. Documents are not accepted. Select the photo again after a validation error or correction.": "Supported image files only, up to 5 MB. Documents are not accepted. Select the photo again after a validation error or correction.",
     "Upload a clear photo of your face. Supported image files only, up to 5 MB. Select the photo again if you need to correct the form.": "Upload a clear photo of your face. Supported image files only, up to 5 MB. Select the photo again if you need to correct the form.",
     "Clear resident photo (supported image files; up to 5 MB)": "Clear resident photo (supported image files; up to 5 MB)",
-    "Certificates and QR verification are valid for three months from issue. Barangay IDs and their QR verification are valid for one year.": "Certificates and QR verification are valid for three months from issue. Barangay IDs and their QR verification are valid for one year.",
-    "The official fee is set by the server. Certificates and QR verification are valid for three months from issue. Barangay IDs and their QR verification are valid for one year.": "The official fee is set by the server. Certificates and QR verification are valid for three months from issue. Barangay IDs and their QR verification are valid for one year.",
-    "Applicable document fees are paid at the Barangay Hall. Online requests remain valid for 30 days from submission. Issued certificates are valid for three months from issue; Barangay IDs are valid for one year. QR verification follows the document's validity period.": "Applicable document fees are paid at the Barangay Hall. Online requests remain valid for 30 days from submission. Issued certificates are valid for three months from issue; Barangay IDs are valid for one year. QR verification follows the document's validity period.",
+    "Certificates and QR verification are valid for three months from issue. First Time Jobseeker certificates, Barangay IDs and their QR verification are valid for one year.": "Certificates and QR verification are valid for three months from issue. First Time Jobseeker certificates, Barangay IDs and their QR verification are valid for one year.",
+    "The official fee is set by the server. Certificates and QR verification are valid for three months from issue. First Time Jobseeker certificates, Barangay IDs and their QR verification are valid for one year.": "The official fee is set by the server. Certificates and QR verification are valid for three months from issue. First Time Jobseeker certificates, Barangay IDs and their QR verification are valid for one year.",
+    "Applicable document fees are paid at the Barangay Hall. Online requests remain valid for 30 days from submission. Issued certificates are valid for three months from issue; First Time Jobseeker certificates and Barangay IDs are valid for one year. QR verification follows the document's validity period.": "Applicable document fees are paid at the Barangay Hall. Online requests remain valid for 30 days from submission. Issued certificates are valid for three months from issue; First Time Jobseeker certificates and Barangay IDs are valid for one year. QR verification follows the document's validity period.",
     "(walang detalye)": "(no details)",
     "Address ng Resident": "Resident Address",
     "Buksan ang Attachment": "Open Attachment",
@@ -2236,5 +2236,10 @@
     "Leave blank to keep the current password. A new password must meet every requirement below.": "Leave blank to keep the current password. A new password must meet every requirement below.",
     "Not found in a known data breach (checked when you save)": "Not found in a known data breach (checked when you save)",
     "At least 12 characters, with an uppercase and a lowercase letter, a number and a symbol (a period counts).": "At least 12 characters, with an uppercase and a lowercase letter, a number and a symbol (a period counts).",
-    "It must not appear in a known data breach.": "It must not appear in a known data breach."
+    "It must not appear in a known data breach.": "It must not appear in a known data breach.",
+    "Resident since (month and year)": "Resident since (month and year)",
+    "Years of residency in Anabu I-G": "Years of residency in Anabu I-G",
+    "Printed on the Certificate of Residency. Confirm it with the resident before issuing.": "Printed on the Certificate of Residency. Confirm it with the resident before issuing.",
+    "Printed on the First Time Jobseeker certification and Oath of Undertaking. Confirm it with the resident before issuing.": "Printed on the First Time Jobseeker certification and Oath of Undertaking. Confirm it with the resident before issuing.",
+    "Preview certificate": "Preview certificate"
 }

@@ -693,12 +693,53 @@ const CERTIFICATE_TYPES = [
   { id: 'BBC',  label: 'Business Clearance',        icon: '', days: '3-5 days' },
 ];
 
-/** The server's fee entry for a certificate name; tolerant of case, spacing and "Job Seeker". */
-function certificateFee(type) {
+/** The entry for a certificate name in a server-provided map; tolerant of case, spacing and "Job Seeker". */
+function certificateEntry(entries, type) {
   const normalize = text => String(text || '').trim().toLowerCase().replace(/\s+/g, ' ').replace('job seeker', 'jobseeker');
-  const fees = window.CERTIFICATE_FEES || {};
-  const key = Object.keys(fees).find(name => normalize(name) === normalize(type));
-  return key ? fees[key] : null;
+  const key = Object.keys(entries || {}).find(name => normalize(name) === normalize(type));
+  return key ? entries[key] : null;
+}
+
+/** The server's fee entry for a certificate name. */
+function certificateFee(type) {
+  return certificateEntry(window.CERTIFICATE_FEES, type);
+}
+
+/**
+ * Details staff confirm when issuing a certificate whose template prints them (App\CertificateType::staffEnteredDetails(),
+ * passed as window.CERTIFICATE_STAFF_DETAILS): "residing_since" for Residency, "years_of_residency" for First Time Jobseeker.
+ */
+function certificateStaffDetails(type) {
+  return certificateEntry(window.CERTIFICATE_STAFF_DETAILS, type) || [];
+}
+
+/** Shows, and requires, only the detail fields the chosen certificate prints; hidden ones are cleared. */
+function syncCertificateDetailFields(container, type) {
+  const needed = certificateStaffDetails(type);
+  (container?.querySelectorAll('[data-certificate-detail]') || []).forEach(group => {
+    const shown = needed.includes(group.dataset.certificateDetail);
+    const input = group.querySelector('input');
+    group.hidden = !shown;
+    if (!input) return;
+    input.required = shown;
+    if (!shown) input.value = '';
+  });
+}
+
+/** The visible detail fields as the issue endpoints expect them. */
+function certificateDetailPayload(container) {
+  const payload = {};
+  (container?.querySelectorAll('[data-certificate-detail]:not([hidden]) input') || []).forEach(input => {
+    const detail = input.closest('[data-certificate-detail]').dataset.certificateDetail;
+    payload[detail] = input.value === '' ? null : (input.type === 'number' ? Number(input.value) : input.value);
+  });
+  return payload;
+}
+
+/** The first visible detail field that is empty or invalid, so staff can complete it before issuing. */
+function incompleteCertificateDetail(container) {
+  return [...(container?.querySelectorAll('[data-certificate-detail]:not([hidden]) input') || [])]
+    .find(input => input.value === '' || (typeof input.checkValidity === 'function' && !input.checkValidity())) || null;
 }
 
 /** "PHP 25.00", "Free", or for a fee the barangay has not confirmed "PHP 200.00 (not yet confirmed)". */
@@ -1486,13 +1527,18 @@ function printCert(code) {
   document.getElementById('print-resident-name').value = req.name || '';
   document.getElementById('print-purpose').value = req.purpose || '';
   document.getElementById('print-amount-paid').value = certificateFeeText(req.type);
+  const modal = document.getElementById('modal-print-release');
+  (modal?.querySelectorAll('[data-certificate-detail] input') || []).forEach(input => { input.value = ''; });
+  syncCertificateDetailFields(modal, req.type);
 
   openModal('modal-print-release');
 }
 
 function updateManualCertificateFee() {
+  const type = document.getElementById('manual-certificate-type')?.value;
   const feeInput = document.getElementById('manual-certificate-fee');
-  if (feeInput) feeInput.value = certificateFeeText(document.getElementById('manual-certificate-type')?.value);
+  if (feeInput) feeInput.value = certificateFeeText(type);
+  syncCertificateDetailFields(document.getElementById('manual-certificate-form'), type);
 }
 
 async function issueManualCertificate(event) {
@@ -1521,7 +1567,8 @@ async function issueManualCertificate(event) {
         resident_id: Number(document.getElementById('manual-resident-id')?.value) || null,
         resident_name: document.getElementById('manual-resident-name')?.value.trim(),
         address: document.getElementById('manual-resident-address')?.value.trim() || null,
-        purpose: document.getElementById('manual-certificate-purpose')?.value.trim() || null
+        purpose: document.getElementById('manual-certificate-purpose')?.value.trim() || null,
+        ...certificateDetailPayload(document.getElementById('manual-certificate-form'))
       })
     });
     const data = await response.json();
@@ -4529,11 +4576,35 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
+/**
+ * Opens what issuing the selected request would print, with the residency detail typed so far. Nothing is issued:
+ * the preview has no QR code, carries a "not valid" watermark and cannot be printed.
+ */
+function previewCertificateRelease() {
+  const requestId = document.getElementById('print-document-request-id')?.value;
+  if (!requestId) {
+    showToast('Missing document request ID.', 'red');
+    return;
+  }
+
+  const details = certificateDetailPayload(document.getElementById('modal-print-release'));
+  const query = new URLSearchParams(Object.entries(details).filter(([, value]) => value !== null).map(([key, value]) => [key, String(value)]));
+  window.open(`/staff/document-requests/${encodeURIComponent(requestId)}/certificate-preview${query.size ? `?${query}` : ''}`, '_blank', 'noopener');
+}
+
 async function confirmPrintRelease() {
   const requestId = document.getElementById('print-document-request-id')?.value;
 
   if (!requestId) {
     showToast('Missing document request ID.', 'red');
+    return;
+  }
+
+  const modal = document.getElementById('modal-print-release');
+  const incompleteDetail = incompleteCertificateDetail(modal);
+  if (incompleteDetail) {
+    incompleteDetail.reportValidity?.();
+    incompleteDetail.focus?.();
     return;
   }
 
@@ -4552,7 +4623,7 @@ async function confirmPrintRelease() {
       {
         method: 'POST',
         credentials: 'same-origin',
-        body: JSON.stringify({}),
+        body: JSON.stringify(certificateDetailPayload(modal)),
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',

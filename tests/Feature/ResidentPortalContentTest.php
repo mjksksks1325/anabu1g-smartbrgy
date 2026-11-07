@@ -136,7 +136,7 @@ test('each requestable document shows its system fee and certificate validity', 
     foreach (CertificateType::cases() as $index => $type) {
         $text = preg_replace('/\s+/', ' ', $options->item($index)->textContent);
         expect($text)->toContain($type->value, $type->feeLabel() === 'Walang bayad' ? 'Free' : $type->feeLabel())
-            ->toContain($type === CertificateType::BarangayId ? 'Valid for 1 year from issue' : 'Valid for 3 months from issue');
+            ->toContain(in_array($type, [CertificateType::BarangayId, CertificateType::FirstTimeJobseeker], true) ? 'Valid for 1 year from issue' : 'Valid for 3 months from issue');
         expect(str_contains($text, 'To be confirmed'))->toBe($type === CertificateType::BusinessClearance);
     }
 });

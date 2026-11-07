@@ -220,6 +220,8 @@ Route::middleware(['auth:web', 'can:operate-personnel', EnsureStaffAccess::class
 
     Route::post('/document-requests/{documentRequest}/issue', [IssuedCertificateController::class, 'issueFromRequest']
     )->name('document-requests.issue');
+    Route::get('/document-requests/{documentRequest}/certificate-preview', [IssuedCertificateController::class, 'preview'])
+        ->name('document-requests.certificate-preview');
 
     Route::get('/issued-certificates/{issuedCertificate}/photo', [IssuedCertificateController::class, 'photo'])->name('issued-certificates.photo');
     Route::get('/issued-certificates/{issuedCertificate}/print', [IssuedCertificateController::class, 'print']

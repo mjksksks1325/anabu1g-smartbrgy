@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Actions\IssueCertificate;
+use App\CertificateDocument;
 use App\CertificateType;
 use App\Exceptions\CertificateIssuanceException;
 use App\Http\Controllers\Controller;
@@ -13,10 +14,10 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class IssuedCertificateController extends Controller
@@ -87,12 +88,15 @@ class IssuedCertificateController extends Controller
         IssueCertificate $issueCertificate,
     ): JsonResponse|RedirectResponse {
         Gate::authorize('documents.issue');
+        $details = $request->validate(StoreIssuedCertificateRequest::staffEnteredDetailRules());
         try {
             $certificate = $issueCertificate->handle(
                 attributes: [
                     'certificate_type' => $documentRequest->document_type,
                     'resident_name' => $documentRequest->full_name,
                     'purpose' => $documentRequest->purpose,
+                    'residing_since' => $details['residing_since'] ?? null,
+                    'years_of_residency' => isset($details['years_of_residency']) ? (int) $details['years_of_residency'] : null,
                 ],
                 documentRequest: $documentRequest,
                 issuedBy: $request->user()->name,
@@ -105,13 +109,80 @@ class IssuedCertificateController extends Controller
         return $this->issuanceSuccessResponse($request, $certificate);
     }
 
-    public function print(IssuedCertificate $issuedCertificate): View
+    /**
+     * What issuing this request would print, built from the same details issuance would freeze, so staff can check
+     * it first. Nothing is saved: no certificate number, no QR code, a "not valid" watermark and printing disabled.
+     * Missing details and eligibility problems are listed instead of previewed.
+     */
+    public function preview(Request $request, DocumentRequest $documentRequest, IssueCertificate $issueCertificate): Response
+    {
+        Gate::authorize('documents.issue');
+        $details = $request->validate(StoreIssuedCertificateRequest::staffEnteredDetailRules());
+        $certificateType = CertificateType::tryFromLabel((string) $documentRequest->document_type);
+        $resident = $documentRequest->resident;
+        $previewCertificate = new IssuedCertificate([
+            'certificate_type' => $certificateType->value ?? $documentRequest->document_type,
+            'resident_name' => $resident->full_name ?? $documentRequest->full_name,
+            'purpose' => $documentRequest->purpose,
+            'issued_at' => now(),
+        ]);
+        $problems = match (true) {
+            $certificateType === null => ['This certificate type is not supported.'],
+            $certificateType === CertificateType::BarangayId => ['Barangay ID cards have no preview. Issue the request to print the card.'],
+            $resident === null && in_array($certificateType, [CertificateType::RegisteredVoterCertification, CertificateType::CertificateOfIndigency], true) => ['Select a verified resident record for this certificate.'],
+            $resident !== null && ! $resident->certificateEligibility($certificateType)['eligible'] => $resident->certificateEligibility($certificateType)['reasons'],
+            default => [],
+        };
+
+        if ($certificateType === null || $problems !== []) {
+            return response()->view('admin.certificates.incomplete', ['certificate' => $previewCertificate, 'missingDetails' => [], 'problems' => $problems, 'isPreview' => true], 422);
+        }
+
+        $snapshot = $issueCertificate->snapshot($certificateType, $resident, [
+            'resident_name' => $documentRequest->full_name,
+            'residing_since' => $details['residing_since'] ?? null,
+            'years_of_residency' => isset($details['years_of_residency']) ? (int) $details['years_of_residency'] : null,
+        ], $documentRequest);
+        $disk = Storage::disk('local');
+        $photo = $resident?->photo_path !== null && $disk->exists($resident->photo_path) ? $resident->photo_path : null;
+        $missingDetails = CertificateDocument::missingFor($certificateType, $snapshot, $documentRequest->purpose, $photo !== null);
+
+        if ($missingDetails !== []) {
+            return response()->view('admin.certificates.incomplete', ['certificate' => $previewCertificate, 'missingDetails' => $missingDetails, 'problems' => [], 'isPreview' => true], 422);
+        }
+
+        $previewCertificate->forceFill([
+            'resident_snapshot' => $snapshot,
+            'photo_path' => $photo,
+            'expires_on' => now()->addMonthsNoOverflow($certificateType->validityPeriodInMonths())->toDateString(),
+        ]);
+        $photoUrl = $photo === null ? null : 'data:'.$disk->mimeType($photo).';base64,'.base64_encode((string) $disk->get($photo));
+
+        return response()->view($certificateType->printView(), [
+            'certificate' => $previewCertificate,
+            'document' => new CertificateDocument($previewCertificate, isPreview: true, previewPhotoUrl: $photoUrl),
+            'isPreview' => true,
+        ])->header('Cache-Control', 'private, no-store');
+    }
+
+    /**
+     * The printable certificate in its official layout. A certificate whose record lacks a detail its template
+     * states is not printed: staff see which details are missing instead.
+     */
+    public function print(IssuedCertificate $issuedCertificate): Response
     {
         Gate::authorize('documents.print');
-        $view = CertificateType::tryFromLabel($issuedCertificate->certificate_type)?->printView()
-            ?? 'admin.certificates.print';
+        $document = new CertificateDocument($issuedCertificate);
+        $missingDetails = $document->missingDetails();
 
-        return view($view, ['certificate' => $issuedCertificate]);
+        if ($missingDetails !== []) {
+            return response()->view('admin.certificates.incomplete', ['certificate' => $issuedCertificate, 'missingDetails' => $missingDetails], 409);
+        }
+
+        return response()->view($document->type()?->printView() ?? 'admin.certificates.print', [
+            'certificate' => $issuedCertificate,
+            'document' => $document,
+        ]);
     }
 
     public function photo(IssuedCertificate $issuedCertificate): StreamedResponse

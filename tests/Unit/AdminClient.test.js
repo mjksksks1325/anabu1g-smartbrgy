@@ -154,6 +154,107 @@ test('online release displays the voter certification fee without a custom expir
   assert.equal(fields.get('print-amount-paid').value, 'PHP 25.00');
 });
 
+/** Mirrors App\CertificateType::staffEnteredDetails(), passed as window.CERTIFICATE_STAFF_DETAILS. */
+const STAFF_DETAILS = {
+  'Barangay Clearance': [], 'Certificate of Residency': ['residing_since'], 'Certificate of Indigency': [],
+  'Registered Voter Certification': [], 'Barangay ID': [], 'First Time Jobseeker': ['years_of_residency'], 'Business Clearance': [],
+};
+
+/** A dialog holding the two staff-entered detail groups, as the dashboard renders them. */
+function detailContainer() {
+  const groups = ['residing_since', 'years_of_residency'].map(detail => {
+    const group = { hidden: true, dataset: { certificateDetail: detail } };
+    group.input = {
+      value: '', required: false, type: detail === 'years_of_residency' ? 'number' : 'month', focused: false,
+      closest: () => group, checkValidity() { return this.value !== ''; }, reportValidity() {}, focus() { this.focused = true; },
+    };
+    group.querySelector = () => group.input;
+    return group;
+  });
+  return {
+    groups,
+    querySelectorAll(selector) {
+      const visible = selector.includes(':not([hidden])') ? groups.filter(group => !group.hidden) : groups;
+      return selector.endsWith('input') ? visible.map(group => group.input) : visible;
+    },
+  };
+}
+
+test('releasing a request asks only for the residency detail its certificate prints and sends it with the issue request', async () => {
+  const { context, fields } = await client();
+  context.window.CERTIFICATE_FEES = FEE_SCHEDULE;
+  context.window.CERTIFICATE_STAFF_DETAILS = STAFF_DETAILS;
+  const modal = detailContainer();
+  const [since, years] = modal.groups;
+  fields.set('modal-print-release', modal);
+  for (const id of ['print-document-request-id', 'print-certificate-type', 'print-resident-name', 'print-purpose', 'print-amount-paid', 'print-release-submit']) fields.set(id, { value: '', innerHTML: '', dataset: {} });
+  vm.runInContext("CERT_REQUESTS.push({ code: 'RES', id: 7, type: 'Certificate of Residency' }); openModal = () => {}; closeModal = () => {}; refreshDocumentRequestsLive = async () => {}; refreshIssuedCertificates = async () => {};", context);
+  const requests = [];
+  const opened = [];
+  context.window.open = () => { opened.push(true); return { location: {}, close() {} }; };
+  context.fetch = async (url, options) => { requests.push({ url, body: JSON.parse(options.body) }); return { ok: true, json: async () => ({}) }; };
+
+  context.printCert('RES');
+  assert.equal(since.hidden, false);
+  assert.equal(since.input.required, true);
+  assert.equal(years.hidden, true);
+
+  await context.confirmPrintRelease();
+  assert.equal(requests.length, 0, 'nothing is issued while the month is blank');
+  assert.equal(opened.length, 0);
+  assert.equal(since.input.focused, true);
+
+  since.input.value = '2001-07';
+  await context.confirmPrintRelease();
+  assert.deepEqual(requests, [{ url: '/staff/document-requests/7/issue', body: { residing_since: '2001-07' } }]);
+});
+
+test('previewing a release opens the unsaved certificate with the residency detail typed so far', async () => {
+  const { context, fields } = await client();
+  context.window.CERTIFICATE_STAFF_DETAILS = STAFF_DETAILS;
+  const modal = detailContainer();
+  fields.set('modal-print-release', modal);
+  fields.set('print-document-request-id', { value: '7' });
+  const opened = [];
+  context.window.open = (url, target, features) => opened.push([url, target, features]);
+
+  context.previewCertificateRelease();
+  modal.groups[0].hidden = false;
+  modal.groups[0].input.value = '2001-07';
+  context.previewCertificateRelease();
+
+  assert.deepEqual(opened, [
+    ['/staff/document-requests/7/certificate-preview', '_blank', 'noopener'],
+    ['/staff/document-requests/7/certificate-preview?residing_since=2001-07', '_blank', 'noopener'],
+  ]);
+});
+
+test('onsite issuance shows the years of residency field only for First Time Jobseeker and sends it as a number', async () => {
+  const { context, fields } = await client();
+  context.window.CERTIFICATE_FEES = FEE_SCHEDULE;
+  context.window.CERTIFICATE_STAFF_DETAILS = STAFF_DETAILS;
+  const form = detailContainer();
+  const [since, years] = form.groups;
+  const type = { value: 'First Time Jobseeker' };
+  fields.set('manual-certificate-form', form);
+  fields.set('manual-certificate-type', type);
+  fields.set('manual-certificate-fee', { value: '' });
+
+  context.updateManualCertificateFee();
+  assert.equal(years.hidden, false);
+  assert.equal(years.input.required, true);
+  assert.equal(since.hidden, true);
+  years.input.value = '18';
+  assert.deepEqual({ ...context.certificateDetailPayload(form) }, { years_of_residency: 18 });
+
+  type.value = 'Barangay Clearance';
+  context.updateManualCertificateFee();
+  assert.equal(years.hidden, true);
+  assert.equal(years.input.required, false);
+  assert.equal(years.input.value, '');
+  assert.deepEqual({ ...context.certificateDetailPayload(form) }, {});
+});
+
 test('staff fee displays read the server schedule and mark an unconfirmed fee everywhere', async () => {
   const { context, fields } = await client();
   context.window.CERTIFICATE_FEES = FEE_SCHEDULE;

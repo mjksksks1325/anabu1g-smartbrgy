@@ -34,11 +34,26 @@ class StoreIssuedCertificateRequest extends FormRequest
             'resident_name' => ['required', 'string', 'max:255'],
             'address' => ['required', 'string', 'max:1000'],
             'purpose' => ['nullable', 'string', 'max:500'],
+            ...self::staffEnteredDetailRules(),
         ];
     }
 
     /**
-     * @return array{certificate_type: string, resident_id: int|null, resident_name: string, address: string, purpose: string|null}
+     * Details staff confirm at issuance for certificates whose template states them (see
+     * CertificateType::staffEnteredDetails()). Shared by onsite issuance and issuance from a request.
+     *
+     * @return array<string, array<int, string>>
+     */
+    public static function staffEnteredDetailRules(): array
+    {
+        return [
+            'residing_since' => ['nullable', 'date_format:Y-m'],
+            'years_of_residency' => ['nullable', 'integer', 'min:0', 'max:130'],
+        ];
+    }
+
+    /**
+     * @return array{certificate_type: string, resident_id: int|null, resident_name: string, address: string, purpose: string|null, residing_since: string|null, years_of_residency: int|null}
      */
     public function certificateAttributes(): array
     {
@@ -50,6 +65,8 @@ class StoreIssuedCertificateRequest extends FormRequest
             'purpose' => $this->filled('purpose')
                 ? $this->string('purpose')->toString()
                 : null,
+            'residing_since' => $this->filled('residing_since') ? $this->string('residing_since')->toString() : null,
+            'years_of_residency' => $this->filled('years_of_residency') ? $this->integer('years_of_residency') : null,
         ];
     }
 }

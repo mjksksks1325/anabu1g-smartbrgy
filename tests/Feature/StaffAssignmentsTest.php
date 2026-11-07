@@ -389,7 +389,7 @@ test('household module and lookup endpoints do not expose the full resident regi
 });
 
 test('document processing and issuance are distinct actions', function () {
-    $request = DocumentRequest::query()->create(['reference_code' => 'REQ-DISTINCT', 'document_type' => 'Certificate of Residency', 'full_name' => 'Test Resident', 'address' => 'Anabu', 'status' => 'pending']);
+    $request = DocumentRequest::query()->create(['reference_code' => 'REQ-DISTINCT', 'document_type' => 'Barangay Clearance', 'full_name' => 'Test Resident', 'address' => 'Anabu', 'purpose' => 'Employment', 'status' => 'pending']);
     $processor = assignedStaff(['documents.view', 'documents.process']);
     $this->actingAs($processor)->patchJson(route('staff.document-requests.update-status', $request), ['status' => 'ready_for_release'])->assertOk();
     $this->postJson(route('staff.document-requests.issue', $request))->assertForbidden();

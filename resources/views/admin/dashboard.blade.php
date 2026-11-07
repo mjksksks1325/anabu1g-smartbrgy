@@ -625,8 +625,20 @@
       >
     </div>
 
+    <div class="form-group" data-certificate-detail="residing_since" hidden>
+      <label for="print-residing-since">{{ __('Resident since (month and year)') }}</label>
+      <input type="month" id="print-residing-since" class="form-input" max="{{ now()->format('Y-m') }}" aria-describedby="print-residing-since-note">
+      <p class="form-note" id="print-residing-since-note">{{ __('Printed on the Certificate of Residency. Confirm it with the resident before issuing.') }}</p>
+    </div>
+
+    <div class="form-group" data-certificate-detail="years_of_residency" hidden>
+      <label for="print-years-of-residency">{{ __('Years of residency in Anabu I-G') }}</label>
+      <input type="number" id="print-years-of-residency" class="form-input" min="0" max="130" step="1" inputmode="numeric" aria-describedby="print-years-of-residency-note">
+      <p class="form-note" id="print-years-of-residency-note">{{ __('Printed on the First Time Jobseeker certification and Oath of Undertaking. Confirm it with the resident before issuing.') }}</p>
+    </div>
+
     <div class="form-group">
-      <p class="form-note">{{ __('Certificates and QR verification are valid for three months from issue. Barangay IDs and their QR verification are valid for one year.') }}</p>
+      <p class="form-note">{{ __('Certificates and QR verification are valid for three months from issue. First Time Jobseeker certificates, Barangay IDs and their QR verification are valid for one year.') }}</p>
     </div>
     <div class="form-group">
       <label>PAYMENT</label>
@@ -644,6 +656,7 @@
 
     <div class="modal-footer">
 
+      <button type="button" class="btn" id="print-release-preview" data-action-permission="documents.issue" onclick="previewCertificateRelease()">{{ __('Preview certificate') }}</button>
       <button
         type="button"
         class="btn btn-green"
@@ -971,8 +984,10 @@
       <div class="form-group"><div class="form-label">Full Name ng Resident</div><input class="form-input" id="manual-resident-name" maxlength="255" required placeholder="Type the resident's full name..."/></div>
       <div class="form-group"><div class="form-label">Address ng Resident</div><input class="form-input" id="manual-resident-address" maxlength="1000" row="2" required placeholder="Type the resident's address..."/></div>
       <div class="form-group"><div class="form-label">Purpose / Reason</div><input class="form-input" id="manual-certificate-purpose" maxlength="500" placeholder="Employment, Loan, Scholarship..."/></div>
+      <div class="form-group" data-certificate-detail="residing_since" hidden><label class="form-label" for="manual-residing-since">{{ __('Resident since (month and year)') }}</label><input type="month" class="form-input" id="manual-residing-since" max="{{ now()->format('Y-m') }}" aria-describedby="manual-residing-since-note"/><p class="form-note" id="manual-residing-since-note">{{ __('Printed on the Certificate of Residency. Confirm it with the resident before issuing.') }}</p></div>
+      <div class="form-group" data-certificate-detail="years_of_residency" hidden><label class="form-label" for="manual-years-of-residency">{{ __('Years of residency in Anabu I-G') }}</label><input type="number" class="form-input" id="manual-years-of-residency" min="0" max="130" step="1" inputmode="numeric" aria-describedby="manual-years-of-residency-note"/><p class="form-note" id="manual-years-of-residency-note">{{ __('Printed on the First Time Jobseeker certification and Oath of Undertaking. Confirm it with the resident before issuing.') }}</p></div>
       <div class="form-group"><div class="form-label">Payment</div><input class="form-input" id="manual-certificate-fee" value="{{ \App\CertificateType::BarangayClearance->feeLabel() }}" readonly/></div>
-      <div style="background:var(--green-dim);border:1px solid var(--border-green);border-radius:var(--radius-sm);padding:10px;font-size:11.5px;color:var(--text-secondary);margin-bottom:14px;">{{ __('The official fee is set by the server. Certificates and QR verification are valid for three months from issue. Barangay IDs and their QR verification are valid for one year.') }}</div>
+      <div style="background:var(--green-dim);border:1px solid var(--border-green);border-radius:var(--radius-sm);padding:10px;font-size:11.5px;color:var(--text-secondary);margin-bottom:14px;">{{ __('The official fee is set by the server. Certificates and QR verification are valid for three months from issue. First Time Jobseeker certificates, Barangay IDs and their QR verification are valid for one year.') }}</div>
       <div class="modal-footer">
         <button type="submit" class="btn btn-green" data-action-permission="documents.issue" id="manual-certificate-submit"> Issue & Print</button>
       </div>
@@ -1246,6 +1261,7 @@
     window.ADMIN_RESIDENT_APPLICATIONS_URL = @json(route('staff.resident-applications.index'));
     window.PERSONNEL_LOGIN_GREETING = {{ Illuminate\Support\Js::from(session()->pull('personnel_login_greeting', false)) }};
     window.CERTIFICATE_FEES = {{ Illuminate\Support\Js::from(App\CertificateType::feeSchedule()) }};
+    window.CERTIFICATE_STAFF_DETAILS = {{ Illuminate\Support\Js::from(collect(App\CertificateType::cases())->mapWithKeys(fn (App\CertificateType $type): array => [$type->value => $type->staffEnteredDetails()])) }};
     window.ADMIN_ACTIVE_SCREEN = {{ Illuminate\Support\Js::from($activeScreen) }};
     window.ADMIN_SCREEN_ROUTES = {{ Illuminate\Support\Js::from($screenRoutes) }};
     window.STAFF_PERMISSION_PRESETS = {{ Illuminate\Support\Js::from(App\StaffPermissions::presets()) }};

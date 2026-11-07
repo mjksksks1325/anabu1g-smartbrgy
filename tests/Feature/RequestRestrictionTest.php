@@ -95,7 +95,7 @@ it('enforces reviewed restrictions during certificate issuance without changing 
     Storage::fake('local');
     $account = User::factory()->resident()->create();
     $resident = $account->resident;
-    $attributes = ['certificate_type' => CertificateType::CertificateOfResidency->value, 'resident_id' => $resident->id, 'resident_name' => $resident->full_name, 'address' => $resident->address];
+    $attributes = ['certificate_type' => CertificateType::CertificateOfResidency->value, 'resident_id' => $resident->id, 'resident_name' => $resident->full_name, 'address' => $resident->address, 'purpose' => 'Employment', 'residing_since' => now()->format('Y-m')];
     $issued = app(IssueCertificate::class)->handle($attributes, null, 'Authorized staff');
     ResidentRequestRestriction::factory()->reviewed()->create(['resident_id' => $resident->id, 'affected_document_type' => CertificateType::CertificateOfResidency->value]);
     expect(fn () => app(IssueCertificate::class)->handle($attributes, null, 'Authorized staff'))->toThrow(CertificateIssuanceException::class, ResidentRequestRestriction::MESSAGE);

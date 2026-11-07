@@ -2,11 +2,13 @@
 
 namespace App\Actions;
 
+use App\CertificateDocument;
 use App\CertificateType;
 use App\Exceptions\CertificateIssuanceException;
 use App\Models\DocumentRequest;
 use App\Models\IssuedCertificate;
 use App\Models\Resident;
+use Carbon\CarbonImmutable;
 use F9WebLtd\QrCode\Generator;
 use Illuminate\Filesystem\FilesystemManager;
 use Illuminate\Support\Facades\DB;
@@ -26,7 +28,9 @@ class IssueCertificate
      *     resident_id?: int|null,
      *     resident_name: string,
      *     address?: string,
-     *     purpose?: string|null
+     *     purpose?: string|null,
+     *     residing_since?: string|null,
+     *     years_of_residency?: int|null
      * }  $attributes
      */
     public function handle(
@@ -88,6 +92,15 @@ class IssueCertificate
                     throw CertificateIssuanceException::requestNotReady();
                 }
 
+                $snapshot = $this->snapshot($certificateType, $resident, $attributes, $documentRequest);
+                $this->ensureDetailsAreComplete(
+                    $certificateType,
+                    $snapshot,
+                    $attributes['purpose'] ?? null,
+                    $resident?->photo_path !== null && $this->filesystem->disk('local')->exists($resident->photo_path),
+                    linkedToResident: $resident !== null,
+                );
+
                 $issuedAt = now();
                 $certificateNumber = 'CERT-'.$issuedAt->format('Y').'-'.Str::upper(Str::random(8));
                 $verificationCode = Str::upper(Str::random(16));
@@ -121,14 +134,7 @@ class IssueCertificate
                     'issued_at' => $issuedAt,
                     'expires_on' => $issuedAt->copy()->addMonthsNoOverflow($certificateType->validityPeriodInMonths())->toDateString(),
                     'photo_path' => $photoStoragePath,
-                    'resident_snapshot' => [
-                        'full_name' => $resident === null ? $attributes['resident_name'] : $resident->full_name,
-                        'address' => $resident === null ? $lockedRequest->address : $resident->address,
-                        'date_of_birth' => $resident?->date_of_birth?->format('Y-m-d'),
-                        'gender' => $resident?->gender,
-                        'civil_status' => $resident?->civil_status,
-                        'nationality' => $resident?->nationality,
-                    ],
+                    'resident_snapshot' => $snapshot,
                     'issued_by' => $issuedBy,
                     'qr_code_path' => '/storage/'.$qrStoragePath,
                 ]);
@@ -150,6 +156,81 @@ class IssueCertificate
             }
 
             throw $exception;
+        }
+    }
+
+    /**
+     * The details the certificate prints, frozen at issuance. Residency and First Time Jobseeker certificates
+     * also keep the residency detail staff confirmed, and Residency records whether a verified voter
+     * registration existed so its wording only calls the resident a registered voter when that was checked.
+     *
+     * @param  array{resident_name: string, address?: string, residing_since?: string|null, years_of_residency?: int|null}  $attributes
+     * @return array<string, mixed>
+     */
+    public function snapshot(CertificateType $certificateType, ?Resident $resident, array $attributes, ?DocumentRequest $documentRequest): array
+    {
+        $snapshot = [
+            'full_name' => $resident === null ? $attributes['resident_name'] : $resident->full_name,
+            'first_name' => $resident?->first_name,
+            'middle_name' => $resident?->middle_name,
+            'last_name' => $resident?->last_name,
+            'suffix' => $resident?->suffix,
+            'address' => $resident === null ? ($documentRequest->address ?? $attributes['address'] ?? null) : $resident->address,
+            'date_of_birth' => $resident?->date_of_birth?->format('Y-m-d'),
+            'gender' => $resident?->gender,
+            'civil_status' => $resident?->civil_status,
+            'nationality' => $resident?->nationality,
+        ];
+
+        foreach ($certificateType->staffEnteredDetails() as $detail) {
+            $snapshot[$detail] = $attributes[$detail] ?? null;
+        }
+
+        if ($certificateType === CertificateType::CertificateOfResidency) {
+            $registration = $resident?->voterRegistration;
+            $snapshot['voter_verified'] = $registration !== null && $registration->status === 'active' && $registration->integrity_valid;
+        }
+
+        return $snapshot;
+    }
+
+    /**
+     * @param  array<string, mixed>  $snapshot
+     */
+    public function ensureDetailsAreComplete(CertificateType $certificateType, array $snapshot, ?string $purpose, bool $hasPhoto, bool $linkedToResident): void
+    {
+        $missing = CertificateDocument::missingFor($certificateType, $snapshot, $purpose, $hasPhoto);
+
+        if ($missing !== []) {
+            $fromResidentRecord = array_intersect($missing, array_map(CertificateType::detailLabel(...), ['date_of_birth', 'gender', 'civil_status', 'nationality', 'photo']));
+
+            throw CertificateIssuanceException::incompleteDetails($missing, match (true) {
+                $fromResidentRecord !== [] && ! $linkedToResident => 'Select the linked resident record so these details come from Resident Records.',
+                $fromResidentRecord !== [] => 'Update the resident record in Resident Records first.',
+                default => null,
+            });
+        }
+
+        $birthDate = filled($snapshot['date_of_birth'] ?? null) ? CarbonImmutable::parse($snapshot['date_of_birth']) : null;
+
+        if (filled($snapshot['residing_since'] ?? null)) {
+            $residingSince = CarbonImmutable::createFromFormat('!Y-m', $snapshot['residing_since']);
+
+            if ($residingSince === null || $residingSince->greaterThan(today()->startOfMonth())) {
+                throw CertificateIssuanceException::invalidDetail('Resident since cannot be later than this month.');
+            }
+
+            if ($birthDate !== null && $residingSince->lessThan($birthDate->startOfMonth())) {
+                throw CertificateIssuanceException::invalidDetail('Resident since cannot be earlier than the resident\'s date of birth.');
+            }
+        }
+
+        if (isset($snapshot['years_of_residency']) && $birthDate !== null) {
+            $age = (int) floor($birthDate->diffInYears(today()));
+
+            if ((int) $snapshot['years_of_residency'] > $age) {
+                throw CertificateIssuanceException::invalidDetail("Years of residency cannot be more than the resident's age ({$age}).");
+            }
         }
     }
 

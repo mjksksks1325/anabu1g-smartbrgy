@@ -98,3 +98,19 @@ function useFailingMailer(): void
     });
     config(['mail.mailers.failing' => ['transport' => 'failing'], 'mail.default' => 'failing']);
 }
+
+/**
+ * Every detail an official certificate template can print, as IssueCertificate records it at issuance.
+ *
+ * @param  array<string, mixed>  $overrides
+ * @return array<string, mixed>
+ */
+function completeCertificateSnapshot(array $overrides = []): array
+{
+    return [
+        'full_name' => 'Test Resident', 'first_name' => 'Test', 'middle_name' => 'Middle', 'last_name' => 'Resident', 'suffix' => null,
+        'address' => 'Historical test address', 'date_of_birth' => '1990-02-12', 'gender' => 'Female', 'civil_status' => 'Single',
+        'nationality' => 'Test nationality', 'residing_since' => '2001-07', 'years_of_residency' => 18, 'voter_verified' => false,
+        ...$overrides,
+    ];
+}
