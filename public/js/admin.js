@@ -5466,7 +5466,7 @@ function openViewResident(residentNumber) {
       <div><span>Age</span><strong>${calcAge(resident.dob)} years old</strong></div>
       <div><span>Gender</span><strong>${escapeText(resident.gender)}</strong></div>
       <div><span>Civil Status</span><strong>${escapeText(resident.civil)}</strong></div>
-      <div><span>${escapeText(adminText('Nationality'))}</span><strong>${resident.nationality ? escapeText(resident.nationality) : `<em class="resident-detail-missing">${escapeText(adminText('Not recorded'))}</em>`}</strong></div>
+      <div><span>${escapeText(adminText('Nationality'))}</span><strong>${resident.nationality ? escapeText(resident.nationality) : `<em class="resident-detail-not-recorded">${escapeText(adminText('Not recorded'))}</em>`}</strong></div>
       <div><span>Purok</span><strong>${escapeText(resident.purok)}</strong></div>
       <div><span>Contact</span><strong>${escapeText(resident.contact || 'None')}</strong></div>
       <div><span>Residency Type</span><strong>${escapeText(resident.type)}</strong></div>

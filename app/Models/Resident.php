@@ -102,11 +102,13 @@ class Resident extends Model
     }
 
     /**
-     * Record details official certificate templates print (CertificateType::requiredDetails()), as detail keys.
-     * Name and address are required on every record; these may be left blank, e.g. nationality, which the public
-     * new-resident application no longer collects.
+     * Record details official certificate templates print (CertificateType::requiredDetails()), as detail keys, that
+     * Resident Records flags as missing on every record. Nationality is not among them: residents are not asked for
+     * it, and only the templates with a NATIONALITY line or a "Filipino" statement (Indigency, Registered Voter,
+     * Low-Income, Probation, 4Ps Move-Out, Nonagenarian, Common-Law) need it. Those certificates ask for it in their
+     * own readiness checks (Print & Release, the eligibility checker), when one is actually requested.
      */
-    public const CERTIFICATE_RECORD_DETAILS = ['address', 'date_of_birth', 'gender', 'civil_status', 'nationality', 'photo'];
+    public const CERTIFICATE_RECORD_DETAILS = ['address', 'date_of_birth', 'gender', 'civil_status', 'photo'];
 
     /**
      * The certificate details this record lacks, so staff can complete them before a certificate needs them.
