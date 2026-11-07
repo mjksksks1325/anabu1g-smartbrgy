@@ -1085,3 +1085,26 @@ body[data-personnel-layout="admin"] .release-readiness-footer { display: flex; f
   body[data-personnel-layout="admin"] .release-readiness-item { grid-template-columns: minmax(0, 1fr); }
   body[data-personnel-layout="admin"] .release-readiness-action { grid-column: 1; grid-row: auto; justify-self: start; }
 }
+
+/* ── Resident Records: certificate details still missing ── */
+body[data-personnel-layout="admin"] .resident-missing-badge { margin-left: 6px; }
+body[data-personnel-layout="admin"] .resident-household { color: var(--staff-ink); font-size: 13px; }
+body[data-personnel-layout="admin"] .resident-household.is-unassigned { color: var(--staff-muted); }
+body[data-personnel-layout="admin"] .resident-detail-missing { color: var(--staff-warning-ink); font-style: normal; font-weight: 600; }
+body[data-personnel-layout="admin"] .resident-missing-panel { display: grid; gap: 6px; justify-items: start; margin: 0 0 14px; padding: 12px 14px; border: 1px solid var(--staff-warning-border); border-radius: 8px; background: var(--staff-warning-bg); color: var(--staff-ink); font-size: 13px; line-height: 1.45; }
+body[data-personnel-layout="admin"] .resident-missing-panel h3 { margin: 0; color: var(--staff-warning-ink); font-size: 14px; }
+body[data-personnel-layout="admin"] .resident-missing-panel p { margin: 0; }
+body[data-personnel-layout="admin"] .resident-missing-note { color: var(--staff-muted); font-size: 12px; }
+
+/* ── Eligibility checker: eligible, eligible once completed, not eligible ── */
+body[data-personnel-layout="admin"] .eligibility-result.incomplete { border-color: var(--staff-warning-border); background: var(--staff-warning-bg); }
+body[data-personnel-layout="admin"] .eligibility-result.incomplete > strong { color: var(--staff-warning-ink); }
+body[data-personnel-layout="admin"] .eligibility-group span { display: block; color: var(--staff-muted); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+body[data-personnel-layout="admin"] .eligibility-group ul { margin: 2px 0 0; padding-left: 18px; }
+body[data-personnel-layout="admin"] .eligibility-result .btn { align-self: flex-start; }
+
+/* ── Shared table type: reference codes in monospace; dates, times and names in the body font ── */
+body[data-personnel-layout="admin"] #app.admin-interface .audit-log-row > :nth-child(2) { font-family: var(--civic-font-body); font-variant-numeric: tabular-nums; }
+body[data-personnel-layout="admin"] #app.admin-interface .audit-stats-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 1100px) { body[data-personnel-layout="admin"] #app.admin-interface .audit-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { body[data-personnel-layout="admin"] #app.admin-interface .audit-stats-grid { grid-template-columns: minmax(0, 1fr); } }

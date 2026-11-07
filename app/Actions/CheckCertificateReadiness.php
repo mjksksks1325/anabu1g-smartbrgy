@@ -60,6 +60,29 @@ class CheckCertificateReadiness
     }
 
     /**
+     * The eligibility checker's view of one resident and certificate type, before any request exists: disqualifications
+     * apart from staff verifications still pending and record details still missing (details staff enter at issuance,
+     * and the request's purpose, are not counted).
+     *
+     * @return array{disqualifications: list<string>, verifications: list<string>, missing_details: list<string>}
+     */
+    public function forResident(Resident $resident, CertificateType $type): array
+    {
+        $eligibility = $resident->certificateEligibility($type);
+        $reasons = $eligibility['eligible'] ? [] : $eligibility['reasons'];
+        $pending = [Resident::INDIGENCY_NOT_VERIFIED, Resident::VOTER_REGISTRATION_NOT_VERIFIED];
+        $snapshot = $this->issueCertificate->snapshot($type, $resident, ['resident_name' => $resident->full_name], null);
+        $hasPhoto = $resident->photo_path !== null && Storage::disk('local')->exists($resident->photo_path);
+        $notCounted = [...array_map(CertificateType::detailLabel(...), $type->staffEnteredDetails()), CertificateType::detailLabel('purpose')];
+
+        return [
+            'disqualifications' => array_values(array_diff($reasons, $pending)),
+            'verifications' => array_values(array_intersect($reasons, $pending)),
+            'missing_details' => array_values(array_diff(CertificateDocument::missingFor($type, $snapshot, null, $hasPhoto), $notCounted)),
+        ];
+    }
+
+    /**
      * The Print & Release checklist: one item per missing detail, pending verification or disqualification, each saying
      * where authorized staff complete it. Details staff type into the dialog itself (residency) are left to the dialog.
      *

@@ -2360,5 +2360,16 @@
     "Unable to open the resident record.": "Unable to open the resident record.",
     "The resident record could not be found.": "The resident record could not be found.",
     "Complete missing information in Resident Records": "Complete missing information in Resident Records",
-    "The Print & Release dialog checks the request again when you return to it.": "The Print & Release dialog checks the request again when you return to it."
+    "The Print & Release dialog checks the request again when you return to it.": "The Print & Release dialog checks the request again when you return to it.",
+    "Missing for certificates:": "Missing for certificates:",
+    "Missing for certificates": "Missing for certificates",
+    "Missing details": "Missing details",
+    "Missing certificate details": "Missing certificate details",
+    "Certificates whose template prints these details cannot be issued until they are recorded. Nothing is filled in automatically.": "Certificates whose template prints these details cannot be issued until they are recorded. Nothing is filled in automatically.",
+    "Eligible": "Eligible",
+    "Eligible once completed": "Eligible once completed",
+    "Not eligible": "Not eligible",
+    "Every requirement on record is met.": "Every requirement on record is met.",
+    "Not eligible because": "Not eligible because",
+    "Missing from the resident record": "Missing from the resident record"
 }

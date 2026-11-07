@@ -182,7 +182,7 @@ test('resident records order the toolbar and filter special groups with one drop
     $markup = file_get_contents(dirname(__DIR__, 2).'/resources/views/admin/dashboard.blade.php');
 
     expect($markup)->toMatch('/<div class="search-row resident-records-toolbar">\s*<div class="search-wrap">.*id="residents-search".*\n\s*<button[^\n]*openAddResident\(\)[^\n]*\n\s*<button[^\n]*openHouseholdManagement\(\)[^\n]*\n\s*<button[^\n]*openHouseholdProfilingImport\(\)[^\n]*\n\s*<button[^\n]*exportResidents\(\)/')
-        ->toMatch('/<button type="button" class="status-pill" aria-pressed="false" data-resident-status="archived" onclick="filterResidentStatus\(\'Archived\',this\)">Archived<\/button>\s*<label class="resident-group-select" for="resident-group-filter">/')
+        ->toMatch('/<button type="button" class="status-pill" aria-pressed="false" data-resident-status="archived" onclick="filterResidentStatus\(\'Archived\',this\)">Archived<\/button>\s*<button type="button" class="status-pill" aria-pressed="false" data-resident-status="incomplete" onclick="filterResidentStatus\(\'Incomplete\',this\)">\{\{ __\(\'Missing certificate details\'\) \}\}<\/button>\s*<label class="resident-group-select" for="resident-group-filter">/')
         ->toContain('<select class="form-input" id="resident-group-filter" onchange="filterResidentSpecialGroup(this.value)">')
         ->not->toContain('data-resident-group=');
     foreach (Resident::SPECIAL_GROUPS as $group) {

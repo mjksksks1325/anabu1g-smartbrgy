@@ -2006,3 +2006,35 @@ test('completing missing information opens the saved resident record at the miss
   assert.deepEqual(opened, ['modal-resident']);
   assert.deepEqual(focused, ['res-nationality']);
 });
+
+test('the eligibility checker says eligible, eligible once completed, or not eligible, and offers Proceed only when ready', async () => {
+  const { context } = await client();
+  context.window.PERSONNEL_PERMISSIONS = ['eligibility.view', 'records.update'];
+  const base = { resident: { id: 7, resident_number: 'ANB-2026-X', full_name: 'Ana Reyes' }, certificate_type: 'Certificate of Indigency' };
+
+  const incomplete = { ...base, eligible: false, reasons: ['Indigency must be verified.'], disqualifications: [], verifications: ['Indigency must be verified.'], missing_details: ['Nationality'] };
+  assert.equal(context.eligibilityOutcome(incomplete), 'incomplete');
+  const html = context.eligibilityResultHtml(incomplete);
+  assert.match(html, /Eligible once completed/);
+  assert.match(html, /Needs staff verification/);
+  assert.match(html, /Missing from the resident record[\s\S]*Nationality/);
+  assert.match(html, /data-eligibility-complete/);
+
+  assert.equal(context.eligibilityOutcome({ ...base, eligible: true, reasons: [], disqualifications: [], verifications: [], missing_details: ['Resident photo'] }), 'incomplete');
+  assert.equal(context.eligibilityOutcome({ ...base, eligible: true, reasons: [], disqualifications: [], verifications: [], missing_details: [] }), 'eligible');
+  const ineligible = { ...base, eligible: false, reasons: ['Resident is not in good standing.'], disqualifications: ['Resident is not in good standing.'], verifications: [], missing_details: [] };
+  assert.equal(context.eligibilityOutcome(ineligible), 'ineligible');
+  assert.match(context.eligibilityResultHtml(ineligible), /Not eligible because[\s\S]*not in good standing/);
+  assert.equal(context.eligibilityOutcome({ ...base, eligible: false, reasons: ['Older server reason.'] }), 'ineligible');
+});
+
+test('resident rows flag records missing certificate details, and household names use the body font', async () => {
+  const { context, fields } = await client();
+  const tbody = { innerHTML: '', dataset: {}, addEventListener() {}, appendChild(row) { this.rows = [...(this.rows || []), row]; } };
+  fields.set('records-tbody', tbody);
+  context.document.createElement = () => ({ innerHTML: '', classList: { add() {} }, setAttribute() {}, addEventListener() {}, querySelectorAll: () => [] });
+  vm.runInContext(`RESIDENTS.splice(0, RESIDENTS.length, residentFromApi({ id: 1, resident_number: 'ANB-1', full_name: 'Ana Reyes', date_of_birth: '1990-01-01', status: 'active', missing_certificate_details: ['nationality', 'photo'], household: null }))`, context);
+  context.renderResidentsTable();
+  assert.match(tbody.rows[0].innerHTML, /resident-missing-badge[^>]*title="Missing for certificates: Nationality, Resident photo">Missing details/);
+  assert.match(tbody.rows[0].innerHTML, /resident-household is-unassigned">Unassigned/);
+});

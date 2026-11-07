@@ -501,3 +501,37 @@ it('stores every accepted mobile number in the international +639XXXXXXXXX forma
     expect(Resident::query()->whereKey($created->json('resident.id') ?? $created->json('id'))->value('contact_number'))->toBe('+639171234567')
         ->and($resident->fresh()->contact_number)->toBe('+639171234567');
 })->with(['09171234567', '+639171234567', '+63 917 123 4567', '0917-123-4567']);
+
+test('resident records show which certificate details each record lacks, and can list only those records', function () {
+    $staff = User::factory()->assignedOperations()->create();
+    $complete = Resident::factory()->create(['last_name' => 'Complete', 'nationality' => 'Filipino', 'photo_path' => 'resident-photos/complete.jpg']);
+    $incomplete = Resident::factory()->create(['last_name' => 'Incomplete', 'nationality' => null, 'photo_path' => null]);
+
+    $rows = collect($this->actingAs($staff)->getJson(route('staff.residents.index'))->assertOk()->json('data'))->keyBy('id');
+    expect($rows[$complete->id]['missing_certificate_details'])->toBe([])
+        ->and($rows[$incomplete->id]['missing_certificate_details'])->toBe(['nationality', 'photo']);
+
+    $this->getJson(route('staff.residents.index', ['status' => 'incomplete']))->assertOk()
+        ->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $incomplete->id);
+    expect($incomplete->fresh()->nationality)->toBeNull();
+});
+
+test('the eligibility check keeps missing details and pending verification apart from actual ineligibility', function () {
+    $staff = User::factory()->assignedOperations()->create();
+    $resident = Resident::factory()->create(['nationality' => null, 'photo_path' => null, 'is_in_good_standing' => true, 'is_verified_indigent' => false]);
+    VoterRegistration::factory()->create(['resident_id' => $resident->id, 'status' => 'active']);
+
+    $this->actingAs($staff)->getJson(route('staff.residents.eligibility', [$resident, 'certificate_type' => 'Certificate of Indigency']))
+        ->assertOk()->assertJsonPath('eligible', false)
+        ->assertJsonPath('disqualifications', [])
+        ->assertJsonPath('verifications', [Resident::INDIGENCY_NOT_VERIFIED])
+        ->assertJsonPath('missing_details', ['Nationality', 'Resident photo']);
+
+    $this->getJson(route('staff.residents.eligibility', [$resident, 'certificate_type' => 'Barangay Clearance']))
+        ->assertOk()->assertJsonPath('eligible', true)->assertJsonPath('disqualifications', [])
+        ->assertJsonPath('verifications', [])->assertJsonPath('missing_details', []);
+
+    $resident->update(['is_in_good_standing' => false]);
+    $this->getJson(route('staff.residents.eligibility', [$resident, 'certificate_type' => 'Barangay Clearance']))
+        ->assertOk()->assertJsonPath('eligible', false)->assertJsonPath('disqualifications', ['Resident is not in good standing.']);
+});

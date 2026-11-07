@@ -2528,5 +2528,16 @@
     "Unable to open the resident record.": "Hindi mabuksan ang record ng residente.",
     "The resident record could not be found.": "Hindi makita ang record ng residente.",
     "Complete missing information in Resident Records": "Kumpletuhin ang kulang na impormasyon sa Resident Records",
-    "The Print & Release dialog checks the request again when you return to it.": "Muling sinusuri ng Print & Release ang request pagbalik ninyo rito."
+    "The Print & Release dialog checks the request again when you return to it.": "Muling sinusuri ng Print & Release ang request pagbalik ninyo rito.",
+    "Missing for certificates:": "Kulang para sa mga sertipiko:",
+    "Missing for certificates": "Kulang para sa mga sertipiko",
+    "Missing details": "May kulang na detalye",
+    "Missing certificate details": "Kulang na detalye para sa sertipiko",
+    "Certificates whose template prints these details cannot be issued until they are recorded. Nothing is filled in automatically.": "Hindi maiisyu ang mga sertipikong nagpi-print ng mga detalyeng ito hangga’t hindi naitatala ang mga ito. Walang awtomatikong pinupunan.",
+    "Eligible": "Kwalipikado",
+    "Eligible once completed": "Kwalipikado kapag nakumpleto",
+    "Not eligible": "Hindi kwalipikado",
+    "Every requirement on record is met.": "Natutugunan ang lahat ng kinakailangang nakatala.",
+    "Not eligible because": "Hindi kwalipikado dahil",
+    "Missing from the resident record": "Kulang sa record ng residente"
 }

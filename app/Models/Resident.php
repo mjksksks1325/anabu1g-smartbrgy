@@ -101,6 +101,42 @@ class Resident extends Model
             ->implode(' ');
     }
 
+    /**
+     * Record details official certificate templates print (CertificateType::requiredDetails()), as detail keys.
+     * Name and address are required on every record; these may be left blank, e.g. nationality, which the public
+     * new-resident application no longer collects.
+     */
+    public const CERTIFICATE_RECORD_DETAILS = ['address', 'date_of_birth', 'gender', 'civil_status', 'nationality', 'photo'];
+
+    /**
+     * The certificate details this record lacks, so staff can complete them before a certificate needs them.
+     * Whether a particular certificate is blocked depends on its own template (CertificateType::requiredDetails()).
+     *
+     * @return list<string>
+     */
+    public function missingCertificateDetails(): array
+    {
+        return array_values(array_filter(self::CERTIFICATE_RECORD_DETAILS, fn (string $detail): bool => $detail === 'photo'
+            ? $this->photo_path === null
+            : blank($this->getAttribute($detail))));
+    }
+
+    /**
+     * Residents missing at least one detail in CERTIFICATE_RECORD_DETAILS.
+     *
+     * @param  Builder<Resident>  $query
+     * @return Builder<Resident>
+     */
+    public function scopeMissingCertificateDetails(Builder $query): Builder
+    {
+        return $query->where(function (Builder $query): void {
+            $query->whereNull('photo_path');
+            foreach (array_diff(self::CERTIFICATE_RECORD_DETAILS, ['photo']) as $column) {
+                $query->orWhereNull($column)->orWhere($column, '');
+            }
+        });
+    }
+
     public function getHasPhotoAttribute(): bool
     {
         return $this->photo_path !== null;

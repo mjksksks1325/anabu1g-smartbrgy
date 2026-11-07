@@ -1632,7 +1632,11 @@ function renderReleaseReadiness(readiness) {
  * included); saving re-checks the request in the dialog underneath.
  */
 async function openResidentForCertificate(field) {
-  const target = releaseReadiness?.resident;
+  return openResidentRecordForm(releaseReadiness?.resident, field);
+}
+
+/** Open a resident ({ id, resident_number }) in the Resident Records edit form at a field, from any workspace screen. */
+async function openResidentRecordForm(target, field) {
   if (!target) return;
   try {
     const query = new URLSearchParams({ search: target.resident_number, per_page: '15' });
@@ -4928,8 +4932,19 @@ function residentFromApi(resident) {
     relationshipToHead: resident.relationship_to_household_head || '',
     isHouseholdHead: Boolean(resident.is_household_head),
     voterStatus: resident.voter_status || null,
+    missingDetails: Array.isArray(resident.missing_certificate_details) ? resident.missing_certificate_details : [],
     version: resident.updated_at || null
   };
+}
+
+/** How staff screens name a resident record detail that certificates print (App\CertificateType::detailLabel()). */
+const CERTIFICATE_DETAIL_LABELS = {
+  full_name: 'Full name', address: 'Address', date_of_birth: 'Date of birth', gender: 'Gender',
+  civil_status: 'Civil status', nationality: 'Nationality', photo: 'Resident photo'
+};
+
+function certificateDetailLabels(details) {
+  return (details || []).map(detail => adminText(CERTIFICATE_DETAIL_LABELS[detail] || detail));
 }
 
 /**
@@ -5023,13 +5038,13 @@ function renderResidentsTable() {
 
     row.innerHTML = `
       <td><span class="resident-number" data-no-admin-translate>${escapeText(resident.id)}</span></td>
-      <td><strong data-no-admin-translate>${escapeText(resident.name)}</strong>${calcAge(resident.dob) >= 60 ? workspaceBadge('Senior', 'senior') : ''}${resident.voterStatus === 'active' ? '<span class="badge badge-green" title="Registered voter">Voter</span>' : ''}</td>
+      <td><strong data-no-admin-translate>${escapeText(resident.name)}</strong>${calcAge(resident.dob) >= 60 ? workspaceBadge('Senior', 'senior') : ''}${resident.voterStatus === 'active' ? '<span class="badge badge-green" title="Registered voter">Voter</span>' : ''}${!resident.archived && resident.missingDetails?.length ? `<span class="badge badge-amber resident-missing-badge" title="${escapeText(adminText('Missing for certificates:'))} ${escapeText(certificateDetailLabels(resident.missingDetails).join(', '))}">${escapeText(adminText('Missing details'))}</span>` : ''}</td>
       <td>${calcAge(resident.dob)}</td>
       <td data-no-admin-translate>${escapeText(resident.purok)}</td>
       <td>${escapeText(resident.gender)}</td>
       <td>${escapeText(resident.civil)}</td>
       <td>${archivedBadge}</td>
-      <td>${household ? `<span class="resident-number" data-no-admin-translate>${escapeText(household)}</span>` : `<span class="resident-number">${escapeText('Unassigned')}</span>`}</td>
+      <td>${household ? `<span class="resident-household" data-no-admin-translate>${escapeText(household)}</span>` : `<span class="resident-household is-unassigned">${escapeText(adminText('Unassigned'))}</span>`}</td>
       <td><div class="resident-actions">${actions}</div></td>`;
     if (!resident.archived) {
       row.classList.add('resident-row-clickable');
@@ -5451,6 +5466,7 @@ function openViewResident(residentNumber) {
       <div><span>Age</span><strong>${calcAge(resident.dob)} years old</strong></div>
       <div><span>Gender</span><strong>${escapeText(resident.gender)}</strong></div>
       <div><span>Civil Status</span><strong>${escapeText(resident.civil)}</strong></div>
+      <div><span>${escapeText(adminText('Nationality'))}</span><strong>${resident.nationality ? escapeText(resident.nationality) : `<em class="resident-detail-missing">${escapeText(adminText('Not recorded'))}</em>`}</strong></div>
       <div><span>Purok</span><strong>${escapeText(resident.purok)}</strong></div>
       <div><span>Contact</span><strong>${escapeText(resident.contact || 'None')}</strong></div>
       <div><span>Residency Type</span><strong>${escapeText(resident.type)}</strong></div>
@@ -5461,6 +5477,23 @@ function openViewResident(residentNumber) {
       <div><span>Issued Certificates</span><strong>${resident.issuedCertificatesCount}</strong></div>` : ''}
 ${hasStaffPermission('documents.view') || hasStaffPermission('eligibility.view') ? `<div class="resident-detail-wide"><span>Eligibility</span><strong>${resident.goodStanding ? 'In good standing' : 'Not in good standing'}</strong></div>` : ''}
     </div>`;
+  if (resident.missingDetails?.length) {
+    const action = hasStaffPermission('records.update')
+      ? `<button type="button" class="btn btn-xs btn-primary" data-resident-complete="${escapeText(resident.id)}">${escapeText(adminText('Complete missing information'))}</button>`
+      : `<span class="resident-missing-note">${escapeText(adminText('Staff who may update Resident Records complete this.'))}</span>`;
+    document.getElementById('view-resident-content').insertAdjacentHTML('afterbegin', `<section class="resident-missing-panel" aria-labelledby="resident-missing-title">
+      <h3 id="resident-missing-title">${escapeText(adminText('Missing for certificates'))}</h3>
+      <p>${escapeText(certificateDetailLabels(resident.missingDetails).join(', '))}. ${escapeText(adminText('Certificates whose template prints these details cannot be issued until they are recorded. Nothing is filled in automatically.'))}</p>
+      ${action}
+    </section>`);
+    document.querySelector?.('[data-resident-complete]')?.addEventListener('click', () => {
+      closeModal('modal-view-resident');
+      openEditResident(resident.id);
+      const field = document.getElementById(RELEASE_RESIDENT_FIELDS[resident.missingDetails[0]] || '');
+      field?.scrollIntoView?.({ block: 'center' });
+      field?.focus?.();
+    });
+  }
   document.getElementById('view-resident-content').insertAdjacentHTML('beforeend', '<section id="resident-portal-account" class="resident-account-panel" aria-live="polite">Loading portal account...</section>');
   document.getElementById('view-resident-content').insertAdjacentHTML('beforeend', '<section id="resident-household-information" class="resident-account-panel" aria-live="polite">Loading household information...</section>');
   const canSeeIncidents = hasStaffPermission('incidents.view') || hasStaffPermission('vawc.view');
@@ -6080,16 +6113,50 @@ async function runEligibilityCheck() {
     }
     const result = document.getElementById('elig-result');
     result.style.display = 'block';
-    result.innerHTML = `<div class="eligibility-result ${payload.eligible ? 'eligible' : 'ineligible'}">
-      <strong>${payload.eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE'}</strong>
-      <div>${escapeText(payload.resident.full_name)} — ${escapeText(payload.certificate_type)}</div>
-      ${payload.reasons.map(reason => `<div>${escapeText(reason)}</div>`).join('')}
-    </div>`;
-    document.getElementById('elig-proceed-btn').style.display = payload.eligible ? 'block' : 'none';
+    result.innerHTML = eligibilityResultHtml(payload);
+    result.querySelector?.('[data-eligibility-complete]')?.addEventListener('click', () => {
+      closeModal('modal-eligibility-check');
+      void openResidentRecordForm({ id: payload.resident.id, resident_number: payload.resident.resident_number }, missingDetailKey(payload.missing_details?.[0]));
+    });
+    document.getElementById('elig-proceed-btn').style.display = eligibilityOutcome(payload) === 'eligible' ? 'block' : 'none';
     currentEligResidentId = resident.id;
   } catch (error) {
     showToast(error.message, 'red');
   }
+}
+
+/**
+ * eligible: can be issued now. incomplete: nothing disqualifies the resident, but a staff verification or a record
+ * detail is still missing. ineligible: a disqualification (standing, inactive record, prior certificate, hold).
+ */
+function eligibilityOutcome(payload) {
+  const disqualified = Array.isArray(payload.disqualifications) ? payload.disqualifications.length > 0 : !payload.eligible;
+  if (disqualified) return 'ineligible';
+  return (payload.verifications || []).length || (payload.missing_details || []).length ? 'incomplete' : 'eligible';
+}
+
+function missingDetailKey(label) {
+  return Object.keys(CERTIFICATE_DETAIL_LABELS).find(key => CERTIFICATE_DETAIL_LABELS[key] === label) || '';
+}
+
+function eligibilityResultHtml(payload) {
+  const outcome = eligibilityOutcome(payload);
+  const headings = { eligible: 'Eligible', incomplete: 'Eligible once completed', ineligible: 'Not eligible' };
+  const list = (title, items) => items.length ? `<div class="eligibility-group"><span>${escapeText(adminText(title))}</span><ul>${items.map(item => `<li>${escapeText(item)}</li>`).join('')}</ul></div>` : '';
+  const disqualifications = Array.isArray(payload.disqualifications) ? payload.disqualifications : (payload.eligible ? [] : payload.reasons || []);
+  const missing = (payload.missing_details || []).map(label => adminText(label));
+  const complete = missing.length && hasStaffPermission('records.update')
+    ? `<button type="button" class="btn btn-xs btn-primary" data-eligibility-complete>${escapeText(adminText('Complete missing information'))}</button>`
+    : '';
+  return `<div class="eligibility-result ${outcome}" role="status">
+      <strong>${escapeText(adminText(headings[outcome]))}</strong>
+      <div>${escapeText(payload.resident.full_name)} — ${escapeText(payload.certificate_type)}</div>
+      ${outcome === 'eligible' ? `<div>${escapeText(adminText('Every requirement on record is met.'))}</div>` : ''}
+      ${list('Not eligible because', disqualifications)}
+      ${list('Needs staff verification', payload.verifications || [])}
+      ${list('Missing from the resident record', missing)}
+      ${complete}
+    </div>`;
 }
 
 function elig_proceedRequest() {

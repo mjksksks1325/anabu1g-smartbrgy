@@ -205,6 +205,7 @@
         <button type="button" class="status-pill" aria-pressed="false" data-resident-status="inactive" onclick="filterResidentStatus('Inactive',this)">Inactive</button>
         <button type="button" class="status-pill" aria-pressed="false" data-resident-status="senior" onclick="filterResidentStatus('Senior',this)">Senior Citizens</button>
         <button type="button" class="status-pill" aria-pressed="false" data-resident-status="archived" onclick="filterResidentStatus('Archived',this)">Archived</button>
+        <button type="button" class="status-pill" aria-pressed="false" data-resident-status="incomplete" onclick="filterResidentStatus('Incomplete',this)">{{ __('Missing certificate details') }}</button>
         <label class="resident-group-select" for="resident-group-filter"><span>Special group</span>
           <select class="form-input" id="resident-group-filter" onchange="filterResidentSpecialGroup(this.value)">
             <option value="">All special groups</option>
@@ -432,11 +433,11 @@
       </div>
 
       <!-- Audit Stats -->
-      <div class="audit-stats">
-        <div class="audit-stat"><div class="audit-stat-val" id="astat-total">0</div><div class="audit-stat-label">Total Events</div></div>
-        <div class="audit-stat"><div class="audit-stat-val" style="color:var(--blue-400);" id="astat-records">0</div><div class="audit-stat-label">Record Changes</div></div>
-        <div class="audit-stat"><div class="audit-stat-val" style="color:#F59E0B;" id="astat-certs">0</div><div class="audit-stat-label">Certificates</div></div>
-        <div class="audit-stat"><div class="audit-stat-val" style="color:#EF4444;" id="astat-security">0</div><div class="audit-stat-label">Security &amp; cabinet</div></div>
+      <div class="stats-grid audit-stats-grid">
+        <div class="stat-card green"><div class="stat-label">Total Events</div><div class="stat-value" id="astat-total">0</div><div class="stat-icon"><x-staff-icon name="audit" /></div></div>
+        <div class="stat-card blue"><div class="stat-label">Record Changes</div><div class="stat-value" id="astat-records">0</div><div class="stat-icon"><x-staff-icon name="people" /></div></div>
+        <div class="stat-card amber"><div class="stat-label">Certificates</div><div class="stat-value" id="astat-certs">0</div><div class="stat-icon"><x-staff-icon name="certificate" /></div></div>
+        <div class="stat-card red"><div class="stat-label">Security &amp; cabinet</div><div class="stat-value" id="astat-security">0</div><div class="stat-icon"><x-staff-icon name="shield" /></div></div>
       </div>
 
       <div class="card">
