@@ -32,7 +32,7 @@
                     <li><span data-portal-i18n="Dalhin ang valid ID. Itanong sa staff kung may iba pang kailangang dokumento.">{{ __('Dalhin ang valid ID. Itanong sa staff kung may iba pang kailangang dokumento.') }}</span></li>
                     <li><span data-portal-i18n="Sabihin kung aling detalye ang mali at ano ang tama.">{{ __('Sabihin kung aling detalye ang mali at ano ang tama.') }}</span></li>
                 </ol>
-                <p class="v2-summary-note"><span data-portal-i18n="Office hours:">{{ __('Office hours:') }}</span> <span class="tag-unconfirmed"><span data-portal-i18n="Hindi pa kumpirmado">{{ __('Hindi pa kumpirmado') }}</span></span></p>
+                <p class="v2-summary-note"><span data-portal-i18n="Office hours:">{{ __('Office hours:') }}</span> {{ config('portal.barangay_hall.office_hours') }}</p>
             </details>
         </section>
     </div>

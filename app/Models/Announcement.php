@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
+/** @property list<string>|null $image_paths */
 class Announcement extends Model
 {
     public const STATUS_DRAFT = 'draft';
@@ -17,6 +18,7 @@ class Announcement extends Model
         'title',
         'body',
         'image_path',
+        'image_paths',
         'status',
         'published_at',
         'created_by',
@@ -34,6 +36,18 @@ class Announcement extends Model
             ->where('published_at', '<=', now());
     }
 
+    /** @return list<string> */
+    public function imagePaths(): array
+    {
+        return $this->image_paths ?? ($this->image_path === null ? [] : [$this->image_path]);
+    }
+
+    /** @return list<string> */
+    public function imageUrls(): array
+    {
+        return array_map(fn (string $path): string => url('/storage/'.$path), $this->imagePaths());
+    }
+
     public function imageUrl(): ?string
     {
         return $this->image_path === null ? null : url('/storage/'.$this->image_path);
@@ -42,6 +56,6 @@ class Announcement extends Model
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['published_at' => 'datetime'];
+        return ['published_at' => 'datetime', 'image_paths' => 'array'];
     }
 }

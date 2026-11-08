@@ -11,7 +11,11 @@
         <article class="portal-announcement-card v2-card" id="announcement-{{ $announcement->id }}">
             <p class="portal-announcement-date"><time datetime="{{ $announcement->published_at->toIso8601String() }}">{{ $announcement->published_at->format('F j, Y · g:i A') }}</time></p>
             <h2>{{ $announcement->title }}</h2>
-            @if($announcement->image_path)<img class="portal-announcement-image" src="{{ $announcement->imageUrl() }}" alt="{{ $announcement->title }}" loading="lazy">@endif
+            <div class="portal-announcement-gallery">
+                        @foreach($announcement->imageUrls() as $imageUrl)
+                            <img class="portal-announcement-image" src="{{ $imageUrl }}" alt="{{ $announcement->title }} - {{ $loop->iteration }}" loading="lazy">
+                        @endforeach
+                    </div>
             <div class="portal-announcement-body">{{ $announcement->body }}</div>
         </article>
     @empty

@@ -13,6 +13,54 @@ const FEE_SCHEDULE = {
   'Business Clearance': { amount: 200, confirmed: false },
 };
 
+test('background snapshots skip unchanged, paused and stale-page data', async () => {
+  const { context, fields } = await client();
+  const app = {};
+  fields.set('app', app);
+  context.window.location = { href: 'http://example.test/staff/residents' };
+  let paused = false;
+  context.window.SiteLiveUpdates = { isPaused: () => paused };
+  const request = { app, url: context.window.location.href };
+  assert.equal(context.acceptWorkspaceSnapshot('test', { count: 1 }, false, null), true);
+  assert.equal(context.acceptWorkspaceSnapshot('test', { count: 1 }, true, request), false);
+  paused = true;
+  assert.equal(context.acceptWorkspaceSnapshot('test', { count: 2 }, true, request), false);
+  paused = false;
+  assert.equal(context.acceptWorkspaceSnapshot('test', { count: 2 }, true, request), true);
+  context.window.location.href = 'http://example.test/staff/incidents';
+  assert.equal(context.acceptWorkspaceSnapshot('test', { count: 3 }, true, request), false);
+  context.window.location.href = request.url;
+  fields.set('app', {});
+  assert.equal(context.acceptWorkspaceSnapshot('test', { count: 3 }, true, request), false);
+});
+
+test('live workspace refresh keeps the current page of the visible module', async () => {
+  const { context } = await client();
+  let screen = 'screen-records';
+  context.document.querySelector = () => ({ id: screen });
+  context.hasStaffPermission = () => true;
+  context.window.SiteLiveUpdates = { isPaused: () => false };
+  const calls = [];
+  for (const name of ['loadResidents', 'loadVoterRegistry', 'loadIncidents', 'loadRequestRecords', 'reloadUsers', 'reloadAuditLog', 'loadPuroks', 'refreshIssuedCertificates']) {
+    context[name] = async (...args) => calls.push([name, ...args]);
+  }
+  context.refreshDashboardStats = async () => {};
+  vm.runInContext('residentCurrentPage = 3; voterCurrentPage = 2; incidentCurrentPage = 4; rrCurrentPage = 5; issuedCertificatesPage = 2;', context);
+  for (const [id, loader, page] of [['records', 'loadResidents', 3], ['voters', 'loadVoterRegistry', 2], ['incidents', 'loadIncidents', 4], ['request-records', 'loadRequestRecords', 5], ['certificates', 'refreshIssuedCertificates', 2]]) {
+    screen = `screen-${id}`;
+    await context.refreshWorkspaceLive();
+    const call = calls.pop();
+    assert.equal(call[0], loader);
+    assert.equal(call[1], page);
+    assert.equal(call[2].background, true);
+    assert.equal(calls.length, 0);
+  }
+  screen = 'screen-dashboard';
+  await context.refreshWorkspaceLive();
+  assert.equal(calls[0][0], 'loadPuroks');
+  assert.equal(calls[0][1].background, true);
+});
+
 test('a folder movement alert opens the matching RFID movement history', async () => {
   const { context, fields } = await client();
   const destinations = [];

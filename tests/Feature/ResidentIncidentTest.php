@@ -62,7 +62,7 @@ test('resident sees a translated neutral notice for a linked pending ordinary in
     // The page scrolls to the request flow, so the notice must be inside it, before the first step.
     $document = new DOMDocument;
     @$document->loadHTML($response->getContent());
-    $flowNotice = (new DOMXPath($document))->query('//section[@id="request-flow"]/p[contains(@class,"alert")]/following-sibling::div[@id="screen-terms"]');
+    $flowNotice = (new DOMXPath($document))->query('//section[@id="request-flow"]/div[@data-live-region="request-notices"][p[contains(@class,"alert")]]/following-sibling::div[@id="screen-terms"]');
     expect($flowNotice)->toHaveCount(1);
 
     $this->postJson(route('portal.request.store'), [

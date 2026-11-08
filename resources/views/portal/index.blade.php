@@ -69,7 +69,7 @@
             <thead><tr><th scope="col"><span data-portal-i18n="Dokumento">{{ __('Dokumento') }}</span></th><th scope="col"><span data-portal-i18n="Fee">{{ __('Fee') }}</span></th></tr></thead>
             <tbody>
                 @foreach($services as $service)
-                    <tr><th scope="row"><span data-portal-i18n="{{ $service->value }}">{{ __($service->value) }}</span></th><td><span data-portal-i18n="{{ $service->feeLabel() }}">{{ __($service->feeLabel()) }}</span>@unless($service->feeConfirmed()) <span class="tag-unconfirmed"><span data-portal-i18n="To be confirmed">{{ __('To be confirmed') }}</span></span>@endunless</td></tr>
+                    <tr><th scope="row"><span data-portal-i18n="{{ $service->value }}">{{ __($service->value) }}</span></th><td><span data-portal-i18n="{{ $service->feeLabel() }}">{{ __($service->feeLabel()) }}</span></td></tr>
                 @endforeach
             </tbody>
         </table>
@@ -86,7 +86,11 @@
                 <article class="portal-announcement-item">
                     <p class="portal-announcement-date"><time datetime="{{ $announcement->published_at->toIso8601String() }}">{{ $announcement->published_at->format('F j, Y') }}</time></p>
                     <h4>{{ $announcement->title }}</h4>
-                    @if($announcement->image_path)<img class="portal-announcement-image" src="{{ $announcement->imageUrl() }}" alt="{{ $announcement->title }}" loading="lazy">@endif
+                    <div class="portal-announcement-gallery">
+                        @foreach($announcement->imageUrls() as $imageUrl)
+                            <img class="portal-announcement-image" src="{{ $imageUrl }}" alt="{{ $announcement->title }} - {{ $loop->iteration }}" loading="lazy">
+                        @endforeach
+                    </div>
                     <div class="portal-announcement-body">{{ $announcement->body }}</div>
                 </article>
             @empty
@@ -108,15 +112,14 @@
         <dl class="info-list">
             <div><dt><span data-portal-i18n="Address">{{ __('Address') }}</span></dt><dd><span data-portal-i18n="Barangay Anabu I-G, Lungsod ng Imus, Cavite">{{ __('Barangay Anabu I-G, Lungsod ng Imus, Cavite') }}</span></dd></div>
             @include('portal.partials.barangay-hall-contact')
-            <div><dt><span data-portal-i18n="Land Area">{{ __('Land Area') }}</span></dt><dd><span class="tag-unconfirmed"><span data-portal-i18n="To be confirmed">{{ __('To be confirmed') }}</span></span></dd></div>
+            <div><dt><span data-portal-i18n="Land Area">{{ __('Land Area') }}</span></dt><dd>{{ number_format(config('portal.land_area_hectares'), 2) }} <span data-portal-i18n="hectares">{{ __('hectares') }}</span></dd></div>
             <div id="population"><dt><span data-portal-i18n="Populasyon">{{ __('Populasyon') }}</span></dt><dd><span data-portal-i18n="2,345 na residente ayon sa 2024 Census of Population ng PSA.">{{ __('2,345 na residente ayon sa 2024 Census of Population ng PSA.') }}</span> <a href="https://psa.gov.ph/classification/psgc/barangays/0402109000" target="_blank" rel="noopener noreferrer"><span data-portal-i18n="PSA data">{{ __('PSA data') }}</span></a></dd></div>
         </dl>
-        <p class="office-note"><span data-portal-i18n="The office days are not yet confirmed. Call the Barangay Hall before you visit.">{{ __('The office days are not yet confirmed. Call the Barangay Hall before you visit.') }}</span></p>
     </div>
     <div class="office-map" id="location">
         <div class="map-panel">
             <iframe data-portal-i18n-title="Mapa ng Barangay Anabu I-G, Imus, Cavite" title="{{ __('Mapa ng Barangay Anabu I-G, Imus, Cavite') }}" src="https://maps.google.com/maps?q=Barangay%20Anabu%20I-G%2C%20Imus%2C%20Cavite&amp;output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
-            <p><span data-portal-i18n="Area ng Barangay Anabu I-G.">{{ __('Area ng Barangay Anabu I-G.') }}</span> <span class="tag-unconfirmed"><span data-portal-i18n="Hindi pa kumpirmado">{{ __('Hindi pa kumpirmado') }}</span></span> <span data-portal-i18n="ang eksaktong entrance ng Barangay Hall.">{{ __('ang eksaktong entrance ng Barangay Hall.') }}</span> <a href="https://www.google.com/maps/search/?api=1&amp;query=Barangay+Anabu+I-G%2C+Imus%2C+Cavite" target="_blank" rel="noopener noreferrer"><span data-portal-i18n="Buksan sa Google Maps">{{ __('Buksan sa Google Maps') }}</span></a></p>
+            <p><span data-portal-i18n="Area ng Barangay Anabu I-G.">{{ __('Area ng Barangay Anabu I-G.') }}</span> <a href="https://www.google.com/maps/search/?api=1&amp;query=Barangay+Anabu+I-G%2C+Imus%2C+Cavite" target="_blank" rel="noopener noreferrer"><span data-portal-i18n="Buksan sa Google Maps">{{ __('Buksan sa Google Maps') }}</span></a></p>
         </div>
     </div>
 </section>
@@ -124,7 +127,7 @@
 <section class="home-section hotline-panel" id="contacts" aria-labelledby="contacts-title">
     <div class="hotline-head">
         <h2 id="contacts-title"><span data-portal-i18n="Emergency hotlines">{{ __('Emergency hotlines') }}</span></h2>
-        <p><span data-portal-i18n="Numbers marked Pending verification are awaiting confirmation from the barangay. Other numbers are from the">{{ __('Numbers marked Pending verification are awaiting confirmation from the barangay. Other numbers are from the') }}</span> <a href="https://cityofimus.gov.ph/" target="_blank" rel="noopener noreferrer"><span data-portal-i18n="City of Imus website">{{ __('City of Imus website') }}</span></a>.</p>
+        <p><a href="https://cityofimus.gov.ph/" target="_blank" rel="noopener noreferrer"><span data-portal-i18n="City of Imus website">{{ __('City of Imus website') }}</span></a>.</p>
     </div>
     @include('portal.partials.emergency-hotlines', ['listClass' => 'hotline-list'])
 </section>

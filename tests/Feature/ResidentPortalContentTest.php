@@ -1,7 +1,9 @@
 <?php
 
 use App\CertificateType;
+use App\Models\DocumentRequest;
 use App\Models\User;
+use App\PortalLocalization;
 
 test('resident portal footer links to the Provincial Government of Cavite', function () {
     $response = $this->get(route('portal.officials'))->assertOk();
@@ -24,7 +26,7 @@ test('resident portal footer groups barangay contact, quick links and government
     $footer = '//footer[contains(@class, "site-footer")]';
 
     expect($xpath->query($footer.'//section[@id="footer-contact"]//a[starts-with(@href, "https://www.google.com/maps/search/")][@target="_blank"][@rel="noopener noreferrer"]'))->toHaveCount(1);
-    expect($xpath->query($footer.'//section[@id="footer-contact"]//*[contains(@class, "tag-unconfirmed")]'))->toHaveCount(2);
+    expect($xpath->query($footer.'//section[@id="footer-contact"]//*[contains(@class, "tag-unconfirmed")]'))->toHaveCount(0);
     expect($xpath->query($footer.'//section[@id="footer-contact"]//a[@href="tel:911"]'))->toHaveCount(1);
     expect(collect($xpath->query($footer.'//nav[@id="quick-links"]//a'))->map(fn (DOMElement $link): string => $link->getAttribute('href'))->all())
         ->toBe([
@@ -137,7 +139,7 @@ test('each requestable document shows its system fee and certificate validity', 
         $text = preg_replace('/\s+/', ' ', $options->item($index)->textContent);
         expect($text)->toContain($type->value, $type->feeLabel() === 'Walang bayad' ? 'Free' : $type->feeLabel())
             ->toContain(in_array($type, [CertificateType::BarangayId, CertificateType::FirstTimeJobseeker], true) ? 'Valid for 1 year from issue' : 'Valid for 3 months from issue');
-        expect(str_contains($text, 'To be confirmed'))->toBe($type === CertificateType::BusinessClearance);
+        expect($text)->not->toContain('To be confirmed');
     }
 });
 
@@ -147,11 +149,34 @@ test('request terms keep the full legal text after a plain summary', function ()
         ->assertSeeInOrder(['What you are agreeing to, in short', 'id="tnc-scroll"', 'Online requests remain valid for 30 days from submission.', 'Monday to Friday, 8:00 AM to 5:00 PM.']);
 });
 
-test('help page displays an unconfirmed land area without changing the map', function () {
-    $this->get(route('portal.information'))
-        ->assertSeeInOrder(['Land Area', 'To be confirmed'])
+test('signed-in portal pages show office hours and fees without confirmation labels', function (string $route) {
+    $user = User::factory()->resident()->create();
+    $parameters = [];
+    if ($route === 'portal.account.requests.show') {
+        $request = DocumentRequest::query()->create([
+            'resident_id' => $user->resident_id, 'reference_code' => 'REQ-PORTAL-BUSINESS',
+            'source' => 'online', 'document_type' => CertificateType::BusinessClearance->value,
+            'full_name' => $user->name, 'address' => 'Anabu I-G, Imus City', 'status' => 'pending',
+        ]);
+        $parameters = [$request->reference_code];
+    }
+
+    $this->actingAs($user, 'resident')->get(route($route, $parameters))->assertOk()
+        ->assertDontSee('data-portal-i18n="Hindi pa kumpirmado"', false)
+        ->assertDontSee('data-portal-i18n="Hindi pa kumpirmado:"', false)
+        ->assertDontSee('data-portal-i18n="To be confirmed"', false)
+        ->assertDontSee('data-portal-i18n="Pending verification"', false);
+})->with(['portal.dashboard', 'portal.profile', 'portal.request.create', 'portal.account.requests.show']);
+
+test('home and help show the supplied land area without verification labels in either language', function (string $route, string $locale) {
+    $this->withCookie(PortalLocalization::COOKIE, $locale)->get(route($route))
+        ->assertSeeInOrder([$locale === 'fil' ? 'Lawak ng Lupa' : 'Land Area', '183.07', $locale === 'fil' ? 'ektarya' : 'hectares'])
+        ->assertDontSee('Pending verification')
+        ->assertDontSee('To be confirmed')
+        ->assertDontSee('Hinihintay ang beripikasyon')
+        ->assertDontSee('Hindi pa kumpirmado')
         ->assertSee('src="https://maps.google.com/maps?q=Barangay%20Anabu%20I-G%2C%20Imus%2C%20Cavite&amp;output=embed"', false);
-});
+})->with(['home', 'portal.information'])->with(['en', 'fil']);
 
 test('official resources link to the supplied government and assistance websites', function () {
     $response = $this->get(route('portal.information'));

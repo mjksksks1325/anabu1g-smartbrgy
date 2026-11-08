@@ -75,16 +75,18 @@ test('public portal shows community information and usable service links', funct
         ->assertSee(route('portal.information').'#requirements', false);
 });
 
-test('the barangay emergency hotlines and office hours appear with call links and verification tags', function (string $route) {
+test('the barangay emergency hotlines and office hours appear with call links and no verification labels', function (string $route) {
     $page = $this->get(route($route))->assertOk();
 
     foreach (['tel:+63462302905', 'tel:+639985985601', 'tel:+639985985602', 'tel:+63464163032', 'tel:+639155283256', 'tel:+639190691703', 'tel:+63464198301', 'tel:911'] as $link) {
         $page->assertSee('href="'.$link.'"', false);
     }
-    $page->assertSeeInOrder(['Imus CDRRMO / Ambulance', '0919-069-1703', 'Pending verification'])
+    $page->assertSeeInOrder(['Imus CDRRMO / Ambulance', '0919-069-1703'])
         ->assertSeeInOrder(['Ospital ng Imus', 'Lines 8301 to 8307', '(046) 419-8301'])
         ->assertSee('Office line, not a 24-hour hotline')
-        ->assertSeeInOrder(['Office hours', '8:00 AM – 5:00 PM', '(office days not yet confirmed)'])
+        ->assertSeeInOrder(['Office hours', '8:00 AM – 5:00 PM'])
+        ->assertDontSee('Pending verification')
+        ->assertDontSee('(office days not yet confirmed)')
         ->assertDontSee('24/7')
         ->assertDontSee('tel:+63464198307', false);
 })->with(['home', 'portal.information']);
@@ -97,10 +99,10 @@ test('every page footer shows the Barangay Hall number and office hours instead 
     $this->get(route('portal.information'))->assertDontSee('<span data-portal-i18n="Pending verification">', false);
 });
 
-test('portal home lists confirmed document fees and flags the business clearance fee for confirmation', function () {
+test('portal home lists document fees without confirmation labels', function () {
     $this->get(route('home'))
         ->assertOk()
-        ->assertSeeInOrder(['>Documents and fees</span>', '>Barangay Clearance</span>', '>PHP 25.00</span>', '>Certificate of Residency</span>', '>PHP 25.00</span>', '>Certificate of Indigency</span>', '>Free</span>', '>Business Clearance</span>', '>PHP 200.00</span>', '>To be confirmed</span>'], false)
+        ->assertSeeInOrder(['>Documents and fees</span>', '>Barangay Clearance</span>', '>PHP 25.00</span>', '>Certificate of Residency</span>', '>PHP 25.00</span>', '>Certificate of Indigency</span>', '>Free</span>', '>Business Clearance</span>', '>PHP 200.00</span>'], false)
         ->assertDontSee('PHP 25 ang barangay clearance')
         ->assertDontSee('Regular Barangay ID: PHP 100');
 });
@@ -119,7 +121,7 @@ test('portal home lists the national 8888 complaint channel apart from emergency
         ->and($xpath->query('//a[@href="https://8888.gov.ph/"]'))->toHaveCount(1);
 });
 
-test('only an unconfirmed fee carries the to-be-confirmed tag on the portal home', function () {
+test('document fee rows show their amounts without confirmation labels', function () {
     $document = new DOMDocument;
     @$document->loadHTML($this->get(route('home'))->assertOk()->getContent());
     $rows = (new DOMXPath($document))->query('//table[contains(@class, "doc-rates-table")]/tbody/tr');
@@ -127,14 +129,14 @@ test('only an unconfirmed fee carries the to-be-confirmed tag on the portal home
     expect($rows)->toHaveCount(count(CertificateType::cases()));
     foreach ($rows as $row) {
         $type = CertificateType::from(trim($row->getElementsByTagName('th')->item(0)->textContent));
-        expect(str_contains($row->textContent, 'To be confirmed'))->toBe(! $type->feeConfirmed(), $type->value);
+        expect($row->textContent)->toContain($type->fee() === 0 ? 'Free' : $type->feeLabel())->not->toContain('To be confirmed');
     }
 });
 
-test('requirements page lists confirmed document fees and flags the business clearance fee for confirmation', function () {
+test('requirements page lists document fees without confirmation labels', function () {
     $this->get(route('portal.information'))
         ->assertOk()
-        ->assertSeeInOrder(['>Barangay Clearance</span>', '>PHP 25.00</span>', '>Certificate of Residency</span>', '>PHP 25.00</span>', '>Certificate of Indigency</span>', '>Free</span>', '>Business Clearance</span>', '>PHP 200.00</span>', '>To be confirmed</span>'], false);
+        ->assertSeeInOrder(['>Barangay Clearance</span>', '>PHP 25.00</span>', '>Certificate of Residency</span>', '>PHP 25.00</span>', '>Certificate of Indigency</span>', '>Free</span>', '>Business Clearance</span>', '>PHP 200.00</span>'], false);
 });
 
 test('document request page renders the terms when a resident is signed in', function () {
@@ -154,7 +156,7 @@ test('document request page asks residents to review before submitting', functio
         ->get(route('portal.request.create'))
         ->assertOk()
         ->assertSeeInOrder(['id="screen-attachment"', 'onclick="goToReview()"', 'id="screen-review"', 'id="review-summary"', 'id="submit-request-button"', 'id="screen-confirm"'], false)
-        ->assertSee('Hindi pa kumpirmado ng barangay ang office hours');
+        ->assertDontSee('Hindi pa kumpirmado ng barangay ang office hours');
 });
 
 test('the submitted screen leads with a compact confirmation, a prominent reference number and its copy button', function (string $locale, string $heading, string $copy) {

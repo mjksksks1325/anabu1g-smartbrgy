@@ -17,11 +17,13 @@ return [
 
     /*
      * Barangay Hall contact details and the public emergency hotlines, shown on the portal home page,
-     * Information page and footer. "verified" => false shows a Pending verification tag: set it to true
-     * once the barangay confirms the entry. 911, the City of Imus line, the first Imus PNP number and the
+     * Information page and footer. Verification flags remain internal metadata.
+     * 911, the City of Imus line, the first Imus PNP number and the
      * BFP mobile were already listed from the City of Imus website; the rest were provided for Work Group 5
      * (2026-11-07). Office days were not provided, so only the hours are shown.
      */
+    'land_area_hectares' => 183.07,
+
     'barangay_hall' => [
         'phone' => ['display' => '(046) 230-2905', 'tel' => '+63462302905'],
         'office_hours' => '8:00 AM – 5:00 PM',

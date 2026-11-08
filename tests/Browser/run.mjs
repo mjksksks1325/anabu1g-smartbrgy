@@ -12,7 +12,7 @@ import { openBrowser } from './lib/browser.mjs';
 
 const FLOWS = [
     'resident-registration', 'password-reset', 'two-factor', 'resident-application', 'document-request',
-    'certificates', 'resident-records', 'vawc-restrictions', 'sidebar-navigation', 'request-rate-limits',
+    'live-updates', 'table-alignment', 'close-controls', 'announcements', 'certificates', 'resident-records', 'vawc-restrictions', 'sidebar-navigation', 'request-rate-limits',
 ];
 // A stray browser event must not end the run before the environment is cleaned up.
 process.on('unhandledRejection', error => console.error(`  (ignored: ${error?.message ?? error})`));
@@ -20,6 +20,7 @@ const args = process.argv.slice(2);
 const only = args.find(arg => arg.startsWith('--only='))?.slice(7).split(',').filter(Boolean);
 const keep = args.includes('--keep');
 const selected = only ? FLOWS.filter(flow => only.includes(flow)) : FLOWS;
+if (selected.some(flow => ['close-controls', 'table-alignment'].includes(flow))) process.env.CLOSE_BUTTON_AUDIT = '1';
 if (only && selected.length !== only.length) {
     console.error(`Unknown flow. Choose from: ${FLOWS.join(', ')}`);
     process.exit(2);

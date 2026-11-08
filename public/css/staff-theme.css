@@ -654,7 +654,10 @@ body #app.admin-interface.admin-interface .btn-danger-outline:hover, body.light-
   body #app.admin-interface.admin-interface .topbar-right { flex: 1 1 auto; justify-content: flex-end; min-width: 0; gap: 4px; }
 }
 body #app.admin-interface.admin-interface .sidebar .nav-item .nav-icon, body #app.admin-interface.admin-interface .sidebar .nav-item.active .nav-icon,
-body.light-mode #app.admin-interface.admin-interface .sidebar .nav-item.active .nav-icon { color: currentColor; opacity: 1; }
+body.light-mode #app.admin-interface.admin-interface .sidebar .nav-item.active .nav-icon,
+body[data-personnel-layout="iot"] .side-nav a > svg.nav-icon,
+html:not([data-theme=dark]) body[data-personnel-layout="iot"] .side-nav a > svg.nav-icon,
+body.civic-settings .staff-settings-navigation .nav-item > svg.nav-icon { color: currentColor; stroke: currentColor; opacity: 1; }
 .staff-auth-page { --color-accent: #17663a; --color-accent-content: #17663a; --color-accent-foreground: #fff; }
 .staff-auth-page .civic-auth-form :is(input, button, a):focus-visible { outline: 3px solid #17663a; outline-offset: 2px; }
 /* On narrow screens the sign-in form comes first; the brand panel follows it. */
@@ -1113,3 +1116,18 @@ body[data-personnel-layout="admin"] #app.admin-interface .audit-stats-grid { gri
 body[data-personnel-layout="admin"] .workspace-warning { margin: 0 0 16px; padding: 12px 16px; border: 1px solid var(--staff-warning-border); border-radius: 8px; background: var(--staff-warning-bg); color: var(--staff-ink); font-size: 13px; line-height: 1.5; }
 body[data-personnel-layout="admin"] .workspace-warning h2 { margin: 0 0 4px; color: var(--staff-warning-ink); font-size: 14px; }
 body[data-personnel-layout="admin"] .workspace-warning ul { margin: 0; padding-left: 18px; }
+/* Required enrollment replaces the sign-in form inside the same light auth card. */
+.staff-auth-page .staff-enrollment-content { color: #14211a; color-scheme: light; }
+.staff-auth-page .staff-enrollment-content [data-flux-heading] { color: #14211a; font-size: 20px; line-height: 1.4; letter-spacing: normal; }
+.staff-auth-page .staff-enrollment-content [data-flux-text] { color: #4f5e56; font-size: 14px; line-height: 1.5; }
+.staff-auth-page .staff-enrollment-content input[readonly] { min-width: 0; color: #14211a; }
+.staff-auth-page .staff-enrollment-content [data-flux-otp-input] { background: #fff; color: #14211a; }
+.staff-auth-page .staff-enrollment-content button:has(> svg) { color: #17663a; }
+.staff-auth-page .staff-enrollment-content form button[type="submit"] { background: transparent; border-color: transparent; color: #17663a; }
+.staff-auth-page .staff-enrollment-content .setup-manual-label { background: #fff; color: #4f5e56; }
+
+/* All staff table columns share centered headings, values and action groups in both layouts. */
+body:is([data-personnel-layout="admin"], [data-personnel-layout="iot"]) table :is(th, td) { text-align: center !important; vertical-align: middle; }
+body:is([data-personnel-layout="admin"], [data-personnel-layout="iot"]) table :is(th, td) :is(.text-start, .text-end, .text-left, .text-right) { text-align: center !important; }
+body:is([data-personnel-layout="admin"], [data-personnel-layout="iot"]) table td > :is(.flex, .resident-actions, [style*="display:flex"], [style*="display: flex"]) { justify-content: center !important; }
+body[data-personnel-layout="admin"] :is(.audit-table-head, .audit-log-row) > * { text-align: center; }

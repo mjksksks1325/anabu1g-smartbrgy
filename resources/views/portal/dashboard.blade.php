@@ -144,7 +144,7 @@
             <ul class="v2-list">
                 <li><span data-portal-i18n="Hintaying maging Ready for release ang request bago pumunta.">{{ __('Hintaying maging Ready for release ang request bago pumunta.') }}</span></li>
                 <li><span data-portal-i18n="Dalhin ang original na valid ID at ang reference number.">{{ __('Dalhin ang original na valid ID at ang reference number.') }}</span></li>
-                <li><span data-portal-i18n="Office hours:">{{ __('Office hours:') }}</span> <span class="tag-unconfirmed"><span data-portal-i18n="Hindi pa kumpirmado">{{ __('Hindi pa kumpirmado') }}</span></span></li>
+                <li><span data-portal-i18n="Office hours:">{{ __('Office hours:') }}</span> {{ config('portal.barangay_hall.office_hours') }}</li>
             </ul>
         </section>
     </aside>

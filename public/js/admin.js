@@ -134,15 +134,18 @@ function setCheckedSpecialGroups(groups = []) {
   });
 }
 
-async function refreshDashboardStats() {
+async function refreshDashboardStats({ background = false } = {}) {
+  const liveContext = background ? { app: document.getElementById('app'), url: window.location.href } : null;
   if (!hasStaffPermission('dashboard.view') || dashboardRefreshInFlight) return false;
   dashboardRefreshInFlight = true;
   try {
-    const response = await fetch('/staff/dashboard-summary', { credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
+    const response = await fetch('/staff/dashboard-summary', { signal: background ? window.SiteLiveUpdates?.signal : undefined, credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
+    handleWorkspaceLiveAccess(response, background, liveContext);
     const payload = await response.json();
     if (!response.ok) throw new Error(payload?.message || 'Hindi ma-load ang dashboard summary.');
     // The staff member may have left the workspace (Livewire navigation) while this request was in flight.
     if (!document.getElementById('dash-sub-pending')) return false;
+    if (!acceptWorkspaceSnapshot('dashboard', payload, background, liveContext)) return;
     const summary = payload.summary || {};
     const set = (id, value) => { const element = document.getElementById(id); if (element) element.textContent = Number(value || 0).toLocaleString(); };
     set('dash-stat-residents', summary.active_residents);
@@ -159,7 +162,7 @@ async function refreshDashboardStats() {
 
     const activity = payload.recent_activity || [];
     dashboardActivityItems = activity;
-    dashboardActivityPage = 1;
+    if (!background) dashboardActivityPage = 1;
     renderDashboardActivity();
     renderDashboardCertificateChart(payload.certificate_requests || {});
     const previous = new Map(NOTIFICATIONS.map(item => [item.id, item.read]));
@@ -177,6 +180,7 @@ async function refreshDashboardStats() {
     return true;
 
   } catch (error) {
+    if (background) return;
     console.error('Dashboard summary failed:', error);
     showToast(error.message || 'Hindi ma-load ang dashboard.', 'red');
     return false;
@@ -610,16 +614,19 @@ function purokPanelState() {
   return `<div class="dashboard-empty">${escapeText(adminText('No puroks have been added yet.'))}</div>`;
 }
 
-async function loadPuroks() {
-  purokLoadState = 'loading';
+async function loadPuroks({ background = false } = {}) {
+  const liveContext = background ? { app: document.getElementById('app'), url: window.location.href } : null;
+  if (!background) purokLoadState = 'loading';
   try {
     const response = await fetch('/staff/puroks', {
-      credentials: 'same-origin',
+      signal: background ? window.SiteLiveUpdates?.signal : undefined, credentials: 'same-origin',
       headers: { 'Accept': 'application/json' }
     });
+    handleWorkspaceLiveAccess(response, background, liveContext);
     const payload = await response.json();
     if (!response.ok) throw new Error(payload?.message || 'Unable to load demographics.');
 
+    if (!acceptWorkspaceSnapshot('puroks', payload, background, liveContext)) return;
     PUROK_DATA.splice(0, PUROK_DATA.length, ...payload.data.map(purok => ({
       databaseId: purok.id,
       key: purok.name,
@@ -639,6 +646,7 @@ async function loadPuroks() {
     renderDashPurokBreakdown();
     return true;
   } catch (error) {
+    if (background) return;
     console.error('Purok loading failed:', error);
     purokLoadState = 'failed';
     purokLoadError = error;
@@ -1837,7 +1845,8 @@ function workspaceColumnCount(tbody, fallback) {
   return tbody?.closest?.('table')?.querySelectorAll?.('thead th')?.length || fallback;
 }
 
-async function refreshIssuedCertificates(page = issuedCertificatesPage) {
+async function refreshIssuedCertificates(page = issuedCertificatesPage, { background = false } = {}) {
+  const liveContext = background ? { app: document.getElementById('app'), url: window.location.href } : null;
   if (!hasStaffPermission('documents.view')) return;
   const tbody = document.getElementById('issued-certificates-tbody');
   if (!tbody) return;
@@ -1847,8 +1856,9 @@ async function refreshIssuedCertificates(page = issuedCertificatesPage) {
 
   try {
     const response = await fetch(`/staff/issued-certificates?${query}`, {
-      headers: { 'Accept': 'application/json' }
+      signal: background ? window.SiteLiveUpdates?.signal : undefined, headers: { 'Accept': 'application/json' }
     });
+    handleWorkspaceLiveAccess(response, background, liveContext);
     const payload = await response.json().catch(() => ({}));
     if (version !== issuedCertificatesRequestVersion) return;
 
@@ -1856,9 +1866,11 @@ async function refreshIssuedCertificates(page = issuedCertificatesPage) {
       throw new Error(payload?.errors ? Object.values(payload.errors).flat()[0] : 'Unable to load issued certificates.');
     }
 
+    if (!acceptWorkspaceSnapshot('issued', payload, background, liveContext)) return;
     issuedCertificatesPage = Number(payload.current_page) || 1;
     renderIssuedCertificates(payload.data, payload);
   } catch (error) {
+    if (background) return;
     if (version !== issuedCertificatesRequestVersion) return;
     tbody.innerHTML = workspaceErrorRow(8, error, 'refreshIssuedCertificates()', 'Unable to load issued certificates.');
   }
@@ -3509,12 +3521,15 @@ function clearAuditFilter() {
   renderAuditLog();
 }
 
-async function reloadAuditLog() {
+async function reloadAuditLog({ background = false } = {}) {
+  const liveContext = background ? { app: document.getElementById('app'), url: window.location.href } : null;
   try {
-    const payload = await adminRequest('/admin/audit-log');
+    const payload = await adminRequest('/admin/audit-log', { signal: background ? window.SiteLiveUpdates?.signal : undefined, liveContext });
+    if (!acceptWorkspaceSnapshot('audit', payload, background, liveContext)) return;
     LIVE_AUDIT_LOGS.splice(0, LIVE_AUDIT_LOGS.length, ...payload.events);
     renderAuditLog();
   } catch (error) {
+    if (background) return;
     document.getElementById('audit-log-list').innerHTML = workspaceError(error, 'reloadAuditLog()');
     showToast(error.message, 'red');
   }
@@ -3543,11 +3558,13 @@ let userStatusFilter = 'all';
 let userSearch = '';
 
 async function adminRequest(url, options = {}) {
+  const { liveContext, ...requestOptions } = options;
   const response = await fetch(url, {
     credentials: 'same-origin',
-    ...options,
-    headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...csrfRequestHeaders(), ...options.headers },
+    ...requestOptions,
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...csrfRequestHeaders(), ...requestOptions.headers },
   });
+  handleWorkspaceLiveAccess(response, Boolean(liveContext), liveContext);
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     throw new Error(payload.errors ? Object.values(payload.errors).flat()[0] : payload.message || 'The request could not be completed. Please try again.');
@@ -3555,13 +3572,16 @@ async function adminRequest(url, options = {}) {
   return payload;
 }
 
-async function reloadUsers() {
+async function reloadUsers({ background = false } = {}) {
+  const liveContext = background ? { app: document.getElementById('app'), url: window.location.href } : null;
   const container = document.getElementById('users-list-container');
   try {
-    const payload = await adminRequest('/admin/users');
+    const payload = await adminRequest('/admin/users', { signal: background ? window.SiteLiveUpdates?.signal : undefined, liveContext });
+    if (!acceptWorkspaceSnapshot('users', payload, background, liveContext)) return;
     USERS.splice(0, USERS.length, ...payload.users);
     renderUsers();
   } catch (error) {
+    if (background) return;
     if (container) container.innerHTML = `<div class="card">${workspaceError(error, 'reloadUsers()')}</div>`;
     markStatsUnavailable(['usr-total', 'usr-active', 'usr-suspended', 'usr-no-2fa']);
   }
@@ -4019,8 +4039,8 @@ function startAuditAutoRefresh() {
   if (auditRefreshTimer !== null) return;
 
   auditRefreshTimer = setInterval(() => {
-    if (document.getElementById('screen-audit')?.classList.contains('active')) {
-      void reloadAuditLog();
+    if (!document.hidden && !window.SiteLiveUpdates?.isPaused() && document.getElementById('screen-audit')?.classList.contains('active')) {
+      void reloadAuditLog({ background: true });
     }
   }, 15000);
 }
@@ -4297,11 +4317,12 @@ function legacyEnglishSaveResident() {
 /** Only the newest incident list request may render; a slower earlier one must not overwrite it. */
 let incidentLoadVersion = 0;
 
-async function loadIncidents(page = 1) {
+async function loadIncidents(page = 1, { background = false } = {}) {
+  const liveContext = background ? { app: document.getElementById('app'), url: window.location.href } : null;
   const tbody = document.getElementById('incidents-tbody');
   if (!tbody) return;
   const version = ++incidentLoadVersion;
-  tbody.innerHTML = workspaceStateRow(8, 'Loading incident reports...', 'loading');
+  if (!background) tbody.innerHTML = workspaceStateRow(8, 'Loading incident reports...', 'loading');
   const query = new URLSearchParams({ page: String(page), per_page: '15' });
   const search = document.getElementById('incident-search')?.value.trim();
   const status = document.getElementById('incident-status-filter')?.value;
@@ -4316,16 +4337,19 @@ async function loadIncidents(page = 1) {
   }
 
   try {
-    const response = await fetch(`/staff/incidents?${query}`, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
+    const response = await fetch(`/staff/incidents?${query}`, { signal: background ? window.SiteLiveUpdates?.signal : undefined, credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
+    handleWorkspaceLiveAccess(response, background, liveContext);
     const payload = await response.json();
     if (version !== incidentLoadVersion) return;
     if (!response.ok) throw new Error(payload?.message || 'Hindi ma-load ang incident reports.');
+    if (!acceptWorkspaceSnapshot('incidents', payload, background, liveContext)) return;
     INCIDENTS.splice(0, INCIDENTS.length, ...(payload.data || []));
     incidentCurrentPage = Number(payload.current_page || 1);
     incidentLastPage = Number(payload.last_page || 1);
     renderIncidents(payload.total || 0);
     updateIncidentSummary(payload.summary || {});
   } catch (error) {
+    if (background) return;
     if (version !== incidentLoadVersion) return;
     tbody.innerHTML = workspaceErrorRow(8, error, 'loadIncidents(incidentCurrentPage)');
     markStatsUnavailable(['inc-stat-pending', 'inc-stat-resolved', 'inc-stat-high']);
@@ -4644,24 +4668,27 @@ async function archiveIncident(id) {
 /** Only the newest request-record search may render. */
 let requestRecordLoadVersion = 0;
 
-async function loadRequestRecords(page = 1) {
+async function loadRequestRecords(page = 1, { background = false } = {}) {
+  const liveContext = background ? { app: document.getElementById('app'), url: window.location.href } : null;
   const container = document.getElementById('rr-resident-list');
   if (!container) return;
   const version = ++requestRecordLoadVersion;
-  if (requestRecordResidents.length === 0) container.innerHTML = `<div class="card rr-list-card">${workspaceState('Loading request records...', 'loading')}</div>`;
+  if (!background && requestRecordResidents.length === 0) container.innerHTML = `<div class="card rr-list-card">${workspaceState('Loading request records...', 'loading')}</div>`;
   const query = new URLSearchParams({ page: String(page), per_page: '15' });
   if (rrCurrentFilter.trim()) query.set('search', rrCurrentFilter.trim());
   if (rrCurrentStatusFilter) query.set('eligibility', rrCurrentStatusFilter);
 
   try {
     const response = await fetch(`/staff/request-records?${query}`, {
-      credentials: 'same-origin',
+      signal: background ? window.SiteLiveUpdates?.signal : undefined, credentials: 'same-origin',
       headers: { 'Accept': 'application/json' }
     });
+    handleWorkspaceLiveAccess(response, background, liveContext);
     const payload = await response.json();
     if (version !== requestRecordLoadVersion) return;
     if (!response.ok) throw new Error(payload?.message || 'Hindi ma-load ang request records.');
     requestRecordResidents = payload.data || [];
+    if (!acceptWorkspaceSnapshot('request-records', payload, background, liveContext)) return;
     rrCurrentPage = Number(payload.current_page || 1);
     rrLastPage = Number(payload.last_page || 1);
     renderRequestRecords(Number(payload.total || 0));
@@ -4672,6 +4699,7 @@ async function loadRequestRecords(page = 1) {
     set('rr-blocked', summary.blocked);
     set('rr-review', summary.needs_review);
   } catch (error) {
+    if (background) return;
     if (version === requestRecordLoadVersion) container.innerHTML = `<div class="card rr-list-card">${workspaceError(error, 'loadRequestRecords(rrCurrentPage || 1)')}</div>`;
   }
 }
@@ -4760,8 +4788,8 @@ function startDashboardLiveRefresh() {
   if (dashboardLiveTimer) clearInterval(dashboardLiveTimer);
 
   dashboardLiveTimer = setInterval(() => {
-    if (!document.hidden && document.getElementById('screen-dashboard')?.classList.contains('active')) {
-      void refreshDashboardStats();
+    if (!document.hidden && !window.SiteLiveUpdates?.isPaused() && document.getElementById('screen-dashboard')?.classList.contains('active')) {
+      void refreshDashboardStats({ background: true });
     }
   }, 3000);
 }
@@ -4773,7 +4801,7 @@ function startDocumentRequestLiveRefresh() {
   }
 
   documentRequestLiveTimer = setInterval(() => {
-    if (!document.hidden) {
+    if (!document.hidden && !window.SiteLiveUpdates?.isPaused()) {
       void refreshDocumentRequestsLive({ poll: true });
     }
   }, 3000);
@@ -4964,11 +4992,12 @@ function voterStatusBadge(status) {
 /** Only the newest resident list request may render; a slower earlier search must not overwrite it. */
 let residentLoadVersion = 0;
 
-async function loadResidents(page = 1) {
+async function loadResidents(page = 1, { background = false } = {}) {
+  const liveContext = background ? { app: document.getElementById('app'), url: window.location.href } : null;
   if (!hasStaffPermission('records.view')) return;
   const version = ++residentLoadVersion;
   const tbody = document.getElementById('records-tbody');
-  if (tbody && RESIDENTS.length === 0) tbody.innerHTML = workspaceStateRow(9, 'Loading resident records...', 'loading');
+  if (!background && tbody && RESIDENTS.length === 0) tbody.innerHTML = workspaceStateRow(9, 'Loading resident records...', 'loading');
 
   const query = new URLSearchParams({ page: String(page), per_page: '15' });
   const search = document.getElementById('residents-search')?.value.trim();
@@ -4978,13 +5007,15 @@ async function loadResidents(page = 1) {
 
   try {
     const response = await fetch(`/staff/residents?${query}`, {
-      credentials: 'same-origin',
+      signal: background ? window.SiteLiveUpdates?.signal : undefined, credentials: 'same-origin',
       headers: { 'Accept': 'application/json' }
     });
+    handleWorkspaceLiveAccess(response, background, liveContext);
     const payload = await response.json();
     if (version !== residentLoadVersion) return;
     if (!response.ok) throw new Error(payload?.message || 'Unable to load resident records.');
 
+    if (!acceptWorkspaceSnapshot('residents', payload, background, liveContext)) return;
     RESIDENTS.splice(0, RESIDENTS.length, ...payload.data.map(residentFromApi));
     RESIDENT_TOTAL = payload.total;
     residentCurrentPage = payload.current_page;
@@ -4996,6 +5027,7 @@ async function loadResidents(page = 1) {
     renderDashPurokBreakdown();
     populateEligResidentDropdown(null);
   } catch (error) {
+    if (background) return;
     if (tbody && version === residentLoadVersion) tbody.innerHTML = workspaceErrorRow(9, error, 'loadResidents(residentCurrentPage || 1)');
   }
 }
@@ -6183,13 +6215,14 @@ let voterEligibleResidents = [];
 /** Only the newest voter list request may render; a slower earlier search must not overwrite it. */
 let voterLoadVersion = 0;
 
-async function loadVoterRegistry(page = 1) {
+async function loadVoterRegistry(page = 1, { background = false } = {}) {
+  const liveContext = background ? { app: document.getElementById('app'), url: window.location.href } : null;
   if (!hasStaffPermission('voters.view')) return;
   const tbody = document.getElementById('voter-registry-tbody');
   if (!tbody) return;
   const version = ++voterLoadVersion;
   const columns = hasStaffPermission('voters.update') ? 8 : 7;
-  if (voterRegistrations.length === 0) tbody.innerHTML = workspaceStateRow(columns, 'Loading voter list...', 'loading');
+  if (!background && voterRegistrations.length === 0) tbody.innerHTML = workspaceStateRow(columns, 'Loading voter list...', 'loading');
 
   const query = new URLSearchParams({ page: String(page), per_page: '15' });
   const search = document.getElementById('voter-search')?.value.trim();
@@ -6199,13 +6232,15 @@ async function loadVoterRegistry(page = 1) {
 
   try {
     const response = await fetch(`/staff/voter-registrations?${query}`, {
-      credentials: 'same-origin',
+      signal: background ? window.SiteLiveUpdates?.signal : undefined, credentials: 'same-origin',
       headers: { 'Accept': 'application/json' }
     });
+    handleWorkspaceLiveAccess(response, background, liveContext);
     const payload = await response.json();
     if (version !== voterLoadVersion) return;
     if (!response.ok) throw new Error(payload?.message || 'Unable to load the voters list.');
 
+    if (!acceptWorkspaceSnapshot('voters', payload, background, liveContext)) return;
     voterRegistrations = payload.data || [];
     voterEligibleResidents = payload.eligible_residents || [];
     voterCurrentPage = Number(payload.current_page || 1);
@@ -6214,6 +6249,7 @@ async function loadVoterRegistry(page = 1) {
     renderVoterRegistry(payload.total || 0);
     updateVoterSummary(payload.summary || {});
   } catch (error) {
+    if (background) return;
     if (version === voterLoadVersion) {
       tbody.innerHTML = workspaceErrorRow(columns, error, 'loadVoterRegistry(voterCurrentPage || 1)');
       markStatsUnavailable(['voter-stat-total', 'voter-stat-sk-only', 'voter-stat-sk-regular', 'voter-stat-regular-only']);
@@ -6703,4 +6739,49 @@ const staffActionObserver = new MutationObserver(records => {
 });
 staffActionObserver.observe(document.body, { childList: true, subtree: true });
 
+}
+
+
+/** Compare data before painting a background refresh, preserving the last successful view on failures. */
+const workspaceLiveSnapshots = new Map();
+function acceptWorkspaceSnapshot(key, payload, background, context) {
+  if (background && (context.app !== document.getElementById('app') || context.url !== window.location.href || window.SiteLiveUpdates?.isPaused())) return false;
+  const signature = JSON.stringify(payload);
+  const changed = workspaceLiveSnapshots.get(key) !== signature;
+  workspaceLiveSnapshots.set(key, signature);
+  return !background || changed;
+}
+
+/** The shared scheduler refreshes only the visible module and leaves its filters and page number intact. */
+async function refreshWorkspaceLive() {
+  if (auditRefreshTimer !== null) { clearInterval(auditRefreshTimer); auditRefreshTimer = null; }
+  const screen = document.querySelector('#app .content.active')?.id;
+  const options = { background: true };
+  switch (screen) {
+    case 'screen-dashboard':
+      if (['demographics.view', 'records.view', 'households.view', 'voters.view', 'documents.view'].some(hasStaffPermission)) await loadPuroks(options);
+      break;
+    case 'screen-records': if (hasStaffPermission('records.view')) await loadResidents(residentCurrentPage, options); break;
+    case 'screen-voters': await loadVoterRegistry(voterCurrentPage, options); break;
+    case 'screen-incidents': await loadIncidents(incidentCurrentPage, options); break;
+    case 'screen-request-records':
+      await loadRequestRecords(rrCurrentPage, options);
+      if (typeof loadRestrictions === 'function') await loadRestrictions(restrictionCurrentPage, options);
+      break;
+    case 'screen-users': await reloadUsers(options); break;
+    case 'screen-audit': await reloadAuditLog(options); break;
+    case 'screen-demographics': await loadPuroks(options); break;
+    case 'screen-certificates': await refreshIssuedCertificates(issuedCertificatesPage, options); break;
+  }
+  if (screen !== 'screen-dashboard' && hasStaffPermission('dashboard.view') && !window.SiteLiveUpdates?.isPaused()) {
+    await refreshDashboardStats(options);
+  }
+}
+
+
+/** A changed account or permission requires the server to choose the next authorized page. */
+function handleWorkspaceLiveAccess(response, background, context) {
+  if (background && [401, 403, 419].includes(response.status) && context.app === document.getElementById('app') && context.url === window.location.href) {
+    window.SiteLiveUpdates?.accessChanged();
+  }
 }

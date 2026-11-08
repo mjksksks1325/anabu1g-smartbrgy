@@ -294,6 +294,7 @@ class IncidentController extends Controller
         return collect(Incident::STATUSES)->mapWithKeys(fn (string $status): array => [$status => (int) ($counts[$status] ?? 0)])->all();
     }
 
+    /** @return array<string, mixed> */
     private function incidentData(Incident $incident): array
     {
         return [

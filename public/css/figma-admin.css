@@ -275,14 +275,14 @@ body[data-personnel-layout="admin"] :is(#app.admin-interface, .modal-overlay) .t
 #app.admin-interface .audit-pagination:empty { display: none; }
 #app.admin-interface .audit-pagination > span { color: var(--text-muted); font-size: 12px; }
 #app.admin-interface .audit-pagination .btn:disabled { cursor: not-allowed; opacity: .5; }
-#app.admin-interface .audit-detail-modal { max-height: min(88vh, 760px); }
-#app.admin-interface .audit-detail-modal .modal-header { position: sticky; top: -28px; z-index: 1; margin: -28px -28px 18px; padding: 22px 28px 16px; border-bottom: 1px solid var(--border); background: var(--modal-bg); }
-#app.admin-interface .audit-detail-modal .modal-sub { margin-top: 4px; color: var(--text-muted); font-size: 11px; }
-#app.admin-interface .audit-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0; }
-#app.admin-interface .audit-detail-grid > div { min-width: 0; padding: 12px 14px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg-panel); }
-#app.admin-interface .audit-detail-grid dt { margin: 0 0 5px; color: var(--text-muted); font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
-#app.admin-interface .audit-detail-grid dd { margin: 0; color: var(--text-primary); font-size: 12px; line-height: 1.55; overflow-wrap: anywhere; white-space: pre-wrap; }
-#app.admin-interface .audit-detail-grid > div:last-child:nth-child(odd) { grid-column: 1 / -1; }
+body[data-personnel-layout="admin"] .audit-detail-modal { max-height: min(88vh, 760px); }
+body[data-personnel-layout="admin"] .audit-detail-modal .modal-header { position: sticky; top: -28px; z-index: 1; margin: -28px -28px 18px; padding: 22px 28px 16px; border-bottom: 1px solid var(--border); background: var(--modal-bg); }
+body[data-personnel-layout="admin"] .audit-detail-modal .modal-sub { margin-top: 4px; color: var(--text-muted); font-size: 11px; }
+body[data-personnel-layout="admin"] .audit-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0; }
+body[data-personnel-layout="admin"] .audit-detail-grid > div { min-width: 0; padding: 12px 14px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg-panel); }
+body[data-personnel-layout="admin"] .audit-detail-grid dt { margin: 0 0 5px; color: var(--text-muted); font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+body[data-personnel-layout="admin"] .audit-detail-grid dd { margin: 0; color: var(--text-primary); font-size: 12px; line-height: 1.55; overflow-wrap: anywhere; white-space: pre-wrap; }
+body[data-personnel-layout="admin"] .audit-detail-grid > div:last-child:nth-child(odd) { grid-column: 1 / -1; }
 
 @media (min-width: 761px) {
     #app.admin-interface .audit-table-head,
@@ -300,9 +300,9 @@ body[data-personnel-layout="admin"] :is(#app.admin-interface, .modal-overlay) .t
     #app.admin-interface .audit-log-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
     #app.admin-interface .audit-log-row > div:nth-child(3) { grid-column: 1 / -1; }
     #app.admin-interface .audit-log-row > .audit-log-user { grid-column: 1 / -1; }
-    #app.admin-interface .audit-detail-grid { grid-template-columns: minmax(0, 1fr); }
-    #app.admin-interface .audit-detail-grid > div:last-child:nth-child(odd) { grid-column: auto; }
-    #app.admin-interface .audit-detail-modal .modal-header { top: -20px; margin: -20px -20px 16px; padding: 17px 20px 14px; }
+    body[data-personnel-layout="admin"] .audit-detail-grid { grid-template-columns: minmax(0, 1fr); }
+    body[data-personnel-layout="admin"] .audit-detail-grid > div:last-child:nth-child(odd) { grid-column: auto; }
+    body[data-personnel-layout="admin"] .audit-detail-modal .modal-header { top: -20px; margin: -20px -20px 16px; padding: 17px 20px 14px; }
 }
 
 #app.admin-interface .tbl td.resident-actions { display: table-cell; }

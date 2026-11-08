@@ -7,6 +7,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\URL;
+use InvalidArgumentException;
 
 /**
  * Confirms that a resident controls the email address on their portal account. Document requests stay
@@ -35,6 +36,10 @@ class ResidentEmailVerificationNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
+        if (! $notifiable instanceof User) {
+            throw new InvalidArgumentException('Resident email verification requires a user account.');
+        }
+
         return (new MailMessage)
             ->from(config('mail.from.address'), 'Barangay Anabu I-G')
             ->subject(__('Confirm your email for the Barangay Anabu I-G Resident Portal'))

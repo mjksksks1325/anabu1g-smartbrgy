@@ -7,6 +7,7 @@ use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Http\Responses\AccountLoginResponse;
 use App\Http\Responses\AccountPasswordResetResponse;
+use App\Http\Responses\EnrollmentPasswordConfirmedResponse;
 use App\Http\Responses\PasswordResetLinkRequestResponse;
 use App\Http\Responses\PortalLogoutResponse;
 use App\Models\User;
@@ -21,6 +22,7 @@ use Illuminate\Support\Str;
 use Laravel\Fortify\Contracts\FailedPasswordResetLinkRequestResponse;
 use Laravel\Fortify\Contracts\LoginResponse;
 use Laravel\Fortify\Contracts\LogoutResponse;
+use Laravel\Fortify\Contracts\PasswordConfirmedResponse;
 use Laravel\Fortify\Contracts\PasswordResetResponse;
 use Laravel\Fortify\Contracts\RedirectsIfTwoFactorAuthenticatable;
 use Laravel\Fortify\Contracts\SuccessfulPasswordResetLinkRequestResponse;
@@ -36,6 +38,7 @@ class FortifyServiceProvider extends ServiceProvider
     {
         $this->app->singleton(LogoutResponse::class, PortalLogoutResponse::class);
         $this->app->singleton(LoginResponse::class, AccountLoginResponse::class);
+        $this->app->singleton(PasswordConfirmedResponse::class, EnrollmentPasswordConfirmedResponse::class);
         $this->app->singleton(TwoFactorLoginResponse::class, AccountLoginResponse::class);
         $this->app->scoped(RedirectsIfTwoFactorAuthenticatable::class, RedirectIfTrustedDeviceTwoFactor::class);
         $this->app->bind(SuccessfulPasswordResetLinkRequestResponse::class, PasswordResetLinkRequestResponse::class);

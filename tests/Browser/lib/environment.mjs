@@ -77,7 +77,7 @@ export async function createEnvironment({ mailPort }) {
     }
 
     const server = spawn(php(), ['-d', 'upload_max_filesize=12M', '-d', 'post_max_size=16M', '-d', 'memory_limit=256M',
-        '-S', `127.0.0.1:${port}`, path.join(PROJECT, 'vendor', 'laravel', 'framework', 'src', 'Illuminate', 'Foundation', 'resources', 'server.php')],
+        '-S', `127.0.0.1:${port}`, path.join(SUPPORT, 'router.php')],
     { cwd: path.join(PROJECT, 'public'), env, stdio: 'ignore' });
     for (let attempt = 0; attempt < 60; attempt++) {
         try { if ((await fetch(`${base}/up`)).ok) break; } catch { /* starting */ }

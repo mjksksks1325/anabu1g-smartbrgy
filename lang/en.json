@@ -387,6 +387,7 @@
     "Kunin sa Barangay Hall": "Collect it at the Barangay Hall",
     "Kunin sa Barangay Hall.": "Collect at the Barangay Hall.",
     "Land Area": "Land Area",
+    "hectares": "hectares",
     "Land area of Barangay Anabu I-G.": "Land area of Barangay Anabu I-G.",
     "Language": "Language",
     "Language updated.": "Language updated.",
@@ -2411,5 +2412,8 @@
     "To finish enabling two-factor authentication, scan the QR code or enter the setup key in your authenticator app.": "To finish enabling two-factor authentication, scan the QR code or enter the setup key in your authenticator app.",
     "When you enable two-factor authentication, you will be prompted for a secure pin during login. This pin can be retrieved from a TOTP-supported application on your phone.": "When you enable two-factor authentication, you will be prompted for a secure pin during login. This pin can be retrieved from a TOTP-supported application on your phone.",
     "You will be prompted for a secure, random pin during login, which you can retrieve from the TOTP-supported application on your phone.": "You will be prompted for a secure, random pin during login, which you can retrieve from the TOTP-supported application on your phone.",
-    "This name does not fit the Barangay ID's approved name area, even at the smallest type allowed (7 pt), so the ID cannot be printed. Nothing has been shortened, and the name should not be shortened to make it fit. Ask a supervisor to review it: the barangay has to approve a layout for names this long.": "This name does not fit the Barangay ID's approved name area, even at the smallest type allowed (7 pt), so the ID cannot be printed. Nothing has been shortened, and the name should not be shortened to make it fit. Ask a supervisor to review it: the barangay has to approve a layout for names this long."
+    "This name does not fit the Barangay ID's approved name area, even at the smallest type allowed (7 pt), so the ID cannot be printed. Nothing has been shortened, and the name should not be shortened to make it fit. Ask a supervisor to review it: the barangay has to approve a layout for names this long.": "This name does not fit the Barangay ID's approved name area, even at the smallest type allowed (7 pt), so the ID cannot be printed. Nothing has been shortened, and the name should not be shortened to make it fit. Ask a supervisor to review it: the barangay has to approve a layout for names this long.",
+    "Continue to workspace": "Continue to workspace",
+    "Continue setup": "Continue setup",
+    "Set up two-factor authentication before opening the staff workspace.": "Set up two-factor authentication before opening the staff workspace."
 }

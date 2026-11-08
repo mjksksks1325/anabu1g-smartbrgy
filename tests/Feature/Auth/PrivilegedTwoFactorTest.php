@@ -41,8 +41,9 @@ test('until two-factor is confirmed, a privileged account reaches only the setup
 
     $this->get(route('security.edit'))->assertRedirect(route('password.confirm'));
     $this->get(route('password.confirm'))->assertOk();
-    $this->withSession(['auth.password_confirmed_at' => time()])->get(route('security.edit'))->assertOk()
-        ->assertSee('data-two-factor-required', false)->assertSeeText('Two-factor authentication is required for your account');
+    $this->postJson(route('password.confirm.store'), ['password' => 'password'])->assertCreated();
+    $this->get(route('security.edit'))->assertOk()
+        ->assertSee('data-two-factor-required', false)->assertSeeText('Enable two-factor authentication');
     $this->postJson(route('staff.locale'), ['locale' => 'fil'])->assertOk();
     $this->post(route('logout'))->assertRedirect();
 });

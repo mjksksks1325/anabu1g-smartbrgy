@@ -45,7 +45,7 @@
 </header>
 <main id="resident-main" class="site-main" tabindex="-1">
 @yield('band')
-<div class="container">
+<div class="container" @if(request()->routeIs('home', 'portal.dashboard', 'portal.account', 'portal.account.requests.show', 'portal.profile', 'portal.announcements.index', 'portal.information', 'portal.officials', 'portal.account.home', 'portal.identity')) data-live-region="portal-content" data-live-preserve-forms @endif>
 @if(session('status'))<p class="alert alert-green rp-flash" role="status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.6 2.6L16 9.5"/></svg><span data-portal-message>{{ __(session('status')) }}</span></p>@endif
 @if($errors->any())
 <div class="alert alert-red rp-error-summary" role="alert" tabindex="-1" data-error-summary>
@@ -111,5 +111,6 @@
 <script src="{{ asset('js/portal-errors.js') }}?v={{ filemtime(public_path('js/portal-errors.js')) }}"></script>
 <script src="{{ asset('js/account-menu.js') }}?v={{ filemtime(public_path('js/account-menu.js')) }}"></script>
 <script src="{{ asset('js/photo-preview.js') }}?v={{ filemtime(public_path('js/photo-preview.js')) }}"></script>
+<script defer data-navigate-once data-navigate-track src="{{ asset('js/site-live-updates.js') }}?v={{ filemtime(public_path('js/site-live-updates.js')) }}"></script>
 </body>
 </html>

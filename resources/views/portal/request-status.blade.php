@@ -30,7 +30,7 @@
                     <li>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
                         <p><span data-portal-i18n="Pumunta sa Barangay Hall ng Anabu I-G.">{{ __('Pumunta sa Barangay Hall ng Anabu I-G.') }}</span></p>
-                        <p class="v2-summary-note"><span data-portal-i18n="Office hours:">{{ __('Office hours:') }}</span> <span class="tag-unconfirmed"><span data-portal-i18n="Hindi pa kumpirmado">{{ __('Hindi pa kumpirmado') }}</span></span></p>
+                        <p class="v2-summary-note"><span data-portal-i18n="Office hours:">{{ __('Office hours:') }}</span> {{ config('portal.barangay_hall.office_hours') }}</p>
                     </li>
                     <li>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M6 16a3 3 0 0 1 6 0M14 10h4M14 14h4"/></svg>
@@ -66,7 +66,7 @@
                 <div><dt><span data-portal-i18n="Purpose">{{ __('Purpose') }}</span></dt><dd>{{ $item->purpose ?: '—' }}</dd></div>
                 @if($item->business_name)<div><dt><span data-portal-i18n="Business name">{{ __('Business name') }}</span></dt><dd>{{ $item->business_name }}</dd></div>@endif
                 @if($certificateType)
-                    <div><dt><span data-portal-i18n="Fee">{{ __('Fee') }}</span></dt><dd><span data-portal-i18n="{{ $certificateType->feeLabel() }}">{{ __($certificateType->feeLabel()) }}</span>@if($certificateType->fee() > 0) · <span data-portal-i18n="babayaran sa Barangay Hall">{{ __('babayaran sa Barangay Hall') }}</span>@endif @if(! $certificateType->feeConfirmed())<span class="tag-unconfirmed"><span data-portal-i18n="To be confirmed">{{ __('To be confirmed') }}</span></span>@endif</dd></div>
+                    <div><dt><span data-portal-i18n="Fee">{{ __('Fee') }}</span></dt><dd><span data-portal-i18n="{{ $certificateType->feeLabel() }}">{{ __($certificateType->feeLabel()) }}</span>@if($certificateType->fee() > 0) · <span data-portal-i18n="babayaran sa Barangay Hall">{{ __('babayaran sa Barangay Hall') }}</span>@endif </dd></div>
                 @endif
             </dl>
         </section>

@@ -42,7 +42,7 @@
         </div>
         <div class="side-nav-user"><x-desktop-user-menu :personnel="true" /></div>
     </nav>
-    <main id="main" class="main-content">
+    <main id="main" class="main-content" data-live-region="staff-page">
         @if(session('status'))<div class="notice success" role="status">{{ session('status') }}</div>@endif
         @if($errors->any())<div class="notice error" role="alert">{{ $errors->first() }}</div>@endif
         @yield('content')
@@ -53,5 +53,6 @@
 <script defer data-navigate-once data-navigate-track src="{{ asset('js/staff-ui.js') }}?v={{ filemtime(public_path('js/staff-ui.js')) }}"></script>
 @include('partials.personnel-password-confirmation')
 @include('partials.personnel-logout-confirmation')
+<script defer data-navigate-once data-navigate-track src="{{ asset('js/site-live-updates.js') }}?v={{ filemtime(public_path('js/site-live-updates.js')) }}"></script>
 </body>
 </html>

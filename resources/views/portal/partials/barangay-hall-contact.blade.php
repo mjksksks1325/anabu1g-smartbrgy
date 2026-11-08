@@ -1,4 +1,4 @@
 {{-- Barangay Hall phone and office hours from config('portal.barangay_hall'), as <dl> rows. Office days were not provided. --}}
 @php($hall = config('portal.barangay_hall'))
-<div><dt><span data-portal-i18n="Telepono">{{ __('Telepono') }}</span></dt><dd><a href="tel:{{ $hall['phone']['tel'] }}">{{ $hall['phone']['display'] }}</a>@unless($hall['verified']) <span class="tag-unconfirmed"><span data-portal-i18n="Pending verification">{{ __('Pending verification') }}</span></span>@endunless</dd></div>
-<div><dt><span data-portal-i18n="Office hours">{{ __('Office hours') }}</span></dt><dd>{{ $hall['office_hours'] }} <span class="rp-office-days"><span data-portal-i18n="(office days not yet confirmed)">{{ __('(office days not yet confirmed)') }}</span></span>@unless($hall['verified']) <span class="tag-unconfirmed"><span data-portal-i18n="Pending verification">{{ __('Pending verification') }}</span></span>@endunless</dd></div>
+<div><dt><span data-portal-i18n="Telepono">{{ __('Telepono') }}</span></dt><dd><a href="tel:{{ $hall['phone']['tel'] }}">{{ $hall['phone']['display'] }}</a></dd></div>
+<div><dt><span data-portal-i18n="Office hours">{{ __('Office hours') }}</span></dt><dd>{{ $hall['office_hours'] }}</dd></div>

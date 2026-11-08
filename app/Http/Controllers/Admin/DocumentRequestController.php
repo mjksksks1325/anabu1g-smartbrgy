@@ -154,6 +154,8 @@ class DocumentRequestController extends Controller
      * Keep only the requests that sit in one board lane; mirrors getLane() in public/js/admin.js. "Ready to Print"
      * holds only requests that can be issued (ready_for_release, as IssueCertificate requires): an approved request
      * stays in Processing, where "Mark ready" moves it on.
+     *
+     * @param  Builder<DocumentRequest>  $query
      */
     private function whereLane(Builder $query, string $lane): void
     {
@@ -166,6 +168,7 @@ class DocumentRequestController extends Controller
         };
     }
 
+    /** @param Builder<DocumentRequest> $query */
     private function whereSearch(Builder $query, string $search): void
     {
         if ($search === '') {

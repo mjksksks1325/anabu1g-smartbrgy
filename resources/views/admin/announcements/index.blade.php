@@ -55,8 +55,12 @@
             <ul role="list" class="divide-y divide-zinc-200 dark:divide-zinc-700">
                 @foreach ($announcements as $announcement)
                     <li class="flex flex-col gap-4 px-5 py-5 sm:flex-row" data-announcement-record>
-                        @if ($announcement->image_path)
-                            <img class="aspect-[4/3] w-full shrink-0 rounded-lg border border-zinc-200 bg-zinc-100 object-cover sm:w-40 dark:border-zinc-700 dark:bg-zinc-900" src="{{ $announcement->imageUrl() }}" alt="{{ $announcement->title }}" loading="lazy" data-no-admin-translate>
+                        @if ($announcement->imagePaths())
+                            <div class="grid w-full shrink-0 grid-cols-2 gap-2 sm:w-40">
+                                @foreach ($announcement->imageUrls() as $imageUrl)
+                                    <img class="aspect-square w-full rounded-lg border border-zinc-200 object-cover dark:border-zinc-700" src="{{ $imageUrl }}" alt="{{ $announcement->title }} - image {{ $loop->iteration }}" loading="lazy" data-no-admin-translate>
+                                @endforeach
+                            </div>
                         @endif
                         <article class="min-w-0 flex-1" aria-labelledby="announcement-{{ $announcement->id }}-title">
                             <div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
@@ -123,12 +127,12 @@
     @can('announcements.create')
         @scopeErrors($creating ? $allErrors : $noErrors)
         {{-- Creating is an occasional, focused task, so the form lives in a dialog; it reopens with the typed values after a validation error. --}}
-        <flux:modal name="announcement-create" class="w-full max-w-xl" data-announcement-create-dialog data-labelledby="announcement-create-title" :data-open-on-load="$creating && $allErrors->hasAny(['title', 'body', 'image', 'status']) ? '' : null">
+        <flux:modal name="announcement-create" class="w-full max-w-xl" data-announcement-create-dialog data-labelledby="announcement-create-title" :data-open-on-load="$creating && $allErrors->hasAny(['title', 'body', 'image', 'images', 'images.*', 'status']) ? '' : null">
             <form class="space-y-5" method="POST" enctype="multipart/form-data" action="{{ route('staff.announcements.store') }}">
                 @csrf
                 <div class="pe-8">
                     <flux:heading level="2" size="lg" id="announcement-create-title">New announcement</flux:heading>
-                    <flux:text class="mt-1">Optional image · up to 5 MB. Drafts stay staff-only until published.</flux:text>
+                    <flux:text class="mt-1">Optional images · up to 10 images, 5 MB each. Drafts stay staff-only until published.</flux:text>
                 </div>
                 <flux:field>
                     <flux:label>Title</flux:label>
@@ -141,10 +145,15 @@
                     <flux:error name="body" />
                 </flux:field>
                 <flux:field>
-                    <flux:label>Image (optional)</flux:label>
-                    <flux:input type="file" name="image" :accept="$imageTypes" />
-                    <flux:description>Images only; the original image format is kept. PDF and document files are not accepted.</flux:description>
-                    <flux:error name="image" />
+                    <flux:label>Images (optional)</flux:label>
+                    <flux:input type="file" name="images[]" multiple :accept="$imageTypes" :invalid="$errors->has('images') || $errors->has('images.*')" />
+                    <flux:description>Up to 10 images per announcement, 5 MB each. Original formats are kept. PDF and document files are not accepted.</flux:description>
+                    <flux:error name="images" />
+                    @foreach ($errors->get('images.*') as $messages)
+                        @foreach ($messages as $message)
+                            <p class="text-sm text-red-600 dark:text-red-400" role="alert">{{ $message }}</p>
+                        @endforeach
+                    @endforeach
                 </flux:field>
                 <div class="flex flex-col gap-4 border-t border-zinc-200 pt-5 sm:flex-row sm:items-end sm:justify-between dark:border-zinc-700">
                     <flux:field class="sm:w-48">
@@ -192,19 +201,30 @@
                         <flux:textarea name="body" maxlength="12000" rows="8" required>{{ $editingThis ? old('body') : $announcement->body }}</flux:textarea>
                         <flux:error name="body" />
                     </flux:field>
-                    @if ($announcement->image_path)
+                    @foreach ($announcement->imagePaths() as $imagePath)
                         <div class="flex items-center gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-                            <img class="size-14 shrink-0 rounded-md object-cover" src="{{ $announcement->imageUrl() }}" alt="" loading="lazy">
+                            <img class="size-14 shrink-0 rounded-md object-cover" src="{{ url('/storage/'.$imagePath) }}" alt="{{ $announcement->title }} - image {{ $loop->iteration }}" loading="lazy">
                             <label class="flex items-center gap-2 text-sm font-medium">
-                                <input type="checkbox" name="remove_image" value="1" class="size-4"> Remove current image
+                                <input type="checkbox" name="remove_images[]" value="{{ $imagePath }}" @checked($editingThis && in_array($imagePath, (array) old('remove_images', []), true)) class="size-4"> Remove image {{ $loop->iteration }}
                             </label>
                         </div>
-                    @endif
+                    @endforeach
+                    <flux:error name="remove_images" />
+                    @foreach ($errors->get('remove_images.*') as $messages)
+                        @foreach ($messages as $message)
+                            <p class="text-sm text-red-600 dark:text-red-400" role="alert">{{ $message }}</p>
+                        @endforeach
+                    @endforeach
                     <flux:field>
-                        <flux:label>Replace image (optional)</flux:label>
-                        <flux:input type="file" name="image" :accept="$imageTypes" />
-                        <flux:description>Images only; the original image format is kept. PDF and document files are not accepted.</flux:description>
-                        <flux:error name="image" />
+                        <flux:label>Add images (optional)</flux:label>
+                        <flux:input type="file" name="images[]" multiple :accept="$imageTypes" :invalid="$errors->has('images') || $errors->has('images.*')" />
+                        <flux:description>Up to 10 images per announcement, 5 MB each. Original formats are kept. PDF and document files are not accepted.</flux:description>
+                        <flux:error name="images" />
+                    @foreach ($errors->get('images.*') as $messages)
+                        @foreach ($messages as $message)
+                            <p class="text-sm text-red-600 dark:text-red-400" role="alert">{{ $message }}</p>
+                        @endforeach
+                    @endforeach
                     </flux:field>
                     <div class="flex justify-end gap-2 border-t border-zinc-200 pt-5 dark:border-zinc-700">
                         <flux:modal.close>

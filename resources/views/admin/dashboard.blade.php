@@ -465,13 +465,6 @@
       </div>
     </div>
 
-    <div class="modal-overlay" id="modal-audit-detail" onclick="if(event.target===this)closeModal('modal-audit-detail')">
-      <div class="modal modal-lg audit-detail-modal" role="dialog" aria-modal="true" aria-labelledby="audit-detail-title">
-        <div class="modal-header"><div><div class="modal-title" id="audit-detail-title">Audit event details</div><div class="modal-sub" id="audit-detail-subtitle"></div></div><button type="button" class="modal-close" onclick="closeModal('modal-audit-detail')" aria-label="Close">&times;</button></div>
-        <dl class="audit-detail-grid" id="audit-detail-fields"></dl>
-      </div>
-    </div>
-
     <!-- USER MANAGEMENT -->
     <div class="content{{ $activeScreen === 'users' ? ' active' : '' }}" id="screen-users">
       <div class="page-header-row">
@@ -550,6 +543,13 @@
 </div><!-- end app -->
 
 <!-- MODALS -->
+    <div class="modal-overlay" id="modal-audit-detail" onclick="if(event.target===this)closeModal('modal-audit-detail')">
+      <div class="modal modal-lg audit-detail-modal" role="dialog" aria-modal="true" aria-labelledby="audit-detail-title">
+        <div class="modal-header"><div><div class="modal-title" id="audit-detail-title">Audit event details</div><div class="modal-sub" id="audit-detail-subtitle"></div></div><button type="button" class="modal-close" onclick="closeModal('modal-audit-detail')" aria-label="Close">&times;</button></div>
+        <dl class="audit-detail-grid" id="audit-detail-fields"></dl>
+      </div>
+    </div>
+
 @include('partials.personnel-logout-confirmation')
 
 @if($activeScreen === 'settings')
@@ -1324,5 +1324,6 @@
 @livewireScripts
 @fluxScripts
 @include('partials.personnel-password-confirmation')
+<script defer data-navigate-once data-navigate-track src="{{ asset('js/site-live-updates.js') }}?v={{ filemtime(public_path('js/site-live-updates.js')) }}"></script>
 </body>
 </html>

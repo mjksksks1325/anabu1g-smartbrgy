@@ -2,6 +2,7 @@
 
 namespace App\Actions;
 
+use RuntimeException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use ZipArchive;
 
@@ -45,8 +46,8 @@ class WriteRecordsSpreadsheet
         $widths = array_map(fn (string $header): int => mb_strlen($header) + 4, $headers);
         $widths[0] = max($widths[0] ?? 0, 18);
 
-        $dataPath = tempnam(sys_get_temp_dir(), 'xlsx-data');
-        $data = fopen($dataPath, 'w');
+        $dataPath = $this->temporaryPath('xlsx-data');
+        $data = $this->openStream($dataPath, 'w');
         $rowNumber = self::HEADER_ROW;
         foreach ($rows as $row) {
             $rowNumber++;
@@ -66,8 +67,8 @@ class WriteRecordsSpreadsheet
             3 => [$title, 5],
             4 => ['Generated '.now()->format('F j, Y g:i A').($preparedBy ? ' · Prepared by '.$preparedBy : '').' · '.$recordCount.' '.($recordCount === 1 ? 'record' : 'records'), 2],
         ];
-        $sheetPath = tempnam(sys_get_temp_dir(), 'xlsx-sheet');
-        $sheet = fopen($sheetPath, 'w');
+        $sheetPath = $this->temporaryPath('xlsx-sheet');
+        $sheet = $this->openStream($sheetPath, 'w');
         $cols = '';
         foreach (range(1, $columnCount) as $index) {
             $cols .= '<col min="'.$index.'" max="'.$index.'" width="'.($widths[$index - 1] ?? 12).'" customWidth="1"/>';
@@ -86,7 +87,7 @@ class WriteRecordsSpreadsheet
             $headerCells .= $this->cell($this->column($index + 1).self::HEADER_ROW, $header, 3);
         }
         fwrite($sheet, '<row r="'.self::HEADER_ROW.'" ht="30" customHeight="1">'.$headerCells.'</row>');
-        $data = fopen($dataPath, 'r');
+        $data = $this->openStream($dataPath, 'r');
         stream_copy_to_stream($data, $sheet);
         fclose($data);
         unlink($dataPath);
@@ -99,7 +100,7 @@ class WriteRecordsSpreadsheet
             .'<drawing r:id="rId1"/></worksheet>');
         fclose($sheet);
 
-        $path = tempnam(sys_get_temp_dir(), 'xlsx');
+        $path = $this->temporaryPath('xlsx');
         $zip = new ZipArchive;
         $zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE);
         $zip->addFromString('[Content_Types].xml', $this->contentTypes());
@@ -116,6 +117,27 @@ class WriteRecordsSpreadsheet
         unlink($sheetPath);
 
         return $path;
+    }
+
+    private function temporaryPath(string $prefix): string
+    {
+        $path = tempnam(sys_get_temp_dir(), $prefix);
+        if ($path === false) {
+            throw new RuntimeException('Unable to create a temporary spreadsheet file.');
+        }
+
+        return $path;
+    }
+
+    /** @return resource */
+    private function openStream(string $path, string $mode)
+    {
+        $stream = fopen($path, $mode);
+        if ($stream === false) {
+            throw new RuntimeException('Unable to open a temporary spreadsheet file.');
+        }
+
+        return $stream;
     }
 
     private function cell(string $reference, mixed $value, int $style): string

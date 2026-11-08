@@ -54,7 +54,7 @@ class ResidentRequestRestrictionController extends Controller
     public function review(Request $request, ResidentRequestRestriction $restriction): JsonResponse
     {
         Gate::authorize('update', $restriction);
-        if ($restriction->created_by !== null && (int) $restriction->created_by === (int) $request->user()->id) {
+        if ((int) $restriction->created_by === (int) $request->user()->id) {
             app(RecordCaseActivity::class)->handle($request->user(), 'admin.request-restrictions.self-review-denied', (string) $restriction->id);
 
             throw ValidationException::withMessages(['restriction' => 'You created this restriction, so another administrator (the Super Admin or the Barangay Captain) must review and activate it. It stays Pending Review until then.']);

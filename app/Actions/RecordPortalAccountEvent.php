@@ -17,7 +17,7 @@ class RecordPortalAccountEvent
     {
         DB::table('administrative_audits')->insert([
             'user_id' => $account?->getKey(),
-            'actor' => $account?->name ?? 'Resident Portal',
+            'actor' => $account->name ?? 'Resident Portal',
             'action' => $action,
             'type' => 'auth',
             'record' => $residentId !== null ? 'resident:'.$residentId : null,

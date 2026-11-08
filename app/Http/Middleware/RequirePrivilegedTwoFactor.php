@@ -20,6 +20,8 @@ class RequirePrivilegedTwoFactor
 {
     public const MESSAGE = 'Your account has privileged access. Set up two-factor authentication to continue.';
 
+    public const PASSWORD_CONFIRMATION_KEY = 'auth.two_factor_enrollment_password';
+
     /** @var list<string> */
     private const ENROLLMENT_ROUTES = [
         'security.edit', 'password.confirm', 'password.confirm.store', 'staff.password.confirm', 'password.confirmation',
@@ -42,12 +44,26 @@ class RequirePrivilegedTwoFactor
         }
 
         if ($user->hasConfirmedTwoFactor()) {
+            $request->session()->forget(self::PASSWORD_CONFIRMATION_KEY);
             abort_if($request->routeIs('two-factor.disable'), 403, 'Two-factor authentication is required for this account and cannot be turned off.');
 
             return $next($request);
         }
 
-        if ($request->routeIs(...self::ENROLLMENT_ROUTES) || $this->isEnrollmentComponentUpdate($request) || $this->isAsset($request)) {
+        $enrollmentUpdate = $this->isEnrollmentComponentUpdate($request);
+        if ($request->routeIs('security.edit', 'two-factor.enable', 'two-factor.confirm', 'two-factor.qr-code', 'two-factor.secret-key', 'two-factor.recovery-codes') || $enrollmentUpdate) {
+            $proof = $request->session()->get(self::PASSWORD_CONFIRMATION_KEY);
+            $cutoff = now()->getTimestamp() - (int) config('auth.password_timeout', 10800);
+            if (! is_array($proof) || ($proof['user_id'] ?? null) !== $user->id || ! is_int($proof['confirmed_at'] ?? null) || $proof['confirmed_at'] < $cutoff) {
+                if ($request->expectsJson() || $this->isLivewireUpdate($request)) {
+                    return response()->json(['message' => __('Please confirm your password before continuing.'), 'password_confirmation' => true, 'setup_url' => route('password.confirm')], 423);
+                }
+
+                return redirect()->guest(route('password.confirm'));
+            }
+        }
+
+        if ($request->routeIs(...self::ENROLLMENT_ROUTES) || $enrollmentUpdate || $this->isAsset($request)) {
             return $next($request);
         }
 

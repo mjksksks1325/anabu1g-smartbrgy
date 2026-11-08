@@ -3,10 +3,12 @@
 namespace App\Livewire\Settings;
 
 use App\Concerns\PasswordValidationRules;
+use App\StaffPermissions;
 use Exception;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
+use Illuminate\View\View;
 use Laravel\Fortify\Actions\ConfirmTwoFactorAuthentication;
 use Laravel\Fortify\Actions\DisableTwoFactorAuthentication;
 use Laravel\Fortify\Actions\EnableTwoFactorAuthentication;
@@ -39,6 +41,9 @@ class Security extends Component
     public bool $requiresConfirmation;
 
     #[Locked]
+    public bool $enrollmentRequired = false;
+
+    #[Locked]
     public string $qrCodeSvg = '';
 
     #[Locked]
@@ -54,17 +59,26 @@ class Security extends Component
     /**
      * Mount the component.
      */
-    public function mount(DisableTwoFactorAuthentication $disableTwoFactorAuthentication): void
+    public function mount(DisableTwoFactorAuthentication $disableTwoFactorAuthentication, EnableTwoFactorAuthentication $enableTwoFactorAuthentication): void
     {
         $this->canManageTwoFactor = Features::canManageTwoFactorAuthentication();
+        $this->enrollmentRequired = $this->canManageTwoFactor
+            && config('access.privileged_two_factor')
+            && auth()->user()->requiresTwoFactorAuthentication()
+            && ! auth()->user()->hasConfirmedTwoFactor();
 
         if ($this->canManageTwoFactor) {
-            if (Fortify::confirmsTwoFactorAuthentication() && is_null(auth()->user()->two_factor_confirmed_at)) {
+            if (! $this->enrollmentRequired && Fortify::confirmsTwoFactorAuthentication() && is_null(auth()->user()->two_factor_confirmed_at)) {
                 $disableTwoFactorAuthentication(auth()->user());
             }
 
             $this->twoFactorEnabled = auth()->user()->hasEnabledTwoFactorAuthentication();
             $this->requiresConfirmation = Features::optionEnabled(Features::twoFactorAuthentication(), 'confirm');
+
+            if ($this->enrollmentRequired) {
+                $this->requiresConfirmation = true;
+                $this->enable($enableTwoFactorAuthentication);
+            }
         }
 
     }
@@ -74,6 +88,8 @@ class Security extends Component
      */
     public function updatePassword(): void
     {
+        abort_if($this->enrollmentRequired, 403);
+
         try {
             $validated = $this->validate([
                 'current_password' => $this->currentPasswordRules(),
@@ -152,6 +168,14 @@ class Security extends Component
 
         $confirmTwoFactorAuthentication(auth()->user(), $this->code);
 
+        if ($this->enrollmentRequired) {
+            $this->twoFactorEnabled = true;
+            $this->reset('code', 'qrCodeSvg', 'manualSetupKey', 'showVerificationStep');
+            $this->showModal = true;
+
+            return;
+        }
+
         $this->closeModal();
 
         $this->twoFactorEnabled = true;
@@ -184,6 +208,12 @@ class Security extends Component
      */
     public function closeModal(): void
     {
+        if ($this->enrollmentRequired) {
+            $this->showModal = true;
+
+            return;
+        }
+
         $this->reset(
             'code',
             'manualSetupKey',
@@ -197,6 +227,20 @@ class Security extends Component
         if (! $this->requiresConfirmation) {
             $this->twoFactorEnabled = auth()->user()->hasEnabledTwoFactorAuthentication();
         }
+    }
+
+    public function finishEnrollment(): void
+    {
+        abort_unless(auth()->user()->fresh()->hasConfirmedTwoFactor(), 403);
+
+        $this->redirectRoute(StaffPermissions::landing(auth()->user()));
+    }
+
+    public function render(): View
+    {
+        return view('livewire.settings.security')->layout(
+            $this->enrollmentRequired ? 'layouts.two-factor-enrollment' : config('livewire.component_layout', 'layouts::app'),
+        );
     }
 
     /**

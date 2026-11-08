@@ -5,7 +5,6 @@ namespace App\Actions\Auth;
 use App\Actions\TrustedDeviceCookie;
 use App\Models\User;
 use Illuminate\Contracts\Auth\StatefulGuard;
-use Illuminate\Http\Request;
 use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
 use Laravel\Fortify\Contracts\LoginResponse;
 use Laravel\Fortify\LoginRateLimiter;
@@ -23,7 +22,7 @@ class RedirectIfTrustedDeviceTwoFactor extends RedirectIfTwoFactorAuthenticatabl
 
     protected function twoFactorChallengeResponse(mixed $request, mixed $user): Response
     {
-        if ($request instanceof Request && $user instanceof User && $this->trustedDeviceCookie->isTrusted($request, $user)) {
+        if ($user instanceof User && $this->trustedDeviceCookie->isTrusted($request, $user)) {
             $this->guard->login($user, $request->boolean('remember'));
             $request->session()->regenerate();
 

@@ -6,10 +6,15 @@
  * Every person, email address (@test.invalid) and record here is invented.
  */
 
+use App\Models\Announcement;
+use App\Models\CabinetFile;
 use App\Models\DocumentRequest;
+use App\Models\EmployeeCabinetAccess;
+use App\Models\FileMovementEvent;
 use App\Models\Incident;
 use App\Models\Purok;
 use App\Models\Resident;
+use App\Models\ResidentRegistrationApplication;
 use App\Models\User;
 use App\Models\VoterRegistration;
 use Illuminate\Support\Facades\Storage;
@@ -82,6 +87,17 @@ $staff('admin@test.invalid', 'admin', null, superAdmin: true, twoFactor: true);
 $staff('records@test.invalid', 'staff', ['dashboard.view', 'records.view', 'records.update']);
 $staff('clerk@test.invalid', 'staff', ['dashboard.view', 'documents.view', 'documents.print']);
 $staff('desk@test.invalid', 'staff', ['dashboard.view', 'incidents.view', 'incidents.submit']);
+
+// Extra roles and records for non-destructive close-control checks, isolated from real accounts and devices.
+if (getenv('CLOSE_BUTTON_AUDIT') === '1') {
+    $staff('captain@test.invalid', 'captain', null, twoFactor: true);
+    $staff('secretary@test.invalid', 'staff', ['dashboard.view', 'records.view', 'records.update', 'voters.view', 'documents.view', 'documents.issue', 'incidents.view', 'incidents.submit', 'announcements.view', 'announcements.create', 'announcements.update'], twoFactor: true);
+    Announcement::query()->create(['title' => 'Close button audit', 'body' => 'Synthetic notice.', 'status' => 'draft']);
+    ResidentRegistrationApplication::factory()->create(['email' => 'application@test.invalid', 'photo_path' => 'resident-photos/browser-suite-portrait.jpg']);
+    EmployeeCabinetAccess::factory()->create(['user_id' => User::where('email', 'admin@test.invalid')->sole()->id, 'is_active' => true]);
+    CabinetFile::factory()->create(['file_name' => 'Synthetic audit folder']);
+    FileMovementEvent::factory()->create(['file_name' => 'Synthetic movement', 'user_id' => User::where('email', 'admin@test.invalid')->sole()->id]);
+}
 
 $ready = DocumentRequest::query()->create([
     'reference_code' => 'REQ-BROWSER-READY', 'resident_id' => $complete->id, 'source' => 'online', 'document_type' => 'Barangay Clearance',

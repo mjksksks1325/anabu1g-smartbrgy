@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -46,29 +47,28 @@ class AnnouncementController extends Controller
             'title' => ['required', 'string', 'max:180'],
             'body' => ['required', 'string', 'max:12000'],
             'status' => ['required', Rule::in([Announcement::STATUS_DRAFT, Announcement::STATUS_PUBLISHED])],
-            'image' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,gif,bmp,webp,avif,heic,heif', 'extensions:jpg,jpeg,png,gif,bmp,webp,avif,heic,heif', 'max:5120'],
+            ...$this->imageRules(),
         ]);
 
         if ($validated['status'] === Announcement::STATUS_PUBLISHED) {
             Gate::authorize('announcements.publish');
         }
 
-        $imagePath = $request->hasFile('image') ? $this->storeImage($request->file('image')) : null;
+        $imagePaths = $this->storeImages($request, 0);
 
         try {
             Announcement::query()->create([
                 'title' => $validated['title'],
                 'body' => $validated['body'],
-                'image_path' => $imagePath,
+                'image_path' => $imagePaths[0] ?? null,
+                'image_paths' => $imagePaths,
                 'status' => $validated['status'],
                 'published_at' => $validated['status'] === Announcement::STATUS_PUBLISHED ? now() : null,
                 'created_by' => $request->user()->id,
                 'updated_by' => $request->user()->id,
             ]);
         } catch (\Throwable $exception) {
-            if ($imagePath !== null) {
-                Storage::disk('public')->delete($imagePath);
-            }
+            Storage::disk('public')->delete($imagePaths);
 
             throw $exception;
         }
@@ -83,32 +83,41 @@ class AnnouncementController extends Controller
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:180'],
             'body' => ['required', 'string', 'max:12000'],
-            'image' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,gif,bmp,webp,avif,heic,heif', 'extensions:jpg,jpeg,png,gif,bmp,webp,avif,heic,heif', 'max:5120'],
+            ...$this->imageRules(),
             'remove_image' => ['sometimes', 'boolean'],
+            'remove_images' => ['sometimes', 'array', 'max:10'],
+            'remove_images.*' => ['string', 'distinct', Rule::in($announcement->imagePaths())],
         ]);
 
-        $previousImagePath = $announcement->image_path;
-        $newImagePath = $request->hasFile('image') ? $this->storeImage($request->file('image')) : null;
-        $imagePath = $newImagePath ?? ($request->boolean('remove_image') ? null : $previousImagePath);
+        $newImagePaths = [];
+        $removedImagePaths = [];
 
         try {
-            $announcement->fill([
-                'title' => $validated['title'],
-                'body' => $validated['body'],
-                'image_path' => $imagePath,
-                'updated_by' => $request->user()->id,
-            ])->save();
-        } catch (\Throwable $exception) {
-            if ($newImagePath !== null) {
-                Storage::disk('public')->delete($newImagePath);
-            }
+            DB::transaction(function () use ($request, $announcement, $validated, &$newImagePaths, &$removedImagePaths): void {
+                $announcement = Announcement::query()->lockForUpdate()->findOrFail($announcement->id);
+                $previousImagePaths = $announcement->imagePaths();
+                $removedImagePaths = array_values(array_intersect($previousImagePaths, $validated['remove_images'] ?? []));
+                if ($request->boolean('remove_image') || $request->hasFile('image')) {
+                    $removedImagePaths = $previousImagePaths;
+                }
+                $retainedImagePaths = array_values(array_diff($previousImagePaths, $removedImagePaths));
+                $newImagePaths = $this->storeImages($request, count($retainedImagePaths));
+                $imagePaths = array_merge($retainedImagePaths, $newImagePaths);
 
+                $announcement->fill([
+                    'title' => $validated['title'],
+                    'body' => $validated['body'],
+                    'image_path' => $imagePaths[0] ?? null,
+                    'image_paths' => $imagePaths,
+                    'updated_by' => $request->user()->id,
+                ])->save();
+            });
+        } catch (\Throwable $exception) {
+            Storage::disk('public')->delete($newImagePaths);
             throw $exception;
         }
 
-        if ($previousImagePath !== null && $previousImagePath !== $imagePath) {
-            Storage::disk('public')->delete($previousImagePath);
-        }
+        Storage::disk('public')->delete($removedImagePaths);
 
         return back()->with('status', 'Announcement updated.');
     }
@@ -158,13 +167,54 @@ class AnnouncementController extends Controller
         return back()->with('status', 'Announcement restored as a draft.');
     }
 
+    /** @return array<string, array<int, string>> */
+    private function imageRules(): array
+    {
+        $imageRules = ['file', 'image', 'mimes:jpg,jpeg,png,gif,bmp,webp,avif,heic,heif', 'extensions:jpg,jpeg,png,gif,bmp,webp,avif,heic,heif', 'max:5120'];
+
+        return [
+            'image' => ['nullable', ...$imageRules],
+            'images' => ['nullable', 'array', 'max:10'],
+            'images.*' => ['required', ...$imageRules],
+        ];
+    }
+
+    /** @return list<string> */
+    private function storeImages(Request $request, int $retainedCount): array
+    {
+        $uploads = $request->file('images', []);
+        if (! is_array($uploads)) {
+            throw ValidationException::withMessages(['images' => 'Choose image files.']);
+        }
+        $images = array_values($uploads);
+        $legacyImage = $request->file('image');
+        if ($legacyImage instanceof UploadedFile) {
+            $images[] = $legacyImage;
+        }
+        if ($retainedCount + count($images) > 10) {
+            throw ValidationException::withMessages(['images' => 'An announcement can have up to 10 images. Remove an existing image before adding more.']);
+        }
+
+        $paths = [];
+        try {
+            foreach ($images as $image) {
+                $paths[] = $this->storeImage($image);
+            }
+        } catch (\Throwable $exception) {
+            Storage::disk('public')->delete($paths);
+            throw $exception;
+        }
+
+        return $paths;
+    }
+
     private function storeImage(UploadedFile $image): string
     {
         $extension = strtolower($image->getClientOriginalExtension());
         $path = 'announcements/'.Str::uuid()->toString().'.'.$extension;
 
         if (! Storage::disk('public')->putFileAs('announcements', $image, basename($path))) {
-            throw ValidationException::withMessages(['image' => 'Hindi na-save ang image. Subukan ulit.']);
+            throw ValidationException::withMessages(['images' => 'Hindi na-save ang image. Subukan ulit.']);
         }
 
         return $path;

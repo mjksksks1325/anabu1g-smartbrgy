@@ -33,6 +33,3 @@
     @endif
 </section>
 @endsection
-@push('scripts')
-<script src="{{ asset('js/request-history.js') }}?v={{ filemtime(public_path('js/request-history.js')) }}"></script>
-@endpush

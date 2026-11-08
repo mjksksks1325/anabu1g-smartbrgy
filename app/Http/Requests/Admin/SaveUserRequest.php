@@ -109,12 +109,14 @@ class SaveUserRequest extends FormRequest
                 }
             }
             if ($this->input('role') === 'captain' && $this->boolean('is_active')) {
-                $captainExists = User::query()
+                $captainQuery = User::query()
                     ->where('role', 'captain')
                     ->where('is_active', true)
-                    ->whereNull('resident_id')
-                    ->when($target instanceof User, fn ($query) => $query->where($target->getKeyName(), '<>', $target->getKey()))
-                    ->exists();
+                    ->whereNull('resident_id');
+                if ($target instanceof User) {
+                    $captainQuery->where($target->getKeyName(), '<>', $target->getKey());
+                }
+                $captainExists = $captainQuery->exists();
 
                 if ($captainExists) {
                     $validator->errors()->add('role', 'There is already an active Barangay Captain. Move that designation first before assigning another.');

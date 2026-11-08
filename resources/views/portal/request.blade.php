@@ -11,6 +11,7 @@
 
 <div class="request-layout v2-request">
   <section class="portal-request-flow" id="request-flow" aria-label="{{ __('Document request') }}" data-portal-i18n-aria-label="Document request">
+  <div data-live-region="request-notices">
   @if ($requestHolds->isNotEmpty())
     <section class="alert alert-yellow request-holds" role="status" aria-labelledby="request-holds-title">
       <h2 id="request-holds-title"><span data-portal-i18n="Some requests are on hold">{{ __('Some requests are on hold') }}</span></h2>
@@ -31,6 +32,7 @@
     <p class="alert alert-blue" role="status" data-portal-i18n="A pending incident report has been linked to your resident record and is awaiting barangay review. This does not mean that a violation has been established. You may continue with your document request.">{{ __('A pending incident report has been linked to your resident record and is awaiting barangay review. This does not mean that a violation has been established. You may continue with your document request.') }}</p>
   @endif
 
+  </div>
   <div class="screen active" id="screen-terms">
     @include('portal.partials.request-steps', ['current' => 1, 'title' => 'Basahin ang terms'])
     <div class="card">
@@ -69,7 +71,6 @@
           <p class="terms-meta"><span data-portal-i18n="Last updated: May 2025 | Version 1.0 | Barangay Anabu I-G">{{ __('Last updated: May 2025 | Version 1.0 | Barangay Anabu I-G') }}</span></p>
         </div>
         <p class="tnc-scroll-notice" id="tnc-notice" aria-live="polite"><span data-portal-i18n="I-scroll hanggang dulo ng terms para ma-check ang kahon sa ibaba.">{{ __('I-scroll hanggang dulo ng terms para ma-check ang kahon sa ibaba.') }}</span></p>
-        <p class="unconfirmed small"><strong><span data-portal-i18n="Paalala:">{{ __('Paalala:') }}</span></strong> <span data-portal-i18n="Hindi pa kumpirmado ng barangay ang office hours na nakasulat sa terms.">{{ __('Hindi pa kumpirmado ng barangay ang office hours na nakasulat sa terms.') }}</span></p>
         <div class="checkbox-row" style="margin-top:18px;">
           <input type="checkbox" id="tnc-agree" disabled onchange="onTncCheck()">
           <label for="tnc-agree"><span data-portal-i18n="I have read and understood the">{{ __('I have read and understood the') }}</span> <strong><span data-portal-i18n="Terms and Conditions">{{ __('Terms and Conditions') }}</span></strong> <span data-portal-i18n="of the SmartBrgy Portal. I agree to the collection and use of my personal information under">{{ __('of the SmartBrgy Portal. I agree to the collection and use of my personal information under') }}</span> <strong><span data-portal-i18n="Republic Act 10173 (Data Privacy Act of 2012)">{{ __('Republic Act 10173 (Data Privacy Act of 2012)') }}</span></strong> <span data-portal-i18n="and Barangay Anabu I-G policies.">{{ __('and Barangay Anabu I-G policies.') }}</span></label>
@@ -91,12 +92,11 @@
       <div class="card-body">
                 <div class="cert-grid" id="cert-type-grid">
           @foreach($services as $service)
-          <button type="button" class="cert-btn" aria-pressed="false" onclick="selectDoc('{{ $service->portalCode() }}',this)"><span class="label"><span data-portal-i18n="{{ $service->value }}">{{ __($service->value) }}</span></span><span class="fee"><span class="sr-only"><span data-portal-i18n="Fee:">{{ __('Fee:') }}</span> </span><span data-portal-i18n="{{ $service->feeLabel() }}">{{ __($service->feeLabel()) }}</span>@if(! $service->feeConfirmed()) <span class="tag-unconfirmed"><span data-portal-i18n="To be confirmed">{{ __('To be confirmed') }}</span></span>@endif</span><span class="cert-validity">@if($service->validityPeriodInMonths() === 12)<span data-portal-i18n="Valid nang 1 taon mula pagka-issue">{{ __('Valid nang 1 taon mula pagka-issue') }}</span>@else<span data-portal-i18n="Valid nang :months buwan mula pagka-issue" data-portal-params="{{ json_encode(['months' => $service->validityPeriodInMonths()]) }}">{{ __('Valid nang :months buwan mula pagka-issue', ['months' => $service->validityPeriodInMonths()]) }}</span>@endif</span><span class="cert-selected"><span aria-hidden="true">&#10003;</span> <span data-portal-i18n="Napili">{{ __('Napili') }}</span></span><span class="cert-check" aria-hidden="true"></span></button>
+          <button type="button" class="cert-btn" aria-pressed="false" onclick="selectDoc('{{ $service->portalCode() }}',this)"><span class="label"><span data-portal-i18n="{{ $service->value }}">{{ __($service->value) }}</span></span><span class="fee"><span class="sr-only"><span data-portal-i18n="Fee:">{{ __('Fee:') }}</span> </span><span data-portal-i18n="{{ $service->feeLabel() }}">{{ __($service->feeLabel()) }}</span></span><span class="cert-validity">@if($service->validityPeriodInMonths() === 12)<span data-portal-i18n="Valid nang 1 taon mula pagka-issue">{{ __('Valid nang 1 taon mula pagka-issue') }}</span>@else<span data-portal-i18n="Valid nang :months buwan mula pagka-issue" data-portal-params="{{ json_encode(['months' => $service->validityPeriodInMonths()]) }}">{{ __('Valid nang :months buwan mula pagka-issue', ['months' => $service->validityPeriodInMonths()]) }}</span>@endif</span><span class="cert-selected"><span aria-hidden="true">&#10003;</span> <span data-portal-i18n="Napili">{{ __('Napili') }}</span></span><span class="cert-check" aria-hidden="true"></span></button>
           @endforeach
         </div>
         <div class="v2-callout v2-callout-warning">
           <svg class="v2-callout-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17h.01"/></svg>
-          <p><strong><span data-portal-i18n="Hindi pa kumpirmado:">{{ __('Hindi pa kumpirmado:') }}</span></strong> <span data-portal-i18n="Business Clearance fee at processing time. Regular Barangay ID ang fee na nakalista. Sa Barangay Hall babayaran ang fee.">{{ __('Business Clearance fee at processing time. Regular Barangay ID ang fee na nakalista. Sa Barangay Hall babayaran ang fee.') }}</span></p>
         </div>
         <p id="doc-selected-info" class="selected-document" style="display:none;" aria-live="polite"><span data-portal-i18n="Napili:">{{ __('Napili:') }}</span> <strong id="doc-sel-label"></strong> &middot; <span id="doc-sel-fee"></span></p>
         <div class="btn-row btn-row-split">
@@ -301,7 +301,7 @@
 @push('scripts')
 <script>
 const API = '';
-const DOC_TYPES = {{ Illuminate\Support\Js::from(collect($services)->mapWithKeys(fn ($service) => [$service->portalCode() => ['label' => $service->value, 'fee' => __($service->feeLabel()).($service->feeConfirmed() ? '' : ' ('.__('To be confirmed').')')]])) }};
+const DOC_TYPES = {{ Illuminate\Support\Js::from(collect($services)->mapWithKeys(fn ($service) => [$service->portalCode() => ['label' => $service->value, 'fee' => __($service->feeLabel())]])) }};
 window.RESIDENT_PORTAL = {{ Illuminate\Support\Js::from(['authenticated' => auth('resident')->check(), 'loginUrl' => route('portal.login'), 'identityUrl' => route('portal.identity'), 'startRequest' => true, 'service' => request()->string('service')->toString()]) }};
 
 let selectedDocId = null;

@@ -16,7 +16,7 @@ class ListUnverifiedPortalAccounts extends Command
         $rows = User::query()->where('role', 'resident')->with('resident')->orderBy('id')->get()
             ->map(fn (User $account): array => [
                 'account' => $account->id,
-                'resident_number' => $account->resident?->resident_number ?? '—',
+                'resident_number' => $account->resident->resident_number ?? '—',
                 'activation' => $account->portalActivationPath(),
                 'email_confirmed' => $account->email_verified_at !== null ? 'yes' : 'no',
                 'status' => $account->is_active ? 'active' : 'suspended',

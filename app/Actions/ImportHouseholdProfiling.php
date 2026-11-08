@@ -343,7 +343,7 @@ class ImportHouseholdProfiling
     {
         return $this->normalized($resident->first_name) === $this->normalized($fields['first_name'])
             && $this->normalized($resident->last_name) === $this->normalized($fields['last_name'])
-            && $resident->date_of_birth?->toDateString() === $fields['date_of_birth'];
+            && $resident->date_of_birth->toDateString() === $fields['date_of_birth'];
     }
 
     private function registeredVoter(string $value): ?bool
