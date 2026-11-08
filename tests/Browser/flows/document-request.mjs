@@ -8,6 +8,7 @@ export async function run({ env, open, check }) {
     await residentSignIn(page, 'resident@test.invalid', env.seed.residentPassword);
     await page.goto('/portal/request');
     await page.evaluate(`(() => { const terms = document.getElementById('tnc-agree'); terms.disabled = false; terms.checked = true; terms.dispatchEvent(new Event('change', { bubbles: true })); proceedFromTerms(); })()`);
+    check('document selection has no empty warning box', await page.evaluate(`[...document.querySelectorAll('#screen-doctype .v2-callout-warning')].every(element => element.textContent.trim().length > 0)`));
     await page.sleep(300);
     await page.evaluate(`(() => { selectDoc('BC', document.querySelector('[onclick*="selectDoc(\\'BC\\'"]')); proceedFromDoc(); })()`);
     await page.sleep(300);

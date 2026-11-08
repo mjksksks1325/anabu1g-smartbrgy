@@ -68,6 +68,8 @@ it('rejects an entire batch containing a non-image without saving any upload', f
     expect(Storage::disk('public')->allFiles())->toBe([]);
 })->with([
     ['file.pdf', 'application/pdf'], ['file.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+    ['file.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+    ['file.txt', 'text/plain'], ['file.svg', 'image/svg+xml'],
     ['pretend.jpg', 'application/pdf'],
 ]);
 
@@ -118,3 +120,22 @@ it('does not accept uploads from staff without announcement creation permission'
         ])->assertForbidden();
     expect(Storage::disk('public')->allFiles())->toBe([]);
 });
+
+it('rejects non-image edits without removing an existing announcement image', function (string $field) {
+    Storage::fake('public');
+    Storage::disk('public')->put('announcements/existing.png', 'existing image');
+    $announcement = Announcement::query()->create([
+        'title' => 'Original', 'body' => 'Details', 'status' => 'draft',
+        'image_path' => 'announcements/existing.png',
+    ]);
+    $file = UploadedFile::fake()->create('document.pdf', 20, 'application/pdf');
+    $this->actingAs(User::factory()->superAdmin()->create())
+        ->patch(route('staff.announcements.update', $announcement), [
+            'title' => 'Changed', 'body' => 'Details', 'remove_image' => true,
+            $field => $field === 'image' ? $file : [$file],
+        ])->assertSessionHasErrors($field === 'image' ? 'image' : 'images.0');
+
+    expect($announcement->fresh()->title)->toBe('Original')
+        ->and($announcement->fresh()->imagePaths())->toBe(['announcements/existing.png'])
+        ->and(Storage::disk('public')->allFiles())->toBe(['announcements/existing.png']);
+})->with(['image', 'images']);

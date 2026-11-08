@@ -146,8 +146,9 @@
                 </flux:field>
                 <flux:field>
                     <flux:label>Images (optional)</flux:label>
-                    <flux:input type="file" name="images[]" multiple :accept="$imageTypes" :invalid="$errors->has('images') || $errors->has('images.*')" />
+                    <flux:input type="file" name="images[]" multiple data-announcement-images :accept="$imageTypes" :invalid="$errors->has('images') || $errors->has('images.*')" />
                     <flux:description>Up to 10 images per announcement, 5 MB each. Original formats are kept. PDF and document files are not accepted.</flux:description>
+                    <p data-announcement-image-error class="text-sm text-red-600 dark:text-red-400" role="alert" hidden></p>
                     <flux:error name="images" />
                     @foreach ($errors->get('images.*') as $messages)
                         @foreach ($messages as $message)
@@ -217,8 +218,9 @@
                     @endforeach
                     <flux:field>
                         <flux:label>Add images (optional)</flux:label>
-                        <flux:input type="file" name="images[]" multiple :accept="$imageTypes" :invalid="$errors->has('images') || $errors->has('images.*')" />
+                        <flux:input type="file" name="images[]" multiple data-announcement-images :accept="$imageTypes" :invalid="$errors->has('images') || $errors->has('images.*')" />
                         <flux:description>Up to 10 images per announcement, 5 MB each. Original formats are kept. PDF and document files are not accepted.</flux:description>
+                        <p data-announcement-image-error class="text-sm text-red-600 dark:text-red-400" role="alert" hidden></p>
                         <flux:error name="images" />
                     @foreach ($errors->get('images.*') as $messages)
                         @foreach ($messages as $message)

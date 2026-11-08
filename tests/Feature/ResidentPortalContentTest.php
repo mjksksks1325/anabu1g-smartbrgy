@@ -134,6 +134,8 @@ test('each requestable document shows its system fee and certificate validity', 
     $xpath = new DOMXPath($document);
     $options = $xpath->query('//div[@id="cert-type-grid"]/button[contains(@class, "cert-btn")]');
 
+    expect($xpath->query('//*[@id="screen-doctype"]//*[contains(@class, "v2-callout-warning") and normalize-space(.)=""]'))->toHaveCount(0);
+
     expect($options)->toHaveCount(count(CertificateType::cases()));
     foreach (CertificateType::cases() as $index => $type) {
         $text = preg_replace('/\s+/', ' ', $options->item($index)->textContent);

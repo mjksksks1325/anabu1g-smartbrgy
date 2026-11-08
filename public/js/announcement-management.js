@@ -1,4 +1,39 @@
 (() => {
+    const imageExtensions = new Set(['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'avif', 'heic', 'heif']);
+
+    document.addEventListener('change', (event) => {
+        const input = event.target;
+        if (!(input instanceof HTMLInputElement) || !input.matches('[data-announcement-images]')) {
+            return;
+        }
+
+        const files = Array.from(input.files ?? []);
+        let message = '';
+        if (files.some(file => !imageExtensions.has(file.name.split('.').pop()?.toLowerCase())
+            || (file.type && !file.type.startsWith('image/')) || file.type === 'image/svg+xml')) {
+            message = 'Choose image files only. PDF, Word, Excel and other documents are not accepted.';
+        } else if (files.length > 10 || files.some(file => file.size > 5 * 1024 * 1024)) {
+            message = 'Choose up to 10 images, no larger than 5 MB each.';
+        }
+
+        if (message) {
+            input.value = '';
+        }
+        // Clear before Flux updates its file label; show feedback after the shared field handler finishes.
+        queueMicrotask(() => {
+            const error = input.form?.querySelector('[data-announcement-image-error]');
+            if (error) {
+                error.textContent = typeof window.adminTranslate === 'function' ? window.adminTranslate(message) : message;
+                error.hidden = !message;
+            }
+            if (message) {
+                input.setAttribute('aria-invalid', 'true');
+            } else {
+                input.removeAttribute('aria-invalid');
+            }
+        });
+    }, true);
+
     let archiveUrl = null;
     let archiveRecord = null;
     let archiveTrigger = null;
